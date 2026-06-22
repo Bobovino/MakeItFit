@@ -1,0 +1,10 @@
+# Godot 4 generated cache — do not commit
+.godot/
+
+# Imported binary translations
+*.translation
+
+# Mono
+.mono/
+data_*/
+mono_crash.*.json

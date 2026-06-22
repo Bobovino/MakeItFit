@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://winsp01"]
+
+[ext_resource type="Script" path="res://scripts/WallInspector.gd" id="1"]
+
+[node name="WallInspector" type="PanelContainer"]
+script = ExtResource("1")
+custom_minimum_size = Vector2(740, 130)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 736.0
+offset_bottom = 126.0
+
+[node name="TitleRow" type="HBoxContainer" parent="VBox"]
+
+[node name="Title" type="Label" parent="VBox/TitleRow"]
+text = "Wand"
+theme_override_font_sizes/font_size = 13
+size_flags_horizontal = 3
+
+[node name="CloseBtn" type="Button" parent="VBox/TitleRow"]
+text = "✕"
+custom_minimum_size = Vector2(28, 0)
+
+[node name="DrawArea" type="Control" parent="VBox"]
+custom_minimum_size = Vector2(512, 80)
+size_flags_vertical = 3
+
+[node name="WallItems" type="HBoxContainer" parent="VBox"]

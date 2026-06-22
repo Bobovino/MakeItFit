@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#2a1a0a"/>
+  <rect x="20" y="60" width="88" height="50" fill="#8B6914"/>
+  <polygon points="10,65 64,20 118,65" fill="#c8881a"/>
+  <rect x="50" y="80" width="28" height="30" fill="#4a2a0a"/>
+  <text x="64" y="115" font-family="monospace" font-size="9" fill="#ffd700" text-anchor="middle">BOOMER</text>
+</svg>

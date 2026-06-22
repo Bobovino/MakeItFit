@@ -1,0 +1,231 @@
+{
+  "levels": [
+    {
+      "id": "level_01",
+      "name": "Charlottenburg Starter",
+      "tenant": {
+        "name": "Pablo",
+        "age": 28,
+        "bio": "Remote worker. Doesn't need much. Still pays on time.",
+        "required_functions": ["sleep", "work", "cook"],
+        "monthly_rent": 300,
+        "flavor": "Pablo pays 300€/month. Make it barely livable."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 55,
+            "grid_h": 40,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 15, "window_len": 15 },
+              { "edge": "south", "has_door": true, "door_x": 22 },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "normal_bed", "x": 0, "y": 0 },
+              { "id": "wardrobe",   "x": 45, "y": 0 },
+              { "id": "sofa",       "x": 5,  "y": 28 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 3000
+    },
+
+    {
+      "id": "level_02",
+      "name": "The Student Den",
+      "tenant": {
+        "name": "Mia",
+        "age": 22,
+        "bio": "First-year student. Survives on instant noodles and optimism.",
+        "required_functions": ["sleep", "work", "sit"],
+        "monthly_rent": 400,
+        "flavor": "Mia needs a place to crash and study. Nothing fancy."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 40,
+            "grid_h": 30,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 12 },
+              { "edge": "south", "has_door": true, "door_x": 15 },
+              { "edge": "east",  "has_window": true, "window_x": 8,  "window_len": 10 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 2000
+    },
+
+    {
+      "id": "level_03",
+      "name": "Prenzlauer Loft",
+      "tenant": {
+        "name": "Jonas",
+        "age": 31,
+        "bio": "Freelance designer. Needs space for ideas and a decent nap.",
+        "required_functions": ["sleep", "work", "cook", "sit"],
+        "monthly_rent": 450,
+        "flavor": "Jonas wants it creative. Or at least functional."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 60,
+            "grid_h": 45,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 25 },
+              { "edge": "west",  "has_window": true, "window_x": 10, "window_len": 12 },
+              { "edge": "east" }
+            ],
+            "starting_furniture": [
+              { "id": "sofa", "x": 5, "y": 32 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Loft Level",
+            "unlocked_by": "high_bed",
+            "grid_w": 30,
+            "grid_h": 20,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 8, "window_len": 10 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 4500
+    },
+
+    {
+      "id": "level_04",
+      "name": "Mitte Compact",
+      "tenant": {
+        "name": "The Santos",
+        "age": 32,
+        "bio": "Young couple. Both work from home. Both cook. Neither cleans.",
+        "required_functions": ["sleep", "sit", "cook", "storage"],
+        "monthly_rent": 600,
+        "flavor": "They need the basics. They'll provide the chaos themselves."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 64,
+            "grid_h": 50,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 15, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 27 },
+              { "edge": "east",  "has_window": true, "window_x": 12, "window_len": 14 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 5500
+    },
+
+    {
+      "id": "level_05",
+      "name": "Friedrichshain Open Plan",
+      "tenant": {
+        "name": "Alexandra",
+        "age": 35,
+        "bio": "Startup founder. Sleeps 5 hours. Has strong opinions about standing desks.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 700,
+        "flavor": "Alexandra wants everything. Obviously."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 64,
+            "grid_h": 54,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 25 },
+              { "edge": "south", "has_door": true, "door_x": 27 },
+              { "edge": "west",  "has_window": true, "window_x": 15, "window_len": 18 },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 12 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0 },
+              { "id": "wardrobe", "x": 54, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 8000
+    },
+
+    {
+      "id": "level_06",
+      "name": "Kreuzberg Commune",
+      "tenant": {
+        "name": "The Collective",
+        "age": 27,
+        "bio": "Three roommates. One WiFi password. Eternal debates about shared chores.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 550,
+        "flavor": "They share everything. Except opinions."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 60,
+            "grid_h": 50,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 15, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 25 },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 18 },
+              { "edge": "west",  "has_window": true, "window_x": 8,  "window_len": 12 }
+            ],
+            "starting_furniture": [
+              { "id": "sofa",    "x": 10, "y": 37 },
+              { "id": "kitchen", "x": 0,  "y": 0  }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Loft Level",
+            "unlocked_by": "high_bed",
+            "grid_w": 40,
+            "grid_h": 25,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 14 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 7000
+    }
+  ]
+}
