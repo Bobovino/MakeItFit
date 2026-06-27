@@ -13,11 +13,108 @@ var floor_label: String = ""
 var grid_w: int = 8
 var grid_h: int = 6
 var wall_definitions: Array = []
+var partitions: Array = []       # [{x1,y1,x2,y2,load_bearing,demolished}]
+var columns: Array = []          # [{x,y}] — permanent structural obstacles
+var sloped_ceiling: Dictionary = {}   # {axis, low_start, high_end, min_h, max_h}
+var connection_points: Dictionary = {}  # {water:[{x,y}], power:[{x,y}]}
+var pipe_routes: Array = []     # [{type:"water"|"power", tiles:[Vector2i]}]  player-drawn
+var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
+
+var floor_mask: Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
+var segments:   Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
+var _use_new_format: bool  = false
 
 var _placed: Dictionary = {}      # Vector2i -> Furniture
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
+var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
 
 @onready var grid_draw: GridDraw = $GridDraw
+
+
+func is_floor_tile(tile: Vector2i) -> bool:
+	if not _use_new_format or floor_mask.is_empty():
+		return tile.x >= 0 and tile.x < grid_w and tile.y >= 0 and tile.y < grid_h
+	return tile in floor_mask
+
+
+func get_light(tile: Vector2i) -> float:
+	return _light_map.get(tile, 0.0)
+
+
+func _compute_light_map() -> void:
+	_light_map.clear()
+	var blocked := _partition_tile_set()
+	var queue: Array[Vector2i] = []
+
+	if _use_new_format:
+		# Seed from windows on segments
+		for seg in segments:
+			var sd := seg as Dictionary
+			if sd.get("demolished", false) or not sd.get("has_window", false):
+				continue
+			var x1: int = sd["x1"]; var y1: int = sd["y1"]
+			var x2: int = sd["x2"]; var y2: int = sd["y2"]
+			var wp: int = sd.get("window_pos", 0)  as int
+			var wl: int = sd.get("window_len", 10) as int
+			var is_horiz := (y1 == y2)
+			var mn_x := mini(x1, x2); var mn_y := mini(y1, y2)
+			for i in range(wl):
+				for side in [-1, 0]:
+					var tile: Vector2i
+					if is_horiz:
+						tile = Vector2i(mn_x + wp + i, y1 + side)
+					else:
+						tile = Vector2i(x1 + side, mn_y + wp + i)
+					if is_floor_tile(tile) and tile not in _light_map:
+						_light_map[tile] = 1.0
+						queue.append(tile)
+	else:
+		# Seed every window tile at full intensity (old format)
+		for wd in wall_definitions:
+			if not wd.get("has_window", false):
+				continue
+			var edge: String = wd["edge"]
+			var wx: int = wd.get("window_x", 0)
+			var wl: int = wd.get("window_len", 0)
+			for i in range(wl):
+				var tile: Vector2i
+				match edge:
+					"north": tile = Vector2i(wx + i, 0)
+					"south": tile = Vector2i(wx + i, grid_h - 1)
+					"west":  tile = Vector2i(0, wx + i)
+					"east":  tile = Vector2i(grid_w - 1, wx + i)
+				if not (tile in _light_map):
+					_light_map[tile] = 1.0
+					queue.append(tile)
+
+	# BFS — propagate maximum intensity, skip already-higher tiles
+	var head := 0
+	while head < queue.size():
+		var tile: Vector2i = queue[head]
+		head += 1
+		var intensity: float = _light_map[tile]
+		if intensity < 0.04:
+			continue
+		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var next: Vector2i = tile + dir
+			if not is_floor_tile(next):
+				continue
+			if next in blocked:
+				continue
+			var decay := 0.05
+			if next in _placed:
+				var f := _placed[next] as Furniture
+				match f.height_category:
+					"tall":   continue
+					"medium": decay += 0.28
+					"low":    decay += 0.05
+			var next_i: float = intensity - decay
+			if next_i <= 0.0:
+				continue
+			if next_i <= (_light_map.get(next, 0.0) as float):
+				continue
+			_light_map[next] = next_i
+			queue.append(next)
 
 
 func set_active_wall_edge(edge: String) -> void:
@@ -26,13 +123,119 @@ func set_active_wall_edge(edge: String) -> void:
 
 
 func setup(floor_data: Dictionary) -> void:
-	floor_id = floor_data["id"]
+	floor_id    = floor_data["id"]
 	floor_label = floor_data["label"]
-	grid_w = floor_data["grid_w"]
-	grid_h = floor_data["grid_h"]
-	wall_definitions = floor_data.get("walls", [])
+	grid_w      = floor_data["grid_w"]
+	grid_h      = floor_data["grid_h"]
+	sloped_ceiling    = floor_data.get("sloped_ceiling", {})
+	connection_points = floor_data.get("connection_points", {})
+	columns           = floor_data.get("columns", [])
+	pipe_routes       = []
+
+	_use_new_format = floor_data.has("segments")
+	if _use_new_format:
+		floor_mask.clear()
+		for t in floor_data.get("floor_tiles", []):
+			floor_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		segments = []
+		for s in floor_data.get("segments", []):
+			var cs: Dictionary = (s as Dictionary).duplicate()
+			if not cs.has("demolished"):
+				cs["demolished"] = false
+			segments.append(cs)
+		wall_definitions = []
+		partitions       = []
+	else:
+		floor_mask       = {}
+		segments         = []
+		wall_definitions = floor_data.get("walls", [])
+		partitions       = []
+		for p in floor_data.get("partitions", []):
+			var cp: Dictionary = (p as Dictionary).duplicate()
+			cp["demolished"] = false
+			partitions.append(cp)
+
 	if grid_draw:
+		_compute_light_map()
 		grid_draw.queue_redraw()
+
+
+func _partition_tile_set() -> Dictionary:
+	var blocked: Dictionary = {}
+
+	var source: Array = segments if _use_new_format else partitions
+	for p in source:
+		if p.get("demolished", false):
+			continue
+		var x1: int = p["x1"]; var y1: int = p["y1"]
+		var x2: int = p["x2"]; var y2: int = p["y2"]
+		var has_win  := p.get("has_window", false) as bool
+		var wp       := p.get("window_pos", -1)   as int
+		var wl       := p.get("window_len", 0)    as int
+		var has_door := p.get("has_door",   false) as bool
+		var dp       := p.get("door_pos",   -1)   as int
+		var DOOR_LEN := 10
+		if x1 == x2:
+			for y in range(mini(y1, y2), maxi(y1, y2) + 1):
+				var rel := y - mini(y1, y2)
+				var in_w := has_win  and wp >= 0 and rel >= wp and rel < wp + wl
+				var in_d := has_door and dp >= 0 and rel >= dp and rel < dp + DOOR_LEN
+				if not in_w and not in_d:
+					blocked[Vector2i(x1, y)] = true
+		else:
+			for x in range(mini(x1, x2), maxi(x1, x2) + 1):
+				var rel := x - mini(x1, x2)
+				var in_w := has_win  and wp >= 0 and rel >= wp and rel < wp + wl
+				var in_d := has_door and dp >= 0 and rel >= dp and rel < dp + DOOR_LEN
+				if not in_w and not in_d:
+					blocked[Vector2i(x, y1)] = true
+
+	for col in columns:
+		blocked[Vector2i(col["x"] as int, col["y"] as int)] = true
+	return blocked
+
+
+func demolish_partition(idx: int) -> void:
+	if idx < 0 or idx >= partitions.size():
+		return
+	if partitions[idx].get("load_bearing", false):
+		return
+	partitions[idx]["demolished"] = true
+	if grid_draw:
+		_compute_light_map()
+		grid_draw.queue_redraw()
+
+
+func demolish_segment(idx: int) -> void:
+	if idx < 0 or idx >= segments.size():
+		return
+	if (segments[idx] as Dictionary).get("primary", false):
+		return  # primary walls are permanent
+	segments[idx]["demolished"] = true
+	if grid_draw:
+		_compute_light_map()
+		grid_draw.queue_redraw()
+
+
+func find_segment_near(fl_pos: Vector2) -> int:
+	const SNAP := float(TILE_SIZE) * 1.5
+	var best_d := SNAP
+	var best_i := -1
+	for i in range(segments.size()):
+		var sd := segments[i] as Dictionary
+		if sd.get("demolished", false):
+			continue
+		var pa := Vector2(sd["x1"] as int * TILE_SIZE, sd["y1"] as int * TILE_SIZE)
+		var pb := Vector2(sd["x2"] as int * TILE_SIZE, sd["y2"] as int * TILE_SIZE)
+		var seg := pb - pa
+		var len := seg.length()
+		if len < 1.0:
+			continue
+		var t   := clampf((fl_pos - pa).dot(seg) / (len * len), 0.0, 1.0)
+		var d   := fl_pos.distance_to(pa + seg * t)
+		if d < best_d:
+			best_d = d; best_i = i
+	return best_i
 
 
 func _input(event: InputEvent) -> void:
@@ -63,15 +266,53 @@ func _input(event: InputEvent) -> void:
 
 
 func can_place(furniture: Furniture, at: Vector2i) -> bool:
+	var blocked := _partition_tile_set()
 	for x in range(furniture.grid_w):
 		for y in range(furniture.grid_h):
 			var tile := Vector2i(at.x + x, at.y + y)
-			if tile.x < 0 or tile.x >= grid_w:
-				return false
-			if tile.y < 0 or tile.y >= grid_h:
+			if not is_floor_tile(tile):
 				return false
 			if tile in _placed and _placed[tile] != furniture:
 				return false
+			if tile in blocked:
+				return false
+
+	# Sloped ceiling: tall furniture blocked in low zones
+	if furniture.height_category == "tall" and not sloped_ceiling.is_empty():
+		var sc     := sloped_ceiling
+		var axis   := sc.get("axis", "x") as String
+		var low_s  := sc.get("low_start", 0) as int
+		var high_e := sc.get("high_end",  0) as int
+		var min_h  := sc.get("min_h", 1.8) as float
+		var max_h  := sc.get("max_h", 2.4) as float
+		var span   := float(high_e - low_s)
+		if span > 0:
+			for x in range(furniture.grid_w):
+				for y in range(furniture.grid_h):
+					var tile := Vector2i(at.x + x, at.y + y)
+					var coord := tile.x if axis == "x" else tile.y
+					var frac  := clampf(float(coord - low_s) / span, 0.0, 1.0)
+					var ceil_h := min_h + frac * (max_h - min_h)
+					if ceil_h < 2.0:
+						return false
+
+	# Ghost zone: can't place inside another furniture's interaction clearance
+	var new_rect := Rect2i(at.x, at.y, furniture.grid_w, furniture.grid_h)
+	var seen: Array = []
+	for tile in _placed:
+		var f: Furniture = _placed[tile] as Furniture
+		if f == furniture or f in seen or f.ghost_radius <= 0:
+			continue
+		seen.append(f)
+		var ghost := Rect2i(
+			f.grid_pos.x - f.ghost_radius,
+			f.grid_pos.y - f.ghost_radius,
+			f.grid_w + f.ghost_radius * 2,
+			f.grid_h + f.ghost_radius * 2
+		)
+		if ghost.intersects(new_rect):
+			return false
+
 	return true
 
 
@@ -82,12 +323,14 @@ func place_furniture(furniture: Furniture, at: Vector2i) -> void:
 			_placed[Vector2i(at.x + x, at.y + y)] = furniture
 	furniture.grid_pos = at
 	furniture.position = Vector2(at.x * TILE_SIZE, at.y * TILE_SIZE)
+	_compute_light_map()
 	furniture_changed.emit()
 
 
 func remove_furniture(furniture: Furniture) -> void:
 	_remove_from_grid(furniture)
 	furniture.queue_free()
+	_compute_light_map()
 	furniture_changed.emit()
 
 
@@ -188,6 +431,81 @@ func get_adjacent_furniture(edge: String) -> Array:
 			seen.append(f)
 			result.append({"furniture": f, "wall_x": wall_x})
 	return result
+
+
+func check_extended_conflict(furniture: Furniture) -> bool:
+	if not furniture.foldable or furniture.extended_add_h <= 0:
+		return false
+	var start_y := furniture.grid_pos.y + furniture.grid_h
+	var end_y   := start_y + furniture.extended_add_h
+	for y in range(start_y, end_y):
+		for x in range(furniture.grid_w):
+			var tile := Vector2i(furniture.grid_pos.x + x, y)
+			if tile.y >= grid_h or tile.x < 0 or tile.x >= grid_w:
+				return true
+			if tile in _placed and _placed[tile] != furniture:
+				return true
+	return false
+
+
+func add_pipe_route(type: String, tiles: Array) -> void:
+	# Remove existing route of same type first
+	pipe_routes = pipe_routes.filter(func(r): return r["type"] != type)
+	pipe_routes.append({"type": type, "tiles": tiles})
+
+
+func clear_pipe_route(type: String) -> void:
+	pipe_routes = pipe_routes.filter(func(r): return r["type"] != type)
+
+
+func get_unconnected_needs(furniture_list: Array) -> Dictionary:
+	# Returns {water:[fid,...], power:[fid,...]} for furniture not reached by routes
+	var routed_water: Array = []
+	var routed_power: Array = []
+	for route in pipe_routes:
+		for t in route["tiles"]:
+			if route["type"] == "water":
+				routed_water.append(t)
+			else:
+				routed_power.append(t)
+
+	var missing := {"water": [], "power": []}
+	for f in furniture_list:
+		var fur := f as Furniture
+		var fdata := {}
+		for tile in _placed:
+			if _placed[tile] == fur:
+				fdata = {"tile": tile}
+				break
+		if fdata.is_empty():
+			continue
+		if fur.needs_water:
+			var connected := false
+			for t in routed_water:
+				if Rect2i(fur.grid_pos, Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
+					connected = true
+					break
+			if not connected:
+				missing["water"].append(fur.furniture_id)
+		if fur.needs_power:
+			var connected := false
+			for t in routed_power:
+				if Rect2i(fur.grid_pos, Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
+					connected = true
+					break
+			if not connected:
+				missing["power"].append(fur.furniture_id)
+	return missing
+
+
+func _get_placed_tiles() -> Array:
+	return _placed.keys()
+
+
+func _get_tile_color(tile: Vector2i) -> Color:
+	if tile in _placed:
+		return (_placed[tile] as Furniture)._color
+	return Color.WHITE
 
 
 func get_all_furniture() -> Array:

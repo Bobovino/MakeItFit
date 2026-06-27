@@ -1,8 +1,10 @@
 extends PanelContainer
 class_name WallInspector
 
-const TILE_SIZE   := 12
-const WALL_HEIGHT := 24
+signal wall_closed
+
+const TILE_SIZE:   int = 12
+const WALL_HEIGHT: int = 24
 
 var _all_furniture: Array  = []
 var _wall_furniture: Array = []
@@ -28,7 +30,7 @@ var _drag_floor_offset_x:  int       = 0
 @onready var title_lbl:  Label         = $VBox/TitleRow/Title
 @onready var close_btn:  Button        = $VBox/TitleRow/CloseBtn
 @onready var hint_lbl:   Label         = $VBox/HintLabel
-@onready var draw_area:  Control       = $VBox/DrawArea
+@onready var draw_area:  Control       = $VBox/Scroll/DrawArea
 @onready var shop_strip: HBoxContainer = $VBox/WallItems
 
 
@@ -84,6 +86,7 @@ func _on_close() -> void:
 	_is_dragging          = false
 	_drag_floor_furniture = null
 	_show_placeholder()
+	wall_closed.emit()
 
 
 # ── Shop ──────────────────────────────────────────────────────────────────────
@@ -197,7 +200,7 @@ func _wall_item_at(tile: Vector2i) -> Variant:
 
 
 func _floor_item_at(tile: Vector2i) -> Variant:
-	var rh := WALL_HEIGHT * TILE_SIZE
+	var rh: int = WALL_HEIGHT * TILE_SIZE
 	for entry in _apt_floor.get_adjacent_furniture(_edge):
 		var f: Furniture = entry["furniture"]
 		var wx: int      = entry["wall_x"] as int
@@ -206,7 +209,7 @@ func _floor_item_at(tile: Vector2i) -> Variant:
 			continue
 		var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
 		var wall_h: int = fdata.get("wall_h", 5) as int
-		var py_tile: int = (rh - wall_h * TILE_SIZE) / TILE_SIZE
+		var py_tile: int = int((rh - wall_h * TILE_SIZE) / float(TILE_SIZE))
 		if tile.x >= wx and tile.x < wx + item_w \
 		and tile.y >= py_tile and tile.y < py_tile + wall_h:
 			return {"furniture": f, "wall_x": wx, "offset_x": tile.x - wx}
@@ -224,6 +227,7 @@ func _try_place(fid: String, at: Vector2i) -> void:
 	at.y = clampi(at.y, 0, WALL_HEIGHT - ih)
 	var placed := _apt_floor.get_wall_items(_edge)
 	if _wall_fits(at, iw, ih, placed):
+		Audio.play("place")
 		_apt_floor.place_wall_item(_edge, at, fid)
 
 
@@ -271,6 +275,18 @@ func _drop_floor_drag() -> void:
 
 
 func _wall_fits(at: Vector2i, iw: int, ih: int, placed: Dictionary) -> bool:
+	var item_rect := Rect2i(at.x, at.y, iw, ih)
+
+	# Restricted zones: windows and doors block all wall item placement in their columns
+	for zone in _get_restricted_zones():
+		if (zone as Rect2i).intersects(item_rect):
+			return false
+
+	# Floor occlusion: can't place behind adjacent furniture silhouette
+	if _floor_occludes(at, iw, ih):
+		return false
+
+	# Existing wall items
 	for tx in range(iw):
 		for ty in range(ih):
 			var check := Vector2i(at.x + tx, at.y + ty)
@@ -285,6 +301,38 @@ func _wall_fits(at: Vector2i, iw: int, ih: int, placed: Dictionary) -> bool:
 				and check.y >= o.y and check.y < o.y + ph:
 					return false
 	return true
+
+
+func _get_restricted_zones() -> Array:
+	var zones: Array = []
+	var wd := _get_wall_def()
+	if wd.is_empty():
+		return zones
+	if wd.get("has_window", false):
+		var wx  := wd.get("window_x",   5) as int
+		var wlen := wd.get("window_len", 15) as int
+		zones.append(Rect2i(wx, 0, wlen, WALL_HEIGHT))
+	if wd.get("has_door", false):
+		var dx := wd.get("door_x", 0) as int
+		zones.append(Rect2i(dx, 0, 10, WALL_HEIGHT))
+	return zones
+
+
+func _floor_occludes(at: Vector2i, iw: int, ih: int) -> bool:
+	var item_rect := Rect2i(at.x, at.y, iw, ih)
+	for entry in _apt_floor.get_adjacent_furniture(_edge):
+		var f: Furniture    = entry["furniture"]
+		var wx: int         = entry["wall_x"] as int
+		var fdata           := _find_by_id(f.furniture_id)
+		if fdata.is_empty():
+			continue
+		var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
+		var wall_h: int = fdata.get("wall_h", 5) as int
+		var py_tile: int = WALL_HEIGHT - wall_h
+		var sil := Rect2i(wx, py_tile, item_w, wall_h)
+		if sil.intersects(item_rect):
+			return true
+	return false
 
 
 func _remove_wall_at(tile: Vector2i) -> void:
@@ -329,6 +377,14 @@ func _draw_elevation() -> void:
 	draw_area.draw_line(Vector2(0, 0),  Vector2(rw, 0),  Color(0.16, 0.13, 0.10), 2.0)
 
 	_draw_openings(rw, rh)
+
+	# ── Restricted zones overlay (windows / doors) ────────────────────────────
+	for zone in _get_restricted_zones():
+		var z  := zone as Rect2i
+		var zr := Rect2(z.position.x * TILE_SIZE, z.position.y * TILE_SIZE,
+						z.size.x * TILE_SIZE, z.size.y * TILE_SIZE)
+		draw_area.draw_rect(zr, Color(1.0, 0.30, 0.20, 0.07))
+		draw_area.draw_rect(zr, Color(1.0, 0.30, 0.20, 0.30), false, 1.0)
 
 	# ── Floor-adjacent pieces ─────────────────────────────────────────────────
 	for entry in _apt_floor.get_adjacent_furniture(_edge):
@@ -425,7 +481,7 @@ func _draw_elevation() -> void:
 			_draw_label(4, 13, float(iw - 6), "click wall to place")
 
 
-func _draw_openings(rw: int, rh: int) -> void:
+func _draw_openings(_rw: int, rh: int) -> void:
 	var wd := _get_wall_def()
 	if wd.is_empty():
 		return
@@ -452,9 +508,9 @@ func _draw_openings(rw: int, rh: int) -> void:
 		draw_area.draw_rect(Rect2(dx, dy, dw, dh), Color(0.12, 0.08, 0.05))
 		draw_area.draw_rect(Rect2(dx + 3, dy + 3, dw - 6, dh - 3), Color(0.62, 0.43, 0.22))
 		draw_area.draw_rect(Rect2(dx, dy, dw, dh), Color(0.35, 0.22, 0.10), false, 3.0)
-		draw_area.draw_rect(Rect2(dx + 7, dy + 8, dw - 14, dh / 2 - 12),
+		draw_area.draw_rect(Rect2(dx + 7, dy + 8, dw - 14, dh / 2.0 - 12),
 			Color(0, 0, 0, 0.15), false, 1.0)
-		draw_area.draw_rect(Rect2(dx + 7, dy + dh / 2 + 4, dw - 14, dh / 2 - 16),
+		draw_area.draw_rect(Rect2(dx + 7, dy + dh / 2.0 + 4, dw - 14, dh / 2.0 - 16),
 			Color(0, 0, 0, 0.15), false, 1.0)
 		draw_area.draw_circle(Vector2(dx + dw - 8, dy + dh * 0.55), 3.0,
 			Color(0.85, 0.72, 0.20))

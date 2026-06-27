@@ -19,6 +19,7 @@
       "size": { "w": 19, "h": 9 },
       "wall_h": 19,
       "floor_depth": 9,
+      "height_category": "tall",
       "functions": ["sleep"],
       "buy_price": 500,
       "sell_price": 250,
@@ -43,6 +44,7 @@
       "size": { "w": 20, "h": 9 },
       "wall_h": 9,
       "floor_depth": 9,
+      "ghost_radius": 3,
       "functions": ["sit"],
       "buy_price": 250,
       "sell_price": 100,
@@ -55,7 +57,12 @@
       "size": { "w": 20, "h": 9 },
       "wall_h": 9,
       "floor_depth": 9,
+      "ghost_radius": 4,
+      "foldable": true,
+      "extended_add_h": 12,
       "functions": ["sit", "sleep"],
+      "folded_functions": ["sit"],
+      "extended_functions": ["sleep"],
       "buy_price": 450,
       "sell_price": 200,
       "color": "b86838"
@@ -67,6 +74,7 @@
       "size": { "w": 12, "h": 6 },
       "wall_h": 8,
       "floor_depth": 6,
+      "ghost_radius": 3,
       "functions": ["work"],
       "buy_price": 200,
       "sell_price": 80,
@@ -79,6 +87,8 @@
       "size": { "w": 24, "h": 6 },
       "wall_h": 22,
       "floor_depth": 6,
+      "needs_water": true,
+      "needs_power": true,
       "functions": ["cook"],
       "buy_price": 600,
       "sell_price": 200,
@@ -151,6 +161,8 @@
       "size": { "w": 10, "h": 6 },
       "wall_h": 20,
       "floor_depth": 6,
+      "ghost_radius": 3,
+      "height_category": "tall",
       "functions": ["storage"],
       "buy_price": 300,
       "sell_price": 100,
@@ -167,6 +179,48 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "c8a060"
+    }
+  ],
+  "paintable": [
+    {
+      "id": "painted_bed",
+      "label": "Custom Bed",
+      "functions": ["sleep"],
+      "cost_per_tile": 20,
+      "min_tiles": 12,
+      "max_aspect": 3.5,
+      "min_short_side": 4,
+      "color": [0.28, 0.46, 0.72]
+    },
+    {
+      "id": "painted_kitchen",
+      "label": "Custom Kitchen",
+      "functions": ["cook"],
+      "cost_per_tile": 35,
+      "min_tiles": 8,
+      "max_aspect": 7.0,
+      "min_short_side": 2,
+      "color": [0.76, 0.42, 0.20]
+    },
+    {
+      "id": "painted_workspace",
+      "label": "Custom Desk",
+      "functions": ["work"],
+      "cost_per_tile": 15,
+      "min_tiles": 6,
+      "max_aspect": 5.0,
+      "min_short_side": 2,
+      "color": [0.38, 0.68, 0.44]
+    },
+    {
+      "id": "painted_sofa",
+      "label": "Custom Sofa",
+      "functions": ["sit"],
+      "cost_per_tile": 25,
+      "min_tiles": 6,
+      "max_aspect": 5.0,
+      "min_short_side": 2,
+      "color": [0.62, 0.40, 0.70]
     }
   ]
 }

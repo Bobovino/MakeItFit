@@ -6,6 +6,11 @@ signal sell_requested(furniture_node: Furniture)
 
 const TILE_SIZE := 8
 
+func _play(sound: String) -> void:
+	var am := get_node_or_null("/root/Audio")
+	if am:
+		am.play(sound)
+
 var furniture_id: String = ""
 var grid_w: int = 1
 var grid_h: int = 1
@@ -14,6 +19,15 @@ var functions: Array = []
 var buy_price: int = 0
 var sell_price: int = 0
 var furniture_name: String = ""
+var ghost_radius: int = 0   # interaction/clearance zone in tiles (0 = none)
+var foldable: bool = false
+var extended_add_h: int = 0  # extra tiles in +Y when fully extended
+var height_category: String = "medium"  # "low" | "medium" | "tall"
+var needs_water: bool = false
+var needs_power: bool = false
+
+static var test_mode_active: bool = false
+var _extended_conflict: bool = false
 
 var _dragging: bool = false
 var _drag_offset: Vector2 = Vector2.ZERO
@@ -35,6 +49,12 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	functions = data["functions"].duplicate()
 	buy_price = data["buy_price"]
 	sell_price = data["sell_price"]
+	ghost_radius      = data.get("ghost_radius",      0)        as int
+	foldable          = data.get("foldable",          false)    as bool
+	extended_add_h    = data.get("extended_add_h",    0)        as int
+	height_category   = data.get("height_category",   "medium") as String
+	needs_water       = data.get("needs_water",       false)    as bool
+	needs_power       = data.get("needs_power",       false)    as bool
 	_wall_ref = apt_floor
 	_color = Color("#" + data.get("color", "888888"))
 
@@ -48,6 +68,11 @@ func set_accessible(is_accessible: bool) -> void:
 	if _accessible != is_accessible:
 		_accessible = is_accessible
 		queue_redraw()
+
+
+func set_extended_conflict(conflict: bool) -> void:
+	_extended_conflict = conflict
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -67,11 +92,36 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7,
 		Color(ink.r, ink.g, ink.b, 0.90))
 
+	# Ghost interaction zone — dashed amber outline shown while dragging
+	if _dragging and ghost_radius > 0:
+		var gr  := ghost_radius * TILE_SIZE
+		var gc  := Color(0.95, 0.78, 0.22, 0.60)
+		var pts := [Vector2(-gr, -gr), Vector2(w + gr, -gr),
+					Vector2(w + gr, h + gr), Vector2(-gr, h + gr), Vector2(-gr, -gr)]
+		for i in range(pts.size() - 1):
+			draw_dashed_line(pts[i], pts[i + 1], gc, 1.2, 4.0)
+		draw_rect(Rect2(-gr, -gr, w + gr * 2, h + gr * 2), Color(0.95, 0.78, 0.22, 0.04))
+
+	# Extended footprint preview in test mode
+	if test_mode_active and foldable and extended_add_h > 0:
+		var ext_h  := extended_add_h * TILE_SIZE
+		var ec     := Color(0.88, 0.10, 0.10, 0.45) if _extended_conflict else Color(_color.r, _color.g, _color.b, 0.32)
+		var ec_bd  := Color(0.88, 0.10, 0.10, 0.85) if _extended_conflict else Color(_color.r * 0.8, _color.g * 0.8, _color.b * 0.8, 0.70)
+		draw_rect(Rect2(0, h, w, ext_h), ec)
+		draw_dashed_line(Vector2(0, h),     Vector2(w, h),         ec_bd, 1.5, 5.0)
+		draw_dashed_line(Vector2(0, h),     Vector2(0, h + ext_h), ec_bd, 1.0, 4.0)
+		draw_dashed_line(Vector2(w, h),     Vector2(w, h + ext_h), ec_bd, 1.0, 4.0)
+		draw_dashed_line(Vector2(0, h + ext_h), Vector2(w, h + ext_h), ec_bd, 1.5, 5.0)
+
 	# Blocked overlay with X
 	if not _accessible:
 		draw_rect(Rect2(0, 0, w, h), Color(0.88, 0.08, 0.08, 0.32))
 		draw_line(Vector2(3, 3),     Vector2(w - 3, h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
 		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
+
+	# Architectural dimension cotes while dragging
+	if _dragging and _wall_ref:
+		_draw_cotes(float(w), float(h))
 
 
 func _draw_symbol(w: int, h: int, ink: Color) -> void:
@@ -135,6 +185,76 @@ func _draw_symbol(w: int, h: int, ink: Color) -> void:
 			draw_line(Vector2(w * 0.5, 3), Vector2(w * 0.5, h - 3), s, lw)
 
 
+func _draw_cotes(fW: float, fH: float) -> void:
+	var gx := int(position.x / TILE_SIZE)
+	var gy := int(position.y / TILE_SIZE)
+
+	var d_n := gy
+	var d_s := _wall_ref.grid_h - gy - grid_h
+	var d_w := gx
+	var d_e := _wall_ref.grid_w - gx - grid_w
+
+	const COL  := Color(0.18, 0.58, 0.90, 0.82)
+	const FS   := 7
+	const TICK := 4.0
+	const OFF  := 8.0
+	var font := ThemeDB.fallback_font
+
+	# ── Own-size cotes (just outside the furniture edges) ──────────────────
+	# Width — horizontal line above
+	draw_line(Vector2(0, -OFF), Vector2(fW, -OFF), COL, 0.7)
+	draw_line(Vector2(0,  -OFF - TICK), Vector2(0,  -OFF + TICK), COL, 1.0)
+	draw_line(Vector2(fW, -OFF - TICK), Vector2(fW, -OFF + TICK), COL, 1.0)
+	draw_string(font, Vector2(fW * 0.5 - 9, -OFF - 2),
+		"%.1fm" % (float(grid_w) * 0.1),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+	# Height — vertical line left
+	draw_line(Vector2(-OFF, 0), Vector2(-OFF, fH), COL, 0.7)
+	draw_line(Vector2(-OFF - TICK, 0),  Vector2(-OFF + TICK, 0),  COL, 1.0)
+	draw_line(Vector2(-OFF - TICK, fH), Vector2(-OFF + TICK, fH), COL, 1.0)
+	draw_string(font, Vector2(-OFF - 16, fH * 0.5 + 3),
+		"%.1fm" % (float(grid_h) * 0.1),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+	# ── Distance-to-wall cotes ─────────────────────────────────────────────
+	if d_n > 0:
+		var px := float(d_n * TILE_SIZE)
+		var mx := fW * 0.5
+		draw_line(Vector2(mx, 0), Vector2(mx, -px), COL, 0.55)
+		draw_line(Vector2(mx - TICK, 0),   Vector2(mx + TICK, 0),   COL, 0.8)
+		draw_line(Vector2(mx - TICK, -px), Vector2(mx + TICK, -px), COL, 0.8)
+		draw_string(font, Vector2(mx + 3, -px * 0.5 + 3),
+			"%.1fm" % (d_n * 0.1), HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+	if d_s > 0:
+		var px := float(d_s * TILE_SIZE)
+		var mx := fW * 0.5
+		draw_line(Vector2(mx, fH), Vector2(mx, fH + px), COL, 0.55)
+		draw_line(Vector2(mx - TICK, fH),      Vector2(mx + TICK, fH),      COL, 0.8)
+		draw_line(Vector2(mx - TICK, fH + px), Vector2(mx + TICK, fH + px), COL, 0.8)
+		draw_string(font, Vector2(mx + 3, fH + px * 0.5 + 3),
+			"%.1fm" % (d_s * 0.1), HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+	if d_w > 0:
+		var px := float(d_w * TILE_SIZE)
+		var my := fH * 0.5
+		draw_line(Vector2(0, my), Vector2(-px, my), COL, 0.55)
+		draw_line(Vector2(0,   my - TICK), Vector2(0,   my + TICK), COL, 0.8)
+		draw_line(Vector2(-px, my - TICK), Vector2(-px, my + TICK), COL, 0.8)
+		draw_string(font, Vector2(-px * 0.5 - 10, my - 2),
+			"%.1fm" % (d_w * 0.1), HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+	if d_e > 0:
+		var px := float(d_e * TILE_SIZE)
+		var my := fH * 0.5
+		draw_line(Vector2(fW, my), Vector2(fW + px, my), COL, 0.55)
+		draw_line(Vector2(fW,      my - TICK), Vector2(fW,      my + TICK), COL, 0.8)
+		draw_line(Vector2(fW + px, my - TICK), Vector2(fW + px, my + TICK), COL, 0.8)
+		draw_string(font, Vector2(fW + px * 0.5 - 8, my - 2),
+			"%.1fm" % (d_e * 0.1), HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
+
+
 func set_grid_pos(gx: int, gy: int) -> void:
 	grid_pos = Vector2i(gx, gy)
 	position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
@@ -180,6 +300,7 @@ func _start_drag(mouse_pos: Vector2) -> void:
 	_drag_offset = global_position - mouse_pos
 	_original_pos = position
 	z_index = 10
+	queue_redraw()
 
 
 func _drag(mouse_pos: Vector2) -> void:
@@ -191,9 +312,11 @@ func _drag(mouse_pos: Vector2) -> void:
 	snapped_x = clampi(snapped_x, 0, _wall_ref.grid_w - grid_w)
 	snapped_y = clampi(snapped_y, 0, _wall_ref.grid_h - grid_h)
 	position = Vector2(snapped_x * TILE_SIZE, snapped_y * TILE_SIZE)
+	queue_redraw()
 
 
 func _rotate() -> void:
+	_play("rotate")
 	var new_w := grid_h
 	var new_h := grid_w
 	if _wall_ref:
@@ -213,11 +336,14 @@ func _rotate() -> void:
 func _end_drag(_mouse_pos: Vector2) -> void:
 	_dragging = false
 	z_index = 0
+	queue_redraw()
 	var snapped_x := int(position.x / TILE_SIZE)
 	var snapped_y := int(position.y / TILE_SIZE)
 
 	if _wall_ref and _wall_ref.can_place(self, Vector2i(snapped_x, snapped_y)):
 		_wall_ref.place_furniture(self, Vector2i(snapped_x, snapped_y))
+		_play("place")
 		placed.emit(self)
 	else:
+		_play("error")
 		position = _original_pos

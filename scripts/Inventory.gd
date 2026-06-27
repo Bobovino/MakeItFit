@@ -10,6 +10,7 @@ var _gm: GameManager = null
 
 func setup(game_manager: GameManager) -> void:
 	_gm = game_manager
+	_gm.budget_changed.connect(_refresh_affordability)
 
 
 func populate(furniture_list: Array) -> void:
@@ -57,6 +58,8 @@ func populate(furniture_list: Array) -> void:
 		var buy_btn := Button.new()
 		buy_btn.text = "Buy"
 		buy_btn.add_theme_font_size_override("font_size", 11)
+		buy_btn.set_meta("price", f["buy_price"] as int)
+		buy_btn.disabled = _gm != null and _gm.budget < (f["buy_price"] as int)
 		buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
 		row.add_child(buy_btn)
 
@@ -69,5 +72,15 @@ func _fmt_funcs(funcs: Array) -> String:
 	return ", ".join(funcs)
 
 
+func _refresh_affordability(new_budget: int) -> void:
+	for row in item_list.get_children():
+		if not (row is HBoxContainer):
+			continue
+		for ctrl in (row as HBoxContainer).get_children():
+			if ctrl is Button and (ctrl as Button).has_meta("price"):
+				(ctrl as Button).disabled = new_budget < (ctrl as Button).get_meta("price") as int
+
+
 func _on_buy_pressed(furniture_id: String) -> void:
+	Audio.play("click")
 	buy_requested.emit(furniture_id)

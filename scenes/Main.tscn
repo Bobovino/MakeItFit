@@ -36,18 +36,25 @@ disabled = true
 theme_override_font_sizes/font_size = 16
 custom_minimum_size = Vector2(180, 0)
 
+[node name="Divider" type="ColorRect" parent="UI"]
+offset_left = 859.0
+offset_top = 46.0
+offset_right = 861.0
+offset_bottom = 506.0
+color = Color(0.20, 0.26, 0.34, 1)
+
 [node name="WallInspector" type="PanelContainer" parent="UI"]
-offset_left = 532.0
-offset_top = 50.0
-offset_right = 1272.0
-offset_bottom = 500.0
+offset_left = 860.0
+offset_top = 46.0
+offset_right = 1280.0
+offset_bottom = 506.0
 script = ExtResource("7")
 
 [node name="VBox" type="VBoxContainer" parent="UI/WallInspector"]
 offset_left = 6.0
 offset_top = 6.0
-offset_right = 734.0
-offset_bottom = 444.0
+offset_right = 414.0
+offset_bottom = 454.0
 
 [node name="TitleRow" type="HBoxContainer" parent="UI/WallInspector/VBox"]
 
@@ -65,7 +72,10 @@ text = "Click a highlighted wall edge to inspect it."
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 
-[node name="DrawArea" type="Control" parent="UI/WallInspector/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="UI/WallInspector/VBox"]
+size_flags_vertical = 3
+
+[node name="DrawArea" type="Control" parent="UI/WallInspector/VBox/Scroll"]
 visible = false
 custom_minimum_size = Vector2(512, 192)
 

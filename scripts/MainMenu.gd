@@ -1,17 +1,5 @@
 extends Control
 
-const RETIRE_GOAL := 3000
-
-var _level_names: Array = [
-	"Charlottenburg Starter",
-	"The Student Den",
-	"Prenzlauer Loft",
-	"Mitte Compact",
-	"Friedrichshain Open Plan",
-	"Kreuzberg Commune"
-]
-var _level_rents: Array = [300, 400, 450, 600, 700, 550]
-
 
 func _draw() -> void:
 	# Blueprint grid overlay on top of the background
@@ -43,49 +31,15 @@ func _ready() -> void:
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(vbox)
 
-	_add_label(vbox, "MAKE IT FIT", 52, Color(0.95, 0.88, 0.55))   # warm amber
+	_add_label(vbox, "MAKE IT FIT", 52, Color(0.95, 0.88, 0.55))
 	_add_label(vbox, "Furnish. Satisfy. Retire.", 14, Color(0.52, 0.64, 0.74))
 
-	_spacer(vbox, 20)
+	_spacer(vbox, 16)
 
-	# Level list
-	var level_box := VBoxContainer.new()
-	level_box.add_theme_constant_override("separation", 4)
-	vbox.add_child(level_box)
+	_add_label(vbox, "35 apartments across 10 Berlin districts", 12, Color(0.55, 0.62, 0.70))
+	_add_label(vbox, "Build your property portfolio. Reach 10 000€/month. Retire.", 12, Color(0.42, 0.50, 0.58))
 
-	var total := 0
-	for i in range(_level_names.size()):
-		total += _level_rents[i]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		level_box.add_child(row)
-		var num := Label.new()
-		num.text = "%d." % (i + 1)
-		num.custom_minimum_size = Vector2(24, 0)
-		num.add_theme_font_size_override("font_size", 12)
-		num.modulate = Color(0.55, 0.50, 0.42)
-		row.add_child(num)
-		var name_lbl := Label.new()
-		name_lbl.text = _level_names[i]
-		name_lbl.custom_minimum_size = Vector2(240, 0)
-		name_lbl.add_theme_font_size_override("font_size", 12)
-		name_lbl.modulate = Color(0.70, 0.78, 0.86)
-		row.add_child(name_lbl)
-		var rent_lbl := Label.new()
-		rent_lbl.text = "+%d€/mo" % _level_rents[i]
-		rent_lbl.add_theme_font_size_override("font_size", 12)
-		rent_lbl.modulate = Color(0.50, 0.78, 0.60)
-		row.add_child(rent_lbl)
-
-	_spacer(vbox, 4)
-	var goal_lbl := Label.new()
-	goal_lbl.text = "Total: %d€/month  —  Retire at %d€/month" % [total, RETIRE_GOAL]
-	goal_lbl.add_theme_font_size_override("font_size", 12)
-	goal_lbl.modulate = Color(0.95, 0.88, 0.55)
-	goal_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(goal_lbl)
-
-	_spacer(vbox, 24)
+	_spacer(vbox, 28)
 
 	var start_btn := Button.new()
 	start_btn.text = "Start Game"
@@ -101,6 +55,14 @@ func _ready() -> void:
 	start_btn.pressed.connect(_on_start)
 	vbox.add_child(start_btn)
 
+	var editor_btn := Button.new()
+	editor_btn.text = "Level Editor"
+	editor_btn.custom_minimum_size = Vector2(240, 36)
+	editor_btn.add_theme_font_size_override("font_size", 12)
+	editor_btn.add_theme_color_override("font_color", Color(0.52, 0.74, 0.62))
+	editor_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn"))
+	vbox.add_child(editor_btn)
+
 	var quit_btn := Button.new()
 	quit_btn.text = "Quit"
 	quit_btn.custom_minimum_size = Vector2(240, 36)
@@ -111,17 +73,17 @@ func _ready() -> void:
 
 
 func _on_start() -> void:
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	get_tree().change_scene_to_file("res://scenes/CityMap.tscn")
 
 
 func _on_quit() -> void:
 	get_tree().quit()
 
 
-func _add_label(parent: Control, text: String, size: int, col: Color) -> void:
+func _add_label(parent: Control, text: String, font_size: int, col: Color) -> void:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.modulate = col
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(lbl)

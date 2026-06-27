@@ -1,8 +1,51 @@
 {
+  "blocks": [
+    {
+      "id": 1,
+      "name": "Aprendizaje",
+      "subtitle": "Furniture & Functions",
+      "color": "#3870A0",
+      "intro": null
+    },
+    {
+      "id": 2,
+      "name": "Lofts y Espacios",
+      "subtitle": "Multi-floor Living",
+      "color": "#A05038",
+      "intro": "Some apartments have an upper loft level. Place a Loft Bed on the ground floor to unlock the upper space."
+    },
+    {
+      "id": 3,
+      "name": "Altura y Estructura",
+      "subtitle": "Sloped Ceilings & Columns",
+      "color": "#786428",
+      "intro": "Watch the ceiling! Height contour lines show low zones where tall furniture won't fit. Structural columns cannot be moved."
+    },
+    {
+      "id": 4,
+      "name": "Instalaciones",
+      "subtitle": "Plumbing & Electricity",
+      "color": "#287850",
+      "intro": "Use the Subfloor layer to route water pipes and power cables from wall supply points to your furniture."
+    },
+    {
+      "id": 5,
+      "name": "Desafío Final",
+      "subtitle": "Moments & Master Plans",
+      "color": "#602850",
+      "intro": "These apartments have multiple life Moments — the layout must work at different times of day. Use foldable furniture wisely."
+    }
+  ],
   "levels": [
     {
       "id": "level_01",
-      "name": "Charlottenburg Starter",
+      "name": "Wedding Studio",
+      "district": "Wedding",
+      "map_col": 0, "map_row": 0,
+      "block": 1,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 1500,
       "tenant": {
         "name": "Pablo",
         "age": 28,
@@ -38,6 +81,12 @@
     {
       "id": "level_02",
       "name": "The Student Den",
+      "district": "Wedding",
+      "map_col": 1, "map_row": 0,
+      "block": 1,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 2000,
       "tenant": {
         "name": "Mia",
         "age": 22,
@@ -69,6 +118,12 @@
     {
       "id": "level_03",
       "name": "Prenzlauer Loft",
+      "district": "Prenzlauer Berg",
+      "map_col": 2, "map_row": 0,
+      "block": 1,
+      "acquisition_cost": 1800,
+      "min_stars": 0,
+      "funds_base_reward": 2200,
       "tenant": {
         "name": "Jonas",
         "age": 31,
@@ -116,6 +171,12 @@
     {
       "id": "level_04",
       "name": "Mitte Compact",
+      "district": "Mitte",
+      "map_col": 3, "map_row": 0,
+      "block": 1,
+      "acquisition_cost": 2200,
+      "min_stars": 0,
+      "funds_base_reward": 3000,
       "tenant": {
         "name": "The Santos",
         "age": 32,
@@ -149,6 +210,12 @@
     {
       "id": "level_05",
       "name": "Friedrichshain Open Plan",
+      "district": "Friedrichshain",
+      "map_col": 4, "map_row": 0,
+      "block": 1,
+      "acquisition_cost": 3000,
+      "min_stars": 0,
+      "funds_base_reward": 3500,
       "tenant": {
         "name": "Alexandra",
         "age": 35,
@@ -183,6 +250,12 @@
     {
       "id": "level_06",
       "name": "Kreuzberg Commune",
+      "district": "Kreuzberg",
+      "map_col": 0, "map_row": 1,
+      "block": 1,
+      "acquisition_cost": 2500,
+      "min_stars": 0,
+      "funds_base_reward": 2750,
       "tenant": {
         "name": "The Collective",
         "age": 27,
@@ -226,6 +299,1637 @@
         ]
       },
       "starting_budget": 7000
+    },
+
+    {
+      "id": "level_07",
+      "name": "Micro Studio",
+      "district": "Wedding",
+      "map_col": 1, "map_row": 1,
+      "block": 1,
+      "acquisition_cost": 800,
+      "min_stars": 0,
+      "funds_base_reward": 1000,
+      "paintable_furniture": ["painted_bed"],
+      "mechanic_intro": {
+        "title": "Custom Build",
+        "body": "This apartment is too cramped for a standard bed.\n\nSelect Custom Bed from the CUSTOM BUILD panel on the right, then paint tiles directly onto the floor to shape your own piece. LMB to add tiles, RMB to erase. The shape must be contiguous and not too narrow or elongated."
+      },
+      "tenant": {
+        "name": "Lukas",
+        "age": 20,
+        "bio": "Intern. Budget: zero. Expectations: also zero.",
+        "required_functions": ["sleep", "cook"],
+        "monthly_rent": 200,
+        "flavor": "Tiny space. Tiny rent. Tiny soul."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 22,
+            "grid_h": 18,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 5, "window_len": 8 },
+              { "edge": "south", "has_door": true, "door_x": 9 },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 1000
+    },
+
+    {
+      "id": "level_08",
+      "name": "Remote Worker's Corner",
+      "district": "Schöneberg",
+      "map_col": 2, "map_row": 1,
+      "block": 1,
+      "acquisition_cost": 1500,
+      "min_stars": 0,
+      "funds_base_reward": 2250,
+      "tenant": {
+        "name": "Fatima",
+        "age": 29,
+        "bio": "Full-stack developer. Needs a monitor stand AND a bed. Non-negotiable.",
+        "required_functions": ["sleep", "work", "storage"],
+        "monthly_rent": 450,
+        "flavor": "She bills 80€/hour but rents for 450. Do the math."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 50,
+            "grid_h": 40,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 12, "window_len": 16 },
+              { "edge": "south", "has_door": true, "door_x": 20 },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 12 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 3500
+    },
+
+    {
+      "id": "level_09",
+      "name": "Creative Co-work",
+      "district": "Neukölln",
+      "map_col": 3, "map_row": 1,
+      "block": 1,
+      "acquisition_cost": 1200,
+      "min_stars": 0,
+      "funds_base_reward": 1750,
+      "paintable_furniture": ["painted_workspace", "painted_sofa"],
+      "tenant": {
+        "name": "The Studio Gang",
+        "age": 30,
+        "bio": "Three freelancers sharing a work space. Nobody sleeps here. Allegedly.",
+        "required_functions": ["work", "sit", "storage"],
+        "monthly_rent": 350,
+        "flavor": "No beds required. They have homes. Somewhere."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 45,
+            "grid_h": 40,
+            "walls": [
+              { "edge": "north" },
+              { "edge": "south", "has_door": true, "door_x": 18 },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 14 },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 10 }
+            ],
+            "starting_furniture": [
+              { "id": "desk", "x": 2, "y": 2 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 3000
+    },
+
+    {
+      "id": "level_10",
+      "name": "East Side Studio",
+      "district": "Neukölln",
+      "map_col": 4, "map_row": 1,
+      "block": 1,
+      "acquisition_cost": 2500,
+      "min_stars": 3,
+      "funds_base_reward": 2500,
+      "tenant": {
+        "name": "Kenji",
+        "age": 26,
+        "bio": "Musician by night, barista by morning. Needs a bed AND a desk.",
+        "required_functions": ["sleep", "work", "cook", "sit"],
+        "monthly_rent": 500,
+        "flavor": "He asks if the walls are soundproofed. They are not."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 55,
+            "grid_h": 44,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 12, "window_len": 18 },
+              { "edge": "south", "has_door": true, "door_x": 23 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 10 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 5000
+    },
+
+    {
+      "id": "tut_loft",
+      "name": "Mein erster Loft",
+      "district": "Wedding",
+      "map_col": 0, "map_row": 2,
+      "block": 2,
+      "is_tutorial": true,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 800,
+      "mechanic_intro": {
+        "title": "New Mechanic: Loft Floors",
+        "body": "Place a Loft Bed (high_bed) on the ground floor to unlock the upper level. Loft spaces let you double your usable area — great for sleep or storage above the main living zone."
+      },
+      "tenant": {
+        "name": "Dario",
+        "age": 25,
+        "bio": "Aspiring musician. Needs a sleep nook above and a spot to sit below.",
+        "required_functions": ["sleep", "sit"],
+        "monthly_rent": 250,
+        "flavor": "Small space, big dreams. The loft is the dream."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 28,
+            "grid_h": 20,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 6, "window_len": 10 },
+              { "edge": "south", "has_door": true, "door_x": 11 },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          },
+          {
+            "id": "floor_2",
+            "label": "Loft",
+            "unlocked_by": "high_bed",
+            "grid_w": 20,
+            "grid_h": 12,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 4, "window_len": 8 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 1500
+    },
+
+    {
+      "id": "level_11",
+      "name": "Kreuzberg Corner",
+      "district": "Kreuzberg",
+      "map_col": 1, "map_row": 2,
+      "block": 2,
+      "acquisition_cost": 3000,
+      "min_stars": 3,
+      "funds_base_reward": 3000,
+      "tenant": {
+        "name": "Ingrid",
+        "age": 44,
+        "bio": "Yoga teacher. Needs storage for equipment and peace for the mind.",
+        "required_functions": ["sleep", "cook", "sit", "storage"],
+        "monthly_rent": 600,
+        "flavor": "She will leave a very long review on the platform."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 60,
+            "grid_h": 48,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 25 },
+              { "edge": "east",  "has_window": true, "window_x": 12, "window_len": 14 },
+              { "edge": "west",  "has_window": true, "window_x": 10, "window_len": 10 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 5500
+    },
+
+    {
+      "id": "level_12",
+      "name": "Neukölln Rooftop",
+      "district": "Neukölln",
+      "map_col": 2, "map_row": 2,
+      "block": 2,
+      "acquisition_cost": 4000,
+      "min_stars": 3,
+      "funds_base_reward": 3750,
+      "tenant": {
+        "name": "Omar & Priya",
+        "age": 33,
+        "bio": "Two architects. Will judge your layout professionally.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 750,
+        "flavor": "They know exactly how many square metres they're getting."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 60,
+            "grid_h": 46,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 22 },
+              { "edge": "south", "has_door": true, "door_x": 26 },
+              { "edge": "east",  "has_window": true, "window_x": 12, "window_len": 16 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0 },
+              { "id": "wardrobe", "x": 50, "y": 0 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Loft Level",
+            "unlocked_by": "high_bed",
+            "grid_w": 28,
+            "grid_h": 20,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 6, "window_len": 12 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 8000
+    },
+
+    {
+      "id": "level_13",
+      "name": "Couple's Nest",
+      "district": "Schöneberg",
+      "map_col": 3, "map_row": 2,
+      "block": 2,
+      "acquisition_cost": 3000,
+      "min_stars": 3,
+      "funds_base_reward": 2750,
+      "tenant": {
+        "name": "Elena & Marco",
+        "age": 28,
+        "bio": "Just moved in together. Budget is tight. Love is cheaper.",
+        "required_functions": ["sleep", "sit", "cook"],
+        "monthly_rent": 550,
+        "flavor": "They'll argue about the sofa placement. At least it's not your problem."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 46,
+            "grid_h": 36,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 16 },
+              { "edge": "south", "has_door": true, "door_x": 18 },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 8,  "window_len": 10 }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 4000
+    },
+
+    {
+      "id": "level_14",
+      "name": "Home Office Suite",
+      "district": "Schöneberg",
+      "map_col": 4, "map_row": 2,
+      "block": 2,
+      "acquisition_cost": 5000,
+      "min_stars": 5,
+      "funds_base_reward": 3750,
+      "tenant": {
+        "name": "Dr. Reeves",
+        "age": 48,
+        "bio": "Consultant. Holds video calls in 4 time zones simultaneously.",
+        "required_functions": ["sleep", "work", "sit", "storage"],
+        "monthly_rent": 750,
+        "flavor": "He will call the property manager. But only once, and politely."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 65,
+            "grid_h": 50,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 15, "window_len": 24 },
+              { "edge": "south", "has_door": true, "door_x": 28 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 14 },
+              { "edge": "west",  "has_window": true, "window_x": 10, "window_len": 12 }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 7000
+    },
+
+    {
+      "id": "level_15",
+      "name": "Prenzlauer Penthouse",
+      "district": "Prenzlauer Berg",
+      "map_col": 0, "map_row": 3,
+      "block": 2,
+      "acquisition_cost": 7000,
+      "min_stars": 5,
+      "funds_base_reward": 4500,
+      "tenant": {
+        "name": "Sofia",
+        "age": 39,
+        "bio": "Art dealer. Knows what she wants. Won't say it twice.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 900,
+        "flavor": "She once rejected a Mies van der Rohe chair. Tread carefully."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 70,
+            "grid_h": 56,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 28 },
+              { "edge": "south", "has_door": true, "door_x": 30 },
+              { "edge": "east",  "has_window": true, "window_x": 16, "window_len": 18 },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 16 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0 },
+              { "id": "wardrobe", "x": 60, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 11000
+    },
+
+    {
+      "id": "level_16",
+      "name": "Artistic Commune",
+      "district": "Prenzlauer Berg",
+      "map_col": 1, "map_row": 3,
+      "block": 2,
+      "acquisition_cost": 9000,
+      "min_stars": 7,
+      "funds_base_reward": 5000,
+      "tenant": {
+        "name": "The Artists",
+        "age": 26,
+        "bio": "Five creatives. One WiFi. A shared vision and no shared dishes.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 1000,
+        "flavor": "Chaotic, beautiful, underpaying. Just like the art world."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 72,
+            "grid_h": 56,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 28 },
+              { "edge": "south", "has_door": true, "door_x": 32 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 20 },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 16 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0,  "y": 0  },
+              { "id": "sofa",    "x": 18, "y": 42 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 13000
+    },
+
+    {
+      "id": "level_17",
+      "name": "Heritage Apartment",
+      "district": "Prenzlauer Berg",
+      "map_col": 2, "map_row": 3,
+      "block": 2,
+      "acquisition_cost": 11000,
+      "min_stars": 7,
+      "funds_base_reward": 6000,
+      "tenant": {
+        "name": "The Hoffmanns",
+        "age": 50,
+        "bio": "Retired civil servants. Meticulous. Will photograph every scratch.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 1200,
+        "flavor": "They have their own Tupperware. They will not share it."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 70,
+            "grid_h": 58,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 30 },
+              { "edge": "south", "has_door": true, "door_x": 30 },
+              { "edge": "east",  "has_window": true, "window_x": 16, "window_len": 18 },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 14 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 58, "y": 0  },
+              { "id": "sofa",     "x": 10, "y": 42 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 16000
+    },
+
+    {
+      "id": "level_18",
+      "name": "Dual Loft Challenge",
+      "district": "Prenzlauer Berg",
+      "map_col": 3, "map_row": 3,
+      "block": 2,
+      "acquisition_cost": 14000,
+      "min_stars": 10,
+      "funds_base_reward": 7500,
+      "tenant": {
+        "name": "Dev & Rina",
+        "age": 34,
+        "bio": "Software engineers. Want two separate sleep zones but are too polite to say it.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 1500,
+        "flavor": "They communicate exclusively via Notion. This listing is in Notion."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 64,
+            "grid_h": 50,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 24 },
+              { "edge": "south", "has_door": true, "door_x": 27 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 16 },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 14 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0 },
+              { "id": "wardrobe", "x": 54, "y": 0 },
+              { "id": "sofa",     "x": 8,  "y": 36 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Upper Loft",
+            "unlocked_by": "high_bed",
+            "grid_w": 35,
+            "grid_h": 22,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 8, "window_len": 14 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 18000
+    },
+
+    {
+      "id": "level_19",
+      "name": "The Long Run",
+      "district": "Friedrichshain",
+      "map_col": 4, "map_row": 3,
+      "block": 2,
+      "acquisition_cost": 8000,
+      "min_stars": 7,
+      "funds_base_reward": 4500,
+      "tenant": {
+        "name": "Bao & Co.",
+        "age": 31,
+        "bio": "Small creative agency. Long space. Short deadlines.",
+        "required_functions": ["work", "sit", "storage"],
+        "monthly_rent": 900,
+        "flavor": "They need to fit twelve monitors. This is not a joke."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 90,
+            "grid_h": 32,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 20, "window_len": 40 },
+              { "edge": "south", "has_door": true, "door_x": 42 },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "desk", "x": 2,  "y": 2 },
+              { "id": "desk", "x": 26, "y": 2 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 10000
+    },
+
+    {
+      "id": "level_20",
+      "name": "Stadtmitte Luxe",
+      "district": "Mitte",
+      "map_col": 0, "map_row": 4,
+      "block": 2,
+      "acquisition_cost": 18000,
+      "min_stars": 12,
+      "funds_base_reward": 10000,
+      "tenant": {
+        "name": "Herr Kessler",
+        "age": 62,
+        "bio": "Retired banker. Standards as high as his floor area.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 2000,
+        "flavor": "He will not sign the lease if the kitchen is smaller than his ego."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 78,
+            "grid_h": 62,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 18, "window_len": 32 },
+              { "edge": "south", "has_door": true, "door_x": 34 },
+              { "edge": "east",  "has_window": true, "window_x": 18, "window_len": 22 },
+              { "edge": "west",  "has_window": true, "window_x": 16, "window_len": 18 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 66, "y": 0  },
+              { "id": "sofa",     "x": 12, "y": 46 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Study Loft",
+            "unlocked_by": "high_bed",
+            "grid_w": 40,
+            "grid_h": 24,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 16 },
+              { "edge": "south" },
+              { "edge": "east",  "has_window": true, "window_x": 6,  "window_len": 8  },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 25000
+    },
+
+    {
+      "id": "level_21",
+      "name": "The Divided Flat",
+      "district": "Charlottenburg",
+      "map_col": 1, "map_row": 4,
+      "block": 2,
+      "acquisition_cost": 12000,
+      "min_stars": 10,
+      "funds_base_reward": 6000,
+      "tenant": {
+        "name": "Miriam",
+        "age": 37,
+        "bio": "Interior designer. Hates arbitrary walls. Will say so, professionally.",
+        "required_functions": ["sleep", "sit", "cook", "storage"],
+        "monthly_rent": 1200,
+        "flavor": "She knows that wall is not load-bearing. Do you?"
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 64,
+            "grid_h": 50,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 24 },
+              { "edge": "south", "has_door": true, "door_x": 27 },
+              { "edge": "east",  "has_window": true, "window_x": 12, "window_len": 14 },
+              { "edge": "west" }
+            ],
+            "partitions": [
+              { "x1": 30, "y1": 0, "x2": 30, "y2": 35, "load_bearing": false, "demolish_cost": 600, "label": "Living/Kitchen wall" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 2  },
+              { "id": "wardrobe", "x": 54, "y": 2  }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 8000
+    },
+
+    {
+      "id": "level_22",
+      "name": "Attic Studio",
+      "district": "Pankow",
+      "map_col": 2, "map_row": 4,
+      "block": 2,
+      "acquisition_cost": 10000,
+      "min_stars": 10,
+      "funds_base_reward": 5500,
+      "tenant": {
+        "name": "Theo",
+        "age": 24,
+        "bio": "Illustrator. Loves slanted light and low ceilings. Mostly.",
+        "required_functions": ["sleep", "work", "sit"],
+        "monthly_rent": 1100,
+        "flavor": "He says the slant gives it character. You still can't fit a wardrobe under it."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Attic Floor",
+            "grid_w": 60,
+            "grid_h": 44,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 30, "min_h": 1.5, "max_h": 2.6 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 26 },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 14 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "desk", "x": 34, "y": 2 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 6000
+    },
+
+    {
+      "id": "level_23",
+      "name": "Pillared Hall",
+      "district": "Tempelhof",
+      "map_col": 3, "map_row": 4,
+      "block": 2,
+      "acquisition_cost": 14000,
+      "min_stars": 12,
+      "funds_base_reward": 7000,
+      "tenant": {
+        "name": "The Brauns",
+        "age": 45,
+        "bio": "A family of four. They navigate around columns without thinking about it.",
+        "required_functions": ["sleep", "cook", "sit", "storage"],
+        "monthly_rent": 1400,
+        "flavor": "They want the columns kept. Apparently it is a style choice."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 70,
+            "grid_h": 54,
+            "columns": [
+              { "x": 22, "y": 18 }, { "x": 22, "y": 36 },
+              { "x": 44, "y": 18 }, { "x": 44, "y": 36 }
+            ],
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 26 },
+              { "edge": "south", "has_door": true, "door_x": 30 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 16 },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 14 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 10000
+    },
+
+    {
+      "id": "level_24",
+      "name": "Flex Haven",
+      "district": "Neukölln",
+      "map_col": 4, "map_row": 4,
+      "block": 2,
+      "acquisition_cost": 9000,
+      "min_stars": 10,
+      "funds_base_reward": 5000,
+      "tenant": {
+        "name": "Nadia",
+        "age": 30,
+        "bio": "Travels 3 weeks a month. Wants a sofa-bed. No exceptions.",
+        "required_functions": ["sleep", "sit", "cook", "work"],
+        "monthly_rent": 1000,
+        "flavor": "She has a suitcase under her arm. The sofa-bed is non-negotiable."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 48,
+            "grid_h": 38,
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 } ],
+              "power": [ { "x": 0, "y": 6 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 12, "window_len": 16 },
+              { "edge": "south", "has_door": true, "door_x": 19 },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 10, "window_len": 12 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 5500
+    },
+
+    {
+      "id": "tut_height",
+      "name": "Dachschräge Übung",
+      "district": "Pankow",
+      "map_col": 0, "map_row": 5,
+      "block": 3,
+      "is_tutorial": true,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 1000,
+      "mechanic_intro": {
+        "title": "New Mechanic: Sloped Ceilings",
+        "body": "The height contour lines show ceiling height across the floor. Tall furniture cannot be placed in low-ceiling zones. Plan carefully — only low and medium-height items fit under the slope."
+      },
+      "tenant": {
+        "name": "Vera",
+        "age": 31,
+        "bio": "Yoga teacher. Loves the slanted light. Hates stubbing her head.",
+        "required_functions": ["sleep", "work"],
+        "monthly_rent": 350,
+        "flavor": "Put the desk where she can stand up straight."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Attic Floor",
+            "grid_w": 38,
+            "grid_h": 28,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 22, "min_h": 1.4, "max_h": 2.6 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 8, "window_len": 14 },
+              { "edge": "south", "has_door": true, "door_x": 16 },
+              { "edge": "east",  "has_window": true, "window_x": 6, "window_len": 10 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 2000
+    },
+
+    {
+      "id": "level_25",
+      "name": "Old Factory Loft",
+      "district": "Kreuzberg",
+      "map_col": 1, "map_row": 5,
+      "block": 3,
+      "acquisition_cost": 16000,
+      "min_stars": 12,
+      "funds_base_reward": 8000,
+      "tenant": {
+        "name": "The Factory Collective",
+        "age": 29,
+        "bio": "Eight people sharing one industrial space. One bathroom. No drama (yet).",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 1600,
+        "flavor": "There are load-bearing columns everywhere. Build around them."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Factory Floor",
+            "grid_w": 80,
+            "grid_h": 56,
+            "columns": [
+              { "x": 18, "y": 0 }, { "x": 18, "y": 28 },
+              { "x": 36, "y": 0 }, { "x": 36, "y": 28 },
+              { "x": 54, "y": 0 }, { "x": 54, "y": 28 }
+            ],
+            "partitions": [
+              { "x1": 0, "y1": 28, "x2": 18, "y2": 28, "load_bearing": true,  "label": "Structural beam" },
+              { "x1": 18, "y1": 28, "x2": 36, "y2": 28, "load_bearing": false, "demolish_cost": 800, "label": "Office divider" },
+              { "x1": 36, "y1": 28, "x2": 54, "y2": 28, "load_bearing": false, "demolish_cost": 800, "label": "Sleep divider" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 } ],
+              "power": [ { "x": 0, "y": 14 }, { "x": 60, "y": 0 } ]
+            },
+            "walls": [
+              { "edge": "north" },
+              { "edge": "south", "has_door": true, "door_x": 38 },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 20 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0,  "y": 0  },
+              { "id": "sofa",    "x": 20, "y": 36 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 18000
+    },
+
+    {
+      "id": "level_26",
+      "name": "Mansard Gem",
+      "district": "Charlottenburg",
+      "map_col": 2, "map_row": 5,
+      "block": 3,
+      "acquisition_cost": 18000,
+      "min_stars": 14,
+      "funds_base_reward": 9000,
+      "tenant": {
+        "name": "Prof. Schulze",
+        "age": 56,
+        "bio": "Art history professor. Wants high ceilings metaphorically. Accepts the slope.",
+        "required_functions": ["sleep", "work", "sit", "storage"],
+        "monthly_rent": 1800,
+        "flavor": "The low end is where the bathroom goes. She said so."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Mansard Floor",
+            "grid_w": 65,
+            "grid_h": 48,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 40, "min_h": 1.3, "max_h": 2.8 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 20, "window_len": 22 },
+              { "edge": "south", "has_door": true, "door_x": 28 },
+              { "edge": "east",  "has_window": true, "window_x": 14, "window_len": 16 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "wardrobe", "x": 48, "y": 2 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 10000
+    },
+
+    {
+      "id": "level_27",
+      "name": "The Triplex",
+      "district": "Pankow",
+      "map_col": 3, "map_row": 5,
+      "block": 3,
+      "acquisition_cost": 22000,
+      "min_stars": 14,
+      "funds_base_reward": 11000,
+      "tenant": {
+        "name": "The Vogel Family",
+        "age": 41,
+        "bio": "Two parents, three kids, and a dog. They need space. All of it.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 2200,
+        "flavor": "Three floors. Each child gets one. The dog negotiates."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 66,
+            "grid_h": 50,
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 30 } ],
+              "power": [ { "x": 0, "y": 10 }, { "x": 60, "y": 0 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 22 },
+              { "edge": "south", "has_door": true, "door_x": 28 },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 14 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "sofa",     "x": 10, "y": 36 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "First Floor",
+            "unlocked_by": "high_bed",
+            "grid_w": 66,
+            "grid_h": 48,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 22 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 12, "window_len": 14 }
+            ],
+            "starting_furniture": []
+          },
+          {
+            "id": "floor_3",
+            "label": "Attic",
+            "unlocked_by": "high_bed",
+            "grid_w": 40,
+            "grid_h": 28,
+            "sloped_ceiling": { "axis": "y", "low_start": 0, "high_end": 20, "min_h": 1.6, "max_h": 2.5 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 8, "window_len": 14 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 22000
+    },
+
+    {
+      "id": "level_28",
+      "name": "Grand Renovation",
+      "district": "Friedrichshain",
+      "map_col": 4, "map_row": 5,
+      "block": 3,
+      "acquisition_cost": 20000,
+      "min_stars": 15,
+      "funds_base_reward": 10000,
+      "paintable_furniture": ["painted_kitchen"],
+      "tenant": {
+        "name": "Herr & Frau Weinstein",
+        "age": 52,
+        "bio": "Empty nesters. Ready to reclaim their space. Ready to demolish everything.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 2000,
+        "flavor": "You have a sledgehammer budget and a weekend. Make it open plan."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 72,
+            "grid_h": 56,
+            "partitions": [
+              { "x1": 32, "y1": 0, "x2": 32, "y2": 28, "load_bearing": true,  "label": "Central support" },
+              { "x1": 0,  "y1": 28, "x2": 32, "y2": 28, "load_bearing": false, "demolish_cost": 700, "label": "Bedroom divider" },
+              { "x1": 32, "y1": 28, "x2": 72, "y2": 28, "load_bearing": false, "demolish_cost": 700, "label": "Study divider" },
+              { "x1": 52, "y1": 0,  "x2": 52, "y2": 28, "load_bearing": false, "demolish_cost": 500, "label": "Wardrobe alcove" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 } ],
+              "power": [ { "x": 0, "y": 8 }, { "x": 66, "y": 0 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 28 },
+              { "edge": "south", "has_door": true, "door_x": 31 },
+              { "edge": "east",  "has_window": true, "window_x": 16, "window_len": 18 },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 16 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0,  "y": 0  },
+              { "id": "sofa",    "x": 10, "y": 40 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 20000
+    },
+
+    {
+      "id": "tut_plumbing",
+      "name": "Rohre & Strom",
+      "district": "Steglitz",
+      "map_col": 0, "map_row": 6,
+      "block": 4,
+      "is_tutorial": true,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 1200,
+      "mechanic_intro": {
+        "title": "New Mechanic: Plumbing & Electricity",
+        "body": "Switch to the Subfloor layer to draw pipe and cable routes. Connect the wall supply points to your furniture. Kitchen units need water; desks and appliances need power."
+      },
+      "tenant": {
+        "name": "Tomás",
+        "age": 27,
+        "bio": "Chef by day, coder by night. Needs a kitchen and a workstation. Both properly wired.",
+        "required_functions": ["cook", "work"],
+        "monthly_rent": 400,
+        "flavor": "He will notice if the water doesn't reach the sink."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 36,
+            "grid_h": 26,
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 } ],
+              "power":  [ { "x": 0, "y": 10 }, { "x": 32, "y": 0 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 8, "window_len": 14 },
+              { "edge": "south", "has_door": true, "door_x": 14 },
+              { "edge": "east" },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 2500
+    },
+
+    {
+      "id": "level_29",
+      "name": "Smart Flat",
+      "district": "Steglitz",
+      "map_col": 1, "map_row": 6,
+      "block": 4,
+      "acquisition_cost": 15000,
+      "min_stars": 14,
+      "funds_base_reward": 8500,
+      "moments": [
+        { "id": "day",   "label": "Day",   "needs": ["work", "cook", "sit"] },
+        { "id": "night", "label": "Night", "needs": ["sleep", "cook"] }
+      ],
+      "tenant": {
+        "name": "Lena",
+        "age": 33,
+        "bio": "UX designer. Wants every appliance connected, every wire hidden.",
+        "required_functions": [],
+        "monthly_rent": 1700,
+        "flavor": "Works from home. Hosts dinner. Sleeps late. Same room, different life."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 58,
+            "grid_h": 46,
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 20 } ],
+              "power": [ { "x": 0, "y": 8 }, { "x": 50, "y": 0 }, { "x": 50, "y": 30 } ],
+              "lights": [ { "x": 28, "y": 22, "radius": 10 }, { "x": 8, "y": 8, "radius": 8 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 14, "window_len": 20 },
+              { "edge": "south", "has_door": true, "door_x": 24 },
+              { "edge": "east",  "has_window": true, "window_x": 12, "window_len": 14 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 12000
+    },
+
+    {
+      "id": "level_30",
+      "name": "Rixdorf Corner",
+      "district": "Neukölln",
+      "map_col": 2, "map_row": 6,
+      "block": 4,
+      "acquisition_cost": 25000,
+      "min_stars": 15,
+      "funds_base_reward": 13000,
+      "tenant": {
+        "name": "The Yilmaz-Schmidts",
+        "age": 38,
+        "bio": "Blended family of six. They have a cat, a van, and a 3D printer.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 2600,
+        "flavor": "The cat gets the loft. Obviously."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 74,
+            "grid_h": 58,
+            "columns": [
+              { "x": 24, "y": 24 }, { "x": 48, "y": 24 }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 32 } ],
+              "power": [ { "x": 0, "y": 12 }, { "x": 68, "y": 0 }, { "x": 68, "y": 36 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 16, "window_len": 30 },
+              { "edge": "south", "has_door": true, "door_x": 32 },
+              { "edge": "east",  "has_window": true, "window_x": 16, "window_len": 20 },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 16 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 64, "y": 0  },
+              { "id": "sofa",     "x": 14, "y": 42 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Mezzanine",
+            "unlocked_by": "high_bed",
+            "grid_w": 42,
+            "grid_h": 28,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 16 },
+              { "edge": "south" },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 8,  "window_len": 10 }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 28000
+    },
+
+    {
+      "id": "level_31",
+      "name": "Salon Apartment",
+      "district": "Mitte",
+      "map_col": 3, "map_row": 6,
+      "block": 4,
+      "acquisition_cost": 30000,
+      "min_stars": 18,
+      "funds_base_reward": 15000,
+      "tenant": {
+        "name": "Countess von Bauer",
+        "age": 68,
+        "bio": "Old money. High standards. Sends handwritten complaints on crested paper.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 3000,
+        "flavor": "She requires the piano area to be unobstructed. There is no piano yet."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Salon Floor",
+            "grid_w": 80,
+            "grid_h": 64,
+            "columns": [
+              { "x": 26, "y": 22 }, { "x": 26, "y": 42 },
+              { "x": 52, "y": 22 }, { "x": 52, "y": 42 }
+            ],
+            "partitions": [
+              { "x1": 0, "y1": 32, "x2": 26, "y2": 32, "load_bearing": false, "demolish_cost": 900, "label": "Kitchen wall" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 36 } ],
+              "power": [ { "x": 0, "y": 16 }, { "x": 74, "y": 0 }, { "x": 74, "y": 40 } ],
+              "lights": [ { "x": 40, "y": 32, "radius": 14 }, { "x": 14, "y": 14, "radius": 10 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 18, "window_len": 34 },
+              { "edge": "south", "has_door": true, "door_x": 35 },
+              { "edge": "east",  "has_window": true, "window_x": 18, "window_len": 22 },
+              { "edge": "west",  "has_window": true, "window_x": 16, "window_len": 18 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 70, "y": 0  },
+              { "id": "sofa",     "x": 16, "y": 46 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 28000
+    },
+
+    {
+      "id": "level_32",
+      "name": "Spandau Fortress",
+      "district": "Spandau",
+      "map_col": 4, "map_row": 6,
+      "block": 4,
+      "acquisition_cost": 28000,
+      "min_stars": 18,
+      "funds_base_reward": 14000,
+      "tenant": {
+        "name": "Retired General Kroll",
+        "age": 72,
+        "bio": "Forty years of service. Walls are for structure, not aesthetics.",
+        "required_functions": ["sleep", "work", "sit", "storage"],
+        "monthly_rent": 2800,
+        "flavor": "He respects load-bearing walls. He respects very little else."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 76,
+            "grid_h": 60,
+            "columns": [
+              { "x": 18, "y": 18 }, { "x": 18, "y": 40 },
+              { "x": 36, "y": 18 }, { "x": 36, "y": 40 },
+              { "x": 54, "y": 18 }, { "x": 54, "y": 40 }
+            ],
+            "partitions": [
+              { "x1": 36, "y1": 0,  "x2": 36, "y2": 18, "load_bearing": true,  "label": "Load-bearing spine" },
+              { "x1": 36, "y1": 40, "x2": 36, "y2": 60, "load_bearing": true,  "label": "Load-bearing spine" },
+              { "x1": 0,  "y1": 30, "x2": 18, "y2": 30, "load_bearing": false, "demolish_cost": 750, "label": "Corridor wall" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 } ],
+              "power": [ { "x": 0, "y": 10 }, { "x": 70, "y": 0 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 18, "window_len": 28 },
+              { "edge": "south", "has_door": true, "door_x": 33 },
+              { "edge": "east" },
+              { "edge": "west",  "has_window": true, "window_x": 14, "window_len": 18 }
+            ],
+            "starting_furniture": [
+              { "id": "wardrobe", "x": 64, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 20000
+    },
+
+    {
+      "id": "tut_moments",
+      "name": "Tag & Nacht",
+      "district": "Mitte",
+      "map_col": 0, "map_row": 7,
+      "block": 5,
+      "is_tutorial": true,
+      "acquisition_cost": 0,
+      "min_stars": 0,
+      "funds_base_reward": 1500,
+      "mechanic_intro": {
+        "title": "New Mechanic: Day-Night Moments",
+        "body": "Some tenants live differently at different times of day. Each Moment has its own list of needs. Foldable furniture — like a sofa-bed — can cover multiple needs depending on which mode is active."
+      },
+      "moments": [
+        { "id": "day",   "label": "Day",   "needs": ["work", "cook"] },
+        { "id": "night", "label": "Night", "needs": ["sleep", "cook"] }
+      ],
+      "tenant": {
+        "name": "Sven",
+        "age": 29,
+        "bio": "Works from home, cooks twice a day. Same room, two modes.",
+        "required_functions": [],
+        "monthly_rent": 450,
+        "flavor": "By day a developer, by night just hungry."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 42,
+            "grid_h": 32,
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 16 },
+              { "edge": "south", "has_door": true, "door_x": 17 },
+              { "edge": "east",  "has_window": true, "window_x": 8,  "window_len": 10 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen", "x": 0, "y": 0 }
+            ]
+          }
+        ]
+      },
+      "starting_budget": 3000
+    },
+
+    {
+      "id": "level_33",
+      "name": "Corner Penthouse",
+      "district": "Charlottenburg",
+      "map_col": 1, "map_row": 7,
+      "block": 5,
+      "acquisition_cost": 38000,
+      "min_stars": 20,
+      "funds_base_reward": 18000,
+      "tenant": {
+        "name": "The Richters",
+        "age": 49,
+        "bio": "Banker + architect. They each have very different opinions about what good taste means.",
+        "required_functions": ["sleep", "work", "cook", "sit", "storage"],
+        "monthly_rent": 3600,
+        "flavor": "One of them will love it. The other will commission a renovation."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Main Floor",
+            "grid_w": 80,
+            "grid_h": 64,
+            "columns": [
+              { "x": 28, "y": 28 }, { "x": 50, "y": 28 }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 40 } ],
+              "power": [ { "x": 0, "y": 16 }, { "x": 74, "y": 0 }, { "x": 74, "y": 42 } ],
+              "lights": [ { "x": 40, "y": 32, "radius": 16 }, { "x": 12, "y": 12, "radius": 10 }, { "x": 66, "y": 50, "radius": 8 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 18, "window_len": 36 },
+              { "edge": "south", "has_door": true, "door_x": 36 },
+              { "edge": "east",  "has_window": true, "window_x": 18, "window_len": 24 },
+              { "edge": "west",  "has_window": true, "window_x": 16, "window_len": 22 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 70, "y": 0  },
+              { "id": "sofa",     "x": 18, "y": 46 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Upper Terrace",
+            "unlocked_by": "high_bed",
+            "grid_w": 44,
+            "grid_h": 30,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 28, "min_h": 1.7, "max_h": 2.8 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 10, "window_len": 18 },
+              { "edge": "south" },
+              { "edge": "east",  "has_window": true, "window_x": 6,  "window_len": 12 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 32000
+    },
+
+    {
+      "id": "level_34",
+      "name": "The Masterpiece",
+      "district": "Prenzlauer Berg",
+      "map_col": 2, "map_row": 7,
+      "block": 5,
+      "acquisition_cost": 45000,
+      "min_stars": 22,
+      "funds_base_reward": 22000,
+      "moments": [
+        { "id": "daytime", "label": "Daytime", "needs": ["work", "cook", "storage"] },
+        { "id": "soiree",  "label": "Soirée",  "needs": ["sit", "cook"] },
+        { "id": "night",   "label": "Night",   "needs": ["sleep", "storage"] }
+      ],
+      "tenant": {
+        "name": "Ariadne Wolf",
+        "age": 44,
+        "bio": "Gallerist. Has exquisite taste and an exquisite budget to match.",
+        "required_functions": [],
+        "monthly_rent": 4400,
+        "flavor": "Works from the apartment, hosts openings, and sleeps in the loft. All three must be perfect."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Gallery Floor",
+            "grid_w": 84,
+            "grid_h": 66,
+            "columns": [
+              { "x": 26, "y": 22 }, { "x": 26, "y": 44 },
+              { "x": 54, "y": 22 }, { "x": 54, "y": 44 }
+            ],
+            "partitions": [
+              { "x1": 0,  "y1": 33, "x2": 26, "y2": 33, "load_bearing": false, "demolish_cost": 800, "label": "Living/Kitchen divide" },
+              { "x1": 54, "y1": 0,  "x2": 54, "y2": 22, "load_bearing": false, "demolish_cost": 800, "label": "Study alcove" },
+              { "x1": 26, "y1": 0,  "x2": 26, "y2": 22, "load_bearing": true,  "label": "Structural spine" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 38 } ],
+              "power": [ { "x": 0, "y": 16 }, { "x": 78, "y": 0 }, { "x": 78, "y": 44 } ],
+              "lights": [ { "x": 42, "y": 33, "radius": 16 }, { "x": 12, "y": 12, "radius": 10 }, { "x": 68, "y": 52, "radius": 10 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 20, "window_len": 38 },
+              { "edge": "south", "has_door": true, "door_x": 38 },
+              { "edge": "east",  "has_window": true, "window_x": 18, "window_len": 26 },
+              { "edge": "west",  "has_window": true, "window_x": 16, "window_len": 22 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 72, "y": 0  },
+              { "id": "sofa",     "x": 16, "y": 48 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Skylight Loft",
+            "unlocked_by": "high_bed",
+            "grid_w": 48,
+            "grid_h": 32,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 32, "min_h": 1.6, "max_h": 3.0 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 12, "window_len": 22 },
+              { "edge": "south" },
+              { "edge": "east",  "has_window": true, "window_x": 8,  "window_len": 14 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 36000
+    },
+
+    {
+      "id": "level_35",
+      "name": "Stadtpalast",
+      "district": "Mitte",
+      "map_col": 3, "map_row": 7,
+      "block": 5,
+      "acquisition_cost": 60000,
+      "min_stars": 25,
+      "funds_base_reward": 30000,
+      "moments": [
+        { "id": "morning", "label": "Morning",  "needs": ["work", "cook"] },
+        { "id": "social",  "label": "Social",   "needs": ["sit", "cook", "storage"] },
+        { "id": "night",   "label": "Night",    "needs": ["sleep", "storage"] }
+      ],
+      "tenant": {
+        "name": "The Stadtpalast Collective",
+        "age": 35,
+        "bio": "A tech CEO, a sculptor, and their twelve mutual friends. This is the end game.",
+        "required_functions": [],
+        "monthly_rent": 6000,
+        "flavor": "Three floors. Twelve friends. One vision. The space must work at 8am, 8pm, and midnight."
+      },
+      "apartment": {
+        "floors": [
+          {
+            "id": "floor_1",
+            "label": "Ground Floor",
+            "grid_w": 88,
+            "grid_h": 70,
+            "columns": [
+              { "x": 22, "y": 22 }, { "x": 22, "y": 46 },
+              { "x": 44, "y": 22 }, { "x": 44, "y": 46 },
+              { "x": 66, "y": 22 }, { "x": 66, "y": 46 }
+            ],
+            "partitions": [
+              { "x1": 0,  "y1": 35, "x2": 22, "y2": 35, "load_bearing": false, "demolish_cost": 900,  "label": "Kitchen partition" },
+              { "x1": 44, "y1": 0,  "x2": 44, "y2": 22, "load_bearing": true,  "label": "Central spine" },
+              { "x1": 22, "y1": 35, "x2": 44, "y2": 35, "load_bearing": false, "demolish_cost": 1000, "label": "Living/Dining divide" }
+            ],
+            "connection_points": {
+              "water": [ { "x": 0, "y": 0 }, { "x": 0, "y": 40 } ],
+              "power": [ { "x": 0, "y": 18 }, { "x": 82, "y": 0 }, { "x": 82, "y": 46 }, { "x": 44, "y": 60 } ],
+              "lights": [ { "x": 44, "y": 35, "radius": 18 }, { "x": 14, "y": 14, "radius": 12 }, { "x": 72, "y": 56, "radius": 12 } ],
+              "hvac":   [ { "x": 44, "y": 2 }, { "x": 44, "y": 60 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 20, "window_len": 42 },
+              { "edge": "south", "has_door": true, "door_x": 40 },
+              { "edge": "east",  "has_window": true, "window_x": 20, "window_len": 28 },
+              { "edge": "west",  "has_window": true, "window_x": 18, "window_len": 24 }
+            ],
+            "starting_furniture": [
+              { "id": "kitchen",  "x": 0,  "y": 0  },
+              { "id": "wardrobe", "x": 78, "y": 0  },
+              { "id": "sofa",     "x": 20, "y": 52 }
+            ]
+          },
+          {
+            "id": "floor_2",
+            "label": "Piano Nobile",
+            "unlocked_by": "high_bed",
+            "grid_w": 88,
+            "grid_h": 66,
+            "columns": [
+              { "x": 22, "y": 20 }, { "x": 22, "y": 44 },
+              { "x": 44, "y": 20 }, { "x": 44, "y": 44 },
+              { "x": 66, "y": 20 }, { "x": 66, "y": 44 }
+            ],
+            "connection_points": {
+              "power": [ { "x": 0, "y": 0 }, { "x": 82, "y": 0 } ],
+              "lights": [ { "x": 44, "y": 33, "radius": 18 } ]
+            },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 20, "window_len": 42 },
+              { "edge": "south" },
+              { "edge": "east",  "has_window": true, "window_x": 18, "window_len": 26 },
+              { "edge": "west",  "has_window": true, "window_x": 16, "window_len": 22 }
+            ],
+            "starting_furniture": []
+          },
+          {
+            "id": "floor_3",
+            "label": "Belvedere",
+            "unlocked_by": "high_bed",
+            "grid_w": 52,
+            "grid_h": 38,
+            "sloped_ceiling": { "axis": "x", "low_start": 0, "high_end": 36, "min_h": 1.5, "max_h": 3.2 },
+            "walls": [
+              { "edge": "north", "has_window": true, "window_x": 12, "window_len": 26 },
+              { "edge": "south" },
+              { "edge": "east",  "has_window": true, "window_x": 10, "window_len": 16 },
+              { "edge": "west" }
+            ],
+            "starting_furniture": []
+          }
+        ]
+      },
+      "starting_budget": 50000
     }
   ]
 }
