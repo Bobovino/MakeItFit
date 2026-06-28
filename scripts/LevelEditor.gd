@@ -672,7 +672,7 @@ func _rebuild_moments_list(vb: VBoxContainer, win: Window) -> void:
 
 func _add_moment() -> void:
 	var defaults := ["Day", "Night", "Home Office", "Sport", "Morning", "Dinner"]
-	var lbl := defaults[mini(_moments.size(), defaults.size() - 1)]
+	var lbl: String = defaults[mini(_moments.size(), defaults.size() - 1)]
 	var mid := lbl.to_lower().replace(" ", "_")
 	# Avoid duplicate ids
 	var existing_ids: Array = []
