@@ -29,6 +29,7 @@ var _painting:          bool       = false
 var _last_paint_tile:   Vector2i   = Vector2i(-1, -1)
 var _paint_panel:       Control    = null
 var _paint_status_lbl:  Label      = null
+var _floor_tile_bounds: Dictionary = {}  # floor_id -> Rect2i of painted tile content
 
 
 func _ready() -> void:
@@ -83,7 +84,7 @@ func _apply_ui_theme() -> void:
 	rent_btn.add_theme_color_override("font_disabled_color", GameTheme.C_MUTED)
 	rent_btn.add_theme_font_size_override("font_size", 13)
 
-	# Back button — return to City Map without completing the level
+	# Back button — _go_back() checks GameState.testing_from_editor at press time
 	var top := $UI/TopBar as HBoxContainer
 	if not top.has_node("BackMapBtn"):
 		var back_btn := Button.new()
@@ -91,24 +92,11 @@ func _apply_ui_theme() -> void:
 		back_btn.text = "← City Map"
 		back_btn.add_theme_font_size_override("font_size", 12)
 		back_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		back_btn.pressed.connect(func():
-			get_tree().change_scene_to_file("res://scenes/CityMap.tscn"))
+		back_btn.pressed.connect(_go_back)
 		top.add_child(back_btn)
 		top.move_child(back_btn, 0)
-
-	# Layer toggle buttons (guard against hot-reload duplication)
-	for spec in [["SubfloorBtn", "Subfloor", "_on_subfloor_toggled"],
-				 ["CeilingBtn",  "Ceiling",   "_on_ceiling_toggled"]]:
-		if not top.has_node(spec[0]):
-			var lb := Button.new()
-			lb.name        = spec[0]
-			lb.text        = spec[1]
-			lb.toggle_mode = true
-			lb.add_theme_font_size_override("font_size", 11)
-			lb.add_theme_color_override("font_color", GameTheme.C_MUTED)
-			lb.toggled.connect(Callable(self, spec[2]))
-			top.add_child(lb)
-			top.move_child(lb, top.get_child_count() - 2)
+	var _bbtn := top.get_node("BackMapBtn") as Button
+	_bbtn.text = "← Editor" if GameState.testing_from_editor else "← City Map"
 
 	# Test mode button — only visible if level has foldable furniture
 	if not top.has_node("TestBtn"):
@@ -123,6 +111,15 @@ func _apply_ui_theme() -> void:
 		top.move_child(test_btn, top.get_child_count() - 2)
 	if top.has_node("TestBtn"):
 		top.get_node("TestBtn").visible = false  # updated after level load
+
+
+func _go_back() -> void:
+	if GameState.testing_from_editor:
+		GameState.testing_from_editor = false
+		GameState.resume_editor       = true
+		get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
+	else:
+		get_tree().change_scene_to_file("res://scenes/CityMap.tscn")
 
 
 func _load_level(level_id: String) -> void:
@@ -142,12 +139,18 @@ func _load_level(level_id: String) -> void:
 	_floors.clear()
 
 	var level: Dictionary = gm.current_level
-	var floors_data: Array = level["apartment"]["floors"]
+	var apt_data: Dictionary = level["apartment"] as Dictionary
+	var floors_data: Array = apt_data["floors"]
+	var apt_gw: int = apt_data.get("grid_w", 40) as int
+	var apt_gh: int = apt_data.get("grid_h", 30) as int
 
 	for fd in floors_data:
 		var apt_floor: Floor = load("res://scenes/Wall.tscn").instantiate() as Floor
 		apt_floor.name = fd["id"]
 		room.add_child(apt_floor)
+		# grid_w/h live at apartment level now — inject before setup
+		(fd as Dictionary)["grid_w"] = apt_gw
+		(fd as Dictionary)["grid_h"] = apt_gh
 		apt_floor.setup(fd)
 		apt_floor.furniture_changed.connect(_on_furniture_changed)
 		apt_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(apt_floor))
@@ -157,17 +160,68 @@ func _load_level(level_id: String) -> void:
 		for sf in fd.get("starting_furniture", []):
 			_spawn_furniture(sf["id"], apt_floor, sf["x"], sf["y"])
 
-	minimap.setup(floors_data)
+	# Top-level starting_furniture (from level editor) → place on first floor
+	var first_floor_node: Floor = null
+	if not _floors.is_empty():
+		first_floor_node = _floors[floors_data[0]["id"]] as Floor
+	if first_floor_node and not gm.starting_furniture.is_empty():
+		for sf in gm.starting_furniture:
+			_spawn_furniture((sf as Dictionary)["id"] as String,
+				first_floor_node,
+				(sf as Dictionary)["x"] as int,
+				(sf as Dictionary)["y"] as int)
+
+	# Compute bounding box of painted tiles per floor for focused camera fit
+	_floor_tile_bounds.clear()
+	for _bfd in floors_data:
+		var _bfd_d := _bfd as Dictionary
+		var _bfid  := _bfd_d["id"] as String
+		var _btype := _bfd_d.get("type", "floor") as String
+		var _btiles: Array = []
+		match _btype:
+			"loft":
+				var _bpid := _bfd_d.get("parent_id", "") as String
+				for _bpfd in floors_data:
+					if (_bpfd as Dictionary)["id"] == _bpid:
+						_btiles = (_bpfd as Dictionary).get("mezzanine_tiles", []) as Array; break
+			"floor_sub", "ceiling":
+				var _bpid := _bfd_d.get("parent_id", "") as String
+				for _bpfd in floors_data:
+					if (_bpfd as Dictionary)["id"] == _bpid:
+						_btiles = (_bpfd as Dictionary).get("floor_tiles", []) as Array; break
+			_:
+				_btiles = _bfd_d.get("floor_tiles", []) as Array
+		if _btiles.is_empty():
+			continue
+		var _bx0 := 999999; var _by0 := 999999
+		var _bx1 := -999999; var _by1 := -999999
+		for _bt in _btiles:
+			var _btx := (_bt as Array)[0] as int; var _bty := (_bt as Array)[1] as int
+			_bx0 = min(_bx0, _btx); _by0 = min(_by0, _bty)
+			_bx1 = max(_bx1, _btx); _by1 = max(_by1, _bty)
+		_floor_tile_bounds[_bfid] = Rect2i(_bx0, _by0, _bx1 - _bx0 + 1, _by1 - _by0 + 1)
+
+	var hidden_floors: Array = level["apartment"].get("hidden_floors", []) as Array
+	minimap.setup(floors_data, hidden_floors)
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
 	inventory.setup(gm)
-	inventory.populate(
-		gm.furniture_data["furniture"].filter(func(f): return f.get("placement", "floor") == "floor")
-	)
+	var shop_list: Array = gm.furniture_data["furniture"].filter(
+		func(f): return f.get("placement", "floor") == "floor")
+	if not gm.allowed_furniture.is_empty():
+		shop_list = shop_list.filter(func(f): return (f["id"] as String) in gm.allowed_furniture)
+	inventory.populate(shop_list)
+	if not gm.starting_inventory.is_empty():
+		inventory.populate_owned(gm.starting_inventory, gm.furniture_data["furniture"])
 	budget_label.text = "Budget: %d€" % gm.budget
 	wall_inspector.setup(gm.furniture_data["furniture"])
 
-	_switch_floor(floors_data[0]["id"])
+	# Start on the first visible floor (skip hidden ones)
+	var first_visible_id := floors_data[0]["id"] as String
+	for _fd in floors_data:
+		if not ((_fd as Dictionary)["id"] as String in hidden_floors):
+			first_visible_id = (_fd as Dictionary)["id"] as String; break
+	_switch_floor(first_visible_id)
 	_update_floor_locks()
 	_refresh_functions()
 	_update_accessibility()
@@ -281,6 +335,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int) 
 		at = apt_floor.find_free_spot(f.grid_w, f.grid_h)
 	apt_floor.place_furniture(f, at)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
+	f.fold_toggled.connect(_refresh_functions)
 	return f
 
 
@@ -296,23 +351,35 @@ func _switch_floor(floor_id: String) -> void:
 
 
 func _fit_floor(apt_floor: Floor) -> void:
-	const H_PAD := 24.0
-	const V_PAD := 16.0
+	const H_PAD  := 32.0
+	const V_PAD  := 24.0
 	const LEFT_W := 860.0
+	const PAD_T  := 3     # tile padding around apartment content
 
 	var avail_w := LEFT_W - H_PAD * 2
 	var avail_h := (BOT_Y - TOP_Y) - V_PAD * 2
 
-	var fw := apt_floor.grid_w * float(TILE_SIZE)
-	var fh := apt_floor.grid_h * float(TILE_SIZE)
+	var fw: float; var fh: float
+	var off_x := 0.0;   var off_y := 0.0
+
+	var fid := apt_floor.name as String
+	if _floor_tile_bounds.has(fid):
+		var bounds := _floor_tile_bounds[fid] as Rect2i
+		fw    = float((bounds.size.x + PAD_T * 2) * TILE_SIZE)
+		fh    = float((bounds.size.y + PAD_T * 2) * TILE_SIZE)
+		off_x = float((bounds.position.x - PAD_T) * TILE_SIZE)
+		off_y = float((bounds.position.y - PAD_T) * TILE_SIZE)
+	else:
+		fw = apt_floor.grid_w * float(TILE_SIZE)
+		fh = apt_floor.grid_h * float(TILE_SIZE)
 
 	var s := minf(avail_w * FIT_PCT / fw, avail_h * FIT_PCT / fh)
-	s = minf(s, 3.0)   # prevent over-zoom on tiny apartments
+	s = minf(s, 5.0)  # prevent over-zoom on tiny apartments
 
 	room.scale    = Vector2(s, s)
 	room.position = Vector2(
-		H_PAD + (avail_w - fw * s) * 0.5,
-		TOP_Y + V_PAD + (avail_h - fh * s) * 0.5
+		H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
+		TOP_Y + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
 	)
 
 
@@ -425,21 +492,6 @@ func _on_rent_pressed() -> void:
 	)
 
 
-func _on_subfloor_toggled(pressed: bool) -> void:
-	_set_all_floor_layers("show_subfloor", pressed)
-
-
-func _on_ceiling_toggled(pressed: bool) -> void:
-	_set_all_floor_layers("show_ceiling", pressed)
-
-
-func _set_all_floor_layers(prop: String, val: bool) -> void:
-	for fid in _floors:
-		var fl := _floors[fid] as Floor
-		var gd := fl.get_node_or_null("GridDraw") as GridDraw
-		if gd:
-			gd.set(prop, val)
-			gd.queue_redraw()
 
 
 func _on_test_toggled(pressed: bool) -> void:
@@ -449,8 +501,13 @@ func _on_test_toggled(pressed: bool) -> void:
 		for f in fl.get_all_furniture():
 			var fur := f as Furniture
 			if fur.foldable:
+				# Fold all pieces back when exiting test mode
+				if not pressed and fur.is_extended:
+					fur.toggle_fold()
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
+	if not pressed:
+		_refresh_functions()
 
 
 func _has_foldable_furniture() -> bool:
