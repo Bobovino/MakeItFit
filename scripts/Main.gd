@@ -145,6 +145,7 @@ func _load_level(level_id: String) -> void:
 	var apt_gh: int = apt_data.get("grid_h", 30) as int
 
 	var _floor_z := 0  # accumulates global Z as we walk floors bottom→top
+	var _last_floor_fd: Dictionary = {}  # most recent "floor"-type data, for floor-stair openings
 	for fd in floors_data:
 		var apt_floor: Floor = load("res://scenes/Wall.tscn").instantiate() as Floor
 		apt_floor.name = fd["id"]
@@ -161,6 +162,32 @@ func _load_level(level_id: String) -> void:
 				if (_pfd as Dictionary).get("id", "") == _pid:
 					(fd as Dictionary)["floor_tiles"] = (_pfd as Dictionary).get("floor_tiles", [])
 					break
+		# Loft floors inherit from their parent floor:
+		#  • floor_tiles    ← parent's mezzanine_tiles
+		#  • stair_openings ← parent's loft-targeted stairs only
+		#  • segments = []  ← forces _use_new_format = true
+		if _ftype == "loft":
+			var _lpid := (fd as Dictionary).get("parent_id", "") as String
+			for _lpfd in floors_data:
+				if (_lpfd as Dictionary).get("id", "") == _lpid:
+					(fd as Dictionary)["floor_tiles"] = (_lpfd as Dictionary).get("mezzanine_tiles", [])
+					var _all := (_lpfd as Dictionary).get("stairs", []) as Array
+					(fd as Dictionary)["stair_openings"] = _all.filter(func(s) -> bool:
+						return (s as Dictionary).get("target", "loft") != "floor")
+					if not (fd as Dictionary).has("segments"):
+						(fd as Dictionary)["segments"] = []
+					break
+		# Regular floors above the ground floor get floor-stair openings from the floor below
+		elif _ftype == "floor" and not _last_floor_fd.is_empty():
+			var _below_stairs := _last_floor_fd.get("stairs", []) as Array
+			var _fso := _below_stairs.filter(func(s) -> bool:
+				return (s as Dictionary).get("target", "loft") == "floor")
+			if not _fso.is_empty():
+				if not (fd as Dictionary).has("stair_openings"):
+					(fd as Dictionary)["stair_openings"] = []
+				((fd as Dictionary)["stair_openings"] as Array).append_array(_fso)
+		if _ftype == "floor":
+			_last_floor_fd = fd
 		apt_floor.setup(fd)
 		apt_floor.floor_z_offset = _floor_z
 		if _ftype == "floor": _floor_z += Floor.FLOOR_HEIGHT_TILES

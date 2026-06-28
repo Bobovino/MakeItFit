@@ -7,8 +7,8 @@ const DOOR_LEN   := 10
 const LEFT_W     := 170.0
 const RIGHT_W    := 214.0
 const TOP_H      := 36.0
-const DEFAULT_GW := 200
-const DEFAULT_GH := 150
+const DEFAULT_GW := 300
+const DEFAULT_GH := 300
 
 const _OV_SCRIPT := preload("res://scripts/EditorOverlay.gd")
 
@@ -19,7 +19,8 @@ var _gw: int = DEFAULT_GW
 var _gh: int = DEFAULT_GH
 var _floor_mask:     Dictionary = {}  # Vector2i -> true (painted floor tiles)
 var _mezzanine_mask: Dictionary = {}  # Vector2i -> true (mezzanine/loft tiles)
-var _stair_mask:     Dictionary = {}  # Vector2i -> true (stair tiles)
+var _stair_mask:     Dictionary = {}  # Vector2i -> true (stair tiles, auto-filled from _stairs)
+var _stairs:         Array      = []  # [{x, y, w, h, direction}] placed staircases
 var _segments:       Array      = []  # [{x1,y1,x2,y2,primary,demolished,...}]
 var _rails:          Array      = []  # [{x1,y1,x2,y2}] rail tracks
 var _cols:           Array      = []  # [{x,y}]
@@ -30,8 +31,10 @@ var _floor_erase:      bool = false
 var _floor_brush:      int  = 10  # 1 = tile (10 cm), 10 = cell (1 m = 10×10 tiles)
 var _mezz_painting:    bool = false
 var _mezz_erase:       bool = false
-var _stair_painting:   bool = false
-var _stair_erase:      bool = false
+var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
+var _stair_erase:      bool   = false  # unused
+var _stair_dir:        String = "north"  # current stamp direction
+var _stair_target:     String = "loft"   # "loft" → mezzanine; "floor" → floor above
 var _window_painting:  bool = false
 var _window_erase:     bool = false
 
@@ -45,6 +48,9 @@ var _budget: int    = 2000
 var _rent:   int    = 300
 var _reward: int    = 800
 var _cost:   int    = 1500
+var _block:   int   = 1   # block (category) in city map
+var _map_col: int   = 0   # column position in city map grid
+var _map_row: int   = 0   # row position in city map grid
 var _funcs: Dictionary = {
 	"sleep": false, "sit": false, "work": false, "cook": false, "storage": false, "dine": false
 }
@@ -80,6 +86,7 @@ var _wv_modal_grp:  ButtonGroup = null
 # ── Camera pan / zoom ─────────────────────────────────────────────────────────
 var _panning: bool    = false
 var _pan_last: Vector2 = Vector2.ZERO
+var _popup_open: int = 0  # count of open overlay popups; zoom/pan blocked while > 0
 
 # ── Scene nodes ───────────────────────────────────────────────────────────────
 var _room:   Node2D   = null
@@ -89,14 +96,14 @@ var _camera_fitted: bool = false  # true after first fit; prevents reset on ever
 var _ov:     Node2D   = null
 
 # ── UI refs ───────────────────────────────────────────────────────────────────
-var _sw: SpinBox = null;  var _sh: SpinBox = null
+var _sw: SpinBox = null;  var _sh: SpinBox = null  # unused — grid fixed at 300×300
 var _en: LineEdit = null; var _ed: LineEdit = null
 var _etn: LineEdit = null; var _sage: SpinBox = null; var _ef: LineEdit = null
 var _sbud: SpinBox = null; var _srent: SpinBox = null
 var _srew: SpinBox = null; var _scost: SpinBox = null
 var _fncbs: Dictionary = {}
 var _status: Label = null
-var _size_lbl: Label = null
+var _size_lbl: Label = null  # unused — grid fixed at 300×300
 var _clear_dlg: ConfirmationDialog = null
 
 # ── Furniture data (loaded once) ──────────────────────────────────────────────
@@ -256,7 +263,7 @@ func _build_left(ui: Node) -> void:
 	var tool_defs: Array = [
 		[Tool.FLOOR,         "Floor Paint",    "LMB paint · RMB erase floor tiles"],
 		[Tool.MEZZANINE,     "Mezzanine",      "LMB paint · RMB erase mezzanine/loft tiles"],
-		[Tool.STAIRS,        "Stairs",         "LMB paint · RMB erase stair tiles"],
+		[Tool.STAIRS,        "Stairs",         "LMB stamp · RMB remove · R rotate · T loft/floor"],
 		[Tool.RAIL,          "Rail",           "Drag to draw sliding rail track"],
 		[Tool.PRIMARY_WALL,  "Primary Wall",   "Drag axis-snapped — cannot demolish"],
 		[Tool.SECONDARY_WALL,"Secondary Wall", "Drag axis-snapped — can demolish"],
@@ -285,8 +292,9 @@ func _build_left(ui: Node) -> void:
 				_ov.set("wall_hover",     Vector2i(-1, -1))
 				_ov.set("win_hover_rect", Rect2())
 				_ov.set("mezz_hover",     false)
-				_ov.set("stair_hover",    false)
-				_ov.set("active",         false)
+				_ov.set("stair_hover",      false)
+				_ov.set("stair_hover_rect", Rect2i())
+				_ov.set("active",           false)
 				_ov.queue_redraw())
 		_tool_btns[t] = btn
 		vb.add_child(btn)
@@ -312,49 +320,6 @@ func _build_left(ui: Node) -> void:
 			if is_instance_valid(_ov):
 				_ov.set("floor_brush", _floor_brush))
 		brush_row.add_child(bbtn)
-
-	_sect(vb, "GRID SIZE")
-
-	var rw := HBoxContainer.new()
-	rw.add_theme_constant_override("separation", 4)
-	vb.add_child(rw)
-	var lw := Label.new(); lw.text = "W:"; lw.add_theme_font_size_override("font_size", 10)
-	rw.add_child(lw)
-	_sw = SpinBox.new()
-	_sw.min_value = 20; _sw.max_value = 500; _sw.step = 1; _sw.value = _gw
-	_sw.add_theme_font_size_override("font_size", 10)
-	_sw.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rw.add_child(_sw)
-
-	var rh2 := HBoxContainer.new()
-	rh2.add_theme_constant_override("separation", 4)
-	vb.add_child(rh2)
-	var lh := Label.new(); lh.text = "H:"; lh.add_theme_font_size_override("font_size", 10)
-	rh2.add_child(lh)
-	_sh = SpinBox.new()
-	_sh.min_value = 20; _sh.max_value = 500; _sh.step = 1; _sh.value = _gh
-	_sh.add_theme_font_size_override("font_size", 10)
-	_sh.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rh2.add_child(_sh)
-
-	_size_lbl = Label.new()
-	_size_lbl.text = "= %.0fm × %.0fm" % [_gw * 0.1, _gh * 0.1]
-	_size_lbl.add_theme_font_size_override("font_size", 9)
-	_size_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	vb.add_child(_size_lbl)
-
-	var apply := Button.new()
-	apply.text = "Apply Size"
-	apply.add_theme_font_size_override("font_size", 10)
-	apply.pressed.connect(func():
-		# SpinBox doesn't commit typed text until Enter/focus-lost — read LineEdit directly
-		_gw = clampi(int(_sw.get_line_edit().text), int(_sw.min_value), int(_sw.max_value))
-		_gh = clampi(int(_sh.get_line_edit().text), int(_sh.min_value), int(_sh.max_value))
-		_sw.value = _gw; _sh.value = _gh  # sync spinbox display
-		_size_lbl.text = "= %.0fm × %.0fm" % [_gw * 0.1, _gh * 0.1]
-		_camera_fitted = false  # re-centre on the resized grid
-		_rebuild_floor())
-	vb.add_child(apply)
 
 	_sect(vb, "ACTIONS")
 	var clear_btn := Button.new()
@@ -508,6 +473,15 @@ func _open_level_details_modal() -> void:
 	etn.text_changed.connect(func(t: String): _tname = t; _refresh_level_summary())
 	sage.value_changed.connect(func(v: float): _tage = int(v); _refresh_level_summary())
 	ef.text_changed.connect(func(t: String): _tflav = t)
+
+	# ── MAP POSITION ──
+	_sect(vb, "MAP POSITION")
+	var sblk  := _spinbox(vb, "Block",   _block,   1,  5, 1)
+	var scol  := _spinbox(vb, "Col",     _map_col, 0,  4, 1)
+	var srow  := _spinbox(vb, "Row",     _map_row, 0, 99, 1)
+	sblk.value_changed.connect(func(v: float): _block   = int(v))
+	scol.value_changed.connect(func(v: float): _map_col = int(v))
+	srow.value_changed.connect(func(v: float): _map_row = int(v))
 
 	# ── ECONOMICS ──
 	_sect(vb, "ECONOMICS")
@@ -702,7 +676,7 @@ func _make_efloor(id: String, label: String, ftype: String) -> Dictionary:
 	return {
 		"id": id, "label": label, "type": ftype,
 		"floor_tiles": [], "mezzanine_tiles": [], "stair_tiles": [],
-		"rails": [], "segments": [], "columns": []
+		"stairs": [], "rails": [], "segments": [], "columns": []
 	}
 
 func _make_floor_trio(fid: String, lbl: String) -> Array:
@@ -738,10 +712,17 @@ func _snapshot_to_efloor(fd: Dictionary) -> void:
 	for t in _stair_mask:     st.append([(t as Vector2i).x, (t as Vector2i).y])
 	fd["floor_tiles"]     = ft
 	fd["mezzanine_tiles"] = mt
-	fd["stair_tiles"]     = st
+	fd["stair_tiles"]     = st   # auto-derived for backward compat; source of truth is "stairs"
+	fd["stairs"]          = _stairs.duplicate(true)
 	fd["rails"]           = _rails.duplicate(true)
 	fd["segments"]        = _segments.duplicate(true)
 	fd["columns"]         = _cols.duplicate(true)
+
+func _floor_below_efl(idx: int) -> Dictionary:
+	for i in range(idx - 1, -1, -1):
+		if (_editor_floors[i] as Dictionary).get("type", "floor") == "floor":
+			return _editor_floors[i] as Dictionary
+	return {}
 
 func _parent_efloor(fd: Dictionary) -> Dictionary:
 	var pid := fd.get("parent_id", "") as String
@@ -783,9 +764,14 @@ func _load_active_efloor() -> void:
 	_mezzanine_mask.clear()
 	for t in fd.get("mezzanine_tiles", []):
 		_mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
+	# Load stairs array (new format); fall back to stair_tiles for old levels
+	_stairs = (fd.get("stairs", []) as Array).duplicate(true)
 	_stair_mask.clear()
-	for t in fd.get("stair_tiles", []):
-		_stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
+	if not _stairs.is_empty():
+		_rebuild_stair_mask()  # derive stair_mask from _stairs
+	else:
+		for t in fd.get("stair_tiles", []):
+			_stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
 	_rails    = (fd.get("rails",    []) as Array).duplicate(true)
 	_segments = (fd.get("segments", []) as Array).duplicate(true)
 	_cols     = (fd.get("columns",  []) as Array).duplicate(true)
@@ -1078,16 +1064,36 @@ func _rebuild_floor() -> void:
 	for r in _rails:
 		rail_arr.append((r as Dictionary).duplicate())
 
+	# Build stair_openings for the editor preview:
+	#   loft floors → parent's loft-targeted stairs
+	#   floor type above another floor → that floor's floor-targeted stairs
+	var _preview_so: Array = []
+	var _afed  := _editor_floors[_active_efl] as Dictionary
+	var _aftype := _afed.get("type", "") as String
+	if _aftype == "loft":
+		var _pstairs := _parent_efloor(_afed).get("stairs", []) as Array
+		_preview_so = _pstairs.filter(func(s) -> bool:
+			return (s as Dictionary).get("target", "loft") != "floor")
+	elif _aftype == "floor":
+		var _bfd := _floor_below_efl(_active_efl)
+		if not _bfd.is_empty():
+			var _bstairs := _bfd.get("stairs", []) as Array
+			_preview_so = _bstairs.filter(func(s) -> bool:
+				return (s as Dictionary).get("target", "loft") == "floor")
+
 	_floor.setup({
 		"id": "editor_preview", "label": "Ground Floor",
 		"grid_w": _gw, "grid_h": _gh,
 		"floor_tiles":     floor_tiles,
 		"mezzanine_tiles": mezz_tiles,
 		"stair_tiles":     stair_tiles,
+		"stairs":          _stairs.duplicate(true),
 		"rails":           rail_arr,
+		"stair_openings":  _preview_so,
 		"segments": _segments.duplicate(true),
 		"columns":  _cols.duplicate(true)
 	})
+	_floor.grid_draw.show_grid = true
 
 	# Shadow: parent floor tiles shown ghosted when on derived layers
 	var _cur_efd  := _editor_floors[_active_efl] as Dictionary
@@ -1177,6 +1183,25 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if ke.keycode == KEY_R and ke.ctrl_pressed and not ke.shift_pressed and not ke.alt_pressed:
 		get_viewport().set_input_as_handled()
 		get_tree().reload_current_scene()
+	# R (no modifier) → rotate stair direction when STAIRS tool is active
+	if ke.keycode == KEY_R and not ke.ctrl_pressed and not ke.shift_pressed and not ke.alt_pressed:
+		if _tool == Tool.STAIRS:
+			const _DIRS := ["north", "east", "south", "west"]
+			_stair_dir = _DIRS[(_DIRS.find(_stair_dir) + 1) % _DIRS.size()]
+			if is_instance_valid(_ov):
+				_ov.set("stair_hover_dir", _stair_dir)
+				_ov.queue_redraw()
+			_set_status("Stair direction: " + _stair_dir)
+			get_viewport().set_input_as_handled()
+	# T (no modifier) → toggle stair target (loft ↔ floor) when STAIRS tool is active
+	if ke.keycode == KEY_T and not ke.ctrl_pressed and not ke.shift_pressed and not ke.alt_pressed:
+		if _tool == Tool.STAIRS:
+			_stair_target = "floor" if _stair_target == "loft" else "loft"
+			if is_instance_valid(_ov):
+				_ov.set("stair_hover_target", _stair_target)
+				_ov.queue_redraw()
+			_set_status("Stair target: " + _stair_target)
+			get_viewport().set_input_as_handled()
 
 
 func _input(event: InputEvent) -> void:
@@ -1237,6 +1262,8 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			if _popup_open > 0:
+				return  # let the popup's ScrollContainer handle the scroll
 			var vp_size := get_viewport().get_visible_rect().size
 			var mx := mb.position.x
 			var over_panel := mx < LEFT_W or mx > vp_size.x - RIGHT_W or mb.position.y < TOP_H
@@ -1265,6 +1292,9 @@ func _input(event: InputEvent) -> void:
 				return
 
 	# ── Tool handling (canvas area only) ─────────────────────────────────────
+	if _popup_open > 0:
+		return  # let overlay popups handle their own clicks / drags
+
 	var sp := (event as InputEventMouse).position
 	if _is_ui(sp):
 		_cancel_wall_drawing()
@@ -1289,8 +1319,7 @@ func _input(event: InputEvent) -> void:
 				_mezz_painting = true; _mezz_erase = true
 				_paint_mezz_tile(tile, true)
 			elif _tool == Tool.STAIRS:
-				_stair_painting = true; _stair_erase = true
-				_paint_stair_tile(tile, true)
+				_remove_stair_at(tile)
 			elif _tool == Tool.WINDOW:
 				var hit := _detect_segment_at(fl)
 				if not hit.is_empty():
@@ -1319,8 +1348,6 @@ func _input(event: InputEvent) -> void:
 			_paint_floor_tile(tile, _floor_erase)
 		elif _mezz_painting:
 			_paint_mezz_tile(tile, _mezz_erase)
-		elif _stair_painting:
-			_paint_stair_tile(tile, _stair_erase)
 		elif _window_painting:
 			var hit := _detect_segment_at(fl)
 			if not hit.is_empty():
@@ -1331,10 +1358,15 @@ func _input(event: InputEvent) -> void:
 			var is_wall := _tool == Tool.PRIMARY_WALL or _tool == Tool.SECONDARY_WALL
 			var is_rail := _tool == Tool.RAIL
 			var snapped := _snap_tile(tile)
-			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE or _tool == Tool.STAIRS
+			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE
 			_ov.set("floor_hover",  tile if is_floor_like else Vector2i(-1, -1))
 			_ov.set("mezz_hover",   _tool == Tool.MEZZANINE)
 			_ov.set("stair_hover",  _tool == Tool.STAIRS)
+			if _tool == Tool.STAIRS:
+				var _sr := _stair_rect_at(tile)
+				_ov.set("stair_hover_rect",   _sr)
+				_ov.set("stair_hover_dir",    _stair_dir)
+				_ov.set("stair_hover_target", _stair_target)
 			_ov.set("wall_hover",   snapped if ((is_wall or is_rail) and not _pdrawing) else Vector2i(-1, -1))
 			_ov.set("wall_primary", _tool == Tool.PRIMARY_WALL)
 			_ov.set("rail_mode",    is_rail)
@@ -1393,8 +1425,7 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 			_mezz_painting = true; _mezz_erase = false
 			_paint_mezz_tile(tile, false)
 		Tool.STAIRS:
-			_stair_painting = true; _stair_erase = false
-			_paint_stair_tile(tile, false)
+			_place_stair(tile)
 		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.RAIL:
 			_ps = _snap_tile(tile); _pe = _ps; _pdrawing = true
 			if is_instance_valid(_ov):
@@ -1650,6 +1681,110 @@ func _paint_mezz_tile(tile: Vector2i, erase: bool) -> void:
 		if not _mezzanine_mask.is_empty():
 			_auto_add_loft()
 
+
+const STAIR_STEP_DEPTH := 2   # tiles per step (20 cm)
+const STAIR_STEPS      := 9   # steps to reach loft (18-tile height / 2 tiles per step)
+const STAIR_WIDTH      := 8   # tiles wide (80 cm minimum)
+
+func _stair_rect_at(tile: Vector2i) -> Rect2i:
+	var w: int; var h: int
+	match _stair_dir:
+		"north", "south": w = STAIR_WIDTH;                    h = STAIR_STEPS * STAIR_STEP_DEPTH
+		_:                 w = STAIR_STEPS * STAIR_STEP_DEPTH; h = STAIR_WIDTH
+
+	# Default: centered on cursor
+	var cx := tile.x - w / 2
+	var cy := tile.y - h / 2
+
+	# Loft stairs snap to mezzanine edge; floor stairs are placed freely.
+	if _stair_target != "loft":
+		return Rect2i(cx, cy, w, h)
+
+	# Snap loft end to the nearest mezzanine boundary in the ascent direction.
+	# Search up to (run + 4) tiles away from cursor so close-but-not-exact hovers snap.
+	var search := h + 4
+	match _stair_dir:
+		"north":
+			# Loft end is the top edge (cy). Scan upward for mezzanine.
+			for dy in range(0, search):
+				if _mezzanine_mask.has(Vector2i(tile.x, tile.y - dy)):
+					# Walk to find the southernmost row of this mezzanine blob
+					var my := tile.y - dy
+					while _mezzanine_mask.has(Vector2i(tile.x, my + 1)):
+						my += 1
+					cy = my + 1   # stair top sits just south of mezzanine
+					break
+		"south":
+			# Loft end is the bottom edge (cy + h). Scan downward.
+			for dy in range(0, search):
+				if _mezzanine_mask.has(Vector2i(tile.x, tile.y + dy)):
+					var my := tile.y + dy
+					while my > 0 and _mezzanine_mask.has(Vector2i(tile.x, my - 1)):
+						my -= 1
+					cy = my - h   # stair bottom sits just north of mezzanine
+					break
+		"east":
+			# Loft end is the right edge (cx + w). Scan rightward.
+			search = w + 4
+			for dx in range(0, search):
+				if _mezzanine_mask.has(Vector2i(tile.x + dx, tile.y)):
+					var mx := tile.x + dx
+					while mx > 0 and _mezzanine_mask.has(Vector2i(mx - 1, tile.y)):
+						mx -= 1
+					cx = mx - w
+					break
+		"west":
+			# Loft end is the left edge (cx). Scan leftward.
+			search = w + 4
+			for dx in range(0, search):
+				if _mezzanine_mask.has(Vector2i(tile.x - dx, tile.y)):
+					var mx := tile.x - dx
+					while _mezzanine_mask.has(Vector2i(mx + 1, tile.y)):
+						mx += 1
+					cx = mx + 1
+					break
+
+	return Rect2i(cx, cy, w, h)
+
+func _place_stair(tile: Vector2i) -> void:
+	if _active_floor_type() != "floor":
+		_set_status("Stairs can only be placed on floor layers")
+		return
+	var r := _stair_rect_at(tile)
+	var entry := {"x": r.position.x, "y": r.position.y,
+		"w": r.size.x, "h": r.size.y, "direction": _stair_dir, "target": _stair_target}
+	_stairs.append(entry)
+	_rebuild_stair_mask()
+	_set_status("Staircase placed (%s → %s)" % [_stair_dir, _stair_target])
+
+func _remove_stair_at(tile: Vector2i) -> void:
+	var before := _stairs.size()
+	_stairs = _stairs.filter(func(e) -> bool:
+		var r := Rect2i((e as Dictionary)["x"] as int, (e as Dictionary)["y"] as int,
+			(e as Dictionary)["w"] as int, (e as Dictionary)["h"] as int)
+		return not r.has_point(tile))
+	if _stairs.size() < before:
+		_rebuild_stair_mask()
+		_set_status("Staircase removed")
+
+func _rebuild_stair_mask() -> void:
+	_stair_mask.clear()
+	for e in _stairs:
+		var ed := e as Dictionary
+		var r  := Rect2i(ed["x"] as int, ed["y"] as int, ed["w"] as int, ed["h"] as int)
+		for x in range(r.size.x):
+			for y in range(r.size.y):
+				_stair_mask[Vector2i(r.position.x + x, r.position.y + y)] = true
+	if is_instance_valid(_floor):
+		_floor.stair_mask = _stair_mask.duplicate()
+		_floor.stairs_data.clear()
+		for e in _stairs:
+			var ed  := e as Dictionary
+			var r   := Rect2i(ed["x"] as int, ed["y"] as int, ed["w"] as int, ed["h"] as int)
+			var dir := ed["direction"] as String
+			var tgt := ed.get("target", "loft") as String
+			_floor.stairs_data.append({"rect": r, "direction": dir, "target": tgt})
+		_floor.grid_draw.queue_redraw()
 
 func _paint_stair_tile(tile: Vector2i, erase: bool) -> void:
 	if _active_floor_type() != "floor":
@@ -2493,11 +2628,11 @@ func _build_dict() -> Dictionary:
 	for fn: String in _funcs:
 		if _funcs[fn]:
 			req.append(fn)
-	var lvl_id := "custom_" + _lname.to_lower().replace(" ", "_")
+	var lvl_id := _lname.to_lower().replace(" ", "_")
 	return {
 		"id": lvl_id, "name": _lname, "district": _dist,
-		"is_custom": true, "acquisition_cost": _cost,
-		"map_col": 0, "map_row": 0, "min_stars": 0, "block": 1,
+		"acquisition_cost": _cost,
+		"map_col": _map_col, "map_row": _map_row, "min_stars": 0, "block": _block,
 		"funds_base_reward": _reward, "starting_budget": _budget,
 		"tenant": {
 			"name": _tname, "age": _tage, "flavor": _tflav,
@@ -2530,42 +2665,160 @@ func _build_dict() -> Dictionary:
 
 
 func _save_level() -> void:
-	var d    := _build_dict()
-	var jstr := JSON.stringify(d, "\t")
-	DirAccess.make_dir_recursive_absolute("user://custom_levels")
-	var fname := (d["id"] as String) + ".json"
-	var path  := "user://custom_levels/" + fname
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f:
-		f.store_string(jstr)
-		f.close()
-		_set_status("Saved → " + fname)
-	else:
-		_set_status("Save failed (err %d)" % FileAccess.get_open_error())
+	if _lname.strip_edges().is_empty() or _lname == "Untitled Apartment":
+		_prompt_level_name(func(name: String):
+			_lname = name
+			_save_level())
+		return
+
+	var d := _build_dict()
+	var lvl_id := d["id"] as String
+
+	# Read the current levels.json
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		_set_status("Save failed — cannot open levels.json")
+		return
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close()
+		_set_status("Save failed — levels.json parse error")
+		return
+	lf.close()
+	var root := lj.get_data() as Dictionary
+	var levels := root.get("levels", []) as Array
+
+	# Update existing entry or append
+	var found := false
+	for i in range(levels.size()):
+		if (levels[i] as Dictionary).get("id", "") == lvl_id:
+			levels[i] = d
+			found = true
+			break
+	if not found:
+		# Auto-assign the next free grid slot (sequential, 5 cols wide)
+		var used: Dictionary = {}
+		for lv in levels:
+			var k := "%d,%d" % [(lv as Dictionary).get("map_col", 0), (lv as Dictionary).get("map_row", 0)]
+			used[k] = true
+		var placed := false
+		for r in range(100):
+			if placed: break
+			for c in range(5):
+				var k := "%d,%d" % [c, r]
+				if not used.has(k):
+					d["map_col"] = c
+					d["map_row"] = r
+					_map_col = c
+					_map_row = r
+					placed = true
+					break
+		levels.append(d)
+	root["levels"] = levels
+
+	var wf := FileAccess.open("res://data/levels.json", FileAccess.WRITE)
+	if not wf:
+		_set_status("Save failed — cannot write levels.json")
+		return
+	wf.store_string(JSON.stringify(root, "\t"))
+	wf.close()
+	_set_status("Saved \"%s\" → levels.json (block %d, col %d, row %d)" % [_lname, _block, _map_col, _map_row])
+
+
+func _prompt_level_name(on_confirm: Callable) -> void:
+	_popup_open += 1
+	var cl := CanvasLayer.new()
+	cl.layer = 30
+	cl.tree_exited.connect(func(): _popup_open -= 1)
+	add_child(cl)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.72)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	cl.add_child(bg)
+
+	var card := PanelContainer.new()
+	var cs := StyleBoxFlat.new()
+	cs.bg_color     = Color(0.09, 0.12, 0.17)
+	cs.border_color = Color(0.24, 0.34, 0.48)
+	cs.set_border_width_all(1)
+	cs.set_content_margin_all(20)
+	card.add_theme_stylebox_override("panel", cs)
+	card.set_anchor(SIDE_LEFT,   0.5); card.set_anchor(SIDE_RIGHT,  0.5)
+	card.set_anchor(SIDE_TOP,    0.5); card.set_anchor(SIDE_BOTTOM, 0.5)
+	card.offset_left = -170; card.offset_right  = 170
+	card.offset_top  =  -70; card.offset_bottom =  70
+	cl.add_child(card)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	card.add_child(vb)
+
+	var ttl := Label.new()
+	ttl.text = "Level Name"
+	ttl.add_theme_font_size_override("font_size", 13)
+	ttl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	vb.add_child(ttl)
+
+	var line := LineEdit.new()
+	line.placeholder_text = "e.g. Calle Mayor 4B"
+	line.custom_minimum_size = Vector2(300, 0)
+	line.add_theme_font_size_override("font_size", 12)
+	vb.add_child(line)
+	line.grab_focus()
+
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	vb.add_child(hb)
+
+	var ok := Button.new()
+	ok.text = "Save"
+	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ok.add_theme_font_size_override("font_size", 11)
+	hb.add_child(ok)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel.add_theme_font_size_override("font_size", 11)
+	cancel.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hb.add_child(cancel)
+
+	var _do_confirm := func():
+		var name := line.text.strip_edges()
+		if name.is_empty():
+			return
+		cl.queue_free()
+		on_confirm.call(name)
+
+	ok.pressed.connect(_do_confirm)
+	line.text_submitted.connect(func(_t: String): _do_confirm.call())
+	cancel.pressed.connect(cl.queue_free)
 
 
 func _load_dialog() -> void:
-	var dir := DirAccess.open("user://custom_levels")
-	if not dir:
-		_set_status("No saved levels found")
+	var items: Array = []
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if lf:
+		var lj := JSON.new()
+		if lj.parse(lf.get_as_text()) == OK:
+			for lvl in (lj.get_data() as Dictionary).get("levels", []) as Array:
+				var lvld := lvl as Dictionary
+				var lbl  := lvld.get("name", lvld.get("id", "?")) as String
+				items.append({"label": lbl, "data": lvld})
+		lf.close()
+	if items.is_empty():
+		_set_status("No levels found — save a level first")
 		return
-	var files: Array = []
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if fname.ends_with(".json"):
-			files.append(fname)
-		fname = dir.get_next()
-	dir.list_dir_end()
-	if files.is_empty():
-		_set_status("No saved levels found")
-		return
-	_show_load_popup(files)
+	_show_load_popup(items)
 
 
-func _show_load_popup(files: Array) -> void:
+func _show_load_popup(items: Array) -> void:
+	_popup_open += 1
 	var cl := CanvasLayer.new()
 	cl.layer = 30
+	cl.tree_exited.connect(func(): _popup_open -= 1)
 	add_child(cl)
 
 	var bg := ColorRect.new()
@@ -2598,21 +2851,15 @@ func _show_load_popup(files: Array) -> void:
 	vb.add_child(ttl)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(340, 240)
+	scroll.custom_minimum_size = Vector2(340, 260)
 	vb.add_child(scroll)
 
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 4)
 	scroll.add_child(list)
 
-	for fn: String in files:
-		var btn := Button.new()
-		btn.text = fn.replace(".json", "").replace("custom_", "")
-		btn.add_theme_font_size_override("font_size", 11)
-		btn.pressed.connect(func():
-			_load_file("user://custom_levels/" + fn)
-			cl.queue_free())
-		list.add_child(btn)
+	_build_load_rows(list, cl)
+
 
 	var cancel := Button.new()
 	cancel.text = "Cancel"
@@ -2624,6 +2871,65 @@ func _show_load_popup(files: Array) -> void:
 	bg.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 			cl.queue_free())
+
+
+func _build_load_rows(list: VBoxContainer, cl: CanvasLayer) -> void:
+	for ch in list.get_children():
+		ch.queue_free()
+	var items: Array = []
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if lf:
+		var lj := JSON.new()
+		if lj.parse(lf.get_as_text()) == OK:
+			for lvl in (lj.get_data() as Dictionary).get("levels", []) as Array:
+				var ld := lvl as Dictionary
+				items.append({"label": ld.get("name", ld.get("id", "?")) as String, "data": ld})
+		lf.close()
+	for item: Dictionary in items:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		list.add_child(row)
+		var load_btn := Button.new()
+		load_btn.text = item["label"] as String
+		load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		load_btn.add_theme_font_size_override("font_size", 11)
+		load_btn.pressed.connect(func():
+			_load_from_dict(item["data"] as Dictionary)
+			cl.queue_free())
+		row.add_child(load_btn)
+		var del_btn := Button.new()
+		del_btn.text = "×"
+		del_btn.add_theme_font_size_override("font_size", 13)
+		del_btn.add_theme_color_override("font_color", Color(0.85, 0.30, 0.25, 1.0))
+		del_btn.custom_minimum_size = Vector2(28, 0)
+		del_btn.pressed.connect(func():
+			_delete_level((item["data"] as Dictionary).get("id", "") as String)
+			_build_load_rows(list, cl))
+		row.add_child(del_btn)
+
+
+func _delete_level(lvl_id: String) -> void:
+	if lvl_id.is_empty():
+		return
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		return
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close(); return
+	lf.close()
+	var root := lj.get_data() as Dictionary
+	var levels := root.get("levels", []) as Array
+	for i in range(levels.size()):
+		if (levels[i] as Dictionary).get("id", "") == lvl_id:
+			levels.remove_at(i)
+			break
+	root["levels"] = levels
+	var wf := FileAccess.open("res://data/levels.json", FileAccess.WRITE)
+	if wf:
+		wf.store_string(JSON.stringify(root, "\t"))
+		wf.close()
+	_set_status("Deleted \"%s\"" % lvl_id)
 
 
 func _load_file(path: String) -> void:
@@ -2718,10 +3024,13 @@ func _load_from_dict(d: Dictionary) -> void:
 	_tname  = ten.get("name",   "")   as String
 	_tage   = ten.get("age",    28)   as int
 	_tflav  = ten.get("flavor", "")   as String
-	_budget = d.get("starting_budget",  2000) as int
-	_rent   = ten.get("monthly_rent",    300) as int
-	_reward = d.get("funds_base_reward", 800) as int
-	_cost   = d.get("acquisition_cost", 1500) as int
+	_budget   = d.get("starting_budget",  2000) as int
+	_rent     = ten.get("monthly_rent",    300) as int
+	_reward   = d.get("funds_base_reward", 800) as int
+	_cost     = d.get("acquisition_cost", 1500) as int
+	_block    = d.get("block",    1) as int
+	_map_col  = d.get("map_col", 0) as int
+	_map_row  = d.get("map_row", 0) as int
 	var req: Array = ten.get("required_functions", []) as Array
 	for fn: String in _funcs:
 		_funcs[fn] = (fn in req)

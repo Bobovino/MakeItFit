@@ -12,7 +12,10 @@ var wall_hover:   Vector2i = Vector2i(-1, -1)
 var wall_primary: bool    = false  # true = primary (2 tiles), false = secondary (1 tile)
 var win_hover_rect: Rect2 = Rect2()
 var rail_mode:   bool = false  # true = preview is a rail (teal) not a wall (orange)
-var stair_hover: bool = false  # true = floor_hover is a stair tile
+var stair_hover:        bool    = false    # legacy (unused)
+var stair_hover_rect:   Rect2i = Rect2i() # full footprint of stair being previewed
+var stair_hover_dir:    String = "north"  # direction for preview arrow
+var stair_hover_target: String = "loft"   # "loft" (blue) or "floor" (amber)
 
 # Door drag preview
 var door_drag_active: bool    = false
@@ -57,11 +60,58 @@ func _draw() -> void:
 			draw_rect(Rect2(px, py, sz, sz), Color(0.72, 0.60, 0.20, 0.35))
 			draw_rect(Rect2(px, py, sz, sz), Color(0.80, 0.65, 0.22, 0.90), false, 1.0)
 		elif stair_hover:
-			draw_rect(Rect2(px, py, sz, sz), Color(0.50, 0.55, 0.70, 0.35))
-			draw_rect(Rect2(px, py, sz, sz), Color(0.60, 0.65, 0.85, 0.90), false, 1.0)
+			# stair_hover_rect overrides the floor_hover brush square
+			pass  # handled below
 		else:
 			draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.72, 0.52, 0.30))
 			draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.82, 0.54, 0.90), false, 1.0)
+
+	# Stair stamp hover preview — shows the full staircase footprint + direction arrow
+	if stair_hover and stair_hover_rect.size.x > 0 and stair_hover_rect.size.y > 0:
+		var _SF := Color(0.52, 0.60, 0.82, 0.35) if stair_hover_target == "loft" else Color(0.78, 0.58, 0.22, 0.35)
+		var _SB := Color(0.30, 0.50, 0.90, 0.90) if stair_hover_target == "loft" else Color(0.85, 0.55, 0.10, 0.90)
+		var _SN := Color(0.30, 0.40, 0.75, 0.65) if stair_hover_target == "loft" else Color(0.60, 0.38, 0.08, 0.65)
+		var _SA := Color(0.10, 0.20, 0.60, 0.90) if stair_hover_target == "loft" else Color(0.50, 0.28, 0.05, 0.90)
+		const _SD  := 2   # step depth in tiles
+		var _sx  := float(stair_hover_rect.position.x * TS)
+		var _sy  := float(stair_hover_rect.position.y * TS)
+		var _sw  := float(stair_hover_rect.size.x * TS)
+		var _sh  := float(stair_hover_rect.size.y * TS)
+		draw_rect(Rect2(_sx, _sy, _sw, _sh), _SF)
+		draw_rect(Rect2(_sx, _sy, _sw, _sh), _SB, false, 1.5)
+		match stair_hover_dir:
+			"north", "south":
+				for _ss in range(1, stair_hover_rect.size.y / _SD):
+					var _ny := _sy + float(_ss * _SD * TS)
+					draw_line(Vector2(_sx, _ny), Vector2(_sx + _sw, _ny), _SN, 1.0)
+			"east", "west":
+				for _ss in range(1, stair_hover_rect.size.x / _SD):
+					var _nx := _sx + float(_ss * _SD * TS)
+					draw_line(Vector2(_nx, _sy), Vector2(_nx, _sy + _sh), _SN, 1.0)
+		var _scx := _sx + _sw * 0.5
+		var _scy := _sy + _sh * 0.5
+		var _aw  := float(TS) * 1.5
+		match stair_hover_dir:
+			"north":
+				var _tip := Vector2(_scx, _sy + float(TS))
+				draw_line(Vector2(_scx, _scy), _tip, _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y + _aw), _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y + _aw), _SA, 2.0)
+			"south":
+				var _tip := Vector2(_scx, _sy + _sh - float(TS))
+				draw_line(Vector2(_scx, _scy), _tip, _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y - _aw), _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y - _aw), _SA, 2.0)
+			"east":
+				var _tip := Vector2(_sx + _sw - float(TS), _scy)
+				draw_line(Vector2(_scx, _scy), _tip, _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), _SA, 2.0)
+			"west":
+				var _tip := Vector2(_sx + float(TS), _scy)
+				draw_line(Vector2(_scx, _scy), _tip, _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y - _aw * 0.5), _SA, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y + _aw * 0.5), _SA, 2.0)
 
 	# Pre-placed furniture rectangles (always visible)
 	for pf in placed_furniture:

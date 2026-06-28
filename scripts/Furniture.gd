@@ -33,6 +33,8 @@ var z_bottom: float = 0.0  # tiles from floor level
 var z_top:    float = 12.0 # tiles from floor level
 var needs_water: bool = false
 var needs_power: bool = false
+var is_stair:        bool   = false
+var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
 # Rail: constrains dragging to one axis
 var rail_axis: String = ""   # "h" | "v" | "" = free
@@ -75,6 +77,8 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	needs_water           = data.get("needs_water",       false)    as bool
 	needs_power           = data.get("needs_power",       false)    as bool
 	rail_axis             = data.get("rail_axis",         "")       as String
+	is_stair              = data.get("is_stair",          false)    as bool
+	stair_direction       = data.get("stair_direction",   "")       as String
 	_base_grid_h          = grid_h
 	_wall_ref = apt_floor
 	_color = Color("#" + data.get("color", "888888"))
@@ -549,6 +553,9 @@ func _start_drag(mouse_pos: Vector2) -> void:
 	_drag_offset = global_position - mouse_pos
 	_original_pos = position
 	z_index = 10
+	if _wall_ref:
+		_wall_ref.grid_draw.show_grid = true
+		_wall_ref.grid_draw.queue_redraw()
 	# Lock rail axis on drag start
 	if rail_axis == "h":
 		_rail_lock = grid_pos.y
@@ -597,6 +604,9 @@ func _rotate() -> void:
 func _end_drag(_mouse_pos: Vector2) -> void:
 	_dragging = false
 	z_index = 0
+	if _wall_ref:
+		_wall_ref.grid_draw.show_grid = false
+		_wall_ref.grid_draw.queue_redraw()
 	queue_redraw()
 	var snapped_x := int(position.x / TILE_SIZE)
 	var snapped_y := int(position.y / TILE_SIZE)

@@ -52,8 +52,6 @@ var _stars_label:   Label
 func _ready() -> void:
 	_levels_data = _load_json("res://data/levels.json")
 	_build_ui()
-	_load_custom_levels()
-	_build_custom_section()
 	_map_content.size.y = _map_total_h()
 	GameState.company_funds_changed.connect(_on_funds_changed)
 	_refresh_all_cards()
@@ -83,9 +81,7 @@ func _card_xy(col: int, row: int) -> Vector2:
 
 
 func _map_total_h() -> float:
-	var n := _custom_levels.size() + 1  # +1 for the New Level card
-	var custom_rows := (n + COLS - 1) / COLS
-	return _custom_section_y() + 30.0 + custom_rows * (CARD_H + V_PAD * 2) + V_PAD
+	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
 
 
 func _custom_section_y() -> float:

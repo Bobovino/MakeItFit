@@ -27,6 +27,8 @@ var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
 var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
 var rails:          Array      = []   # [{x1,y1,x2,y2}] sliding rail tracks
 var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
+var stairs_data:    Array      = []   # [{rect:Rect2i, direction:String}] one entry per placed stair
+var stair_openings: Array      = []   # same format, but stair footprints from parent floor (for loft rendering)
 var _use_new_format: bool      = false
 
 var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z)
@@ -81,6 +83,26 @@ func _get_all_placed_unique() -> Array:
 			if item not in seen:
 				seen.append(item)
 	return seen
+
+func _register_stair(furniture: Furniture, at: Vector2i) -> void:
+	var r := Rect2i(at.x, at.y, furniture.grid_w, furniture.grid_h)
+	stairs_data.append({"rect": r, "direction": furniture.stair_direction, "furniture": furniture})
+	for x in range(r.size.x):
+		for y in range(r.size.y):
+			stair_mask[Vector2i(r.position.x + x, r.position.y + y)] = true
+
+func _unregister_stair(furniture: Furniture) -> void:
+	var kept: Array = []
+	for entry in stairs_data:
+		var e := entry as Dictionary
+		if e.get("furniture") == furniture:
+			var r := e["rect"] as Rect2i
+			for x in range(r.size.x):
+				for y in range(r.size.y):
+					stair_mask.erase(Vector2i(r.position.x + x, r.position.y + y))
+		else:
+			kept.append(entry)
+	stairs_data = kept
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -195,8 +217,31 @@ func setup(floor_data: Dictionary) -> void:
 		for t in floor_data.get("mezzanine_tiles", []):
 			mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
 		stair_mask.clear()
-		for t in floor_data.get("stair_tiles", []):
-			stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		stairs_data.clear()
+		# New format: structured stairs array with rect + direction
+		var _raw_stairs := floor_data.get("stairs", []) as Array
+		if not _raw_stairs.is_empty():
+			for _se in _raw_stairs:
+				var _sd := _se as Dictionary
+				var _r  := Rect2i(_sd["x"] as int, _sd["y"] as int,
+					_sd["w"] as int, _sd["h"] as int)
+				var _dir := _sd.get("direction", "north") as String
+				var _tgt := _sd.get("target", "loft") as String
+				stairs_data.append({"rect": _r, "direction": _dir, "target": _tgt})
+				for _x in range(_r.size.x):
+					for _y in range(_r.size.y):
+						stair_mask[Vector2i(_r.position.x + _x, _r.position.y + _y)] = true
+		else:
+			# Legacy: plain stair_tiles list (no direction info)
+			for t in floor_data.get("stair_tiles", []):
+				stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		# Stair openings from parent floor (used by loft floors to show where stairs come up)
+		stair_openings.clear()
+		for _so in floor_data.get("stair_openings", []) as Array:
+			var _sod := _so as Dictionary
+			var _sor := Rect2i(_sod["x"] as int, _sod["y"] as int,
+				_sod["w"] as int, _sod["h"] as int)
+			stair_openings.append({"rect": _sor, "direction": _sod.get("direction", "north") as String, "target": _sod.get("target", "loft") as String})
 		rails = (floor_data.get("rails", []) as Array).duplicate(true)
 		segments = []
 		for s in floor_data.get("segments", []):
@@ -430,6 +475,9 @@ func place_furniture(furniture: Furniture, at: Vector2i) -> void:
 			_placed_add(Vector2i(at.x + x, at.y + y), furniture)
 	furniture.grid_pos = at
 	furniture.position = Vector2(at.x * TILE_SIZE, at.y * TILE_SIZE)
+	# Stair furniture: register block in stairs_data + populate stair_mask
+	if furniture.is_stair:
+		_register_stair(furniture, at)
 	_compute_light_map()
 	furniture_changed.emit()
 
@@ -444,6 +492,8 @@ func remove_furniture(furniture: Furniture) -> void:
 func _remove_from_grid(furniture: Furniture) -> void:
 	for tile in _placed.keys():
 		_placed_remove_tile(tile, furniture)
+	if furniture.is_stair:
+		_unregister_stair(furniture)
 
 
 func find_free_spot(w: int, h: int) -> Vector2i:

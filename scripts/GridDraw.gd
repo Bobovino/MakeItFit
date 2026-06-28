@@ -20,6 +20,7 @@ var _hovered_seg_idx: int   = -1   # new-format hover: nearest segment index
 var _gm: GameManager = null
 var show_subfloor: bool = false
 var show_ceiling:  bool = false
+var show_grid:     bool = false
 
 
 func set_active_edge(edge: String) -> void:
@@ -94,14 +95,15 @@ func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
 	draw_rect(Rect2(0, 0, rw, rh), FLOOR_COLOR)
 	_draw_natural_light(parent)
 
-	for x in range(w + 1):
-		draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh), GRID_MINOR, 0.5)
-	for y in range(h + 1):
-		draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE), GRID_MINOR, 0.5)
-	for x in range(0, w + 1, METER_TILES):
-		draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh), GRID_MAJOR, 1.0)
-	for y in range(0, h + 1, METER_TILES):
-		draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE), GRID_MAJOR, 1.0)
+	if show_grid:
+		for x in range(w + 1):
+			draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh), GRID_MINOR, 0.5)
+		for y in range(h + 1):
+			draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE), GRID_MINOR, 0.5)
+		for x in range(0, w + 1, METER_TILES):
+			draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh), GRID_MAJOR, 1.0)
+		for y in range(0, h + 1, METER_TILES):
+			draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE), GRID_MAJOR, 1.0)
 
 	draw_line(Vector2(0,  0),  Vector2(rw, 0),  WALL_COLOR, WALL_THICK)
 	draw_line(Vector2(0,  rh), Vector2(rw, rh), WALL_COLOR, WALL_THICK)
@@ -177,32 +179,166 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		if nb_e not in parent.mezzanine_mask:
 			draw_line(Vector2(rx + ts, ry),      Vector2(rx + ts, ry + ts), MEZZ_EDGE, 2.0)
 
-	# ── 2c. Stair tiles — each tile = one step tread in plan view ────────────
-	# Fill: solid blue-grey. Thick nosing line at top of each tile (tread front
-	# edge). Border lines on exposed edges. Reads as a stacked staircase when
-	# tiles are painted in a vertical strip.
+	# ── 2c. Stairs ─────────────────────────────────────────────────────────────
 	const STAIR_FILL   := Color(0.52, 0.60, 0.82, 0.80)
 	const STAIR_NOSING := Color(0.24, 0.30, 0.58, 1.00)
 	const STAIR_BORDER := Color(0.30, 0.38, 0.65, 0.85)
-	for tile in parent.stair_mask:
-		var t  := tile as Vector2i
-		var rx := float(t.x * TILE_SIZE)
-		var ry := float(t.y * TILE_SIZE)
-		var ts := float(TILE_SIZE)
-		draw_rect(Rect2(rx, ry, ts, ts), STAIR_FILL)
-		# Tread nosing: thick line at the very top of each tile
-		draw_line(Vector2(rx, ry + 0.5), Vector2(rx + ts, ry + 0.5), STAIR_NOSING, 2.0)
-		# Exposed bottom edge
-		if Vector2i(t.x, t.y + 1) not in parent.stair_mask:
-			draw_line(Vector2(rx, ry + ts), Vector2(rx + ts, ry + ts), STAIR_BORDER, 2.0)
-		# Exposed left edge
-		if Vector2i(t.x - 1, t.y) not in parent.stair_mask:
-			draw_line(Vector2(rx, ry), Vector2(rx, ry + ts), STAIR_BORDER, 1.5)
-		# Exposed right edge
-		if Vector2i(t.x + 1, t.y) not in parent.stair_mask:
-			draw_line(Vector2(rx + ts, ry), Vector2(rx + ts, ry + ts), STAIR_BORDER, 1.5)
+	const STAIR_ARROW  := Color(0.10, 0.18, 0.50, 1.00)
+	const FSTAIR_FILL   := Color(0.78, 0.58, 0.22, 0.80)   # floor stair — amber
+	const FSTAIR_NOSING := Color(0.58, 0.38, 0.08, 1.00)
+	const FSTAIR_BORDER := Color(0.65, 0.42, 0.10, 0.85)
+	const FSTAIR_ARROW  := Color(0.50, 0.28, 0.05, 1.00)
+	const STEP_DEPTH   := 2   # tiles per step (20 cm rise/going)
 
-	# ── 2d. Rail tracks ──────────────────────────────────────────────────────
+	# Build set of tiles owned by a placed-stair furniture block
+	var _sd_tiles: Dictionary = {}
+	for _sentry in parent.stairs_data:
+		var _sr := (_sentry as Dictionary)["rect"] as Rect2i
+		for _sx in range(_sr.size.x):
+			for _sy in range(_sr.size.y):
+				_sd_tiles[Vector2i(_sr.position.x + _sx, _sr.position.y + _sy)] = true
+
+	# Direction-aware block rendering for furniture-placed stairs
+	for _sentry in parent.stairs_data:
+		var _ed  := _sentry as Dictionary
+		var _r   := _ed["rect"]      as Rect2i
+		var _dir := _ed["direction"] as String
+		var _tgt := _ed.get("target", "loft") as String
+		var _srx := float(_r.position.x * TILE_SIZE)
+		var _sry := float(_r.position.y * TILE_SIZE)
+		var _srw := float(_r.size.x    * TILE_SIZE)
+		var _srh := float(_r.size.y    * TILE_SIZE)
+		var _sfill := STAIR_FILL   if _tgt == "loft" else FSTAIR_FILL
+		var _snos  := STAIR_NOSING if _tgt == "loft" else FSTAIR_NOSING
+		var _sbdr  := STAIR_BORDER if _tgt == "loft" else FSTAIR_BORDER
+		var _sarr  := STAIR_ARROW  if _tgt == "loft" else FSTAIR_ARROW
+		draw_rect(Rect2(_srx, _sry, _srw, _srh), _sfill)
+		# Internal tread-separator nosings perpendicular to travel direction
+		match _dir:
+			"north", "south":
+				for _s in range(1, _r.size.y / STEP_DEPTH):
+					var _ny := _sry + float(_s * STEP_DEPTH * TILE_SIZE)
+					draw_line(Vector2(_srx, _ny), Vector2(_srx + _srw, _ny), _snos, 1.5)
+			"east", "west":
+				for _s in range(1, _r.size.x / STEP_DEPTH):
+					var _nx := _srx + float(_s * STEP_DEPTH * TILE_SIZE)
+					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), _snos, 1.5)
+		# Outer border
+		draw_rect(Rect2(_srx, _sry, _srw, _srh), _sbdr, false, 2.0)
+		# Ascent arrow; floor stairs also get a second inner chevron (↑↑) to signal full floor
+		var _scx := _srx + _srw * 0.5
+		var _scy := _sry + _srh * 0.5
+		var _aw  := float(TILE_SIZE) * 1.5
+		match _dir:
+			"north":
+				var _tip := Vector2(_scx, _sry + float(TILE_SIZE))
+				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
+				if _tgt == "floor":
+					var _mid := Vector2(_scx, (_sry + float(TILE_SIZE) + _scy) * 0.5)
+					draw_line(_mid, Vector2(_mid.x - _aw * 0.4, _mid.y + _aw * 0.9), _sarr, 1.5)
+					draw_line(_mid, Vector2(_mid.x + _aw * 0.4, _mid.y + _aw * 0.9), _sarr, 1.5)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y + _aw), _sarr, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y + _aw), _sarr, 2.0)
+			"south":
+				var _tip := Vector2(_scx, _sry + _srh - float(TILE_SIZE))
+				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
+				if _tgt == "floor":
+					var _mid := Vector2(_scx, (_sry + _srh - float(TILE_SIZE) + _scy) * 0.5)
+					draw_line(_mid, Vector2(_mid.x - _aw * 0.4, _mid.y - _aw * 0.9), _sarr, 1.5)
+					draw_line(_mid, Vector2(_mid.x + _aw * 0.4, _mid.y - _aw * 0.9), _sarr, 1.5)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y - _aw), _sarr, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y - _aw), _sarr, 2.0)
+			"east":
+				var _tip := Vector2(_srx + _srw - float(TILE_SIZE), _scy)
+				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
+				if _tgt == "floor":
+					var _mid := Vector2((_srx + _srw - float(TILE_SIZE) + _scx) * 0.5, _scy)
+					draw_line(_mid, Vector2(_mid.x - _aw * 0.9, _mid.y - _aw * 0.4), _sarr, 1.5)
+					draw_line(_mid, Vector2(_mid.x - _aw * 0.9, _mid.y + _aw * 0.4), _sarr, 1.5)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), _sarr, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), _sarr, 2.0)
+			"west":
+				var _tip := Vector2(_srx + float(TILE_SIZE), _scy)
+				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
+				if _tgt == "floor":
+					var _mid := Vector2((_srx + float(TILE_SIZE) + _scx) * 0.5, _scy)
+					draw_line(_mid, Vector2(_mid.x + _aw * 0.9, _mid.y - _aw * 0.4), _sarr, 1.5)
+					draw_line(_mid, Vector2(_mid.x + _aw * 0.9, _mid.y + _aw * 0.4), _sarr, 1.5)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y - _aw * 0.5), _sarr, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y + _aw * 0.5), _sarr, 2.0)
+
+	# Per-tile fallback for editor-painted stair_mask tiles (no stairs_data block)
+	for _stile in parent.stair_mask:
+		if _stile in _sd_tiles:
+			continue
+		var _t   := _stile as Vector2i
+		var _trx := float(_t.x * TILE_SIZE)
+		var _tpy := float(_t.y * TILE_SIZE)
+		var _ts  := float(TILE_SIZE)
+		draw_rect(Rect2(_trx, _tpy, _ts, _ts), STAIR_FILL)
+		draw_line(Vector2(_trx, _tpy + 0.5), Vector2(_trx + _ts, _tpy + 0.5), STAIR_NOSING, 2.0)
+		if Vector2i(_t.x, _t.y + 1) not in parent.stair_mask:
+			draw_line(Vector2(_trx, _tpy + _ts), Vector2(_trx + _ts, _tpy + _ts), STAIR_BORDER, 2.0)
+		if Vector2i(_t.x - 1, _t.y) not in parent.stair_mask:
+			draw_line(Vector2(_trx, _tpy), Vector2(_trx, _tpy + _ts), STAIR_BORDER, 1.5)
+		if Vector2i(_t.x + 1, _t.y) not in parent.stair_mask:
+			draw_line(Vector2(_trx + _ts, _tpy), Vector2(_trx + _ts, _tpy + _ts), STAIR_BORDER, 1.5)
+
+	# ── 2d. Stair openings (loft floors — same footprint as floor stair, descent arrow) ─
+	const SO_FILL   := Color(0.40, 0.50, 0.80, 0.65)
+	const SO_BORDER := Color(0.20, 0.30, 0.70, 1.00)
+	const SO_NOSING := Color(0.20, 0.30, 0.70, 0.60)
+	const SO_ARROW  := Color(0.05, 0.10, 0.50, 1.00)
+	for _op in parent.stair_openings:
+		var _opd   := _op as Dictionary
+		var _opr   := _opd["rect"] as Rect2i
+		var _opdir := _opd.get("direction", "north") as String
+		var _srx   := float(_opr.position.x * TILE_SIZE)
+		var _sry   := float(_opr.position.y * TILE_SIZE)
+		var _srw   := float(_opr.size.x    * TILE_SIZE)
+		var _srh   := float(_opr.size.y    * TILE_SIZE)
+		var _scx   := _srx + _srw * 0.5
+		var _scy   := _sry + _srh * 0.5
+		var _aw    := float(TILE_SIZE) * 1.5
+		# Draw over the stair footprint (same x/y/w/h as the ground-floor stair block)
+		draw_rect(Rect2(_srx, _sry, _srw, _srh), SO_FILL)
+		match _opdir:
+			"north", "south":
+				for _s in range(1, _opr.size.y / STEP_DEPTH):
+					var _ny := _sry + float(_s * STEP_DEPTH * TILE_SIZE)
+					draw_line(Vector2(_srx, _ny), Vector2(_srx + _srw, _ny), SO_NOSING, 1.5)
+			"east", "west":
+				for _s in range(1, _opr.size.x / STEP_DEPTH):
+					var _nx := _srx + float(_s * STEP_DEPTH * TILE_SIZE)
+					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), SO_NOSING, 1.5)
+		draw_rect(Rect2(_srx, _sry, _srw, _srh), SO_BORDER, false, 2.0)
+		# Arrow pointing in DESCENT direction — mirrors ground-floor arrow but opposite end
+		# Ground floor: "north"→↑ tip at top | "south"→↓ tip at bottom
+		#               "east"→→ tip at right | "west"→← tip at left
+		# Loft descent: flip the tip to the opposite end and flip the chevron
+		match _opdir:
+			"north":  # descent ↓: tip at bottom, chevron opens upward
+				var _tip := Vector2(_scx, _sry + _srh - float(TILE_SIZE))
+				draw_line(Vector2(_scx, _sry + float(TILE_SIZE)), _tip, SO_ARROW, 2.5)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y - _aw), SO_ARROW, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y - _aw), SO_ARROW, 2.0)
+			"south":  # descent ↑: tip at top, chevron opens downward
+				var _tip := Vector2(_scx, _sry + float(TILE_SIZE))
+				draw_line(Vector2(_scx, _sry + _srh - float(TILE_SIZE)), _tip, SO_ARROW, 2.5)
+				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y + _aw), SO_ARROW, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y + _aw), SO_ARROW, 2.0)
+			"east":   # descent ←: tip at left, chevron opens rightward
+				var _tip := Vector2(_srx + float(TILE_SIZE), _scy)
+				draw_line(Vector2(_srx + _srw - float(TILE_SIZE), _scy), _tip, SO_ARROW, 2.5)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y - _aw * 0.5), SO_ARROW, 2.0)
+				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
+			"west":   # descent →: tip at right, chevron opens leftward
+				var _tip := Vector2(_srx + _srw - float(TILE_SIZE), _scy)
+				draw_line(Vector2(_srx + float(TILE_SIZE), _scy), _tip, SO_ARROW, 2.5)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), SO_ARROW, 2.0)
+				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
+
+	# ── 2e. Rail tracks ──────────────────────────────────────────────────────
 	const RAIL_COL  := Color(0.22, 0.70, 0.78, 0.90)
 	const RAIL_DASH := Color(0.22, 0.70, 0.78, 0.45)
 	for rail in parent.rails:
@@ -236,20 +372,19 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				draw_line(Vector2(px1 + 1.5, ty), Vector2(px2 - 1.5, ty), RAIL_DASH, 0.8)
 				ty += TILE_SIZE
 
-	# ── 3. Grid lines ─────────────────────────────────────────────────────────
-	# Subcell lines (10 cm) — 1 px wide, drawn when each tile is ≥ 5 screen px
-	if show_fine:
-		for x in range(w + 1):
-			if x % METER_TILES != 0:
-				draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), FINE_COL, 1.0)
-		for y in range(h + 1):
-			if y % METER_TILES != 0:
-				draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), FINE_COL, 1.0)
-	# Meter lines (1 m) — 2 px wide, always drawn
-	for x in range(0, w + 1, METER_TILES):
-		draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), MAJOR_COL, 2.0)
-	for y in range(0, h + 1, METER_TILES):
-		draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), MAJOR_COL, 2.0)
+	# ── 3. Grid lines — only while furniture is being dragged ─────────────────
+	if show_grid:
+		if show_fine:
+			for x in range(w + 1):
+				if x % METER_TILES != 0:
+					draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), FINE_COL, 1.0)
+			for y in range(h + 1):
+				if y % METER_TILES != 0:
+					draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), FINE_COL, 1.0)
+		for x in range(0, w + 1, METER_TILES):
+			draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), MAJOR_COL, 2.0)
+		for y in range(0, h + 1, METER_TILES):
+			draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), MAJOR_COL, 2.0)
 
 	# ── 4. Natural light hatching (only over painted tiles) ───────────────────
 	_draw_natural_light(parent)

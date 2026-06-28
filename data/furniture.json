@@ -4,10 +4,15 @@
       "id": "normal_bed",
       "name": "Bed",
       "placement": "floor",
-      "size": { "w": 19, "h": 9 },
+      "size": {
+        "w": 19,
+        "h": 9
+      },
       "wall_h": 5,
       "floor_depth": 9,
-      "functions": ["sleep"],
+      "functions": [
+        "sleep"
+      ],
       "buy_price": 300,
       "sell_price": 150,
       "color": "7a9ec0"
@@ -16,10 +21,16 @@
       "id": "storage_bed",
       "name": "Storage Bed",
       "placement": "floor",
-      "size": { "w": 19, "h": 9 },
+      "size": {
+        "w": 19,
+        "h": 9
+      },
       "wall_h": 6,
       "floor_depth": 9,
-      "functions": ["sleep", "storage"],
+      "functions": [
+        "sleep",
+        "storage"
+      ],
       "buy_price": 420,
       "sell_price": 180,
       "color": "5888b0"
@@ -28,12 +39,17 @@
       "id": "high_bed",
       "name": "Loft Bed",
       "placement": "floor",
-      "size": { "w": 19, "h": 9 },
+      "size": {
+        "w": 19,
+        "h": 9
+      },
       "wall_h": 19,
       "floor_depth": 9,
       "height_category": "tall",
       "creates_loft": true,
-      "functions": ["sleep"],
+      "functions": [
+        "sleep"
+      ],
       "buy_price": 500,
       "sell_price": 250,
       "color": "6a8eb0"
@@ -42,12 +58,17 @@
       "id": "bunk_bed",
       "name": "Bunk Bed",
       "placement": "floor",
-      "size": { "w": 19, "h": 9 },
+      "size": {
+        "w": 19,
+        "h": 9
+      },
       "wall_h": 20,
       "floor_depth": 9,
       "height_category": "tall",
       "creates_loft": true,
-      "functions": ["sleep"],
+      "functions": [
+        "sleep"
+      ],
       "buy_price": 550,
       "sell_price": 220,
       "color": "6a8ea8"
@@ -56,10 +77,15 @@
       "id": "murphy_bed",
       "name": "Murphy Bed",
       "placement": "wall",
-      "size": { "w": 9, "h": 3 },
+      "size": {
+        "w": 9,
+        "h": 3
+      },
       "wall_h": 19,
       "floor_depth": 20,
-      "functions": ["sleep"],
+      "functions": [
+        "sleep"
+      ],
       "buy_price": 700,
       "sell_price": 350,
       "color": "5a7ea0"
@@ -68,14 +94,24 @@
       "id": "futon",
       "name": "Futon",
       "placement": "floor",
-      "size": { "w": 16, "h": 8 },
+      "size": {
+        "w": 16,
+        "h": 8
+      },
       "wall_h": 5,
       "floor_depth": 8,
       "foldable": true,
       "extended_add_h": 11,
-      "functions": ["sit", "sleep"],
-      "folded_functions": ["sit"],
-      "extended_functions": ["sleep"],
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
       "buy_price": 280,
       "sell_price": 100,
       "color": "c8a870"
@@ -84,11 +120,16 @@
       "id": "sofa",
       "name": "Sofa",
       "placement": "floor",
-      "size": { "w": 20, "h": 9 },
+      "size": {
+        "w": 20,
+        "h": 9
+      },
       "wall_h": 9,
       "floor_depth": 9,
       "ghost_radius": 3,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 250,
       "sell_price": 100,
       "color": "c87848"
@@ -97,15 +138,25 @@
       "id": "sofa_bed",
       "name": "Sofa Bed",
       "placement": "floor",
-      "size": { "w": 20, "h": 9 },
+      "size": {
+        "w": 20,
+        "h": 9
+      },
       "wall_h": 9,
       "floor_depth": 9,
       "ghost_radius": 4,
       "foldable": true,
       "extended_add_h": 12,
-      "functions": ["sit", "sleep"],
-      "folded_functions": ["sit"],
-      "extended_functions": ["sleep"],
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
       "buy_price": 450,
       "sell_price": 200,
       "color": "b86838"
@@ -114,11 +165,16 @@
       "id": "lounge_chair",
       "name": "Lounge Chair",
       "placement": "floor",
-      "size": { "w": 8, "h": 8 },
+      "size": {
+        "w": 8,
+        "h": 8
+      },
       "wall_h": 8,
       "floor_depth": 8,
       "ghost_radius": 3,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 180,
       "sell_price": 70,
       "color": "a87050"
@@ -127,11 +183,16 @@
       "id": "barcelona_chair",
       "name": "Barcelona Chair",
       "placement": "floor",
-      "size": { "w": 8, "h": 8 },
+      "size": {
+        "w": 8,
+        "h": 8
+      },
       "wall_h": 7,
       "floor_depth": 8,
       "ghost_radius": 3,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 500,
       "sell_price": 200,
       "color": "1c1008"
@@ -140,10 +201,15 @@
       "id": "puff",
       "name": "Puff",
       "placement": "floor",
-      "size": { "w": 6, "h": 6 },
+      "size": {
+        "w": 6,
+        "h": 6
+      },
       "wall_h": 5,
       "floor_depth": 6,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 80,
       "sell_price": 30,
       "color": "d07848"
@@ -152,10 +218,16 @@
       "id": "ottoman",
       "name": "Ottoman",
       "placement": "floor",
-      "size": { "w": 5, "h": 5 },
+      "size": {
+        "w": 5,
+        "h": 5
+      },
       "wall_h": 5,
       "floor_depth": 5,
-      "functions": ["sit", "storage"],
+      "functions": [
+        "sit",
+        "storage"
+      ],
       "buy_price": 200,
       "sell_price": 80,
       "color": "c8a060"
@@ -164,10 +236,15 @@
       "id": "stool",
       "name": "Stool",
       "placement": "floor",
-      "size": { "w": 3, "h": 3 },
+      "size": {
+        "w": 3,
+        "h": 3
+      },
       "wall_h": 5,
       "floor_depth": 3,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 50,
       "sell_price": 20,
       "color": "c09060"
@@ -176,11 +253,16 @@
       "id": "desk",
       "name": "Desk",
       "placement": "floor",
-      "size": { "w": 12, "h": 6 },
+      "size": {
+        "w": 12,
+        "h": 6
+      },
       "wall_h": 8,
       "floor_depth": 6,
       "ghost_radius": 3,
-      "functions": ["work"],
+      "functions": [
+        "work"
+      ],
       "buy_price": 200,
       "sell_price": 80,
       "color": "6a9e78"
@@ -189,11 +271,16 @@
       "id": "small_desk",
       "name": "Small Desk",
       "placement": "floor",
-      "size": { "w": 8, "h": 5 },
+      "size": {
+        "w": 8,
+        "h": 5
+      },
       "wall_h": 6,
       "floor_depth": 5,
       "ghost_radius": 3,
-      "functions": ["work"],
+      "functions": [
+        "work"
+      ],
       "buy_price": 120,
       "sell_price": 40,
       "color": "7aae88"
@@ -202,14 +289,21 @@
       "id": "murphy_desk",
       "name": "Fold-Down Desk",
       "placement": "wall",
-      "size": { "w": 10, "h": 2 },
+      "size": {
+        "w": 10,
+        "h": 2
+      },
       "wall_h": 12,
       "floor_depth": 8,
       "foldable": true,
       "extended_add_h": 8,
-      "functions": ["work"],
+      "functions": [
+        "work"
+      ],
       "folded_functions": [],
-      "extended_functions": ["work"],
+      "extended_functions": [
+        "work"
+      ],
       "buy_price": 500,
       "sell_price": 220,
       "color": "5a8e68"
@@ -218,11 +312,16 @@
       "id": "dining_table",
       "name": "Dining Table",
       "placement": "floor",
-      "size": { "w": 16, "h": 10 },
+      "size": {
+        "w": 16,
+        "h": 10
+      },
       "wall_h": 6,
       "floor_depth": 10,
       "ghost_radius": 4,
-      "functions": ["dine"],
+      "functions": [
+        "dine"
+      ],
       "buy_price": 250,
       "sell_price": 100,
       "color": "b09060"
@@ -231,10 +330,15 @@
       "id": "coffee_table",
       "name": "Coffee Table",
       "placement": "floor",
-      "size": { "w": 8, "h": 5 },
+      "size": {
+        "w": 8,
+        "h": 5
+      },
       "wall_h": 4,
       "floor_depth": 5,
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "buy_price": 100,
       "sell_price": 40,
       "color": "b09870"
@@ -243,12 +347,17 @@
       "id": "kitchen",
       "name": "Kitchen Unit",
       "placement": "floor",
-      "size": { "w": 24, "h": 6 },
+      "size": {
+        "w": 24,
+        "h": 6
+      },
       "wall_h": 22,
       "floor_depth": 6,
       "needs_water": true,
       "needs_power": true,
-      "functions": ["cook"],
+      "functions": [
+        "cook"
+      ],
       "buy_price": 600,
       "sell_price": 200,
       "color": "a09888"
@@ -257,12 +366,17 @@
       "id": "kitchen_small",
       "name": "Compact Kitchen",
       "placement": "floor",
-      "size": { "w": 14, "h": 6 },
+      "size": {
+        "w": 14,
+        "h": 6
+      },
       "wall_h": 20,
       "floor_depth": 6,
       "needs_water": true,
       "needs_power": true,
-      "functions": ["cook"],
+      "functions": [
+        "cook"
+      ],
       "buy_price": 400,
       "sell_price": 140,
       "color": "908878"
@@ -271,13 +385,18 @@
       "id": "wardrobe",
       "name": "Wardrobe",
       "placement": "floor",
-      "size": { "w": 10, "h": 6 },
+      "size": {
+        "w": 10,
+        "h": 6
+      },
       "wall_h": 20,
       "floor_depth": 6,
       "ghost_radius": 3,
       "height_category": "tall",
       "rail_axis": "h",
-      "functions": ["storage"],
+      "functions": [
+        "storage"
+      ],
       "buy_price": 300,
       "sell_price": 100,
       "color": "b08848"
@@ -286,12 +405,17 @@
       "id": "bookshelf",
       "name": "Bookshelf",
       "placement": "floor",
-      "size": { "w": 8, "h": 3 },
+      "size": {
+        "w": 8,
+        "h": 3
+      },
       "wall_h": 22,
       "floor_depth": 3,
       "height_category": "tall",
       "rail_axis": "h",
-      "functions": ["storage"],
+      "functions": [
+        "storage"
+      ],
       "buy_price": 150,
       "sell_price": 50,
       "color": "9a7840"
@@ -300,11 +424,17 @@
       "id": "pantry",
       "name": "Pantry",
       "placement": "floor",
-      "size": { "w": 5, "h": 5 },
+      "size": {
+        "w": 5,
+        "h": 5
+      },
       "wall_h": 20,
       "floor_depth": 5,
       "height_category": "tall",
-      "functions": ["storage", "cook"],
+      "functions": [
+        "storage",
+        "cook"
+      ],
       "buy_price": 200,
       "sell_price": 70,
       "color": "8a7060"
@@ -313,10 +443,15 @@
       "id": "wall_shelf",
       "name": "Shelf",
       "placement": "wall",
-      "size": { "w": 8, "h": 2 },
+      "size": {
+        "w": 8,
+        "h": 2
+      },
       "wall_h": 3,
       "floor_depth": 2,
-      "functions": ["storage"],
+      "functions": [
+        "storage"
+      ],
       "buy_price": 80,
       "sell_price": 30,
       "color": "987840"
@@ -325,10 +460,16 @@
       "id": "wall_cabinet",
       "name": "Cabinet",
       "placement": "wall",
-      "size": { "w": 8, "h": 3 },
+      "size": {
+        "w": 8,
+        "h": 3
+      },
       "wall_h": 6,
       "floor_depth": 3,
-      "functions": ["storage", "cook"],
+      "functions": [
+        "storage",
+        "cook"
+      ],
       "buy_price": 400,
       "sell_price": 150,
       "color": "887030"
@@ -337,10 +478,15 @@
       "id": "wall_hanger",
       "name": "Wall Hanger",
       "placement": "wall",
-      "size": { "w": 5, "h": 1 },
+      "size": {
+        "w": 5,
+        "h": 1
+      },
       "wall_h": 2,
       "floor_depth": 1,
-      "functions": ["storage"],
+      "functions": [
+        "storage"
+      ],
       "buy_price": 40,
       "sell_price": 15,
       "color": "987840"
@@ -349,7 +495,10 @@
       "id": "tv",
       "name": "TV",
       "placement": "wall",
-      "size": { "w": 13, "h": 1 },
+      "size": {
+        "w": 13,
+        "h": 1
+      },
       "wall_h": 8,
       "floor_depth": 1,
       "functions": [],
@@ -361,7 +510,10 @@
       "id": "mirror",
       "name": "Mirror",
       "placement": "wall",
-      "size": { "w": 6, "h": 1 },
+      "size": {
+        "w": 6,
+        "h": 1
+      },
       "wall_h": 8,
       "floor_depth": 1,
       "functions": [],
@@ -373,7 +525,10 @@
       "id": "painting",
       "name": "Painting",
       "placement": "wall",
-      "size": { "w": 5, "h": 1 },
+      "size": {
+        "w": 5,
+        "h": 1
+      },
       "wall_h": 5,
       "floor_depth": 1,
       "functions": [],
@@ -382,23 +537,13 @@
       "color": "c89848"
     },
     {
-      "id": "stairs",
-      "name": "Stairs",
-      "placement": "floor",
-      "size": { "w": 5, "h": 10 },
-      "wall_h": 20,
-      "floor_depth": 10,
-      "height_category": "tall",
-      "functions": [],
-      "buy_price": 600,
-      "sell_price": 200,
-      "color": "9a8a6a"
-    },
-    {
       "id": "plant",
       "name": "Plant",
       "placement": "floor",
-      "size": { "w": 3, "h": 3 },
+      "size": {
+        "w": 3,
+        "h": 3
+      },
       "wall_h": 8,
       "floor_depth": 3,
       "functions": [],
@@ -410,85 +555,207 @@
       "id": "wall_plant",
       "name": "Wall Plant",
       "placement": "wall",
-      "size": { "w": 3, "h": 1 },
+      "size": {
+        "w": 3,
+        "h": 1
+      },
       "wall_h": 5,
       "floor_depth": 1,
       "functions": [],
       "buy_price": 25,
       "sell_price": 8,
       "color": "488038"
+    },
+    {
+      "id": "stair_n",
+      "name": "Staircase (North)",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 18
+      },
+      "functions": [
+        "loft_access"
+      ],
+      "buy_price": 650,
+      "sell_price": 300,
+      "color": "4a5a8a",
+      "height_category": "tall",
+      "z_top": 18,
+      "is_stair": true,
+      "stair_direction": "north"
+    },
+    {
+      "id": "stair_s",
+      "name": "Staircase (South)",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 18
+      },
+      "functions": [
+        "loft_access"
+      ],
+      "buy_price": 650,
+      "sell_price": 300,
+      "color": "4a5a8a",
+      "height_category": "tall",
+      "z_top": 18,
+      "is_stair": true,
+      "stair_direction": "south"
+    },
+    {
+      "id": "stair_e",
+      "name": "Staircase (East)",
+      "placement": "floor",
+      "size": {
+        "w": 18,
+        "h": 8
+      },
+      "functions": [
+        "loft_access"
+      ],
+      "buy_price": 650,
+      "sell_price": 300,
+      "color": "4a5a8a",
+      "height_category": "tall",
+      "z_top": 18,
+      "is_stair": true,
+      "stair_direction": "east"
+    },
+    {
+      "id": "stair_w",
+      "name": "Staircase (West)",
+      "placement": "floor",
+      "size": {
+        "w": 18,
+        "h": 8
+      },
+      "functions": [
+        "loft_access"
+      ],
+      "buy_price": 650,
+      "sell_price": 300,
+      "color": "4a5a8a",
+      "height_category": "tall",
+      "z_top": 18,
+      "is_stair": true,
+      "stair_direction": "west"
     }
   ],
   "paintable": [
     {
       "id": "painted_bed",
       "label": "Custom Bed",
-      "functions": ["sleep"],
+      "functions": [
+        "sleep"
+      ],
       "cost_per_tile": 20,
       "min_tiles": 12,
       "max_aspect": 3.5,
       "min_short_side": 4,
-      "color": [0.28, 0.46, 0.72]
+      "color": [
+        0.28,
+        0.46,
+        0.72
+      ]
     },
     {
       "id": "painted_kitchen",
       "label": "Custom Kitchen",
-      "functions": ["cook"],
+      "functions": [
+        "cook"
+      ],
       "cost_per_tile": 35,
       "min_tiles": 8,
       "max_aspect": 7.0,
       "min_short_side": 2,
-      "color": [0.76, 0.42, 0.20]
+      "color": [
+        0.76,
+        0.42,
+        0.2
+      ]
     },
     {
       "id": "painted_workspace",
       "label": "Custom Desk",
-      "functions": ["work"],
+      "functions": [
+        "work"
+      ],
       "cost_per_tile": 15,
       "min_tiles": 6,
       "max_aspect": 5.0,
       "min_short_side": 2,
-      "color": [0.38, 0.68, 0.44]
+      "color": [
+        0.38,
+        0.68,
+        0.44
+      ]
     },
     {
       "id": "painted_sofa",
       "label": "Custom Sofa",
-      "functions": ["sit"],
+      "functions": [
+        "sit"
+      ],
       "cost_per_tile": 25,
       "min_tiles": 6,
       "max_aspect": 5.0,
       "min_short_side": 2,
-      "color": [0.62, 0.40, 0.70]
+      "color": [
+        0.62,
+        0.4,
+        0.7
+      ]
     },
     {
       "id": "painted_dining",
       "label": "Custom Dining Area",
-      "functions": ["dine"],
+      "functions": [
+        "dine"
+      ],
       "cost_per_tile": 20,
       "min_tiles": 8,
       "max_aspect": 4.0,
       "min_short_side": 3,
-      "color": [0.72, 0.62, 0.38]
+      "color": [
+        0.72,
+        0.62,
+        0.38
+      ]
     },
     {
       "id": "painted_storage",
       "label": "Custom Storage",
-      "functions": ["storage"],
+      "functions": [
+        "storage"
+      ],
       "cost_per_tile": 15,
       "min_tiles": 4,
       "max_aspect": 6.0,
       "min_short_side": 1,
-      "color": [0.65, 0.55, 0.40]
+      "color": [
+        0.65,
+        0.55,
+        0.4
+      ]
     },
     {
       "id": "painted_bathroom",
       "label": "Custom Bathroom",
-      "functions": ["shower", "toilet"],
+      "functions": [
+        "shower",
+        "toilet"
+      ],
       "cost_per_tile": 40,
       "min_tiles": 6,
       "max_aspect": 4.0,
       "min_short_side": 2,
-      "color": [0.60, 0.80, 0.85]
+      "color": [
+        0.6,
+        0.8,
+        0.85
+      ]
     }
   ]
 }
