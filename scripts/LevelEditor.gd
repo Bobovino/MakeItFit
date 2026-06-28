@@ -129,6 +129,12 @@ var _active_efl:    int           = 1   # default: ground floor (index 1)
 var _fl_list_vb:    VBoxContainer = null
 var _hidden_fl_ids: Dictionary    = {}  # floor id -> true; player cannot switch to these
 
+# ── Moments ───────────────────────────────────────────────────────────────────
+var _moments:         Array         = []   # [{id, label}]
+var _active_moment:   String        = ""   # "" = no moment active
+var _moment_funcs:    Dictionary    = {}   # moment_id -> {fn_name: bool}
+var _moment_dropdown: OptionButton  = null
+
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  READY                                                                   ║
@@ -390,6 +396,20 @@ func _build_right(ui: Node) -> void:
 	vb.add_child(_fl_list_vb)
 	_refresh_fl_switcher()
 
+	# ── Moments (time-based configurations) ─────────────────────────────────
+	_sect(vb, "MOMENT")
+	_moment_dropdown = OptionButton.new()
+	_moment_dropdown.add_theme_font_size_override("font_size", 10)
+	_moment_dropdown.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_moment_dropdown.item_selected.connect(_on_moment_selected)
+	vb.add_child(_moment_dropdown)
+	var mgmt_btn := Button.new()
+	mgmt_btn.text  = "Manage Moments…"
+	mgmt_btn.add_theme_font_size_override("font_size", 10)
+	mgmt_btn.pressed.connect(_open_moments_modal)
+	vb.add_child(mgmt_btn)
+	_rebuild_moment_dropdown()
+
 	_sect(vb, "LEVEL")
 	_level_summary_lbl = Label.new()
 	_level_summary_lbl.add_theme_font_size_override("font_size", 10)
@@ -519,6 +539,161 @@ func _open_level_details_modal() -> void:
 
 	win.close_requested.connect(win.queue_free)
 	win.popup_centered()
+
+
+# ── Moment management ─────────────────────────────────────────────────────────
+
+func _rebuild_moment_dropdown() -> void:
+	if not is_instance_valid(_moment_dropdown): return
+	_moment_dropdown.clear()
+	_moment_dropdown.add_item("— No moment —", 0)
+	for i in range(_moments.size()):
+		_moment_dropdown.add_item((_moments[i] as Dictionary)["label"] as String, i + 1)
+	var sel := 0
+	for i in range(_moments.size()):
+		if (_moments[i] as Dictionary)["id"] == _active_moment:
+			sel = i + 1; break
+	_moment_dropdown.selected = sel
+
+
+func _on_moment_selected(idx: int) -> void:
+	if idx == 0:
+		_active_moment = ""
+	elif idx - 1 < _moments.size():
+		_active_moment = (_moments[idx - 1] as Dictionary)["id"] as String
+
+
+func _open_moments_modal() -> void:
+	var win := Window.new()
+	win.title = "Moments"
+	win.size  = Vector2i(380, 480)
+	win.wrap_controls = true
+	add_child(win)
+
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	win.add_child(scroll)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	vb.custom_minimum_size = Vector2(350, 0)
+	scroll.add_child(vb)
+
+	var hint := Label.new()
+	hint.text = "Moments let you define named time-of-day states for this level (e.g. Day, Night, Sport). Each moment can require different tenant needs and furniture configurations."
+	hint.add_theme_font_size_override("font_size", 10)
+	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(hint)
+
+	_rebuild_moments_list(vb, win)
+
+	var add_btn := Button.new()
+	add_btn.text = "+ Add Moment"
+	add_btn.add_theme_font_size_override("font_size", 11)
+	add_btn.pressed.connect(func():
+		_add_moment()
+		win.queue_free()
+		_open_moments_modal())
+	vb.add_child(add_btn)
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.add_theme_font_size_override("font_size", 11)
+	close_btn.pressed.connect(win.queue_free)
+	vb.add_child(close_btn)
+
+	win.close_requested.connect(win.queue_free)
+	win.popup_centered()
+
+
+func _rebuild_moments_list(vb: VBoxContainer, win: Window) -> void:
+	const FNS := ["sleep", "sit", "work", "cook", "storage", "dine"]
+	for i in range(_moments.size()):
+		var m   := _moments[i] as Dictionary
+		var mid := m["id"] as String
+
+		var sep := HSeparator.new()
+		vb.add_child(sep)
+
+		# Label row
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		vb.add_child(row)
+
+		var ef := LineEdit.new()
+		ef.text = m["label"] as String
+		ef.placeholder_text = "Moment name"
+		ef.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ef.add_theme_font_size_override("font_size", 11)
+		var ci := i
+		ef.text_changed.connect(func(t: String):
+			_moments[ci]["label"] = t
+			_moments[ci]["id"]    = t.to_lower().replace(" ", "_")
+			_rebuild_moment_dropdown())
+		row.add_child(ef)
+
+		var del_btn := Button.new()
+		del_btn.text = "×"
+		del_btn.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+		del_btn.pressed.connect(func():
+			_delete_moment(ci)
+			win.queue_free()
+			_open_moments_modal())
+		row.add_child(del_btn)
+
+		# Per-moment required functions
+		var fn_lbl := Label.new()
+		fn_lbl.text = "Needs in this moment:"
+		fn_lbl.add_theme_font_size_override("font_size", 9)
+		fn_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		vb.add_child(fn_lbl)
+
+		var fn_hb := HBoxContainer.new()
+		fn_hb.add_theme_constant_override("separation", 2)
+		vb.add_child(fn_hb)
+
+		if not _moment_funcs.has(mid):
+			_moment_funcs[mid] = {}
+		var mf := _moment_funcs[mid] as Dictionary
+
+		for fn: String in FNS:
+			var cb := CheckBox.new()
+			cb.text = fn
+			cb.button_pressed = mf.get(fn, false) as bool
+			cb.add_theme_font_size_override("font_size", 9)
+			var fn_copy := fn
+			var mid_copy := mid
+			cb.toggled.connect(func(on: bool):
+				(_moment_funcs[mid_copy] as Dictionary)[fn_copy] = on)
+			fn_hb.add_child(cb)
+
+
+func _add_moment() -> void:
+	var defaults := ["Day", "Night", "Home Office", "Sport", "Morning", "Dinner"]
+	var lbl := defaults[mini(_moments.size(), defaults.size() - 1)]
+	var mid := lbl.to_lower().replace(" ", "_")
+	# Avoid duplicate ids
+	var existing_ids: Array = []
+	for m in _moments: existing_ids.append((m as Dictionary)["id"])
+	var suffix := 2
+	var base_mid := mid
+	while mid in existing_ids:
+		mid = base_mid + str(suffix); suffix += 1
+	_moments.append({"id": mid, "label": lbl})
+	_moment_funcs[mid] = {}
+	_rebuild_moment_dropdown()
+
+
+func _delete_moment(idx: int) -> void:
+	if idx < 0 or idx >= _moments.size(): return
+	var mid := (_moments[idx] as Dictionary)["id"] as String
+	_moments.remove_at(idx)
+	_moment_funcs.erase(mid)
+	if _active_moment == mid:
+		_active_moment = ""
+	_rebuild_moment_dropdown()
 
 
 # ── Floor management ──────────────────────────────────────────────────────────
@@ -1820,6 +1995,35 @@ func _fill_inv_modal_rows() -> void:
 			_fill_inv_modal_rows())
 		prow.add_child(del_btn)
 
+		# Per-moment extended states (foldable furniture only, when moments exist)
+		if not _moments.is_empty() and pfdata.get("foldable", false) as bool:
+			if not pf.has("moment_states"):
+				pf["moment_states"] = {}
+			var ms_hb := HBoxContainer.new()
+			ms_hb.add_theme_constant_override("separation", 8)
+			_inv_list_vb.add_child(ms_hb)
+			var ms_lbl := Label.new()
+			ms_lbl.text = "    ↳"
+			ms_lbl.add_theme_font_size_override("font_size", 9)
+			ms_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+			ms_hb.add_child(ms_lbl)
+			for m in _moments:
+				var mid  := (m as Dictionary)["id"]    as String
+				var mlbl := (m as Dictionary)["label"] as String
+				var ms   := pf["moment_states"] as Dictionary
+				if not ms.has(mid): ms[mid] = {}
+				var cb := CheckBox.new()
+				cb.text           = mlbl + " extended"
+				cb.button_pressed = (ms[mid] as Dictionary).get("extended", false) as bool
+				cb.add_theme_font_size_override("font_size", 9)
+				var mid_copy := mid
+				var pf_ref   := pf
+				cb.toggled.connect(func(on: bool):
+					var msd := (pf_ref as Dictionary).get("moment_states", {}) as Dictionary
+					if not msd.has(mid_copy): msd[mid_copy] = {}
+					(msd[mid_copy] as Dictionary)["extended"] = on)
+				ms_hb.add_child(cb)
+
 
 func _furn_data_by_id(fid: String) -> Dictionary:
 	for f in _furn_catalog:
@@ -2302,6 +2506,18 @@ func _build_dict() -> Dictionary:
 		"allowed_furniture":   _allowed_furniture.duplicate(),
 		"starting_inventory":  _starting_inventory.duplicate(true),
 		"starting_furniture":  _placed_furniture.duplicate(true),
+		"moments": (func() -> Array:
+			var out: Array = []
+			for m in _moments:
+				var mid  := (m as Dictionary)["id"]    as String
+				var mf   := (_moment_funcs.get(mid, {}) as Dictionary)
+				var needs: Array = []
+				for fn in mf:
+					if mf[fn]: needs.append(fn)
+				var entry := (m as Dictionary).duplicate()
+				entry["needs"] = needs
+				out.append(entry)
+			return out).call(),
 		"apartment": {
 			"grid_w": _gw, "grid_h": _gh,
 			"active_floor": _active_efl,
@@ -2524,6 +2740,22 @@ func _load_from_dict(d: Dictionary) -> void:
 	_starting_inventory = (d.get("starting_inventory", []) as Array).duplicate(true)
 	_placed_furniture   = (d.get("starting_furniture", []) as Array).duplicate(true)
 	_update_inv_count_lbl()
+
+	# Moments — strip embedded needs back into _moment_funcs for the editor UI
+	_moments = []
+	_moment_funcs = {}
+	for m in (d.get("moments", []) as Array):
+		var md  := (m as Dictionary).duplicate()
+		var mid := md["id"] as String
+		var needs := md.get("needs", []) as Array
+		md.erase("needs")
+		_moments.append(md)
+		var mf: Dictionary = {}
+		for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine"]:
+			mf[fn] = fn in needs
+		_moment_funcs[mid] = mf
+	_active_moment = ""
+	_rebuild_moment_dropdown()
 
 	_refresh_fl_switcher()
 	_rebuild_floor()
