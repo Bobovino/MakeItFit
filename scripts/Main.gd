@@ -151,6 +151,15 @@ func _load_level(level_id: String) -> void:
 		# grid_w/h live at apartment level now — inject before setup
 		(fd as Dictionary)["grid_w"] = apt_gw
 		(fd as Dictionary)["grid_h"] = apt_gh
+		# Subfloor/ceiling floors have floor_tiles cleared at export time —
+		# they borrow the parent floor's tiles so they draw the same outline.
+		var _ftype := (fd as Dictionary).get("type", "") as String
+		if _ftype in ["floor_sub", "ceiling"] and ((fd as Dictionary).get("floor_tiles", []) as Array).is_empty():
+			var _pid := (fd as Dictionary).get("parent_id", "") as String
+			for _pfd in floors_data:
+				if (_pfd as Dictionary).get("id", "") == _pid:
+					(fd as Dictionary)["floor_tiles"] = (_pfd as Dictionary).get("floor_tiles", [])
+					break
 		apt_floor.setup(fd)
 		apt_floor.furniture_changed.connect(_on_furniture_changed)
 		apt_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(apt_floor))
