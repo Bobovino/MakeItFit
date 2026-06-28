@@ -20,13 +20,26 @@ var connection_points: Dictionary = {}  # {water:[{x,y}], power:[{x,y}]}
 var pipe_routes: Array = []     # [{type:"water"|"power", tiles:[Vector2i]}]  player-drawn
 var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
 
-var floor_mask: Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
-var segments:   Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
-var _use_new_format: bool  = false
+var floor_mask:     Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
+var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
+var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
+var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
+var rails:          Array      = []   # [{x1,y1,x2,y2}] sliding rail tracks
+var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
+var _use_new_format: bool      = false
 
 var _placed: Dictionary = {}      # Vector2i -> Furniture
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
 var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
+
+# Cached floor bounds in local px — set in setup(), used by _input() for edge detection
+var _edge_x0: float = 0.0
+var _edge_y0: float = 0.0
+var _edge_x1: float = 0.0
+var _edge_y1: float = 0.0
+# Drag tracking for wall inspector
+var _drag_press_local: Vector2 = Vector2.ZERO
+var _drag_active:      bool    = false
 
 @onready var grid_draw: GridDraw = $GridDraw
 
@@ -137,6 +150,13 @@ func setup(floor_data: Dictionary) -> void:
 		floor_mask.clear()
 		for t in floor_data.get("floor_tiles", []):
 			floor_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		mezzanine_mask.clear()
+		for t in floor_data.get("mezzanine_tiles", []):
+			mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		stair_mask.clear()
+		for t in floor_data.get("stair_tiles", []):
+			stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		rails = (floor_data.get("rails", []) as Array).duplicate(true)
 		segments = []
 		for s in floor_data.get("segments", []):
 			var cs: Dictionary = (s as Dictionary).duplicate()
@@ -154,6 +174,24 @@ func setup(floor_data: Dictionary) -> void:
 			var cp: Dictionary = (p as Dictionary).duplicate()
 			cp["demolished"] = false
 			partitions.append(cp)
+
+	# Cache edge-detection bounds in local pixel space (tiles may not start at origin)
+	if _use_new_format and not floor_mask.is_empty():
+		var _mx0 := 999999; var _my0 := 999999
+		var _mx1 := -999999; var _my1 := -999999
+		for _t in floor_mask:
+			var _tx: int = (_t as Vector2i).x; var _ty: int = (_t as Vector2i).y
+			if _tx < _mx0: _mx0 = _tx
+			if _ty < _my0: _my0 = _ty
+			if _tx > _mx1: _mx1 = _tx
+			if _ty > _my1: _my1 = _ty
+		_edge_x0 = float(_mx0 * TILE_SIZE)
+		_edge_y0 = float(_my0 * TILE_SIZE)
+		_edge_x1 = float((_mx1 + 1) * TILE_SIZE)
+		_edge_y1 = float((_my1 + 1) * TILE_SIZE)
+	else:
+		_edge_x0 = 0.0; _edge_y0 = 0.0
+		_edge_x1 = float(grid_w * TILE_SIZE); _edge_y1 = float(grid_h * TILE_SIZE)
 
 	if grid_draw:
 		_compute_light_map()
@@ -217,9 +255,9 @@ func demolish_segment(idx: int) -> void:
 		grid_draw.queue_redraw()
 
 
-func find_segment_near(fl_pos: Vector2) -> int:
-	const SNAP := float(TILE_SIZE) * 1.5
-	var best_d := SNAP
+func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
+	var snap := float(TILE_SIZE) * snap_tiles
+	var best_d := snap
 	var best_i := -1
 	for i in range(segments.size()):
 		var sd := segments[i] as Dictionary
@@ -238,31 +276,61 @@ func find_segment_near(fl_pos: Vector2) -> int:
 	return best_i
 
 
+func _near_edge(local: Vector2, x0: float, y0: float, x1: float, y1: float) -> String:
+	if local.y < y0 + EDGE_MARGIN and local.x > x0 and local.x < x1: return "north"
+	if local.y > y1 - EDGE_MARGIN and local.x > x0 and local.x < x1: return "south"
+	if local.x < x0 + EDGE_MARGIN and local.y > y0 and local.y < y1: return "west"
+	if local.x > x1 - EDGE_MARGIN and local.y > y0 and local.y < y1: return "east"
+	return ""
+
+
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	var local := to_local(get_viewport().get_mouse_position())
-	var rw := grid_w * TILE_SIZE
-	var rh := grid_h * TILE_SIZE
-	# Only trigger if click is near the border, outside the inner tiles
-	if local.x < -EDGE_MARGIN or local.x > rw + EDGE_MARGIN:
+	var local := to_local(get_global_mouse_position())
+	if event.pressed:
+		# New-format: press must start near an actual segment line
+		# Old-format: press must start near a bounding-box edge
+		var near := false
+		if _use_new_format:
+			near = find_segment_near(local, 3.0) >= 0
+		else:
+			near = _near_edge(local, _edge_x0, _edge_y0, _edge_x1, _edge_y1) != ""
+		if near:
+			_drag_press_local = local
+			_drag_active      = true
 		return
-	if local.y < -EDGE_MARGIN or local.y > rh + EDGE_MARGIN:
+	# ── Button released ────────────────────────────────────────────────────────
+	if not _drag_active:
 		return
-	if local.y < EDGE_MARGIN and local.x > 0 and local.x < rw:
-		wall_edge_clicked.emit("north")
-		get_viewport().set_input_as_handled()
-	elif local.y > rh - EDGE_MARGIN and local.x > 0 and local.x < rw:
-		wall_edge_clicked.emit("south")
-		get_viewport().set_input_as_handled()
-	elif local.x < EDGE_MARGIN and local.y > 0 and local.y < rh:
-		wall_edge_clicked.emit("west")
-		get_viewport().set_input_as_handled()
-	elif local.x > rw - EDGE_MARGIN and local.y > 0 and local.y < rh:
-		wall_edge_clicked.emit("east")
-		get_viewport().set_input_as_handled()
+	_drag_active = false
+	# Edge is determined by drag direction — same logic for both formats
+	var drag := local - _drag_press_local
+	var edge  := ""
+	if drag.length() > EDGE_MARGIN:
+		# Long drag: direction of the drag selects which face to inspect
+		if abs(drag.x) >= abs(drag.y):
+			edge = "east" if drag.x > 0.0 else "west"
+		else:
+			edge = "south" if drag.y > 0.0 else "north"
+	elif not _use_new_format:
+		# Short click on old format: proximity to bounding-box edge
+		edge = _near_edge(local, _edge_x0, _edge_y0, _edge_x1, _edge_y1)
+	else:
+		# Short click on new format: position relative to floor centre picks face
+		var cx := (_edge_x0 + _edge_x1) * 0.5
+		var cy := (_edge_y0 + _edge_y1) * 0.5
+		var dx := local.x - cx;  var dy := local.y - cy
+		if abs(dx) >= abs(dy):
+			edge = "east" if dx > 0.0 else "west"
+		else:
+			edge = "south" if dy > 0.0 else "north"
+	if edge == "":
+		return
+	# Emit signal — do NOT set_input_as_handled so editor painting still gets the event
+	wall_edge_clicked.emit(edge)
 
 
 func can_place(furniture: Furniture, at: Vector2i) -> bool:

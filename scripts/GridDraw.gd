@@ -14,8 +14,9 @@ const WALL_THICK   := 6.0
 const EDGE_W       := 10.0   # clickable strip width — must match Wall.gd EDGE_MARGIN
 const METER_TILES  := 10
 
-var _hovered_edge: String = ""
-var _active_edge:  String = ""
+var _hovered_edge:    String = ""
+var _active_edge:     String = ""
+var _hovered_seg_idx: int   = -1   # new-format hover: nearest segment index
 var _gm: GameManager = null
 var show_subfloor: bool = false
 var show_ceiling:  bool = false
@@ -37,26 +38,31 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	var parent: Floor = get_parent() as Floor
 	if not parent or not parent.visible:
-		if _hovered_edge != "":
-			_hovered_edge = ""
+		if _hovered_edge != "" or _hovered_seg_idx >= 0:
+			_hovered_edge = ""; _hovered_seg_idx = -1
 			queue_redraw()
 		return
 	var mouse := to_local(get_global_mouse_position())
-	var rw := parent.grid_w * TILE_SIZE
-	var rh := parent.grid_h * TILE_SIZE
-	var new_hover := ""
-	# Detect hover within EDGE_W on either side of the wall line
-	if mouse.y >= -EDGE_W and mouse.y <= EDGE_W and mouse.x >= 0 and mouse.x <= rw:
-		new_hover = "north"
-	elif mouse.y >= rh - EDGE_W and mouse.y <= rh + EDGE_W and mouse.x >= 0 and mouse.x <= rw:
-		new_hover = "south"
-	elif mouse.x >= -EDGE_W and mouse.x <= EDGE_W and mouse.y > EDGE_W and mouse.y < rh - EDGE_W:
-		new_hover = "west"
-	elif mouse.x >= rw - EDGE_W and mouse.x <= rw + EDGE_W and mouse.y > EDGE_W and mouse.y < rh - EDGE_W:
-		new_hover = "east"
-	if new_hover != _hovered_edge:
-		_hovered_edge = new_hover
-		queue_redraw()
+	if parent._use_new_format:
+		var sidx := parent.find_segment_near(mouse, 3.0)
+		if sidx != _hovered_seg_idx:
+			_hovered_seg_idx = sidx
+			queue_redraw()
+	else:
+		var x0 := parent._edge_x0; var y0 := parent._edge_y0
+		var x1 := parent._edge_x1; var y1 := parent._edge_y1
+		var new_hover := ""
+		if mouse.y >= y0 - EDGE_W and mouse.y <= y0 + EDGE_W and mouse.x >= x0 and mouse.x <= x1:
+			new_hover = "north"
+		elif mouse.y >= y1 - EDGE_W and mouse.y <= y1 + EDGE_W and mouse.x >= x0 and mouse.x <= x1:
+			new_hover = "south"
+		elif mouse.x >= x0 - EDGE_W and mouse.x <= x0 + EDGE_W and mouse.y > y0 + EDGE_W and mouse.y < y1 - EDGE_W:
+			new_hover = "west"
+		elif mouse.x >= x1 - EDGE_W and mouse.x <= x1 + EDGE_W and mouse.y > y0 + EDGE_W and mouse.y < y1 - EDGE_W:
+			new_hover = "east"
+		if new_hover != _hovered_edge:
+			_hovered_edge = new_hover
+			queue_redraw()
 
 
 func _draw() -> void:
@@ -80,6 +86,8 @@ func _draw() -> void:
 		_draw_subfloor_layer(parent)
 	if show_ceiling:
 		_draw_ceiling_layer(parent)
+	# Edge hover / active highlight — drawn on top, using tile-bound coords
+	_draw_edge_overlays(parent)
 
 
 func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
@@ -99,28 +107,6 @@ func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
 	draw_line(Vector2(0,  rh), Vector2(rw, rh), WALL_COLOR, WALL_THICK)
 	draw_line(Vector2(0,  0),  Vector2(0,  rh), WALL_COLOR, WALL_THICK)
 	draw_line(Vector2(rw, 0),  Vector2(rw, rh), WALL_COLOR, WALL_THICK)
-
-	if _hovered_edge != "" and _hovered_edge != _active_edge:
-		match _hovered_edge:
-			"north": draw_line(Vector2(0, 0),  Vector2(rw, 0),  EDGE_HOVER, WALL_THICK + 2.0)
-			"south": draw_line(Vector2(0, rh), Vector2(rw, rh), EDGE_HOVER, WALL_THICK + 2.0)
-			"west":  draw_line(Vector2(0, 0),  Vector2(0, rh),  EDGE_HOVER, WALL_THICK + 2.0)
-			"east":  draw_line(Vector2(rw, 0), Vector2(rw, rh), EDGE_HOVER, WALL_THICK + 2.0)
-	if _active_edge != "":
-		var glow_outer := Color(EDGE_ACTIVE.r, EDGE_ACTIVE.g, EDGE_ACTIVE.b, 0.35)
-		match _active_edge:
-			"north":
-				draw_line(Vector2(0, 0),  Vector2(rw, 0),  glow_outer,  WALL_THICK + 8.0)
-				draw_line(Vector2(0, 0),  Vector2(rw, 0),  EDGE_ACTIVE, WALL_THICK + 1.0)
-			"south":
-				draw_line(Vector2(0, rh), Vector2(rw, rh), glow_outer,  WALL_THICK + 8.0)
-				draw_line(Vector2(0, rh), Vector2(rw, rh), EDGE_ACTIVE, WALL_THICK + 1.0)
-			"west":
-				draw_line(Vector2(0, 0),  Vector2(0, rh),  glow_outer,  WALL_THICK + 8.0)
-				draw_line(Vector2(0, 0),  Vector2(0, rh),  EDGE_ACTIVE, WALL_THICK + 1.0)
-			"east":
-				draw_line(Vector2(rw, 0), Vector2(rw, rh), glow_outer,  WALL_THICK + 8.0)
-				draw_line(Vector2(rw, 0), Vector2(rw, rh), EDGE_ACTIVE, WALL_THICK + 1.0)
 
 	_draw_sloped_ceiling(parent)
 	_draw_partitions(parent)
@@ -150,10 +136,105 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# ── 1. Canvas background ──────────────────────────────────────────────────
 	draw_rect(Rect2(0, 0, ww, hh), CANVAS_BG)
 
+	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
+	if not parent.shadow_mask.is_empty():
+		const SHADOW_COL := Color(0.82, 0.79, 0.72, 0.38)
+		for tile in parent.shadow_mask:
+			var t := tile as Vector2i
+			draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), SHADOW_COL)
+
 	# ── 2. Painted floor tiles (cream) ───────────────────────────────────────
 	for tile in parent.floor_mask:
 		var t := tile as Vector2i
 		draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), FLOOR_COLOR)
+
+	# ── 2b. Mezzanine tiles (warm amber + diagonal hatch) ────────────────────
+	const MEZZ_FILL  := Color(0.85, 0.78, 0.58, 1.0)   # warm parchment above
+	const MEZZ_HATCH := Color(0.55, 0.45, 0.20, 0.55)  # dark amber hatch lines
+	const MEZZ_EDGE  := Color(0.40, 0.30, 0.10, 0.80)  # south+east shadow edge
+	for tile in parent.mezzanine_mask:
+		var t  := tile as Vector2i
+		var rx := float(t.x * TILE_SIZE)
+		var ry := float(t.y * TILE_SIZE)
+		var ts := float(TILE_SIZE)
+		draw_rect(Rect2(rx, ry, ts, ts), MEZZ_FILL)
+		# Diagonal hatch lines every 4 px
+		var step := 4.0
+		var i := 0.0
+		while i < ts * 2:
+			var x0 := maxf(rx,          rx + i - ts)
+			var y0 := minf(ry + ts,     ry + i)
+			var x1 := minf(rx + ts,     rx + i)
+			var y1 := maxf(ry,          ry + i - ts)
+			if x0 < rx + ts and y0 > ry:
+				draw_line(Vector2(x0, y0), Vector2(x1, y1), MEZZ_HATCH, 0.8)
+			i += step
+		# Bottom and right shadow edge (architectural convention: elevated slab)
+		var nb_s := Vector2i(t.x,     t.y + 1)
+		var nb_e := Vector2i(t.x + 1, t.y)
+		if nb_s not in parent.mezzanine_mask:
+			draw_line(Vector2(rx,      ry + ts), Vector2(rx + ts, ry + ts), MEZZ_EDGE, 2.0)
+		if nb_e not in parent.mezzanine_mask:
+			draw_line(Vector2(rx + ts, ry),      Vector2(rx + ts, ry + ts), MEZZ_EDGE, 2.0)
+
+	# ── 2c. Stair tiles — each tile = one step tread in plan view ────────────
+	# Fill: solid blue-grey. Thick nosing line at top of each tile (tread front
+	# edge). Border lines on exposed edges. Reads as a stacked staircase when
+	# tiles are painted in a vertical strip.
+	const STAIR_FILL   := Color(0.52, 0.60, 0.82, 0.80)
+	const STAIR_NOSING := Color(0.24, 0.30, 0.58, 1.00)
+	const STAIR_BORDER := Color(0.30, 0.38, 0.65, 0.85)
+	for tile in parent.stair_mask:
+		var t  := tile as Vector2i
+		var rx := float(t.x * TILE_SIZE)
+		var ry := float(t.y * TILE_SIZE)
+		var ts := float(TILE_SIZE)
+		draw_rect(Rect2(rx, ry, ts, ts), STAIR_FILL)
+		# Tread nosing: thick line at the very top of each tile
+		draw_line(Vector2(rx, ry + 0.5), Vector2(rx + ts, ry + 0.5), STAIR_NOSING, 2.0)
+		# Exposed bottom edge
+		if Vector2i(t.x, t.y + 1) not in parent.stair_mask:
+			draw_line(Vector2(rx, ry + ts), Vector2(rx + ts, ry + ts), STAIR_BORDER, 2.0)
+		# Exposed left edge
+		if Vector2i(t.x - 1, t.y) not in parent.stair_mask:
+			draw_line(Vector2(rx, ry), Vector2(rx, ry + ts), STAIR_BORDER, 1.5)
+		# Exposed right edge
+		if Vector2i(t.x + 1, t.y) not in parent.stair_mask:
+			draw_line(Vector2(rx + ts, ry), Vector2(rx + ts, ry + ts), STAIR_BORDER, 1.5)
+
+	# ── 2d. Rail tracks ──────────────────────────────────────────────────────
+	const RAIL_COL  := Color(0.22, 0.70, 0.78, 0.90)
+	const RAIL_DASH := Color(0.22, 0.70, 0.78, 0.45)
+	for rail in parent.rails:
+		var rd := rail as Dictionary
+		var x1: int = rd["x1"]; var y1: int = rd["y1"]
+		var x2: int = rd["x2"]; var y2: int = rd["y2"]
+		var is_h_r := (y1 == y2)
+		var mn_xr := mini(x1, x2); var mn_yr := mini(y1, y2)
+		var mx_xr := maxi(x1, x2); var mx_yr := maxi(y1, y2)
+		var px1 := mn_xr * TILE_SIZE; var py1 := mn_yr * TILE_SIZE
+		var px2 := (mx_xr + 1) * TILE_SIZE; var py2 := (mx_yr + 1) * TILE_SIZE
+		# Filled channel strip
+		draw_rect(Rect2(px1, py1, px2 - px1, py2 - py1), Color(0.22, 0.70, 0.78, 0.18))
+		# Double rail lines (parallel to axis)
+		var margin := 1.5
+		if is_h_r:
+			var cy := (py1 + py2) * 0.5
+			draw_line(Vector2(px1, cy - margin), Vector2(px2, cy - margin), RAIL_COL, 1.0)
+			draw_line(Vector2(px1, cy + margin), Vector2(px2, cy + margin), RAIL_COL, 1.0)
+			# Dash marks across the rail
+			var tx := px1
+			while tx < px2:
+				draw_line(Vector2(tx, py1 + 1.5), Vector2(tx, py2 - 1.5), RAIL_DASH, 0.8)
+				tx += TILE_SIZE
+		else:
+			var cx := (px1 + px2) * 0.5
+			draw_line(Vector2(cx - margin, py1), Vector2(cx - margin, py2), RAIL_COL, 1.0)
+			draw_line(Vector2(cx + margin, py1), Vector2(cx + margin, py2), RAIL_COL, 1.0)
+			var ty := py1
+			while ty < py2:
+				draw_line(Vector2(px1 + 1.5, ty), Vector2(px2 - 1.5, ty), RAIL_DASH, 0.8)
+				ty += TILE_SIZE
 
 	# ── 3. Grid lines ─────────────────────────────────────────────────────────
 	# Subcell lines (10 cm) — 1 px wide, drawn when each tile is ≥ 5 screen px
@@ -177,15 +258,54 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	_draw_segments(parent)
 
 
+func _draw_edge_overlays(parent: Floor) -> void:
+	if parent._use_new_format:
+		# New format: highlight the exact segment the mouse is near
+		if _hovered_seg_idx < 0:
+			return
+		var sd := parent.segments[_hovered_seg_idx] as Dictionary
+		if sd.get("demolished", false):
+			return
+		var p0 := Vector2(float(sd["x1"] as int * TILE_SIZE), float(sd["y1"] as int * TILE_SIZE))
+		var p1 := Vector2(float(sd["x2"] as int * TILE_SIZE), float(sd["y2"] as int * TILE_SIZE))
+		var seg_glow := Color(EDGE_HOVER.r, EDGE_HOVER.g, EDGE_HOVER.b, 0.25)
+		draw_line(p0, p1, seg_glow, WALL_THICK + 8.0)
+		draw_line(p0, p1, EDGE_HOVER, WALL_THICK + 2.0)
+		return
+	# Old format: bounding-box edge lines
+	if _hovered_edge == "" and _active_edge == "":
+		return
+	var x0 := parent._edge_x0; var y0 := parent._edge_y0
+	var x1 := parent._edge_x1; var y1 := parent._edge_y1
+	var glow := Color(EDGE_ACTIVE.r, EDGE_ACTIVE.g, EDGE_ACTIVE.b, 0.35)
+	for _pass in range(2):
+		var is_hover := _pass == 0
+		var edge := _hovered_edge if is_hover else _active_edge
+		if edge == "" or (is_hover and edge == _active_edge):
+			continue
+		var col   := EDGE_HOVER if is_hover else EDGE_ACTIVE
+		var thick := WALL_THICK + (2.0 if is_hover else 1.0)
+		var p0 := Vector2.ZERO; var p1 := Vector2.ZERO
+		match edge:
+			"north": p0 = Vector2(x0, y0); p1 = Vector2(x1, y0)
+			"south": p0 = Vector2(x0, y1); p1 = Vector2(x1, y1)
+			"west":  p0 = Vector2(x0, y0); p1 = Vector2(x0, y1)
+			"east":  p0 = Vector2(x1, y0); p1 = Vector2(x1, y1)
+		if not is_hover:
+			draw_line(p0, p1, glow, WALL_THICK + 8.0)
+		draw_line(p0, p1, col, thick)
+
+
 func _draw_segments(parent: Floor) -> void:
 	const PRIMARY_COL   := Color(0.16, 0.13, 0.10, 1.0)
 	const SECONDARY_COL := Color(0.40, 0.36, 0.30, 0.85)
 	const DEMO_COL      := Color(0.78, 0.40, 0.16, 0.18)
-	# Primary wall ≈ 20 cm = 2 tiles = 16 px at 1× zoom
-	# Secondary wall ≈ 5 cm = 0.5 tile = 4 px at 1× zoom
-	const PRIMARY_W     := float(TILE_SIZE * 2)
-	const SECONDARY_W   := float(TILE_SIZE) * 0.5
-	const DOOR_LEN      := 10
+	# Thickness in TILES — walls render as filled tile cells, not lines
+	# Primary  = 2 tiles = 20 cm (pared de carga) — centred on edge
+	# Secondary = 1 tile = 10 cm (tabique)         — starts at edge
+	const PRIMARY_T   := 2
+	const SECONDARY_T := 1
+	const DOOR_LEN    := 10
 
 	for seg in parent.segments:
 		var sd      := seg as Dictionary
@@ -193,89 +313,166 @@ func _draw_segments(parent: Floor) -> void:
 		var x2: int  = sd["x2"]; var y2: int = sd["y2"]
 		var primary := sd.get("primary",    false) as bool
 		var dem     := sd.get("demolished", false) as bool
-		var has_win := sd.get("has_window", false) as bool
 		var has_dor := sd.get("has_door",   false) as bool
-		var wp: int  = sd.get("window_pos", 0)     as int
-		var wl: int  = sd.get("window_len", 10)    as int
 		var dp: int  = sd.get("door_pos",   0)     as int
 		var is_h    := (y1 == y2)
-		var mn_x    := mini(x1, x2); var mn_y := mini(y1, y2)
+		var mn_x    := mini(x1, x2)
+		var mn_y    := mini(y1, y2)
 		var seg_len := maxi(absi(x2 - x1), absi(y2 - y1))
 
-		var pa := Vector2(x1 * TILE_SIZE, y1 * TILE_SIZE)
-		var pb := Vector2(x2 * TILE_SIZE, y2 * TILE_SIZE)
+		var col    := PRIMARY_COL if primary else SECONDARY_COL
+		var thick  := PRIMARY_T   if primary else SECONDARY_T      # tiles
+		var coff   := 0
 
+		# Demolished → dashed guide line only
 		if dem:
+			var pa := Vector2(x1 * TILE_SIZE, y1 * TILE_SIZE)
+			var pb := Vector2(x2 * TILE_SIZE, y2 * TILE_SIZE)
 			draw_dashed_line(pa, pb, DEMO_COL, 2.0, 5.0)
 			continue
 
-		var col   := PRIMARY_COL   if primary else SECONDARY_COL
-		var thick := PRIMARY_W     if primary else SECONDARY_W
+		# Collect window tile positions: new format (window_tiles array) or old format
+		var win_tiles: Array = []
+		if sd.has("window_tiles"):
+			win_tiles = (sd["window_tiles"] as Array).duplicate()
+		elif sd.get("has_window", false) as bool:
+			var wp: int = sd.get("window_pos", 0) as int
+			var wl: int = sd.get("window_len", 10) as int
+			for ti in range(wp, mini(wp + wl, seg_len)):
+				win_tiles.append(ti)
 
-		# Build gap ranges (window + door)
+		# Merge contiguous window tile runs into gap ranges
+		var win_gaps: Array = []
+		if not win_tiles.is_empty():
+			win_tiles.sort()
+			var gs := win_tiles[0] as int; var ge := gs + 1
+			for ti in range(1, win_tiles.size()):
+				var tp := win_tiles[ti] as int
+				if tp == ge:
+					ge += 1
+				else:
+					win_gaps.append([gs, ge])
+					gs = tp; ge = tp + 1
+			win_gaps.append([gs, ge])
+
+		# Combined gap list (windows + door) sorted by start position
 		var gaps: Array = []
-		if has_win and wp >= 0:
-			gaps.append([wp, mini(wp + wl, seg_len)])
+		for wg in win_gaps:
+			gaps.append([wg[0], wg[1], "window"])
 		if has_dor and dp >= 0:
-			gaps.append([dp, mini(dp + DOOR_LEN, seg_len)])
+			gaps.append([dp, mini(dp + DOOR_LEN, seg_len), "door"])
 		gaps.sort_custom(func(a, b): return a[0] < b[0])
 
-		# Draw segment in pieces around gaps
+		# Draw wall rect sections (skipping all gaps)
 		var pos := 0
 		for gap in gaps:
 			var gs: int = gap[0]; var ge: int = gap[1]
 			if pos < gs:
-				var a := _seg_pt(is_h, mn_x, mn_y, x1, y1, pos)
-				var b := _seg_pt(is_h, mn_x, mn_y, x1, y1, gs)
-				draw_line(a, b, col, thick)
+				draw_rect(_wall_rect(is_h, mn_x, mn_y, x1, y1, pos, gs, coff, thick), col)
 			pos = ge
 		if pos < seg_len:
-			var a := _seg_pt(is_h, mn_x, mn_y, x1, y1, pos)
-			draw_line(a, pb, col, thick)
-		elif gaps.is_empty():
-			draw_line(pa, pb, col, thick)
+			draw_rect(_wall_rect(is_h, mn_x, mn_y, x1, y1, pos, seg_len, coff, thick), col)
 
-		# Hatch marks on primary walls (load-bearing indicator)
+		# Diagonal hatch marks inside primary walls (load-bearing indicator)
 		if primary:
-			var sv    := pb - pa
-			var perp  := Vector2(-sv.normalized().y, sv.normalized().x) * 4.0
-			var steps := int(sv.length() / (TILE_SIZE * 2))
-			for i in range(steps + 1):
-				var t := pa + sv * (float(i) / float(maxi(steps, 1)))
-				draw_line(t - perp, t + perp, col, 1.2)
-
-		# Window rendering
-		if has_win and wp >= 0:
+			var tp := thick * TILE_SIZE
+			var step := TILE_SIZE * 3
 			if is_h:
-				draw_rect(Rect2((mn_x + wp) * TILE_SIZE + 1, y1 * TILE_SIZE - thick * 0.5,
-						wl * TILE_SIZE - 2, thick + 1), WINDOW_COLOR)
+				var wy := y1 * TILE_SIZE + coff * TILE_SIZE
+				var x  := mn_x * TILE_SIZE
+				while x < (mn_x + seg_len) * TILE_SIZE:
+					draw_line(Vector2(x, wy), Vector2(x + tp, wy + tp), col, 0.8)
+					x += step
 			else:
-				draw_rect(Rect2(x1 * TILE_SIZE - thick * 0.5, (mn_y + wp) * TILE_SIZE + 1,
-						thick + 1, wl * TILE_SIZE - 2), WINDOW_COLOR)
+				var wx := x1 * TILE_SIZE + coff * TILE_SIZE
+				var y  := mn_y * TILE_SIZE
+				while y < (mn_y + seg_len) * TILE_SIZE:
+					draw_line(Vector2(wx, y), Vector2(wx + tp, y + tp), col, 0.8)
+					y += step
 
-		# Door rendering
-		if has_dor and dp >= 0:
-			var door_px := DOOR_LEN * TILE_SIZE
-			var arc_col := Color(DOOR_COLOR.r, DOOR_COLOR.g, DOOR_COLOR.b, 0.40)
-			if is_h:
-				var dx := (mn_x + dp) * TILE_SIZE
-				var dy := y1 * TILE_SIZE
-				draw_rect(Rect2(dx + 1, dy - thick * 0.5 - 1, door_px - 2, thick + 3), FLOOR_COLOR)
-				draw_line(Vector2(dx, dy), Vector2(dx, dy + door_px), DOOR_COLOR, 1.2)
-				draw_arc(Vector2(dx, dy), door_px, 0, PI * 0.5, 20, arc_col, 1.0)
-			else:
-				var dx := x1 * TILE_SIZE
-				var dy := (mn_y + dp) * TILE_SIZE
-				draw_rect(Rect2(dx - thick * 0.5 - 1, dy + 1, thick + 3, door_px - 2), FLOOR_COLOR)
-				draw_line(Vector2(dx, dy), Vector2(dx + door_px, dy), DOOR_COLOR, 1.2)
-				draw_arc(Vector2(dx, dy), door_px, 0, PI * 0.5, 20, arc_col, 1.0)
+		# Draw gap fills
+		for gap in gaps:
+			var gs: int = gap[0]; var ge: int = gap[1]
+			var gtype: String = gap[2] if gap.size() > 2 else "window"
+			if gtype == "window":
+				draw_rect(_wall_rect(is_h, mn_x, mn_y, x1, y1, gs, ge, coff, thick), WINDOW_COLOR)
+			elif gtype == "door":
+				var ds: int  = sd.get("door_side", 1) as int  # +1 south/east, -1 north/west
+				var door_px  := DOOR_LEN * TILE_SIZE
+				var arc_col  := Color(DOOR_COLOR.r, DOOR_COLOR.g, DOOR_COLOR.b, 0.40)
+				var dr       := _wall_rect(is_h, mn_x, mn_y, x1, y1, gs, ge, coff, thick)
+				draw_rect(dr, FLOOR_COLOR)
+				if is_h:
+					var hinge := Vector2(dr.position.x, y1 * TILE_SIZE)
+					if ds > 0:   # opens south
+						draw_line(hinge, Vector2(hinge.x, hinge.y + door_px), DOOR_COLOR, 1.2)
+						draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
+					else:        # opens north
+						draw_line(hinge, Vector2(hinge.x, hinge.y - door_px), DOOR_COLOR, 1.2)
+						draw_arc(hinge, door_px, -PI * 0.5, 0.0, 20, arc_col, 1.0)
+				else:
+					var hinge := Vector2(x1 * TILE_SIZE, dr.position.y)
+					if ds > 0:   # opens east
+						draw_line(hinge, Vector2(hinge.x + door_px, hinge.y), DOOR_COLOR, 1.2)
+						draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
+					else:        # opens west
+						draw_line(hinge, Vector2(hinge.x - door_px, hinge.y), DOOR_COLOR, 1.2)
+						draw_arc(hinge, door_px, PI * 0.5, PI, 20, arc_col, 1.0)
+
+		# Wall-view side indicators — teal arrow per active face (new view_sides dict)
+		var vs_dict := sd.get("view_sides", {}) as Dictionary
+		# Migrate old single view_side format for display
+		if vs_dict.is_empty() and sd.has("view_side"):
+			var old_vs := sd.get("view_side", 0) as int
+			if old_vs != 0: vs_dict = {str(old_vs): {}}
+		if not vs_dict.is_empty():
+			const WV_COL  := Color(0.25, 0.82, 0.88, 0.95)
+			const TICK_PX := 10
+			var mid := seg_len / 2.0
+			for sk in vs_dict:
+				var vs := (sk as String).to_int()
+				if is_h:
+					var mx := (mn_x + mid) * TILE_SIZE
+					if vs > 0:  # south face
+						var fy := float((y1 + thick) * TILE_SIZE)
+						draw_line(Vector2(mx, fy), Vector2(mx, fy + TICK_PX), WV_COL, 2.5)
+						draw_line(Vector2(mx, fy + TICK_PX), Vector2(mx - 4, fy + TICK_PX - 5), WV_COL, 2.0)
+						draw_line(Vector2(mx, fy + TICK_PX), Vector2(mx + 4, fy + TICK_PX - 5), WV_COL, 2.0)
+					else:       # north face
+						var fy := float(y1 * TILE_SIZE)
+						draw_line(Vector2(mx, fy), Vector2(mx, fy - TICK_PX), WV_COL, 2.5)
+						draw_line(Vector2(mx, fy - TICK_PX), Vector2(mx - 4, fy - TICK_PX + 5), WV_COL, 2.0)
+						draw_line(Vector2(mx, fy - TICK_PX), Vector2(mx + 4, fy - TICK_PX + 5), WV_COL, 2.0)
+				else:
+					var my := (mn_y + mid) * TILE_SIZE
+					if vs > 0:  # east face
+						var fx := float((x1 + thick) * TILE_SIZE)
+						draw_line(Vector2(fx, my), Vector2(fx + TICK_PX, my), WV_COL, 2.5)
+						draw_line(Vector2(fx + TICK_PX, my), Vector2(fx + TICK_PX - 5, my - 4), WV_COL, 2.0)
+						draw_line(Vector2(fx + TICK_PX, my), Vector2(fx + TICK_PX - 5, my + 4), WV_COL, 2.0)
+					else:       # west face
+						var fx := float(x1 * TILE_SIZE)
+						draw_line(Vector2(fx, my), Vector2(fx - TICK_PX, my), WV_COL, 2.5)
+						draw_line(Vector2(fx - TICK_PX, my), Vector2(fx - TICK_PX + 5, my - 4), WV_COL, 2.0)
+						draw_line(Vector2(fx - TICK_PX, my), Vector2(fx - TICK_PX + 5, my + 4), WV_COL, 2.0)
 
 
-func _seg_pt(is_h: bool, mn_x: int, mn_y: int, x1: int, y1: int, pos: int) -> Vector2:
+# Returns the pixel Rect2 for a wall section [from_t .. to_t] along the segment.
+# coff = cross-axis tile offset from the edge; thick = cross-axis tiles.
+func _wall_rect(is_h: bool, mn_x: int, mn_y: int, x1: int, y1: int,
+				from_t: int, to_t: int, coff: int, thick: int) -> Rect2:
+	var len_px  := (to_t - from_t) * TILE_SIZE
+	var thick_px := thick * TILE_SIZE
 	if is_h:
-		return Vector2((mn_x + pos) * TILE_SIZE, y1 * TILE_SIZE)
+		return Rect2(
+			(mn_x + from_t) * TILE_SIZE,
+			y1 * TILE_SIZE + coff * TILE_SIZE,
+			len_px, thick_px)
 	else:
-		return Vector2(x1 * TILE_SIZE, (mn_y + pos) * TILE_SIZE)
+		return Rect2(
+			x1 * TILE_SIZE + coff * TILE_SIZE,
+			(mn_y + from_t) * TILE_SIZE,
+			thick_px, len_px)
 
 
 func _draw_diagonal_splits(parent: Floor) -> void:
