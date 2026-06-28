@@ -15,6 +15,10 @@ var moment_results: Dictionary = {}  # moment_id -> {fulfilled:[], required:[]}
 var furniture_data: Dictionary = {}
 var levels_data: Dictionary = {}
 
+var allowed_furniture:   Array = []  # [] = no filter; otherwise ID whitelist
+var starting_inventory:  Array = []  # [{id, count}] unplaced items player owns
+var starting_furniture:  Array = []  # [{id, x, y}] items pre-placed in the apartment
+
 
 func _ready() -> void:
 	add_to_group("game_manager")
@@ -42,6 +46,9 @@ func load_level(level_id: String) -> void:
 		required_functions = (current_level.get("tenant", {}) as Dictionary)\
 			.get("required_functions", []).duplicate() as Array
 		fulfilled_functions = []
+		allowed_furniture  = (current_level.get("allowed_furniture",  []) as Array).duplicate()
+		starting_inventory = (current_level.get("starting_inventory", []) as Array).duplicate(true)
+		starting_furniture = (current_level.get("starting_furniture", []) as Array).duplicate(true)
 		budget_changed.emit(budget)
 		functions_updated.emit(fulfilled_functions, required_functions)
 		if not moments.is_empty():
@@ -56,6 +63,9 @@ func load_level(level_id: String) -> void:
 			moment_results = {}
 			required_functions = level["tenant"]["required_functions"].duplicate()
 			fulfilled_functions = []
+			allowed_furniture  = (level.get("allowed_furniture",  []) as Array).duplicate()
+			starting_inventory = (level.get("starting_inventory", []) as Array).duplicate(true)
+			starting_furniture = (level.get("starting_furniture", []) as Array).duplicate(true)
 			budget_changed.emit(budget)
 			functions_updated.emit(fulfilled_functions, required_functions)
 			if not moments.is_empty():
@@ -91,6 +101,29 @@ func sell_furniture(furniture_id: String) -> void:
 		return
 	budget += f["buy_price"]
 	budget_changed.emit(budget)
+
+
+# Consume one starting-inventory item and return its data (or {} if unavailable).
+# Called when the player places or sells a starting-inventory item.
+func consume_starting_item(furniture_id: String) -> Dictionary:
+	for i in range(starting_inventory.size()):
+		var e := starting_inventory[i] as Dictionary
+		if e["id"] == furniture_id:
+			e["count"] = (e["count"] as int) - 1
+			if (e["count"] as int) <= 0:
+				starting_inventory.remove_at(i)
+			return get_furniture_by_id(furniture_id)
+	return {}
+
+
+# Sell one starting-inventory item: remove it and credit sell_price to budget.
+func sell_starting_item(furniture_id: String) -> bool:
+	var f := consume_starting_item(furniture_id)
+	if f.is_empty():
+		return false
+	budget += f.get("sell_price", f.get("buy_price", 0)) as int
+	budget_changed.emit(budget)
+	return true
 
 
 func update_functions(placed_furniture_ids: Array, extra_functions: Array = []) -> void:

@@ -408,6 +408,49 @@ func _draw_elevation() -> void:
 		if not is_dragged:
 			_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
 
+	# ── Mezzanine slab ───────────────────────────────────────────────────────
+	# Show mezzanine tiles adjacent to this wall as an amber platform slab.
+	# Mezzanine floor sits at 14 tiles from floor bottom (≈ 2.1 m headroom below).
+	const MEZZ_LEVEL := 10   # tiles from top of elevation view
+	var mezz_y   := MEZZ_LEVEL * TILE_SIZE
+	var mezz_col := Color(0.82, 0.70, 0.35, 0.90)
+	var mezz_fg  := Color(0.50, 0.38, 0.10, 0.90)
+	# Determine which wall-axis coords have adjacent mezzanine tiles
+	var wall_coords: Array = []
+	for tile in _apt_floor.mezzanine_mask:
+		var t := tile as Vector2i
+		var wc := -1
+		match _edge:
+			"north": if t.y == 0:            wc = t.x
+			"south": if t.y == _apt_floor.grid_h - 1: wc = t.x
+			"west":  if t.x == 0:            wc = t.y
+			"east":  if t.x == _apt_floor.grid_w - 1: wc = t.y
+		if wc >= 0:
+			wall_coords.append(wc)
+	# Draw slab for each contiguous run of mezzanine tiles along this wall
+	if not wall_coords.is_empty():
+		wall_coords.sort()
+		var run_s := wall_coords[0] as int
+		var run_e := run_s + 1
+		for i in range(1, wall_coords.size()):
+			var wc := wall_coords[i] as int
+			if wc == run_e:
+				run_e += 1
+			else:
+				var sx := run_s * TILE_SIZE; var sw := (run_e - run_s) * TILE_SIZE
+				draw_area.draw_rect(Rect2(sx, mezz_y, sw, 3), mezz_col)
+				draw_area.draw_rect(Rect2(sx, 0, sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
+				draw_area.draw_line(Vector2(sx, mezz_y), Vector2(sx + sw, mezz_y), mezz_fg, 2.0)
+				draw_area.draw_string(ThemeDB.fallback_font, Vector2(sx + 2, mezz_y - 3),
+					"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
+				run_s = wc; run_e = wc + 1
+		var sx := run_s * TILE_SIZE; var sw := (run_e - run_s) * TILE_SIZE
+		draw_area.draw_rect(Rect2(sx, mezz_y, sw, 3), mezz_col)
+		draw_area.draw_rect(Rect2(sx, 0, sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
+		draw_area.draw_line(Vector2(sx, mezz_y), Vector2(sx + sw, mezz_y), mezz_fg, 2.0)
+		draw_area.draw_string(ThemeDB.fallback_font, Vector2(sx + 2, mezz_y - 3),
+			"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
+
 	# ── Hung wall items ───────────────────────────────────────────────────────
 	var placed := _apt_floor.get_wall_items(_edge)
 	for origin in placed:

@@ -11,6 +11,8 @@ var owned: Array = []
 var pending_level_id: String = "level_01"
 var dev_bonus_stars: int = 0
 var custom_level_data: Dictionary = {}
+var testing_from_editor: bool = false  # set by LevelEditor._test_level(); back btn returns to editor
+var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor reloads custom_level_data
 
 
 func _ready() -> void:

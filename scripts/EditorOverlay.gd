@@ -2,30 +2,189 @@ extends Node2D
 
 const TS := 8
 
-var p_start:    Vector2i = Vector2i(-1, -1)
-var p_end:      Vector2i = Vector2i(-1, -1)
-var active:     bool     = false
+var p_start:     Vector2i = Vector2i(-1, -1)
+var p_end:       Vector2i = Vector2i(-1, -1)
+var active:      bool     = false
 var floor_hover: Vector2i = Vector2i(-1, -1)
-var floor_brush: int      = 1   # 1 = tile, 10 = meter cell
+var mezz_hover:  bool     = false  # true = floor_hover is a mezzanine tile
+var floor_brush: int      = 1     # 1 = tile, 10 = meter cell
+var wall_hover:   Vector2i = Vector2i(-1, -1)
+var wall_primary: bool    = false  # true = primary (2 tiles), false = secondary (1 tile)
+var win_hover_rect: Rect2 = Rect2()
+var rail_mode:   bool = false  # true = preview is a rail (teal) not a wall (orange)
+var stair_hover: bool = false  # true = floor_hover is a stair tile
+
+# Door drag preview
+var door_drag_active: bool    = false
+var door_drag_hinge:  Vector2 = Vector2.ZERO
+var door_drag_is_h:   bool    = true
+var door_drag_side:   int     = 1      # +1 south/east, -1 north/west
+var door_drag_len:    float   = 80.0   # door length in pixels
+
+# Wall-view side drag preview
+var wv_drag_active: bool    = false
+var wv_drag_hinge:  Vector2 = Vector2.ZERO
+var wv_drag_is_h:   bool    = true
+var wv_drag_side:   int     = 1       # +1 south/east, -1 north/west
+var wv_drag_thick:  int     = 1       # wall thickness in tiles
+
+# Pre-placed furniture overlay
+var placed_furniture: Array = []  # [{x,y,w,h,col}]
+
+# Furniture placement preview
+var placing_active: bool    = false
+var placing_x:      int     = 0
+var placing_y:      int     = 0
+var placing_w:      int     = 5
+var placing_h:      int     = 5
+var placing_col:    Color   = Color.WHITE
 
 
 func _draw() -> void:
-	# Floor-paint hover highlight (snapped to brush size)
-	if floor_hover.x >= 0:
-		var ox := (floor_hover.x / floor_brush) * floor_brush
-		var oy := (floor_hover.y / floor_brush) * floor_brush
-		var px := ox * TS; var py := oy * TS
-		var sz := floor_brush * TS
-		draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.72, 0.52, 0.30))
-		draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.82, 0.54, 0.90), false, 1.0)
+	const COL_FILL   := Color(0.62, 0.42, 0.18, 0.30)
+	const COL_BORDER := Color(0.62, 0.42, 0.18, 0.90)
+	const RAIL_FILL  := Color(0.20, 0.65, 0.70, 0.30)
+	const RAIL_BDR   := Color(0.25, 0.80, 0.85, 0.90)
 
-	# Wall segment preview
+	# Floor-paint / mezzanine / stairs hover highlight — brush centred on cursor
+	# Offset uses integer division (floor_brush/2) to match _paint_*_tile() exactly
+	if floor_hover.x >= 0:
+		var sz     := float(floor_brush * TS)
+		var half_px := float((floor_brush / 2) * TS)
+		var px := float(floor_hover.x * TS) - half_px
+		var py := float(floor_hover.y * TS) - half_px
+		if mezz_hover:
+			draw_rect(Rect2(px, py, sz, sz), Color(0.72, 0.60, 0.20, 0.35))
+			draw_rect(Rect2(px, py, sz, sz), Color(0.80, 0.65, 0.22, 0.90), false, 1.0)
+		elif stair_hover:
+			draw_rect(Rect2(px, py, sz, sz), Color(0.50, 0.55, 0.70, 0.35))
+			draw_rect(Rect2(px, py, sz, sz), Color(0.60, 0.65, 0.85, 0.90), false, 1.0)
+		else:
+			draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.72, 0.52, 0.30))
+			draw_rect(Rect2(px, py, sz, sz), Color(0.40, 0.82, 0.54, 0.90), false, 1.0)
+
+	# Pre-placed furniture rectangles (always visible)
+	for pf in placed_furniture:
+		var fd := pf as Dictionary
+		var rx := float((fd["x"] as int) * TS)
+		var ry := float((fd["y"] as int) * TS)
+		var rw := float((fd["w"] as int) * TS)
+		var rh := float((fd["h"] as int) * TS)
+		var fc := fd["col"] as Color
+		draw_rect(Rect2(rx, ry, rw, rh), Color(fc.r, fc.g, fc.b, 0.30))
+		draw_rect(Rect2(rx, ry, rw, rh), Color(fc.r, fc.g, fc.b, 0.85), false, 1.0)
+
+	# Furniture placement preview at cursor (always visible)
+	if placing_active:
+		var rx := float(placing_x * TS)
+		var ry := float(placing_y * TS)
+		var rw := float(placing_w * TS)
+		var rh := float(placing_h * TS)
+		draw_rect(Rect2(rx, ry, rw, rh), Color(placing_col.r, placing_col.g, placing_col.b, 0.40))
+		draw_rect(Rect2(rx, ry, rw, rh), placing_col, false, 1.5)
+
+	var thick := 2 if wall_primary else 1  # tiles
+
+	var fill_col   := RAIL_FILL if rail_mode else COL_FILL
+	var border_col := RAIL_BDR  if rail_mode else COL_BORDER
+	var rail_thick := 1 if rail_mode else thick  # rails are always 1 tile thin
+
+	# Wall/rail hover rect — shows where segment would start before LMB pressed
+	if not active and wall_hover.x >= 0:
+		var r := Rect2(wall_hover.x * TS, wall_hover.y * TS, TS * rail_thick, TS * rail_thick)
+		draw_rect(r, fill_col)
+		draw_rect(r, border_col, false, 1.0)
+		return
+
+	# Wall/rail segment preview rect while dragging
 	if not active or p_start.x < 0:
 		return
-	var col := Color(0.62, 0.42, 0.18, 0.88)
-	var p1 := Vector2(p_start.x * TS, p_start.y * TS)
-	var p2 := Vector2(p_end.x   * TS, p_end.y   * TS)
-	draw_circle(p1, 3.5, col)
-	if p1 != p2:
-		draw_line(p1, p2, col, 2.5)
-		draw_circle(p2, 2.5, col)
+
+	var is_h := (p_start.y == p_end.y)
+	var mn_x  := mini(p_start.x, p_end.x)
+	var mn_y  := mini(p_start.y, p_end.y)
+	var mx_x  := maxi(p_start.x, p_end.x)
+	var mx_y  := maxi(p_start.y, p_end.y)
+
+	var r: Rect2
+	if is_h:
+		r = Rect2(mn_x * TS, p_start.y * TS,
+				  (mx_x - mn_x) * TS, rail_thick * TS)
+	else:
+		r = Rect2(p_start.x * TS, mn_y * TS,
+				  rail_thick * TS, (mx_y - mn_y) * TS)
+
+	if r.size.x > 0 and r.size.y > 0:
+		draw_rect(r, fill_col)
+		draw_rect(r, border_col, false, 1.5)
+		if rail_mode:
+			# Dashed centre line to distinguish rail from wall
+			var step := 4
+			if is_h:
+				var cy := r.position.y + r.size.y * 0.5
+				var x := r.position.x
+				while x < r.end.x - 2:
+					draw_line(Vector2(x, cy), Vector2(minf(x + step, r.end.x), cy),
+							  RAIL_BDR, 1.0)
+					x += step * 2
+			else:
+				var cx := r.position.x + r.size.x * 0.5
+				var y := r.position.y
+				while y < r.end.y - 2:
+					draw_line(Vector2(cx, y), Vector2(cx, minf(y + step, r.end.y)),
+							  RAIL_BDR, 1.0)
+					y += step * 2
+
+	# Window hover tile
+	if win_hover_rect.size.x > 0:
+		draw_rect(win_hover_rect, Color(0.28, 0.55, 0.85, 0.40))
+		draw_rect(win_hover_rect, Color(0.45, 0.72, 1.00, 0.90), false, 1.5)
+
+	# Door drag preview — arc showing which side the door will open toward
+	if door_drag_active:
+		var dh  := door_drag_hinge
+		var drl := door_drag_len
+		var dtip: Vector2
+		var da0: float; var da1: float
+		if door_drag_is_h:
+			if door_drag_side > 0:  # opens south
+				dtip = Vector2(dh.x, dh.y + drl)
+				da0 = 0.0; da1 = PI * 0.5
+			else:                   # opens north
+				dtip = Vector2(dh.x, dh.y - drl)
+				da0 = -PI * 0.5; da1 = 0.0
+		else:
+			if door_drag_side > 0:  # opens east
+				dtip = Vector2(dh.x + drl, dh.y)
+				da0 = 0.0; da1 = PI * 0.5
+			else:                   # opens west
+				dtip = Vector2(dh.x - drl, dh.y)
+				da0 = PI * 0.5; da1 = PI
+		draw_line(dh, dtip, Color(0.85, 0.60, 0.20, 0.90), 1.5)
+		draw_arc(dh, drl, da0, da1, 24, Color(0.85, 0.60, 0.20, 0.30), 1.0)
+
+	# Wall-view side drag preview — perpendicular arrow from the chosen face
+	if wv_drag_active:
+		const WV_COL := Color(0.25, 0.82, 0.88, 0.92)
+		const WV_LEN := 20.0
+		var half_t := wv_drag_thick * TS * 0.5
+		var base2: Vector2; var tip2: Vector2
+		if wv_drag_is_h:
+			if wv_drag_side > 0:   # south face
+				base2 = Vector2(wv_drag_hinge.x, wv_drag_hinge.y + half_t)
+				tip2  = Vector2(wv_drag_hinge.x, wv_drag_hinge.y + half_t + WV_LEN)
+			else:                  # north face
+				base2 = Vector2(wv_drag_hinge.x, wv_drag_hinge.y - half_t)
+				tip2  = Vector2(wv_drag_hinge.x, wv_drag_hinge.y - half_t - WV_LEN)
+		else:
+			if wv_drag_side > 0:   # east face
+				base2 = Vector2(wv_drag_hinge.x + half_t, wv_drag_hinge.y)
+				tip2  = Vector2(wv_drag_hinge.x + half_t + WV_LEN, wv_drag_hinge.y)
+			else:                  # west face
+				base2 = Vector2(wv_drag_hinge.x - half_t, wv_drag_hinge.y)
+				tip2  = Vector2(wv_drag_hinge.x - half_t - WV_LEN, wv_drag_hinge.y)
+		draw_line(base2, tip2, WV_COL, 2.0)
+		var dir := (tip2 - base2).normalized()
+		var perp := Vector2(-dir.y, dir.x)
+		draw_line(tip2, tip2 - dir * 6.0 + perp * 4.5, WV_COL, 2.0)
+		draw_line(tip2, tip2 - dir * 6.0 - perp * 4.5, WV_COL, 2.0)

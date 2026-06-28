@@ -21,21 +21,12 @@ var _ambient: AudioStreamPlayer
 func _ready() -> void:
 	_sfx = AudioStreamPlayer.new()
 	add_child(_sfx)
-
 	_ambient = AudioStreamPlayer.new()
-	_ambient.volume_db = AMBIENT_DB
 	add_child(_ambient)
-	_ambient.finished.connect(_ambient.play)   # seamless loop
-
-	_start_ambient()
 
 
-func play(key: String) -> void:
-	var path: String = SOUNDS.get(key, "")
-	if path.is_empty() or not ResourceLoader.exists(path):
-		return
-	_sfx.stream = load(path)
-	_sfx.play()
+func play(_key: String) -> void:
+	pass  # audio disabled
 
 
 func set_sfx_volume(db: float) -> void:
