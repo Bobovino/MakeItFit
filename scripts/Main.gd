@@ -226,6 +226,16 @@ func _load_level(level_id: String) -> void:
 	_refresh_functions()
 	_update_accessibility()
 
+	# Auto-enable overlay for subfloor / ceiling floor types (no toggle buttons needed)
+	for _afd in floors_data:
+		var _aftype := (_afd as Dictionary).get("type", "") as String
+		var _afid   := (_afd as Dictionary)["id"] as String
+		if not _floors.has(_afid): continue
+		var _agd := (_floors[_afid] as Floor).get_node_or_null("GridDraw") as GridDraw
+		if _agd:
+			if _aftype == "floor_sub": _agd.show_subfloor = true
+			elif _aftype == "ceiling": _agd.show_ceiling  = true
+
 	# Update test button visibility now that floors are loaded
 	var top_bar := $UI/TopBar as HBoxContainer
 	if top_bar.has_node("TestBtn"):
