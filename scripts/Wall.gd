@@ -7,6 +7,7 @@ signal wall_edge_clicked(edge: String)
 const TILE_SIZE := 8
 const EDGE_MARGIN := 10
 const WALL_DEPTH := 8  # tiles within this distance count as "against the wall"
+const FLOOR_HEIGHT_TILES := 28  # nominal room height in tiles (≈2.8 m at 10 cm/tile)
 
 var floor_id: String = ""
 var floor_label: String = ""
@@ -28,7 +29,8 @@ var rails:          Array      = []   # [{x1,y1,x2,y2}] sliding rail tracks
 var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
 var _use_new_format: bool      = false
 
-var _placed: Dictionary = {}      # Vector2i -> Furniture
+var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z)
+var floor_z_offset: int = 0       # global Z of this floor's floor level (tiles)
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
 var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
 
@@ -43,6 +45,44 @@ var _drag_active:      bool    = false
 
 @onready var grid_draw: GridDraw = $GridDraw
 
+
+# ── Spatial index helpers ─────────────────────────────────────────────────────
+
+func _placed_list(tile: Vector2i) -> Array:
+	return _placed.get(tile, []) as Array
+
+func _placed_any_at(tile: Vector2i) -> bool:
+	return not _placed_list(tile).is_empty()
+
+func _placed_overlapping_z(tile: Vector2i, z0: float, z1: float, exclude: Furniture = null) -> Furniture:
+	for item in _placed_list(tile):
+		var f := item as Furniture
+		if f == exclude: continue
+		if f.z_top > z0 and f.z_bottom < z1:
+			return f
+	return null
+
+func _placed_add(tile: Vector2i, furniture: Furniture) -> void:
+	if not _placed.has(tile):
+		_placed[tile] = []
+	(_placed[tile] as Array).append(furniture)
+
+func _placed_remove_tile(tile: Vector2i, furniture: Furniture) -> void:
+	if not _placed.has(tile): return
+	var arr := _placed[tile] as Array
+	arr.erase(furniture)
+	if arr.is_empty():
+		_placed.erase(tile)
+
+func _get_all_placed_unique() -> Array:
+	var seen: Array = []
+	for tile in _placed:
+		for item in _placed[tile] as Array:
+			if item not in seen:
+				seen.append(item)
+	return seen
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 func is_floor_tile(tile: Vector2i) -> bool:
 	if not _use_new_format or floor_mask.is_empty():
@@ -115,8 +155,9 @@ func _compute_light_map() -> void:
 			if next in blocked:
 				continue
 			var decay := 0.05
-			if next in _placed:
-				var f := _placed[next] as Furniture
+			var _lm := _placed_list(next)
+			if not _lm.is_empty():
+				var f := _lm[0] as Furniture
 				match f.height_category:
 					"tall":   continue
 					"medium": decay += 0.28
@@ -340,7 +381,7 @@ func can_place(furniture: Furniture, at: Vector2i) -> bool:
 			var tile := Vector2i(at.x + x, at.y + y)
 			if not is_floor_tile(tile):
 				return false
-			if tile in _placed and _placed[tile] != furniture:
+			if _placed_overlapping_z(tile, furniture.z_bottom, furniture.z_top, furniture) != null:
 				return false
 			if tile in blocked:
 				return false
@@ -366,12 +407,10 @@ func can_place(furniture: Furniture, at: Vector2i) -> bool:
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
 	var new_rect := Rect2i(at.x, at.y, furniture.grid_w, furniture.grid_h)
-	var seen: Array = []
-	for tile in _placed:
-		var f: Furniture = _placed[tile] as Furniture
-		if f == furniture or f in seen or f.ghost_radius <= 0:
+	for item in _get_all_placed_unique():
+		var f := item as Furniture
+		if f == furniture or f.ghost_radius <= 0:
 			continue
-		seen.append(f)
 		var ghost := Rect2i(
 			f.grid_pos.x - f.ghost_radius,
 			f.grid_pos.y - f.ghost_radius,
@@ -388,7 +427,7 @@ func place_furniture(furniture: Furniture, at: Vector2i) -> void:
 	_remove_from_grid(furniture)
 	for x in range(furniture.grid_w):
 		for y in range(furniture.grid_h):
-			_placed[Vector2i(at.x + x, at.y + y)] = furniture
+			_placed_add(Vector2i(at.x + x, at.y + y), furniture)
 	furniture.grid_pos = at
 	furniture.position = Vector2(at.x * TILE_SIZE, at.y * TILE_SIZE)
 	_compute_light_map()
@@ -403,12 +442,8 @@ func remove_furniture(furniture: Furniture) -> void:
 
 
 func _remove_from_grid(furniture: Furniture) -> void:
-	var to_remove: Array = []
-	for tile in _placed:
-		if _placed[tile] == furniture:
-			to_remove.append(tile)
-	for tile in to_remove:
-		_placed.erase(tile)
+	for tile in _placed.keys():
+		_placed_remove_tile(tile, furniture)
 
 
 func find_free_spot(w: int, h: int) -> Vector2i:
@@ -417,7 +452,7 @@ func find_free_spot(w: int, h: int) -> Vector2i:
 			var clear := true
 			for dy in range(h):
 				for dx in range(w):
-					if Vector2i(x + dx, y + dy) in _placed:
+					if _placed_any_at(Vector2i(x + dx, y + dy)):
 						clear = false
 						break
 				if not clear:
@@ -447,13 +482,9 @@ func get_wall_items(edge: String) -> Dictionary:
 
 
 func get_all_furniture_ids() -> Array:
-	var seen: Array = []
 	var ids: Array = []
-	for tile in _placed:
-		var f: Furniture = _placed[tile] as Furniture
-		if f not in seen:
-			seen.append(f)
-			ids.append(f.furniture_id)
+	for f in _get_all_placed_unique():
+		ids.append((f as Furniture).furniture_id)
 	return ids
 
 
@@ -471,11 +502,8 @@ func get_all_wall_item_ids() -> Array:
 func get_adjacent_furniture(edge: String) -> Array:
 	# Returns [{furniture, wall_x}] for pieces whose footprint touches this wall edge
 	var result: Array = []
-	var seen: Array = []
-	for tile in _placed:
-		var f: Furniture = _placed[tile] as Furniture
-		if f in seen:
-			continue
+	for item in _get_all_placed_unique():
+		var f := item as Furniture
 		var adjacent := false
 		var wall_x := 0
 		match edge:
@@ -496,7 +524,6 @@ func get_adjacent_furniture(edge: String) -> Array:
 					adjacent = true
 					wall_x = f.grid_pos.y
 		if adjacent:
-			seen.append(f)
 			result.append({"furniture": f, "wall_x": wall_x})
 	return result
 
@@ -511,7 +538,7 @@ func check_extended_conflict(furniture: Furniture) -> bool:
 			var tile := Vector2i(furniture.grid_pos.x + x, y)
 			if tile.y >= grid_h or tile.x < 0 or tile.x >= grid_w:
 				return true
-			if tile in _placed and _placed[tile] != furniture:
+			if _placed_overlapping_z(tile, furniture.z_bottom, furniture.z_top, furniture) != null:
 				return true
 	return false
 
@@ -537,15 +564,11 @@ func get_unconnected_needs(furniture_list: Array) -> Dictionary:
 			else:
 				routed_power.append(t)
 
+	var placed_set := get_all_furniture()
 	var missing := {"water": [], "power": []}
 	for f in furniture_list:
 		var fur := f as Furniture
-		var fdata := {}
-		for tile in _placed:
-			if _placed[tile] == fur:
-				fdata = {"tile": tile}
-				break
-		if fdata.is_empty():
+		if fur not in placed_set:
 			continue
 		if fur.needs_water:
 			var connected := false
@@ -571,18 +594,14 @@ func _get_placed_tiles() -> Array:
 
 
 func _get_tile_color(tile: Vector2i) -> Color:
-	if tile in _placed:
-		return (_placed[tile] as Furniture)._color
+	var fc := _placed_list(tile)
+	if not fc.is_empty():
+		return (fc[0] as Furniture)._color
 	return Color.WHITE
 
 
 func get_all_furniture() -> Array:
-	var seen: Array = []
-	for tile in _placed:
-		var f: Furniture = _placed[tile] as Furniture
-		if f not in seen:
-			seen.append(f)
-	return seen
+	return _get_all_placed_unique()
 
 
 func get_inaccessible_furniture() -> Array:
@@ -599,13 +618,13 @@ func _has_adjacent_free(f: Furniture) -> bool:
 	var x1 := x0 + f.grid_w
 	var y1 := y0 + f.grid_h
 	for x in range(x0, x1):
-		if y0 > 0 and Vector2i(x, y0 - 1) not in _placed:
+		if y0 > 0 and not _placed_any_at(Vector2i(x, y0 - 1)):
 			return true
-		if y1 < grid_h and Vector2i(x, y1) not in _placed:
+		if y1 < grid_h and not _placed_any_at(Vector2i(x, y1)):
 			return true
 	for y in range(y0, y1):
-		if x0 > 0 and Vector2i(x0 - 1, y) not in _placed:
+		if x0 > 0 and not _placed_any_at(Vector2i(x0 - 1, y)):
 			return true
-		if x1 < grid_w and Vector2i(x1, y) not in _placed:
+		if x1 < grid_w and not _placed_any_at(Vector2i(x1, y)):
 			return true
 	return false

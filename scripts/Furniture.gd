@@ -29,6 +29,8 @@ var extended_functions_arr: Array = []
 var _base_grid_h: int = 1             # grid_h when folded
 
 var height_category: String = "medium"  # "low" | "medium" | "tall"
+var z_bottom: float = 0.0  # tiles from floor level
+var z_top:    float = 12.0 # tiles from floor level
 var needs_water: bool = false
 var needs_power: bool = false
 
@@ -65,6 +67,11 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	folded_functions_arr  = (data.get("folded_functions",   []) as Array).duplicate()
 	extended_functions_arr = (data.get("extended_functions", []) as Array).duplicate()
 	height_category       = data.get("height_category",   "medium") as String
+	z_bottom = data.get("z_bottom", 0.0) as float
+	match height_category:
+		"low":  z_top = data.get("z_top",  6.0) as float
+		"tall": z_top = data.get("z_top", 24.0) as float
+		_:      z_top = data.get("z_top", 12.0) as float
 	needs_water           = data.get("needs_water",       false)    as bool
 	needs_power           = data.get("needs_power",       false)    as bool
 	rail_axis             = data.get("rail_axis",         "")       as String

@@ -144,6 +144,7 @@ func _load_level(level_id: String) -> void:
 	var apt_gw: int = apt_data.get("grid_w", 40) as int
 	var apt_gh: int = apt_data.get("grid_h", 30) as int
 
+	var _floor_z := 0  # accumulates global Z as we walk floors bottom→top
 	for fd in floors_data:
 		var apt_floor: Floor = load("res://scenes/Wall.tscn").instantiate() as Floor
 		apt_floor.name = fd["id"]
@@ -161,6 +162,8 @@ func _load_level(level_id: String) -> void:
 					(fd as Dictionary)["floor_tiles"] = (_pfd as Dictionary).get("floor_tiles", [])
 					break
 		apt_floor.setup(fd)
+		apt_floor.floor_z_offset = _floor_z
+		if _ftype == "floor": _floor_z += Floor.FLOOR_HEIGHT_TILES
 		apt_floor.furniture_changed.connect(_on_furniture_changed)
 		apt_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(apt_floor))
 		apt_floor.visible = false
