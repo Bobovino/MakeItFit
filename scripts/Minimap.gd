@@ -8,7 +8,7 @@ var _labels:  Dictionary = {}   # floor_id -> base label text
 
 
 func setup(floors: Array, hidden_ids: Array = []) -> void:
-	var container: HBoxContainer = $HBox
+	var container: VBoxContainer = $HBox
 	for child in container.get_children():
 		child.queue_free()
 	_buttons.clear()
