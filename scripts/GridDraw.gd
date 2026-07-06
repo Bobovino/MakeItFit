@@ -150,7 +150,22 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		var t := tile as Vector2i
 		draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), FLOOR_COLOR)
 
-	# ── 2b. Mezzanine tiles (warm amber + diagonal hatch) ────────────────────
+	# ── 2b. Zone overlays — colour-coded by primary function ─────────────────
+	if parent.zones.size() > 1:
+		for zone in parent.zones:
+			var z     := zone as Dictionary
+			var z_fns := z.get("functions", []) as Array
+			var z_col := Color(0, 0, 0, 0)
+			if   "sleep" in z_fns:                     z_col = Color(0.36, 0.52, 0.82, 0.14)  # blue
+			elif "cook"  in z_fns:                     z_col = Color(0.82, 0.42, 0.28, 0.14)  # red
+			elif "sit"   in z_fns or "dine" in z_fns:  z_col = Color(0.78, 0.68, 0.28, 0.14)  # amber
+			elif "work"  in z_fns:                     z_col = Color(0.32, 0.70, 0.42, 0.14)  # green
+			if z_col.a > 0:
+				for tile in z.get("tiles", {}) as Dictionary:
+					var t := tile as Vector2i
+					draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), z_col)
+
+	# ── 2c. Mezzanine tiles (warm amber + diagonal hatch) ────────────────────
 	const MEZZ_FILL  := Color(0.85, 0.78, 0.58, 1.0)   # warm parchment above
 	const MEZZ_HATCH := Color(0.55, 0.45, 0.20, 0.55)  # dark amber hatch lines
 	const MEZZ_EDGE  := Color(0.40, 0.30, 0.10, 0.80)  # south+east shadow edge

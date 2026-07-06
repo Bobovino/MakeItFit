@@ -5,6 +5,7 @@ const FurnitureScene := preload("res://scenes/Furniture.tscn")
 @onready var gm:           GameManager  = $GameManager
 @onready var room:         Node2D       = $Room
 @onready var minimap:      Minimap      = $UI/BottomBar/Minimap
+@onready var moment_selector: Minimap   = $UI/BottomBar/MomentSelector
 @onready var budget_label: Label        = $UI/TopBar/Label
 @onready var tenant_card:  TenantCard   = $UI/BottomBar/TenantCard
 @onready var inventory:    Inventory    = $UI/BottomBar/Inventory
@@ -18,11 +19,11 @@ const BOT_Y     := 506.0      # bottom bar start
 const FIT_PCT   := 0.95       # fraction of available area to fill
 
 var _floors:            Dictionary = {}
+var _loft_floors:       Dictionary = {}  # base_floor_id -> dynamically created loft Floor node
 var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
 var _demolition_mode:   bool = false
 var _demo_overlay:      Control = null
-
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -30,6 +31,7 @@ var _last_paint_tile:   Vector2i   = Vector2i(-1, -1)
 var _paint_panel:       Control    = null
 var _paint_status_lbl:  Label      = null
 var _floor_tile_bounds: Dictionary = {}  # floor_id -> Rect2i of painted tile content
+var _active_moment_id:  String = ""
 
 
 func _ready() -> void:
@@ -41,6 +43,8 @@ func _ready() -> void:
 		gm.moments_updated.connect(_on_moments_updated)
 	if not minimap.wall_selected.is_connected(_switch_floor):
 		minimap.wall_selected.connect(_switch_floor)
+	if not moment_selector.wall_selected.is_connected(_on_moment_selected):
+		moment_selector.wall_selected.connect(_on_moment_selected)
 	if not inventory.buy_requested.is_connected(_on_buy_requested):
 		inventory.buy_requested.connect(_on_buy_requested)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
@@ -51,6 +55,8 @@ func _ready() -> void:
 		result_screen.retry_requested.connect(_on_retry)
 	if not wall_inspector.wall_closed.is_connected(_on_inspector_visibility_changed):
 		wall_inspector.wall_closed.connect(_on_inspector_visibility_changed)
+	if not wall_inspector.wall_item_placed.is_connected(_on_wall_item_placed):
+		wall_inspector.wall_item_placed.connect(_on_wall_item_placed)
 	_apply_ui_theme()
 	_load_level(GameState.pending_level_id)
 
@@ -58,6 +64,7 @@ func _ready() -> void:
 func _apply_ui_theme() -> void:
 	var t := GameTheme.make()
 	minimap.theme       = t
+	moment_selector.theme = t
 	tenant_card.theme   = t
 	inventory.theme     = t
 	wall_inspector.theme = t
@@ -137,6 +144,7 @@ func _load_level(level_id: String) -> void:
 	for fid in _floors:
 		(_floors[fid] as Floor).queue_free()
 	_floors.clear()
+	_loft_floors.clear()
 
 	var level: Dictionary = gm.current_level
 	var apt_data: Dictionary = level["apartment"] as Dictionary
@@ -197,18 +205,23 @@ func _load_level(level_id: String) -> void:
 		_floors[fd["id"]] = apt_floor
 
 		for sf in fd.get("starting_furniture", []):
-			_spawn_furniture(sf["id"], apt_floor, sf["x"], sf["y"])
+			_spawn_furniture(sf["id"], apt_floor, sf["x"], sf["y"], sf as Dictionary)
 
-	# Top-level starting_furniture (from level editor) → place on first floor
+	# Top-level starting_furniture (from level editor) → place on first ground floor
 	var first_floor_node: Floor = null
-	if not _floors.is_empty():
-		first_floor_node = _floors[floors_data[0]["id"]] as Floor
+	for _ffd in floors_data:
+		if (_ffd as Dictionary).get("type", "") == "floor":
+			var _ffid := (_ffd as Dictionary)["id"] as String
+			if _ffid in _floors:
+				first_floor_node = _floors[_ffid] as Floor
+				break
 	if first_floor_node and not gm.starting_furniture.is_empty():
 		for sf in gm.starting_furniture:
 			_spawn_furniture((sf as Dictionary)["id"] as String,
 				first_floor_node,
 				(sf as Dictionary)["x"] as int,
-				(sf as Dictionary)["y"] as int)
+				(sf as Dictionary)["y"] as int,
+				sf as Dictionary)
 
 	# Compute bounding box of painted tiles per floor for focused camera fit
 	_floor_tile_bounds.clear()
@@ -242,11 +255,18 @@ func _load_level(level_id: String) -> void:
 
 	var hidden_floors: Array = level["apartment"].get("hidden_floors", []) as Array
 	minimap.setup(floors_data, hidden_floors)
+	_active_moment_id = ""
+	Furniture.test_mode_active = false
+	Furniture.active_moment_id = ""
+	moment_selector.setup(gm.moments)
+	if not gm.moments.is_empty():
+		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
+		_on_moment_selected(_first_mid)
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
 	inventory.setup(gm)
 	var shop_list: Array = gm.furniture_data["furniture"].filter(
-		func(f): return f.get("placement", "floor") == "floor")
+		func(f): return f.get("placement", "floor") in ["floor", "wall"])
 	if not gm.allowed_furniture.is_empty():
 		shop_list = shop_list.filter(func(f): return (f["id"] as String) in gm.allowed_furniture)
 	inventory.populate(shop_list)
@@ -275,10 +295,12 @@ func _load_level(level_id: String) -> void:
 			if _aftype == "floor_sub": _agd.show_subfloor = true
 			elif _aftype == "ceiling": _agd.show_ceiling  = true
 
-	# Update test button visibility now that floors are loaded
+	# Update test button visibility now that floors are loaded.
+	# Levels with moments drive fold interaction via the moment selector instead —
+	# the manual Test Layout toggle would be redundant there.
 	var top_bar := $UI/TopBar as HBoxContainer
 	if top_bar.has_node("TestBtn"):
-		top_bar.get_node("TestBtn").visible = _has_foldable_furniture()
+		top_bar.get_node("TestBtn").visible = _has_foldable_furniture() and gm.moments.is_empty()
 
 	var paintable := gm.current_level.get("paintable_furniture", []) as Array
 	if not paintable.is_empty():
@@ -372,20 +394,146 @@ func _show_mechanic_intro_if_needed() -> void:
 			cl.queue_free())
 
 
-func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int) -> Furniture:
+func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, rail_data: Dictionary = {}) -> Furniture:
 	var fdata := gm.get_furniture_by_id(furniture_id)
 	if fdata.is_empty() or fdata.get("placement", "floor") != "floor":
 		return null
+	# Apply per-instance rail overrides (axis + extents set by level editor)
+	for key in ["rail_axis", "rail_start", "rail_end"]:
+		if rail_data.has(key):
+			fdata = fdata.duplicate()
+			break
+	for key in ["rail_axis", "rail_start", "rail_end"]:
+		if rail_data.has(key):
+			fdata[key] = rail_data[key]
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
-	var at := Vector2i(gx, gy)
-	if not apt_floor.can_place(f, at):
-		at = apt_floor.find_free_spot(f.grid_w, f.grid_h)
-	apt_floor.place_furniture(f, at)
+	# Trust the explicit coordinates from the level editor; skip can_place so the
+	# furniture lands exactly where the designer placed it regardless of floor-tile
+	# bounds checks (the editor validated the position visually).
+	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
+	if fdata.get("creates_loft", false):
+		_promote_to_loft(f, apt_floor)
 	return f
+
+
+# ─── Runtime loft/mezzanine floors ────────────────────────────────────────────
+# Loft/bunk beds carve out a mezzanine: the bed itself moves onto its own
+# navigable "loft" floor (so it can be furnished around, from above), while the
+# base floor keeps only a mezzanine-tile shadow marking where the slab sits —
+# freeing those tiles for other furniture (desk, sofa, wardrobe...) underneath.
+
+func _get_or_create_loft_floor(base_floor: Floor) -> Floor:
+	var loft_id := base_floor.floor_id + "_loft"
+	if loft_id in _floors and is_instance_valid(_floors[loft_id]):
+		return _floors[loft_id] as Floor
+
+	var floor_tiles: Array = []
+	if not base_floor.floor_mask.is_empty():
+		for t in base_floor.floor_mask:
+			floor_tiles.append([(t as Vector2i).x, (t as Vector2i).y])
+	else:
+		var b := base_floor.get_room_bounds()
+		for x in range(b.position.x, b.position.x + b.size.x):
+			for y in range(b.position.y, b.position.y + b.size.y):
+				floor_tiles.append([x, y])
+
+	# Perimeter segments so wall edges can be clicked/inspected like any other floor
+	var rb := base_floor.get_room_bounds()
+	var rx0 := rb.position.x; var ry0 := rb.position.y
+	var rx1 := rb.position.x + rb.size.x; var ry1 := rb.position.y + rb.size.y
+	var loft_segments := [
+		{"x1": rx0, "y1": ry0, "x2": rx1, "y2": ry0, "primary": true, "demolished": false},
+		{"x1": rx1, "y1": ry0, "x2": rx1, "y2": ry1, "primary": true, "demolished": false},
+		{"x1": rx1, "y1": ry1, "x2": rx0, "y2": ry1, "primary": true, "demolished": false},
+		{"x1": rx0, "y1": ry1, "x2": rx0, "y2": ry0, "primary": true, "demolished": false},
+	]
+
+	var fd := {
+		"id": loft_id,
+		"label": base_floor.floor_label + " (Loft)",
+		"type": "loft",
+		"parent_id": base_floor.floor_id,
+		"grid_w": base_floor.grid_w,
+		"grid_h": base_floor.grid_h,
+		"floor_tiles": floor_tiles,
+		"segments": loft_segments,
+	}
+
+	var loft_floor: Floor = load("res://scenes/Wall.tscn").instantiate() as Floor
+	loft_floor.name = loft_id
+	room.add_child(loft_floor)
+	loft_floor.setup(fd)
+	loft_floor.floor_z_offset = base_floor.floor_z_offset + Floor.FLOOR_HEIGHT_TILES / 2
+	loft_floor.furniture_changed.connect(_on_furniture_changed)
+	loft_floor.furniture_changed.connect(_on_loft_furniture_changed.bind(base_floor, loft_floor))
+	loft_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(loft_floor))
+	loft_floor.visible = false
+	_floors[loft_id] = loft_floor
+	_loft_floors[base_floor.floor_id] = loft_floor
+
+	if _floor_tile_bounds.has(base_floor.floor_id):
+		_floor_tile_bounds[loft_id] = _floor_tile_bounds[base_floor.floor_id]
+	else:
+		_floor_tile_bounds[loft_id] = base_floor.get_room_bounds()
+
+	minimap.add_floor({"id": loft_id, "label": fd["label"]}, base_floor.floor_id)
+	return loft_floor
+
+
+func _promote_to_loft(f: Furniture, base_floor: Floor) -> void:
+	var loft_floor := _get_or_create_loft_floor(base_floor)
+	var at := f.grid_pos
+	if not loft_floor.can_place(f, at):
+		return  # leave it on the base floor rather than risk an overlap up top
+
+	base_floor._remove_from_grid(f)
+	base_floor.remove_child(f)
+	loft_floor.add_child(f)
+	f._wall_ref = loft_floor
+	loft_floor.place_furniture(f, at)
+
+	if f.sell_requested.is_connected(_on_sell_pressed.bind(base_floor)):
+		f.sell_requested.disconnect(_on_sell_pressed.bind(base_floor))
+	f.sell_requested.connect(_on_sell_pressed.bind(loft_floor))
+
+
+func _sync_loft_masks(base_floor: Floor, loft_floor: Floor) -> void:
+	var tiles: Dictionary = {}
+	for item in loft_floor.get_all_furniture():
+		var f := item as Furniture
+		var fdata := gm.get_furniture_by_id(f.furniture_id)
+		if fdata.get("creates_loft", false):
+			for t in f.get_occupied_tiles():
+				tiles[t] = true
+	base_floor.mezzanine_mask = tiles.duplicate()
+	if base_floor.grid_draw:
+		base_floor.grid_draw.queue_redraw()
+	if tiles.is_empty():
+		_remove_loft_floor(base_floor)
+
+
+func _remove_loft_floor(base_floor: Floor) -> void:
+	var loft_id := base_floor.floor_id + "_loft"
+	if not (loft_id in _floors):
+		return
+	var loft_floor := _floors[loft_id] as Floor
+	if not loft_floor.get_all_furniture().is_empty():
+		return
+	if _current_floor_id == loft_id:
+		_switch_floor(base_floor.floor_id)
+	_floors.erase(loft_id)
+	_loft_floors.erase(base_floor.floor_id)
+	_floor_tile_bounds.erase(loft_id)
+	minimap.remove_floor(loft_id)
+	loft_floor.queue_free()
+
+
+func _on_loft_furniture_changed(base_floor: Floor, loft_floor: Floor) -> void:
+	_sync_loft_masks(base_floor, loft_floor)
 
 
 func _switch_floor(floor_id: String) -> void:
@@ -436,7 +584,10 @@ func _on_wall_edge_clicked(edge: String, apt_floor: Floor) -> void:
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		fl.set_active_wall_edge("" if fl != apt_floor else edge)
-	wall_inspector.show_wall(apt_floor, edge)
+	var sibling_id := (apt_floor.parent_id if apt_floor.floor_type == "loft"
+		else apt_floor.floor_id + "_loft")
+	var sibling := _floors.get(sibling_id) as Floor
+	wall_inspector.show_wall(apt_floor, edge, sibling)
 
 
 func _on_inspector_visibility_changed() -> void:
@@ -445,12 +596,35 @@ func _on_inspector_visibility_changed() -> void:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 
 
+func _on_wall_item_placed(furniture_id: String) -> void:
+	gm.buy_furniture(furniture_id)
+	_refresh_functions()
+
+
 func _on_buy_requested(furniture_id: String) -> void:
-	if not gm.buy_furniture(furniture_id):
-		return
 	var apt_floor := _floors.get(_current_floor_id) as Floor
-	if apt_floor:
-		_spawn_furniture(furniture_id, apt_floor, 0, 0)
+	if not apt_floor:
+		return
+	var fdata := gm.get_furniture_by_id(furniture_id)
+	if fdata.is_empty():
+		return
+	if gm.budget < (fdata.get("buy_price", 0) as int):
+		return
+	if fdata.get("placement", "floor") == "wall":
+		wall_inspector.select_item(furniture_id)
+		return
+	var f: Furniture = FurnitureScene.instantiate() as Furniture
+	apt_floor.add_child(f)
+	f.setup(fdata, apt_floor)
+	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
+	f.fold_toggled.connect(_refresh_functions)
+	f.placement_confirmed.connect(func():
+		gm.buy_furniture(furniture_id)
+		if fdata.get("creates_loft", false):
+			_promote_to_loft(f, apt_floor)
+		_refresh_functions())
+	f.placement_cancelled.connect(_refresh_functions)
+	f.begin_placement(apt_floor, get_viewport().get_mouse_position())
 	_refresh_functions()
 
 
@@ -468,11 +642,14 @@ func _on_furniture_changed() -> void:
 
 
 func _refresh_functions() -> void:
-	var all_ids: Array = []
+	# Floor items are passed as live Furniture nodes so foldable pieces report
+	# their REAL current state (folded/extended), not just what they're capable
+	# of. Wall items have no live node, so they stay id-based.
+	var all_entries: Array = []
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
-		all_ids += fl.get_all_furniture_ids()
-		all_ids += fl.get_all_wall_item_ids()
+		all_entries += fl.get_all_furniture()
+		all_entries += fl.get_all_wall_item_ids()
 	var extra_fns: Array = []
 	for floor_id in _paint_pieces:
 		for type_id in _paint_pieces[floor_id]:
@@ -481,7 +658,10 @@ func _refresh_functions() -> void:
 				for fn in piece.functions:
 					if fn not in extra_fns:
 						extra_fns.append(fn)
-	gm.update_functions(all_ids, extra_fns)
+	gm.update_functions(all_entries, extra_fns, _active_moment_id)
+	var apt_floor := _floors.get(_current_floor_id) as Floor
+	if apt_floor:
+		gm.update_zones(apt_floor.zones)
 
 
 func _on_budget_changed(new_budget: int) -> void:
@@ -541,6 +721,27 @@ func _on_rent_pressed() -> void:
 	)
 
 
+
+
+func _on_moment_selected(moment_id: String) -> void:
+	_active_moment_id = moment_id
+	moment_selector.highlight(moment_id)
+	# Selecting a moment enables the same fold/unfold interaction Test Layout
+	# does — the player still has to click each piece themselves to match the
+	# moment's needs; nothing is toggled automatically here.
+	Furniture.test_mode_active = true
+	Furniture.active_moment_id = moment_id
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		for f in fl.get_all_furniture():
+			var fur := f as Furniture
+			if fur.foldable:
+				# Re-apply THIS moment's own remembered fold state — a sofa bed
+				# unfolded for Night stays unfolded there even if Day has it folded.
+				fur.set_moment_view(moment_id)
+				fur.set_extended_conflict(fl.check_extended_conflict(fur))
+			fur.queue_redraw()
+	_refresh_functions()
 
 
 func _on_test_toggled(pressed: bool) -> void:

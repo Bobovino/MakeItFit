@@ -7,7 +7,7 @@ const TOP_H    := 54
 const H_PAD    := 20.0
 const V_PAD    := 12.0
 const COLS     := 5
-const ROWS     := 8   # total rows in the grid (35 levels + 4 tutorial levels)
+const ROWS     := 9   # total rows in the grid (row 0 = tutorials, rows 1+ = regular levels)
 const CARD_W   := 142
 const CARD_H   := 108
 const MAP_VISIBLE_H := 666.0   # 720 - TOP_H
@@ -469,7 +469,7 @@ func _select_level(ld: Dictionary) -> void:
 	if stars > 0:
 		star_suffix = "\n" + "★".repeat(stars) + "☆".repeat(3 - stars)
 	_info_tenant.text = "%s, %d\n\"%s\"%s" % [
-		tenant.get("name", "?"), tenant.get("age", 0),
+		tenant.get("name", "?"), int(str(tenant.get("age", 0))),
 		tenant.get("bio", ""),
 		star_suffix
 	]
@@ -612,8 +612,8 @@ func _build_block_headers() -> void:
 		var bid  := (blk as Dictionary).get("id",   1) as int
 		var blk_name := (blk as Dictionary).get("name", "") as String
 		var sub  := (blk as Dictionary).get("subtitle", "") as String
-		if bid == 1:
-			continue  # no header before block 1
+		if bid == 0 or bid == 1:
+			continue  # no header before the first visible blocks
 		if bid not in block_rows:
 			continue
 		var row := block_rows[bid] as int

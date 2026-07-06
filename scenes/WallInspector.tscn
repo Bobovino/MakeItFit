@@ -23,8 +23,14 @@ size_flags_horizontal = 3
 text = "✕"
 custom_minimum_size = Vector2(28, 0)
 
-[node name="DrawArea" type="Control" parent="VBox"]
-custom_minimum_size = Vector2(512, 80)
+[node name="HintLabel" type="Label" parent="VBox"]
+text = "Click a highlighted wall edge to inspect it."
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="VBox"]
 size_flags_vertical = 3
 
-[node name="WallItems" type="HBoxContainer" parent="VBox"]
+[node name="DrawArea" type="Control" parent="VBox/Scroll"]
+custom_minimum_size = Vector2(512, 80)
+size_flags_vertical = 3

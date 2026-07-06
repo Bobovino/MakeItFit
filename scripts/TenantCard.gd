@@ -27,7 +27,7 @@ func _ready() -> void:
 
 
 func setup(tenant: Dictionary) -> void:
-	tenant_name_label.text = "%s, %d" % [tenant["name"], tenant["age"]]
+	tenant_name_label.text = "%s, %d" % [tenant["name"], int(str(tenant["age"]))]
 	flavor_label.text = tenant["flavor"]
 	rent_label.text = "%d€ / month" % tenant["monthly_rent"]
 	_moments = []

@@ -4,6 +4,8 @@ class_name Furniture
 signal placed(furniture_node: Node2D)
 signal sell_requested(furniture_node: Furniture)
 signal fold_toggled
+signal placement_confirmed
+signal placement_cancelled
 
 const TILE_SIZE := 8
 
@@ -26,26 +28,34 @@ var is_extended: bool = false
 var extended_add_h: int = 0           # extra tiles in +Y when fully extended
 var folded_functions_arr:   Array = []
 var extended_functions_arr: Array = []
+var moment_fold_state: Dictionary = {}   # moment_id -> bool; each moment remembers its OWN fold state
+static var active_moment_id: String = "" # "" for levels without moments
 var _base_grid_h: int = 1             # grid_h when folded
 
 var height_category: String = "medium"  # "low" | "medium" | "tall"
 var z_bottom: float = 0.0  # tiles from floor level
 var z_top:    float = 12.0 # tiles from floor level
-var needs_water: bool = false
-var needs_power: bool = false
-var is_stair:        bool   = false
+var needs_water:  bool = false
+var needs_power:  bool = false
+var zone_divider: bool = false   # acts as a soft wall for zone flood-fill
+var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
-# Rail: constrains dragging to one axis
-var rail_axis: String = ""   # "h" | "v" | "" = free
-var _rail_lock: int   = -1   # locked row (h) or column (v) set on drag start
+# Rail: constrains dragging to one axis within a defined extent
+var rail_axis:  String = ""   # "h" | "v" | "" = free
+var rail_start: int    = -1   # first valid tile offset along the rail (-1 = unclamped)
+var rail_end:   int    = -1   # last valid tile offset along the rail
+var _rail_lock: int    = -1   # locked row (h) or column (v) set on drag start
 
 static var test_mode_active: bool = false
 var _extended_conflict: bool = false
 
 var _dragging: bool = false
+var _placement_mode: bool = false   # true while waiting for initial click-to-place
 var _drag_offset: Vector2 = Vector2.ZERO
 var _original_pos: Vector2 = Vector2.ZERO
+var _press_pos: Vector2 = Vector2.ZERO   # viewport-space position at mouse-down, for click-vs-drag detection
+const CLICK_MOVE_THRESHOLD := 4.0        # px; below this, a release counts as a click, not a drag
 var _wall_ref: Floor = null
 var _color: Color = Color.WHITE
 var _accessible: bool = true
@@ -68,6 +78,11 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	extended_add_h        = data.get("extended_add_h",    0)        as int
 	folded_functions_arr  = (data.get("folded_functions",   []) as Array).duplicate()
 	extended_functions_arr = (data.get("extended_functions", []) as Array).duplicate()
+	# A foldable piece starts folded (is_extended = false); its live .functions
+	# must reflect that from the start, not the full base list, so moment/need
+	# checks don't count a state the player hasn't actually set yet.
+	if foldable and not folded_functions_arr.is_empty():
+		functions = folded_functions_arr.duplicate()
 	height_category       = data.get("height_category",   "medium") as String
 	z_bottom = data.get("z_bottom", 0.0) as float
 	match height_category:
@@ -76,7 +91,10 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 		_:      z_top = data.get("z_top", 12.0) as float
 	needs_water           = data.get("needs_water",       false)    as bool
 	needs_power           = data.get("needs_power",       false)    as bool
+	zone_divider          = data.get("zone_divider",      false)    as bool
 	rail_axis             = data.get("rail_axis",         "")       as String
+	rail_start            = data.get("rail_start",        -1)       as int
+	rail_end              = data.get("rail_end",          -1)       as int
 	is_stair              = data.get("is_stair",          false)    as bool
 	stair_direction       = data.get("stair_direction",   "")       as String
 	_base_grid_h          = grid_h
@@ -103,13 +121,36 @@ func set_extended_conflict(conflict: bool) -> void:
 func toggle_fold() -> bool:
 	if not foldable or extended_add_h <= 0 or not _wall_ref:
 		return false
-	if is_extended:
-		# Fold back: shrink footprint
-		grid_h = _base_grid_h
-		is_extended = false
-		functions = folded_functions_arr.duplicate() if not folded_functions_arr.is_empty() else functions
-		_wall_ref.place_furniture(self, grid_pos)
-	else:
+	var want_extended := not (moment_fold_state.get(active_moment_id, false) as bool)
+	if not _apply_fold_state(want_extended):
+		return false
+	moment_fold_state[active_moment_id] = want_extended
+	fold_toggled.emit()
+	return true
+
+
+# Re-applies whatever fold state THIS moment remembers (independent from
+# whatever other moments are currently set to) — called when the player
+# switches which moment they're viewing.
+func set_moment_view(moment_id: String) -> void:
+	var want_extended: bool = moment_fold_state.get(moment_id, false) as bool
+	if want_extended == is_extended:
+		return
+	if not _apply_fold_state(want_extended):
+		_apply_fold_state(false)  # doesn't fit here anymore — fall back to folded
+
+
+# Functions this piece contributes for a given moment, based on that moment's
+# OWN stored fold state — independent of whichever moment is on screen right now.
+func functions_for_moment(moment_id: String) -> Array:
+	if not foldable or folded_functions_arr.is_empty():
+		return functions
+	var extended: bool = moment_fold_state.get(moment_id, false) as bool
+	return extended_functions_arr if extended else folded_functions_arr
+
+
+func _apply_fold_state(want_extended: bool) -> bool:
+	if want_extended:
 		# Try to extend: check for space in the extra rows
 		grid_h = _base_grid_h + extended_add_h
 		if not _wall_ref.can_place(self, grid_pos):
@@ -118,9 +159,14 @@ func toggle_fold() -> bool:
 		is_extended = true
 		functions = extended_functions_arr.duplicate() if not extended_functions_arr.is_empty() else functions
 		_wall_ref.place_furniture(self, grid_pos)
+	else:
+		# Fold back: shrink footprint
+		grid_h = _base_grid_h
+		is_extended = false
+		functions = folded_functions_arr.duplicate() if not folded_functions_arr.is_empty() else functions
+		_wall_ref.place_furniture(self, grid_pos)
 	rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
 	queue_redraw()
-	fold_toggled.emit()
 	return true
 
 
@@ -187,8 +233,10 @@ func _draw() -> void:
 		draw_line(Vector2(w + 7, mid_y), Vector2(w + 4, mid_y - 3), rc, 1.2)
 		draw_line(Vector2(w + 7, mid_y), Vector2(w + 4, mid_y + 3), rc, 1.2)
 		if _dragging and _wall_ref:
-			var lx := float(grid_pos.x * TILE_SIZE)
-			var rx := float((_wall_ref.grid_w - grid_pos.x - grid_w) * TILE_SIZE)
+			var left_b := 0                        if rail_start < 0 else rail_start
+			var right_b := _wall_ref.grid_w - grid_w if rail_end   < 0 else rail_end
+			var lx := float((grid_pos.x - left_b)  * TILE_SIZE)
+			var rx := float((right_b - grid_pos.x)  * TILE_SIZE)
 			if lx > 0:
 				draw_dashed_line(Vector2(-lx, mid_y), Vector2(0, mid_y), Color(rc.r, rc.g, rc.b, 0.50), 1.0, 4.0)
 			if rx > 0:
@@ -203,8 +251,10 @@ func _draw() -> void:
 		draw_line(Vector2(mid_x, h + 7), Vector2(mid_x - 3, h + 4), rc, 1.2)
 		draw_line(Vector2(mid_x, h + 7), Vector2(mid_x + 3, h + 4), rc, 1.2)
 		if _dragging and _wall_ref:
-			var ty := float(grid_pos.y * TILE_SIZE)
-			var by := float((_wall_ref.grid_h - grid_pos.y - grid_h) * TILE_SIZE)
+			var top_b := 0                         if rail_start < 0 else rail_start
+			var bot_b := _wall_ref.grid_h - grid_h  if rail_end   < 0 else rail_end
+			var ty := float((grid_pos.y - top_b) * TILE_SIZE)
+			var by := float((bot_b - grid_pos.y)  * TILE_SIZE)
 			if ty > 0:
 				draw_dashed_line(Vector2(mid_x, -ty), Vector2(mid_x, 0), Color(rc.r, rc.g, rc.b, 0.50), 1.0, 4.0)
 			if by > 0:
@@ -429,9 +479,325 @@ func _draw_symbol(w: int, h: int, ink: Color) -> void:
 			draw_arc(Vector2(w * 0.5, h * 0.40), minf(w, h) * 0.32, 0, TAU, 14, s, lw)
 			draw_line(Vector2(w * 0.5, h * 0.72), Vector2(w * 0.5, h - 2), s, lw)
 
+		"toilet":
+			# Tank rectangle at top, oval bowl below, flush dot
+			var tk_h := h * 0.36
+			draw_rect(Rect2(3, 3, w - 6, tk_h), Color(s.r, s.g, s.b, 0.18))
+			draw_rect(Rect2(3, 3, w - 6, tk_h), s, false, lw)
+			draw_circle(Vector2(w * 0.5, 3 + tk_h * 0.5), 2.0, Color(s.r, s.g, s.b, 0.35))
+			var bwl_y := 3 + tk_h + 2
+			var bwl_h := h - bwl_y - 3
+			var bwl_r := minf((w - 8) * 0.5, bwl_h * 0.5)
+			var bwl_c := Vector2(w * 0.5, bwl_y + bwl_h * 0.5)
+			draw_arc(bwl_c, bwl_r, 0, TAU, 16, s, lw)
+			draw_arc(bwl_c, bwl_r * 0.45, 0, TAU, 12, Color(s.r, s.g, s.b, 0.22), lw)
+
+		"sink":
+			# Basin rect with drain dot and cross faucet
+			var bsx := 4.0; var bsy := 3.0
+			var bsw := w - 8.0; var bsh := h - 6.0
+			draw_rect(Rect2(bsx, bsy, bsw, bsh), Color(s.r, s.g, s.b, 0.14))
+			draw_rect(Rect2(bsx, bsy, bsw, bsh), s, false, lw)
+			draw_circle(Vector2(w * 0.5, bsy + bsh * 0.62), 1.5, Color(s.r, s.g, s.b, 0.40))
+			var fc := Vector2(w * 0.5, bsy + 4)
+			draw_circle(fc, 2.0, s)
+			draw_line(fc + Vector2(-5, 0), fc + Vector2(5, 0), s, lw)
+			draw_line(fc + Vector2(0, -3), fc + Vector2(0, 4), s, lw)
+
+		"shower":
+			# Square stall, corner drain, showerhead arc, rain grid
+			draw_rect(Rect2(3, 3, w - 6, h - 6), Color(s.r, s.g, s.b, 0.10))
+			draw_rect(Rect2(3, 3, w - 6, h - 6), s, false, lw)
+			draw_circle(Vector2(7, h - 7), 2.0, Color(s.r, s.g, s.b, 0.40))
+			draw_arc(Vector2(w - 6, 6), (w - 12) * 0.45, PI * 0.5, PI, 10, s, lw)
+			draw_circle(Vector2(w - 6, 6), 2.5, Color(s.r, s.g, s.b, 0.30))
+			for ri in range(3):
+				for ci in range(3):
+					draw_circle(Vector2(w * 0.28 + float(ci) * w * 0.14,
+							h * 0.40 + float(ri) * h * 0.14), 1.0, Color(s.r, s.g, s.b, 0.28))
+
+		"towel_rack":
+			# Horizontal bar with end brackets and towel fold
+			var my := h * 0.5
+			draw_line(Vector2(5, my), Vector2(w - 5, my), s, lw * 1.5)
+			draw_line(Vector2(5,   my - 2), Vector2(5,   my + 2), s, lw)
+			draw_line(Vector2(w-5, my - 2), Vector2(w-5, my + 2), s, lw)
+			draw_line(Vector2(w * 0.5, my - 2), Vector2(w * 0.5, my + 2),
+					  Color(s.r, s.g, s.b, 0.28), lw)
+
+		"murphy_bed":
+			# Wall-mounted fold-down bed: wall rail at top, pillow band, folded panel with pivot
+			draw_rect(Rect2(2, 2, w - 4, 4), s, false, lw)                             # wall-mount rail
+			var mph := minf(h * 0.30, 18.0)
+			draw_rect(Rect2(3, 7, w - 6, mph), Color(s.r, s.g, s.b, 0.18))             # pillow fill
+			draw_line(Vector2(3, 7 + mph), Vector2(w - 3, 7 + mph), s, lw)              # pillow divider
+			draw_line(Vector2(w * 0.5, 7 + mph), Vector2(w * 0.5, h - 4), s, lw)       # centre spine
+			draw_line(Vector2(4, h - 4),  Vector2(w - 4, h - 4),  s, lw)               # foot rail
+			draw_circle(Vector2(4.0, 6.0),  2.0, s)                                      # hinge L
+			draw_circle(Vector2(w - 4.0, 6.0), 2.0, s)                                   # hinge R
+
+		"bathtub":
+			# Oval tub inside rectangle; faucet dot at one end
+			var bw := w - 8.0; var bh := h - 8.0
+			var bx := 4.0; var by := 4.0
+			draw_rect(Rect2(bx, by, bw, bh), Color(s.r, s.g, s.b, 0.14))
+			draw_rect(Rect2(bx, by, bw, bh), s, false, lw)
+			# Inner oval
+			draw_arc(Vector2(w * 0.5, h * 0.5), bw * 0.38, 0, TAU, 18, Color(s.r, s.g, s.b, 0.30), lw)
+			# Faucet dot at head end
+			draw_circle(Vector2(w * 0.5, by + 4.0), 2.0, s)
+
+		"tv":
+			# Screen with thin bezel and stand legs
+			var sw := w - 6.0; var sh := h * 0.72
+			var sx := 3.0;     var sy := 3.0
+			draw_rect(Rect2(sx, sy, sw, sh), Color(s.r, s.g, s.b, 0.18))
+			draw_rect(Rect2(sx, sy, sw, sh), s, false, lw)
+			# Screen glare diagonal
+			draw_line(Vector2(sx + 4, sy + 3), Vector2(sx + sw * 0.35, sy + sh * 0.40),
+					  Color(s.r, s.g, s.b, 0.25), lw)
+			# Stand base
+			var stx := w * 0.5
+			draw_line(Vector2(stx, sy + sh), Vector2(stx, h - 3), s, lw)
+			draw_line(Vector2(stx - 6, h - 3), Vector2(stx + 6, h - 3), s, lw)
+
+		"wall_shelf":
+			# Three horizontal shelves with end brackets
+			var n := 3
+			for si in range(n):
+				var sy2 := 3.0 + float(si) * (h - 6.0) / float(n) + (h - 6.0) / float(n) * 0.5
+				draw_line(Vector2(3, sy2), Vector2(w - 3, sy2), s, lw)
+				draw_line(Vector2(3, sy2), Vector2(3, sy2 - 3), s, lw * 0.7)       # bracket L
+				draw_line(Vector2(w - 3, sy2), Vector2(w - 3, sy2 - 3), s, lw * 0.7) # bracket R
+
+		"mirror":
+			# Oval reflection surface with cross glare
+			var mr := minf(w - 8.0, h - 8.0) * 0.5
+			var mc := Vector2(w * 0.5, h * 0.5)
+			draw_circle(mc, mr, Color(s.r, s.g, s.b, 0.12))
+			draw_arc(mc, mr, 0, TAU, 20, s, lw)
+			draw_arc(mc, mr, 0, TAU, 20, s, lw)
+			# Glare lines
+			draw_line(mc + Vector2(-mr * 0.5, -mr * 0.5),
+					  mc + Vector2(-mr * 0.22, -mr * 0.22), Color(s.r, s.g, s.b, 0.35), lw)
+
+		"stair_n", "stair_s", "stair_e", "stair_w":
+			var n_treads := maxi(3, int(maxf(w, h) / 8))
+			if furniture_id in ["stair_n", "stair_s"]:
+				# Treads horizontal, stepping upward (N = head at top)
+				var tread_h := float(h - 4) / float(n_treads)
+				var dir_flip := 1.0 if furniture_id == "stair_n" else -1.0
+				for ti in range(n_treads):
+					var ti_eff := ti if dir_flip > 0 else (n_treads - 1 - ti)
+					var ty := 2.0 + ti_eff * tread_h
+					var tx_end := 2.0 + float(ti + 1) / float(n_treads) * (w - 4)
+					draw_line(Vector2(2, ty), Vector2(tx_end, ty), s, lw)
+					draw_line(Vector2(tx_end, ty), Vector2(tx_end, ty + tread_h), s, lw)
+				draw_line(Vector2(2, 2), Vector2(2, h - 2), s, lw)
+			else:
+				# Treads vertical, stepping rightward (E = head at right)
+				var tread_w := float(w - 4) / float(n_treads)
+				var dir_flip := 1.0 if furniture_id == "stair_e" else -1.0
+				for ti in range(n_treads):
+					var ti_eff := ti if dir_flip > 0 else (n_treads - 1 - ti)
+					var tx := 2.0 + ti_eff * tread_w
+					var ty_end := 2.0 + float(ti + 1) / float(n_treads) * (h - 4)
+					draw_line(Vector2(tx, 2), Vector2(tx, ty_end), s, lw)
+					draw_line(Vector2(tx, ty_end), Vector2(tx + tread_w, ty_end), s, lw)
+				draw_line(Vector2(2, 2), Vector2(w - 2, 2), s, lw)
+
+		"loft_bed":
+			# Two-level: lower living area + upper sleep platform (ladder on side)
+			draw_line(Vector2(3, h * 0.5), Vector2(w - 3, h * 0.5), s, lw)
+			var ph := minf(h * 0.20, 14.0)
+			draw_rect(Rect2(3, 3, w - 6, ph), Color(s.r, s.g, s.b, 0.18))
+			draw_line(Vector2(3, 3 + ph), Vector2(w - 3, 3 + ph), s, lw)
+			draw_line(Vector2(w * 0.5, 3 + ph), Vector2(w * 0.5, h * 0.5 - 2), s, lw)
+			draw_line(Vector2(w - 5, 3 + ph), Vector2(w - 5, h * 0.5), s, lw)
+			for ri in range(3):
+				var ry := 3.0 + ph + float(ri + 1) * (h * 0.5 - 3.0 - ph) / 4.0
+				draw_line(Vector2(w - 8, ry), Vector2(w - 2, ry), s, lw * 0.7)
+
 		"wall_plant", "painting":
 			# Simple rect outline for wall deco
 			draw_rect(Rect2(2, 2, w - 4, h - 4), Color(s.r, s.g, s.b, 0.20))
+
+		# ── Rugs / mats ──────────────────────────────────────────────────────
+		"rug", "bedroom_rug", "bath_mat":
+			# Outer border + inner parallel stripes
+			draw_rect(Rect2(3, 3, w - 6, h - 6), Color(s.r, s.g, s.b, 0.18))
+			draw_rect(Rect2(3, 3, w - 6, h - 6), s, false, lw)
+			var n_stripes := maxi(2, int((h - 10) / 5))
+			for si in range(1, n_stripes):
+				var sy := 6.0 + float(si) * float(h - 12) / float(n_stripes)
+				draw_line(Vector2(6, sy), Vector2(w - 6, sy), Color(s.r, s.g, s.b, 0.30), lw * 0.7)
+			# Corner tassels
+			for cx in [4.0, w - 4.0]:
+				for cy in [4.0, h - 4.0]:
+					draw_circle(Vector2(cx, cy), 1.5, Color(s.r, s.g, s.b, 0.50))
+
+		# ── Lamps ─────────────────────────────────────────────────────────────
+		"floor_lamp", "desk_lamp":
+			var cx2 := w * 0.5
+			var stem_top := h * 0.20
+			var shade_r := minf(w * 0.38, h * 0.20)
+			# Stem
+			draw_line(Vector2(cx2, h - 3), Vector2(cx2, stem_top + shade_r), s, lw)
+			# Base
+			draw_line(Vector2(cx2 - 4, h - 3), Vector2(cx2 + 4, h - 3), s, lw)
+			# Shade (arc + bottom line)
+			draw_arc(Vector2(cx2, stem_top + shade_r), shade_r, PI, TAU, 14, s, lw)
+			draw_line(Vector2(cx2 - shade_r, stem_top + shade_r),
+					  Vector2(cx2 + shade_r, stem_top + shade_r), s, lw)
+			# Glow fill
+			draw_circle(Vector2(cx2, stem_top + shade_r * 0.6), shade_r * 0.5,
+					Color(s.r, s.g, s.b, 0.12))
+
+		# ── Fridge ────────────────────────────────────────────────────────────
+		"fridge":
+			# Freezer compartment at top (~30%), fridge body below
+			var divider_y := h * 0.30
+			draw_line(Vector2(3, divider_y), Vector2(w - 3, divider_y), s, lw)
+			# Door handle on right side
+			var hx := w - 5.0
+			draw_line(Vector2(hx, divider_y + 3), Vector2(hx, h * 0.75), s, lw * 1.5)
+
+		# ── Drawers furniture (dresser, filing cabinet, nightstand, tv_stand) ─
+		"dresser", "filing_cabinet", "nightstand", "tv_stand", "bathroom_cabinet":
+			var n_drawers := maxi(2, int(h / 10))
+			var drawer_h := float(h - 4) / float(n_drawers)
+			for di in range(n_drawers):
+				var dy := 2.0 + di * drawer_h
+				draw_line(Vector2(3, dy + drawer_h), Vector2(w - 3, dy + drawer_h), s, lw * 0.8)
+				# Drawer handle
+				var mid_x := w * 0.5
+				draw_line(Vector2(mid_x - 3, dy + drawer_h * 0.55),
+						  Vector2(mid_x + 3, dy + drawer_h * 0.55), s, lw * 1.2)
+
+		# ── Clothes rack ──────────────────────────────────────────────────────
+		"clothes_rack":
+			# Horizontal bar across top third
+			var bar_y := h * 0.30
+			draw_line(Vector2(3, bar_y), Vector2(w - 3, bar_y), s, lw * 1.5)
+			# Vertical supports at ends
+			draw_line(Vector2(3, bar_y), Vector2(3, h - 3), s, lw)
+			draw_line(Vector2(w - 3, bar_y), Vector2(w - 3, h - 3), s, lw)
+			# Hangers (triangle arcs)
+			var n_hangers := maxi(2, int((w - 8) / 8))
+			for hi2 in range(n_hangers):
+				var hx2 := 6.0 + hi2 * float(w - 12) / float(n_hangers - 1) if n_hangers > 1 else w * 0.5
+				draw_arc(Vector2(hx2, bar_y), 3.5, PI * 0.1, PI * 0.9, 8,
+						Color(s.r, s.g, s.b, 0.55), lw * 0.8)
+				draw_line(Vector2(hx2, bar_y + 3.5), Vector2(hx2 - 3, bar_y + 9), s, lw * 0.7)
+				draw_line(Vector2(hx2, bar_y + 3.5), Vector2(hx2 + 3, bar_y + 9), s, lw * 0.7)
+
+		# ── Planter box ───────────────────────────────────────────────────────
+		"planter_box":
+			# Soil fill + plant stems + dots
+			draw_rect(Rect2(3, h * 0.5, w - 6, h * 0.45), Color(s.r, s.g, s.b, 0.20))
+			var n_plants := maxi(2, int((w - 6) / 10))
+			for pi2 in range(n_plants):
+				var px := 5.0 + pi2 * float(w - 10) / float(n_plants - 1) if n_plants > 1 else w * 0.5
+				var py_soil := h * 0.5
+				draw_line(Vector2(px, py_soil), Vector2(px, py_soil - h * 0.30), s, lw)
+				draw_circle(Vector2(px, py_soil - h * 0.30), 2.5, Color(s.r, s.g, s.b, 0.30))
+
+		# ── Sun lounger ───────────────────────────────────────────────────────
+		"sun_lounger":
+			# Reclined rectangle with head rest bump
+			var hr_w := w * 0.18
+			draw_rect(Rect2(3, h * 0.20, hr_w, h * 0.60), Color(s.r, s.g, s.b, 0.25))
+			draw_rect(Rect2(3 + hr_w, h * 0.30, w - hr_w - 6, h * 0.40),
+					Color(s.r, s.g, s.b, 0.18))
+			draw_rect(Rect2(3, h * 0.20, hr_w, h * 0.60), s, false, lw)
+			draw_rect(Rect2(3 + hr_w, h * 0.30, w - hr_w - 6, h * 0.40), s, false, lw)
+			# Leg lines
+			for lx in [6.0, w - 6.0]:
+				draw_line(Vector2(lx, h * 0.70), Vector2(lx, h - 3), s, lw * 0.7)
+
+		# ── Laundry basket ────────────────────────────────────────────────────
+		"laundry_basket":
+			# Tapered body + oval opening at top
+			var bx := w * 0.10; var by := h * 0.25
+			draw_rect(Rect2(bx, by, w - bx * 2, h - by - 3), Color(s.r, s.g, s.b, 0.18))
+			draw_rect(Rect2(bx, by, w - bx * 2, h - by - 3), s, false, lw)
+			var ell_pts: PackedVector2Array = PackedVector2Array()
+			for _ai in range(13):
+				var ang := _ai * TAU / 12.0
+				ell_pts.append(Vector2(w * 0.5 + (w - bx * 2) * 0.45 * cos(ang), (by + 3) + 3.5 * sin(ang)))
+			ell_pts.append(ell_pts[0])
+			draw_polyline(ell_pts, Color(s.r, s.g, s.b, 0.55), lw)
+			# Weave lines
+			var n_weave := 3
+			for wi in range(1, n_weave + 1):
+				var wy := by + float(wi) * (h - by - 3) / float(n_weave + 1)
+				draw_line(Vector2(bx + 2, wy), Vector2(w - bx - 2, wy),
+						Color(s.r, s.g, s.b, 0.25), lw * 0.7)
+
+		# ── Whiteboard ────────────────────────────────────────────────────────
+		"whiteboard":
+			draw_rect(Rect2(2, 2, w - 4, h - 4), Color(s.r, s.g, s.b, 0.15))
+			# Writing lines
+			for li in range(2):
+				var ly := 4.0 + float(li) * (h - 8) / 2.0 + (h - 8) / 4.0
+				draw_line(Vector2(5, ly), Vector2(w - 5, ly), Color(s.r, s.g, s.b, 0.35), lw * 0.7)
+
+		# ── Kitchen island / outdoor table / side table ───────────────────────
+		"kitchen_island", "outdoor_table", "side_table":
+			# Surface with a thin inset and seam lines
+			draw_rect(Rect2(3, 3, w - 6, h - 6), Color(s.r, s.g, s.b, 0.15))
+			# Centre seam
+			if w > h:
+				draw_line(Vector2(w * 0.5, 5), Vector2(w * 0.5, h - 5), s, lw * 0.5)
+			else:
+				draw_line(Vector2(5, h * 0.5), Vector2(w - 5, h * 0.5), s, lw * 0.5)
+
+		# ── Seats (office chair, outdoor chair, bar stool) ────────────────────
+		"office_chair", "outdoor_chair", "bar_stool":
+			var cr := minf(w, h) * 0.38
+			var cc := Vector2(w * 0.5, h * 0.55)
+			draw_circle(cc, cr, Color(s.r, s.g, s.b, 0.20))
+			draw_arc(cc, cr, 0, TAU, 16, s, lw)
+			# Back
+			draw_arc(Vector2(w * 0.5, h * 0.18), w * 0.30, PI * 0.1, PI * 0.9, 10, s, lw)
+
+		# ── Floor mirror ──────────────────────────────────────────────────────
+		"floor_mirror":
+			var mr2 := minf(w - 6.0, h * 0.60) * 0.5
+			var mc2 := Vector2(w * 0.5, h * 0.40)
+			draw_rect(Rect2(mc2.x - mr2, mc2.y - mr2 * 1.4, mr2 * 2, mr2 * 2.8),
+					Color(s.r, s.g, s.b, 0.12))
+			draw_rect(Rect2(mc2.x - mr2, mc2.y - mr2 * 1.4, mr2 * 2, mr2 * 2.8),
+					s, false, lw)
+			# Glare line
+			draw_line(mc2 + Vector2(-mr2 * 0.3, -mr2 * 0.5),
+					  mc2 + Vector2(-mr2 * 0.1, -mr2 * 0.2),
+					  Color(s.r, s.g, s.b, 0.35), lw)
+			# Stand base
+			draw_line(Vector2(w * 0.5 - 4, h - 3), Vector2(w * 0.5 + 4, h - 3), s, lw)
+			draw_line(Vector2(w * 0.5, mc2.y + mr2 * 1.4), Vector2(w * 0.5, h - 3), s, lw * 0.8)
+
+		# ── Towel set (wall) / kitchen rack (wall) ────────────────────────────
+		"towel_set":
+			# Folded towel stacks
+			var n_towels := maxi(1, int((w - 4) / 8))
+			for ti2 in range(n_towels):
+				var tx2 := 3.0 + ti2 * float(w - 6) / float(n_towels)
+				var tw2 := float(w - 6) / float(n_towels) - 2
+				draw_rect(Rect2(tx2, 2, tw2, h - 4), Color(s.r, s.g, s.b, 0.22))
+				draw_line(Vector2(tx2, h * 0.5), Vector2(tx2 + tw2, h * 0.5),
+						Color(s.r, s.g, s.b, 0.35), lw * 0.7)
+
+		"kitchen_rack":
+			# Horizontal rod with hanging hooks
+			var ry2 := h * 0.35
+			draw_line(Vector2(3, ry2), Vector2(w - 3, ry2), s, lw * 1.5)
+			var n_hooks := maxi(2, int((w - 6) / 7))
+			for hi3 in range(n_hooks):
+				var hx3 := 5.0 + hi3 * float(w - 10) / float(n_hooks - 1) if n_hooks > 1 else w * 0.5
+				draw_line(Vector2(hx3, ry2), Vector2(hx3, ry2 + (h - ry2) * 0.6), s, lw * 0.8)
+				draw_arc(Vector2(hx3, ry2 + (h - ry2) * 0.6), 2.0,
+						PI * 0.5, PI * 1.5, 6, Color(s.r, s.g, s.b, 0.55), lw * 0.8)
 
 
 func _draw_cotes(fW: float, fH: float) -> void:
@@ -518,6 +884,38 @@ func get_occupied_tiles() -> Array:
 
 
 func _input(event: InputEvent) -> void:
+	# ── Placement mode: furniture follows cursor until click or Esc ───────────
+	if _placement_mode:
+		if get_viewport().is_input_handled():
+			return
+		if event is InputEventMouseMotion:
+			_drag(event.position)
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			var sx := int(position.x / TILE_SIZE)
+			var sy := int(position.y / TILE_SIZE)
+			if not (_wall_ref and _wall_ref.can_place(self, Vector2i(sx, sy))):
+				_play("error")
+				get_viewport().set_input_as_handled()
+				return
+			_placement_mode = false
+			_dragging = false
+			_wall_ref.place_furniture(self, Vector2i(sx, sy))
+			_wall_ref.grid_draw.show_grid = false
+			_wall_ref.grid_draw.queue_redraw()
+			placement_confirmed.emit()
+			queue_redraw()
+			get_viewport().set_input_as_handled()
+		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_placement_mode = false
+			_dragging = false
+			if _wall_ref:
+				_wall_ref.grid_draw.show_grid = false
+				_wall_ref.grid_draw.queue_redraw()
+			placement_cancelled.emit()
+			queue_free()
+			get_viewport().set_input_as_handled()
+		return
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_R and _is_mouse_over():
 			_rotate()
@@ -526,13 +924,22 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed and _is_mouse_over():
-				if Furniture.test_mode_active and foldable:
-					toggle_fold()
-					get_viewport().set_input_as_handled()
-					return
+				_press_pos = event.position
 				_start_drag(event.position)
 			elif _dragging and not event.pressed:
-				_end_drag(event.position)
+				var release_pos: Vector2 = (event as InputEventMouseButton).position
+				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
+				if was_click and Furniture.test_mode_active and foldable:
+					_dragging = false
+					z_index = 0
+					if _wall_ref:
+						_wall_ref.grid_draw.show_grid = false
+						_wall_ref.grid_draw.queue_redraw()
+					position = _original_pos
+					queue_redraw()
+					toggle_fold()
+				else:
+					_end_drag(event.position)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			if _is_mouse_over():
 				sell_requested.emit(self)
@@ -543,14 +950,14 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_mouse_over() -> bool:
-	var mouse := get_global_mouse_position()
+	var local_mouse := get_local_mouse_position()
 	var sz := Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
-	return Rect2(global_position, sz).has_point(mouse)
+	return Rect2(Vector2.ZERO, sz).has_point(local_mouse)
 
 
 func _start_drag(mouse_pos: Vector2) -> void:
 	_dragging = true
-	_drag_offset = global_position - mouse_pos
+	_drag_offset = position - _wall_ref.to_local(mouse_pos)
 	_original_pos = position
 	z_index = 10
 	if _wall_ref:
@@ -567,15 +974,19 @@ func _start_drag(mouse_pos: Vector2) -> void:
 func _drag(mouse_pos: Vector2) -> void:
 	if not _wall_ref:
 		return
-	var target := mouse_pos + _drag_offset - _wall_ref.global_position
+	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var snapped_x := int(target.x / TILE_SIZE)
 	var snapped_y := int(target.y / TILE_SIZE)
 	if rail_axis == "h" and _rail_lock >= 0:
 		snapped_y = _rail_lock
-		snapped_x = clampi(snapped_x, 0, _wall_ref.grid_w - grid_w)
+		var mn_x := 0                        if rail_start < 0 else rail_start
+		var mx_x := _wall_ref.grid_w - grid_w if rail_end   < 0 else rail_end
+		snapped_x = clampi(snapped_x, mn_x, mx_x)
 	elif rail_axis == "v" and _rail_lock >= 0:
 		snapped_x = _rail_lock
-		snapped_y = clampi(snapped_y, 0, _wall_ref.grid_h - grid_h)
+		var mn_y := 0                        if rail_start < 0 else rail_start
+		var mx_y := _wall_ref.grid_h - grid_h if rail_end   < 0 else rail_end
+		snapped_y = clampi(snapped_y, mn_y, mx_y)
 	else:
 		snapped_x = clampi(snapped_x, 0, _wall_ref.grid_w - grid_w)
 		snapped_y = clampi(snapped_y, 0, _wall_ref.grid_h - grid_h)
@@ -618,3 +1029,16 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	else:
 		_play("error")
 		position = _original_pos
+
+
+func begin_placement(floor: Floor, mouse_pos: Vector2) -> void:
+	_wall_ref       = floor
+	_placement_mode = true
+	_dragging       = true
+	_drag_offset    = -Vector2(grid_w, grid_h) * TILE_SIZE * 0.5
+	z_index         = 10
+	if _wall_ref:
+		_wall_ref.grid_draw.show_grid = true
+		_wall_ref.grid_draw.queue_redraw()
+	_drag(mouse_pos)
+	queue_redraw()

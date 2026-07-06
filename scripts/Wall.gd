@@ -11,6 +11,8 @@ const FLOOR_HEIGHT_TILES := 28  # nominal room height in tiles (≈2.8 m at 10 c
 
 var floor_id: String = ""
 var floor_label: String = ""
+var floor_type: String = "floor"
+var parent_id: String = ""
 var grid_w: int = 8
 var grid_h: int = 6
 var wall_definitions: Array = []
@@ -33,6 +35,7 @@ var _use_new_format: bool      = false
 
 var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z)
 var floor_z_offset: int = 0       # global Z of this floor's floor level (tiles)
+var zones: Array = []             # [{tiles:Dictionary, functions:Array[String]}] — recalculated on furniture change
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
 var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
 
@@ -110,6 +113,29 @@ func is_floor_tile(tile: Vector2i) -> bool:
 	if not _use_new_format or floor_mask.is_empty():
 		return tile.x >= 0 and tile.x < grid_w and tile.y >= 0 and tile.y < grid_h
 	return tile in floor_mask
+
+
+# Real playable extent of this floor, derived from wall segments (or floor tiles)
+# rather than the apartment-level grid_w/grid_h, which can be a much larger
+# sandbox default unrelated to this room's actual footprint.
+func get_room_bounds() -> Rect2i:
+	if not floor_mask.is_empty():
+		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
+		for t in floor_mask:
+			var tv := t as Vector2i
+			minx = min(minx, tv.x); maxx = max(maxx, tv.x)
+			miny = min(miny, tv.y); maxy = max(maxy, tv.y)
+		return Rect2i(int(minx), int(miny), int(maxx - minx) + 1, int(maxy - miny) + 1)
+	if not segments.is_empty():
+		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
+		for s in segments:
+			var sd := s as Dictionary
+			minx = min(minx, min(sd["x1"] as int, sd["x2"] as int))
+			maxx = max(maxx, max(sd["x1"] as int, sd["x2"] as int))
+			miny = min(miny, min(sd["y1"] as int, sd["y2"] as int))
+			maxy = max(maxy, max(sd["y1"] as int, sd["y2"] as int))
+		return Rect2i(int(minx), int(miny), int(maxx - minx), int(maxy - miny))
+	return Rect2i(0, 0, grid_w, grid_h)
 
 
 func get_light(tile: Vector2i) -> float:
@@ -201,6 +227,8 @@ func set_active_wall_edge(edge: String) -> void:
 func setup(floor_data: Dictionary) -> void:
 	floor_id    = floor_data["id"]
 	floor_label = floor_data["label"]
+	floor_type  = floor_data.get("type", "floor") as String
+	parent_id   = floor_data.get("parent_id", "") as String
 	grid_w      = floor_data["grid_w"]
 	grid_h      = floor_data["grid_h"]
 	sloped_ceiling    = floor_data.get("sloped_ceiling", {})
@@ -479,6 +507,7 @@ func place_furniture(furniture: Furniture, at: Vector2i) -> void:
 	if furniture.is_stair:
 		_register_stair(furniture, at)
 	_compute_light_map()
+	_recalculate_zones()
 	furniture_changed.emit()
 
 
@@ -486,7 +515,74 @@ func remove_furniture(furniture: Furniture) -> void:
 	_remove_from_grid(furniture)
 	furniture.queue_free()
 	_compute_light_map()
+	_recalculate_zones()
 	furniture_changed.emit()
+
+
+func _recalculate_zones() -> void:
+	zones = []
+	if not _use_new_format:
+		return
+
+	# All walkable floor tiles (floor_mask empty = whole grid)
+	var all_floor: Dictionary = {}
+	if floor_mask.is_empty():
+		for x in range(grid_w):
+			for y in range(grid_h):
+				all_floor[Vector2i(x, y)] = true
+	else:
+		all_floor = floor_mask
+
+	# Tiles occupied by zone-divider furniture are walls for zone purposes
+	var divider_tiles: Dictionary = {}
+	for item in _get_all_placed_unique():
+		var f := item as Furniture
+		if not f.zone_divider:
+			continue
+		for dx in range(f.grid_w):
+			for dy in range(f.grid_h):
+				divider_tiles[Vector2i(f.grid_pos.x + dx, f.grid_pos.y + dy)] = true
+
+	# BFS flood-fill to find connected components
+	var visited: Dictionary = {}
+	for tile in all_floor:
+		var t: Vector2i = tile
+		if t in visited or t in divider_tiles:
+			continue
+		var zone_tiles: Dictionary = {}
+		var queue: Array[Vector2i] = [t]
+		while not queue.is_empty():
+			var cur: Vector2i = queue.pop_front()
+			if cur in visited or cur in divider_tiles or cur not in all_floor:
+				continue
+			visited[cur] = true
+			zone_tiles[cur] = true
+			for nb in [Vector2i(cur.x - 1, cur.y), Vector2i(cur.x + 1, cur.y),
+					   Vector2i(cur.x, cur.y - 1), Vector2i(cur.x, cur.y + 1)]:
+				if nb not in visited and nb not in divider_tiles and nb in all_floor:
+					queue.append(nb)
+
+		# Gather functions from non-divider furniture whose footprint touches this zone
+		var zone_fns: Array[String] = []
+		var zone_fids: Array[String] = []
+		for item in _get_all_placed_unique():
+			var f := item as Furniture
+			if f.zone_divider:
+				continue
+			var found := false
+			for dx in range(f.grid_w):
+				if found: break
+				for dy in range(f.grid_h):
+					if Vector2i(f.grid_pos.x + dx, f.grid_pos.y + dy) in zone_tiles:
+						for fn in f.functions:
+							if fn not in zone_fns:
+								zone_fns.append(fn as String)
+						if f.furniture_id not in zone_fids:
+							zone_fids.append(f.furniture_id)
+						found = true
+						break
+		zones.append({"tiles": zone_tiles, "functions": zone_fns, "furniture_ids": zone_fids})
+	grid_draw.queue_redraw()
 
 
 func _remove_from_grid(furniture: Furniture) -> void:
@@ -552,6 +648,7 @@ func get_all_wall_item_ids() -> Array:
 func get_adjacent_furniture(edge: String) -> Array:
 	# Returns [{furniture, wall_x}] for pieces whose footprint touches this wall edge
 	var result: Array = []
+	var bounds := get_room_bounds()
 	for item in _get_all_placed_unique():
 		var f := item as Furniture
 		var adjacent := false
@@ -562,7 +659,7 @@ func get_adjacent_furniture(edge: String) -> Array:
 					adjacent = true
 					wall_x = f.grid_pos.x
 			"south":
-				if f.grid_pos.y + f.grid_h > grid_h - WALL_DEPTH:
+				if f.grid_pos.y + f.grid_h > bounds.position.y + bounds.size.y - WALL_DEPTH:
 					adjacent = true
 					wall_x = f.grid_pos.x
 			"west":
@@ -570,7 +667,7 @@ func get_adjacent_furniture(edge: String) -> Array:
 					adjacent = true
 					wall_x = f.grid_pos.y
 			"east":
-				if f.grid_pos.x + f.grid_w > grid_w - WALL_DEPTH:
+				if f.grid_pos.x + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
 					adjacent = true
 					wall_x = f.grid_pos.y
 		if adjacent:

@@ -43,9 +43,11 @@
         "w": 19,
         "h": 9
       },
-      "wall_h": 19,
+      "wall_h": 10,
       "floor_depth": 9,
       "height_category": "tall",
+      "z_bottom": 14,
+      "z_top": 24,
       "creates_loft": true,
       "functions": [
         "sleep"
@@ -62,9 +64,11 @@
         "w": 19,
         "h": 9
       },
-      "wall_h": 20,
+      "wall_h": 10,
       "floor_depth": 9,
       "height_category": "tall",
+      "z_bottom": 14,
+      "z_top": 24,
       "creates_loft": true,
       "functions": [
         "sleep"
@@ -382,6 +386,81 @@
       "color": "908878"
     },
     {
+      "id": "bathtub",
+      "name": "Bathtub",
+      "placement": "floor",
+      "color": "b0c8d4",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 400,
+      "sell_price": 200,
+      "size": {
+        "w": 10,
+        "h": 6
+      }
+    },
+    {
+      "id": "toilet",
+      "name": "Toilet",
+      "placement": "floor",
+      "color": "d4dde8",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 200,
+      "sell_price": 100,
+      "size": {
+        "w": 5,
+        "h": 6
+      }
+    },
+    {
+      "id": "sink",
+      "name": "Sink",
+      "placement": "floor",
+      "color": "c8d8e8",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 180,
+      "sell_price": 90,
+      "size": {
+        "w": 6,
+        "h": 5
+      }
+    },
+    {
+      "id": "shower",
+      "name": "Shower",
+      "placement": "floor",
+      "color": "b8ccd8",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 350,
+      "sell_price": 175,
+      "size": {
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "id": "towel_rack",
+      "name": "Towel Rack",
+      "placement": "wall",
+      "color": "c8bca8",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 60,
+      "sell_price": 30,
+      "size": {
+        "w": 8,
+        "h": 1
+      }
+    },
+    {
       "id": "wardrobe",
       "name": "Wardrobe",
       "placement": "floor",
@@ -399,7 +478,8 @@
       ],
       "buy_price": 300,
       "sell_price": 100,
-      "color": "b08848"
+      "color": "b08848",
+      "zone_divider": true
     },
     {
       "id": "bookshelf",
@@ -418,7 +498,8 @@
       ],
       "buy_price": 150,
       "sell_price": 50,
-      "color": "9a7840"
+      "color": "9a7840",
+      "zone_divider": true
     },
     {
       "id": "pantry",
@@ -437,7 +518,8 @@
       ],
       "buy_price": 200,
       "sell_price": 70,
-      "color": "8a7060"
+      "color": "8a7060",
+      "zone_divider": true
     },
     {
       "id": "wall_shelf",
@@ -641,6 +723,407 @@
       "z_top": 18,
       "is_stair": true,
       "stair_direction": "west"
+    },
+    {
+      "id": "bath_mat",
+      "name": "Bath Mat",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 4
+      },
+      "wall_h": 1,
+      "floor_depth": 4,
+      "functions": [],
+      "buy_price": 40,
+      "sell_price": 15,
+      "color": "c8b8a0"
+    },
+    {
+      "id": "laundry_basket",
+      "name": "Laundry Basket",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "functions": [],
+      "buy_price": 50,
+      "sell_price": 20,
+      "color": "d0c0a8"
+    },
+    {
+      "id": "bathroom_cabinet",
+      "name": "Bathroom Cabinet",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 5
+      },
+      "wall_h": 12,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 120,
+      "sell_price": 50,
+      "color": "d8e4ec"
+    },
+    {
+      "id": "towel_set",
+      "name": "Towel Set",
+      "placement": "wall",
+      "size": {
+        "w": 6,
+        "h": 2
+      },
+      "wall_h": 6,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 30,
+      "sell_price": 10,
+      "color": "e8ddd0"
+    },
+    {
+      "id": "rug",
+      "name": "Rug",
+      "placement": "floor",
+      "size": {
+        "w": 22,
+        "h": 14
+      },
+      "wall_h": 1,
+      "floor_depth": 14,
+      "functions": [],
+      "buy_price": 120,
+      "sell_price": 45,
+      "color": "a07898"
+    },
+    {
+      "id": "floor_lamp",
+      "name": "Floor Lamp",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 3
+      },
+      "wall_h": 14,
+      "floor_depth": 3,
+      "functions": [],
+      "buy_price": 60,
+      "sell_price": 25,
+      "color": "d4c060"
+    },
+    {
+      "id": "side_table",
+      "name": "Side Table",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 7,
+      "floor_depth": 6,
+      "functions": [],
+      "buy_price": 80,
+      "sell_price": 30,
+      "color": "907858"
+    },
+    {
+      "id": "tv_stand",
+      "name": "TV Stand",
+      "placement": "floor",
+      "size": {
+        "w": 18,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "functions": [],
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "604838"
+    },
+    {
+      "id": "office_chair",
+      "name": "Office Chair",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 7
+      },
+      "wall_h": 9,
+      "floor_depth": 7,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "506070"
+    },
+    {
+      "id": "filing_cabinet",
+      "name": "Filing Cabinet",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 8
+      },
+      "wall_h": 14,
+      "floor_depth": 8,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 130,
+      "sell_price": 50,
+      "color": "6878a0"
+    },
+    {
+      "id": "whiteboard",
+      "name": "Whiteboard",
+      "placement": "wall",
+      "size": {
+        "w": 10,
+        "h": 2
+      },
+      "wall_h": 10,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 80,
+      "sell_price": 30,
+      "color": "f0f0e0"
+    },
+    {
+      "id": "desk_lamp",
+      "name": "Desk Lamp",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 3
+      },
+      "wall_h": 8,
+      "floor_depth": 3,
+      "functions": [],
+      "buy_price": 40,
+      "sell_price": 15,
+      "color": "d4b060"
+    },
+    {
+      "id": "fridge",
+      "name": "Fridge",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 8
+      },
+      "wall_h": 18,
+      "floor_depth": 8,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 350,
+      "sell_price": 140,
+      "color": "c0ccd8"
+    },
+    {
+      "id": "kitchen_island",
+      "name": "Kitchen Island",
+      "placement": "floor",
+      "size": {
+        "w": 14,
+        "h": 8
+      },
+      "wall_h": 9,
+      "floor_depth": 8,
+      "functions": [],
+      "buy_price": 280,
+      "sell_price": 100,
+      "color": "c0b090"
+    },
+    {
+      "id": "bar_stool",
+      "name": "Bar Stool",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 5
+      },
+      "wall_h": 10,
+      "floor_depth": 5,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 70,
+      "sell_price": 25,
+      "color": "806848"
+    },
+    {
+      "id": "kitchen_rack",
+      "name": "Kitchen Rack",
+      "placement": "wall",
+      "size": {
+        "w": 8,
+        "h": 2
+      },
+      "wall_h": 8,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 50,
+      "sell_price": 20,
+      "color": "909898"
+    },
+    {
+      "id": "outdoor_chair",
+      "name": "Outdoor Chair",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 8
+      },
+      "wall_h": 9,
+      "floor_depth": 8,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "708060"
+    },
+    {
+      "id": "outdoor_table",
+      "name": "Outdoor Table",
+      "placement": "floor",
+      "size": {
+        "w": 10,
+        "h": 8
+      },
+      "wall_h": 8,
+      "floor_depth": 8,
+      "ghost_radius": 2,
+      "functions": [
+        "dine"
+      ],
+      "buy_price": 140,
+      "sell_price": 55,
+      "color": "607050"
+    },
+    {
+      "id": "planter_box",
+      "name": "Planter Box",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "functions": [],
+      "buy_price": 60,
+      "sell_price": 25,
+      "color": "507040"
+    },
+    {
+      "id": "sun_lounger",
+      "name": "Sun Lounger",
+      "placement": "floor",
+      "size": {
+        "w": 17,
+        "h": 7
+      },
+      "wall_h": 5,
+      "floor_depth": 7,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 160,
+      "sell_price": 60,
+      "color": "d4c070"
+    },
+    {
+      "id": "nightstand",
+      "name": "Nightstand",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 6
+      },
+      "wall_h": 8,
+      "floor_depth": 6,
+      "functions": [],
+      "buy_price": 70,
+      "sell_price": 28,
+      "color": "907858"
+    },
+    {
+      "id": "dresser",
+      "name": "Dresser",
+      "placement": "floor",
+      "size": {
+        "w": 11,
+        "h": 7
+      },
+      "wall_h": 13,
+      "floor_depth": 7,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 200,
+      "sell_price": 80,
+      "color": "887050"
+    },
+    {
+      "id": "floor_mirror",
+      "name": "Floor Mirror",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 8
+      },
+      "wall_h": 18,
+      "floor_depth": 8,
+      "height_category": "tall",
+      "functions": [],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "c0c8d0"
+    },
+    {
+      "id": "clothes_rack",
+      "name": "Clothes Rack",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 5
+      },
+      "wall_h": 14,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 80,
+      "sell_price": 30,
+      "color": "909898"
+    },
+    {
+      "id": "bedroom_rug",
+      "name": "Bedroom Rug",
+      "placement": "floor",
+      "size": {
+        "w": 20,
+        "h": 12
+      },
+      "wall_h": 1,
+      "floor_depth": 12,
+      "functions": [],
+      "buy_price": 100,
+      "sell_price": 38,
+      "color": "c08878"
     }
   ],
   "paintable": [

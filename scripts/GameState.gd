@@ -16,13 +16,11 @@ var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor rel
 
 
 func _ready() -> void:
-	own_level("level_01")
-	own_level("level_02")
-	# Tutorial levels are always free and pre-owned
-	own_level("tut_loft")
-	own_level("tut_height")
-	own_level("tut_plumbing")
-	own_level("tut_moments")
+	for _lid in ["tut_basics","debug_moments",
+			"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
+			"muchos_electrodomésticos",
+			"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]:
+		own_level(_lid)
 
 
 func own_level(level_id: String) -> void:

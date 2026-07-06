@@ -7,10 +7,12 @@ const DOOR_LEN   := 10
 const LEFT_W     := 170.0
 const RIGHT_W    := 214.0
 const TOP_H      := 36.0
+const BOTTOM_H   := 160.0
 const DEFAULT_GW := 300
 const DEFAULT_GH := 300
 
-const _OV_SCRIPT := preload("res://scripts/EditorOverlay.gd")
+const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
+const FurnitureScene := preload("res://scenes/Furniture.tscn")
 
 enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE }
 
@@ -113,6 +115,7 @@ var _furn_catalog: Array = []   # full furniture array from furniture.json
 var _allowed_furniture:    Array   = []   # [] = all allowed; otherwise ID whitelist
 var _starting_inventory:   Array   = []   # [{id, count}] items that start in the apartment
 var _placed_furniture:     Array   = []   # [{id, x, y}] pre-placed positions on the floor
+var _furn_preview_nodes:   Array   = []   # Furniture instances shown on the editor canvas
 
 # Furniture placement mode
 var _placing_furniture_id:   String   = ""
@@ -127,6 +130,10 @@ var _level_summary_lbl: Label = null
 # Starting inventory modal (kept alive so it can be hidden/shown during placement)
 var _inv_modal_win:  Window = null
 var _inv_list_vb:    VBoxContainer = null
+
+# Bottom catalog panel + right-panel placed list
+var _editor_furn_vb: VBoxContainer = null
+var _placed_vb:      VBoxContainer = null
 
 # ── Multi-floor editing ───────────────────────────────────────────────────────
 # Ordered bottom→top: [subfloor, ground, ..., roof]
@@ -195,6 +202,7 @@ func _build_scene() -> void:
 	_build_topbar(troot)
 	_build_left(troot)
 	_build_right(troot)
+	_build_bottom(troot)
 
 
 func _build_topbar(ui: Node) -> void:
@@ -401,16 +409,11 @@ func _build_right(ui: Node) -> void:
 	vb.add_child(_cat_filter_lbl)
 	_update_cat_filter_lbl()
 
-	var inv_btn := Button.new()
-	inv_btn.text = "Starting Furniture…"
-	inv_btn.add_theme_font_size_override("font_size", 10)
-	inv_btn.pressed.connect(_open_starting_inv_modal)
-	vb.add_child(inv_btn)
-	_inv_count_lbl = Label.new()
-	_inv_count_lbl.add_theme_font_size_override("font_size", 9)
-	_inv_count_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	vb.add_child(_inv_count_lbl)
-	_update_inv_count_lbl()
+	_sect(vb, "PLACED")
+	_placed_vb = VBoxContainer.new()
+	_placed_vb.add_theme_constant_override("separation", 2)
+	vb.add_child(_placed_vb)
+	_fill_placed_list()
 
 	_sect(vb, "ACTIONS")
 	_actbtn(vb, "▶  Test Level",  Color(0.28, 0.80, 0.52), _test_level)
@@ -1223,6 +1226,16 @@ func _input(event: InputEvent) -> void:
 						var tx := int(fl.x / TILE_SIZE)
 						var ty := int(fl.y / TILE_SIZE)
 						_placed_furniture.append({"id": _placing_furniture_id, "x": tx, "y": ty})
+						# If placed over a drawn rail, mark it as rail-constrained
+						var _pfsize := (_furn_data_by_id(_placing_furniture_id).get("size", {}) as Dictionary)
+						var _pfw: int = _pfsize.get("w", 1) as int
+						var _pfh: int = _pfsize.get("h", 1) as int
+						var _ri := _detect_rail_under(tx, ty, _pfw, _pfh)
+						if not _ri.is_empty():
+							var _last := _placed_furniture[_placed_furniture.size() - 1] as Dictionary
+							_last["rail_axis"]  = _ri["axis"]
+							_last["rail_start"] = _ri["start"]
+							_last["rail_end"]   = _ri["end"]
 						# Loft-creating furniture → paint footprint as mezzanine and auto-add loft floor
 						var _pfdata := _furn_data_by_id(_placing_furniture_id)
 						if _pfdata.get("creates_loft", false) as bool:
@@ -1239,8 +1252,7 @@ func _input(event: InputEvent) -> void:
 							_auto_add_loft()
 						_cancel_placement()
 						_update_placed_furniture_overlay()
-						_fill_inv_modal_rows()
-						_update_inv_count_lbl()
+						_fill_placed_list()
 						get_viewport().set_input_as_handled()
 		elif event is InputEventMouseMotion:
 			var sp := (event as InputEventMouse).position
@@ -1266,7 +1278,7 @@ func _input(event: InputEvent) -> void:
 				return  # let the popup's ScrollContainer handle the scroll
 			var vp_size := get_viewport().get_visible_rect().size
 			var mx := mb.position.x
-			var over_panel := mx < LEFT_W or mx > vp_size.x - RIGHT_W or mb.position.y < TOP_H
+			var over_panel := mx < LEFT_W or mx > vp_size.x - RIGHT_W or mb.position.y < TOP_H or mb.position.y > vp_size.y - BOTTOM_H
 			if not over_panel:
 				_do_zoom(mb.button_index == MOUSE_BUTTON_WHEEL_UP)
 				get_viewport().set_input_as_handled()
@@ -1409,7 +1421,7 @@ func _do_zoom(zoom_in: bool) -> void:
 
 func _is_ui(sp: Vector2) -> bool:
 	var sz := get_viewport().get_visible_rect().size
-	return sp.x < LEFT_W or sp.x > sz.x - RIGHT_W or sp.y < TOP_H
+	return sp.x < LEFT_W or sp.x > sz.x - RIGHT_W or sp.y < TOP_H or sp.y > sz.y - BOTTOM_H
 
 
 func _to_floor(sp: Vector2) -> Vector2:
@@ -1910,13 +1922,140 @@ func _update_cat_filter_lbl() -> void:
 
 
 func _update_inv_count_lbl() -> void:
-	if not is_instance_valid(_inv_count_lbl):
+	_fill_placed_list()
+
+
+# ── Bottom furniture catalog panel ───────────────────────────────────────────
+
+func _build_bottom(ui: Node) -> void:
+	var panel := PanelContainer.new()
+	var ps := StyleBoxFlat.new()
+	ps.bg_color    = Color(0.09, 0.11, 0.16)
+	ps.border_color = Color(0.18, 0.24, 0.34, 0.70)
+	ps.set_border_width(SIDE_TOP, 1)
+	ps.set_content_margin_all(8)
+	panel.add_theme_stylebox_override("panel", ps)
+	panel.set_anchor(SIDE_RIGHT,  1.0)
+	panel.set_anchor(SIDE_TOP,    1.0)
+	panel.set_anchor(SIDE_BOTTOM, 1.0)
+	panel.offset_left   = LEFT_W
+	panel.offset_right  = -RIGHT_W
+	panel.offset_top    = -BOTTOM_H
+	ui.add_child(panel)
+
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 4)
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(outer)
+
+	var hdr := Label.new()
+	hdr.text = "FLOOR ITEMS"
+	hdr.add_theme_font_size_override("font_size", 9)
+	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	outer.add_child(hdr)
+
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(scroll)
+
+	_editor_furn_vb = VBoxContainer.new()
+	_editor_furn_vb.add_theme_constant_override("separation", 3)
+	_editor_furn_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_editor_furn_vb)
+
+	_refresh_editor_furn_panel()
+
+
+func _refresh_editor_furn_panel() -> void:
+	if not is_instance_valid(_editor_furn_vb):
 		return
-	var total := 0
-	for e in _starting_inventory:
-		total += (e as Dictionary)["count"] as int
-	total += _placed_furniture.size()
-	_inv_count_lbl.text = "Empty" if total == 0 else "%d item(s)" % total
+	for c in _editor_furn_vb.get_children():
+		c.queue_free()
+
+	var catalog: Array = _furn_catalog
+	if not _allowed_furniture.is_empty():
+		catalog = catalog.filter(
+			func(f: Dictionary) -> bool: return f["id"] as String not in _allowed_furniture)
+
+	for fraw in catalog:
+		var fdata := fraw as Dictionary
+		if fdata.get("placement", "floor") != "floor":
+			continue
+		var fid    := fdata["id"] as String
+		var fw: int = (fdata.get("size", {}) as Dictionary).get("w", 5) as int
+		var fh: int = (fdata.get("size", {}) as Dictionary).get("h", 5) as int
+		var fcolor := Color("#" + fdata.get("color", "888888") as String)
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		_editor_furn_vb.add_child(row)
+
+		var swatch := ColorRect.new()
+		swatch.color = fcolor
+		swatch.custom_minimum_size = Vector2(8, 0)
+		swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		row.add_child(swatch)
+
+		var name_lbl := Label.new()
+		name_lbl.text = fdata["name"] as String
+		name_lbl.custom_minimum_size.x = 108
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		row.add_child(name_lbl)
+
+		var funcs := fdata.get("functions", []) as Array
+		var func_lbl := Label.new()
+		func_lbl.text = ", ".join(funcs) if not funcs.is_empty() else "decor"
+		func_lbl.custom_minimum_size.x = 100
+		func_lbl.add_theme_font_size_override("font_size", 10)
+		func_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		row.add_child(func_lbl)
+
+		var place_btn := Button.new()
+		place_btn.text = "Free"
+		place_btn.add_theme_font_size_override("font_size", 11)
+		place_btn.pressed.connect(func(): _start_placement(fid, fw, fh, fcolor))
+		row.add_child(place_btn)
+
+
+func _fill_placed_list() -> void:
+	if not is_instance_valid(_placed_vb):
+		return
+	for c in _placed_vb.get_children():
+		c.queue_free()
+
+	if _placed_furniture.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "—"
+		empty_lbl.add_theme_font_size_override("font_size", 9)
+		empty_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_placed_vb.add_child(empty_lbl)
+		return
+
+	for pi in range(_placed_furniture.size()):
+		var pf     := _placed_furniture[pi] as Dictionary
+		var pfid   := pf["id"] as String
+		var pfdata := _furn_data_by_id(pfid)
+		var pfname := pfdata.get("name", pfid) as String
+		var prow := HBoxContainer.new()
+		prow.add_theme_constant_override("separation", 2)
+		_placed_vb.add_child(prow)
+		var plbl := Label.new()
+		plbl.text = pfname
+		plbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plbl.add_theme_font_size_override("font_size", 9)
+		prow.add_child(plbl)
+		var pci := pi
+		var del_btn := Button.new()
+		del_btn.text = "×"
+		del_btn.add_theme_font_size_override("font_size", 9)
+		del_btn.add_theme_color_override("font_color", Color(0.80, 0.30, 0.20))
+		del_btn.pressed.connect(func():
+			_placed_furniture.remove_at(pci)
+			_update_placed_furniture_overlay()
+			_fill_placed_list())
+		prow.add_child(del_btn)
 
 
 # ── Catalog filter modal ──────────────────────────────────────────────────────
@@ -1928,6 +2067,7 @@ func _open_catalog_filter_modal() -> void:
 	win.wrap_controls = true
 	win.close_requested.connect(func():
 		_update_cat_filter_lbl()
+		_refresh_editor_furn_panel()
 		win.queue_free())
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2194,22 +2334,41 @@ func _cancel_placement() -> void:
 
 
 func _update_placed_furniture_overlay() -> void:
-	if not is_instance_valid(_ov):
+	# Remove old preview nodes
+	for pn in _furn_preview_nodes:
+		if is_instance_valid(pn):
+			pn.queue_free()
+	_furn_preview_nodes.clear()
+
+	if not is_instance_valid(_room):
 		return
-	var display: Array = []
+
 	for pf in _placed_furniture:
-		var fid   := (pf as Dictionary)["id"] as String
+		var pfd   := pf as Dictionary
+		var fid   := pfd["id"] as String
 		var fdata := _furn_data_by_id(fid)
-		var fw: int = (fdata.get("size", {}) as Dictionary).get("w", 5) as int
-		var fh: int = (fdata.get("size", {}) as Dictionary).get("h", 5) as int
-		display.append({
-			"x": (pf as Dictionary)["x"] as int,
-			"y": (pf as Dictionary)["y"] as int,
-			"w": fw, "h": fh,
-			"col": Color("#" + fdata.get("color", "888888") as String)
-		})
-	_ov.set("placed_furniture", display)
-	_ov.queue_redraw()
+		if fdata.is_empty():
+			continue
+		var gx: int = pfd["x"] as int
+		var gy: int = pfd["y"] as int
+		# Merge per-instance rail overrides into catalog data for the preview node
+		var merged := fdata.duplicate()
+		for key in ["rail_axis", "rail_start", "rail_end"]:
+			if pfd.has(key):
+				merged[key] = pfd[key]
+
+		var f: Furniture = FurnitureScene.instantiate() as Furniture
+		_room.add_child(f)
+		f.setup(merged, null)
+		f.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+		# Disable all processing so preview nodes don't react to input
+		f.process_mode = Node.PROCESS_MODE_DISABLED
+		_furn_preview_nodes.append(f)
+
+	# Clear overlay rects (real nodes used instead)
+	if is_instance_valid(_ov):
+		_ov.set("placed_furniture", [])
+		_ov.queue_redraw()
 
 
 func _confirm_clear_all() -> void:
@@ -2576,6 +2735,30 @@ func _toggle_column(tile: Vector2i) -> void:
 	_set_status("Column at (%d, %d)" % [tile.x, tile.y])
 
 
+func _detect_rail_under(tx: int, ty: int, fw: int, fh: int) -> Dictionary:
+	for r in _rails:
+		var x1: int = r["x1"]; var y1: int = r["y1"]
+		var x2: int = r["x2"]; var y2: int = r["y2"]
+		var mn_x := mini(x1, x2); var mx_x := maxi(x1, x2)
+		var mn_y := mini(y1, y2); var mx_y := maxi(y1, y2)
+		var is_h := (y1 == y2)
+		if is_h:
+			# Horizontal rail at row y1 — furniture must contain that row
+			if ty <= y1 and y1 < ty + fh and tx < mx_x and tx + fw > mn_x:
+				var start := mn_x
+				var end   := mx_x - fw
+				if end >= start:
+					return {"axis": "h", "start": start, "end": end}
+		else:
+			# Vertical rail at col x1 — furniture must contain that column
+			if tx <= x1 and x1 < tx + fw and ty < mx_y and ty + fh > mn_y:
+				var start := mn_y
+				var end   := mx_y - fh
+				if end >= start:
+					return {"axis": "v", "start": start, "end": end}
+	return {}
+
+
 func _erase_rail_at(tile: Vector2i) -> void:
 	for i in range(_rails.size()):
 		var r := _rails[i] as Dictionary
@@ -2924,6 +3107,10 @@ func _delete_level(lvl_id: String) -> void:
 		if (levels[i] as Dictionary).get("id", "") == lvl_id:
 			levels.remove_at(i)
 			break
+	# Repack grid positions so there are no gaps after deletion
+	for i in range(levels.size()):
+		(levels[i] as Dictionary)["map_col"] = i % 5
+		(levels[i] as Dictionary)["map_row"] = i / 5
 	root["levels"] = levels
 	var wf := FileAccess.open("res://data/levels.json", FileAccess.WRITE)
 	if wf:

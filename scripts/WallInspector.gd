@@ -2,6 +2,7 @@ extends PanelContainer
 class_name WallInspector
 
 signal wall_closed
+signal wall_item_placed(furniture_id: String)
 
 const TILE_SIZE:   int = 12
 const WALL_HEIGHT: int = 24
@@ -12,6 +13,7 @@ var _selected_id: String   = ""
 
 var _edge: String     = ""
 var _apt_floor: Floor = null
+var _other_floor: Floor = null  # sibling base/loft floor — shown as read-only context
 
 # Drag shared
 var _is_dragging:   bool     = false
@@ -31,7 +33,6 @@ var _drag_floor_offset_x:  int       = 0
 @onready var close_btn:  Button        = $VBox/TitleRow/CloseBtn
 @onready var hint_lbl:   Label         = $VBox/HintLabel
 @onready var draw_area:  Control       = $VBox/Scroll/DrawArea
-@onready var shop_strip: HBoxContainer = $VBox/WallItems
 
 
 func setup(all_furniture: Array) -> void:
@@ -47,29 +48,39 @@ func setup(all_furniture: Array) -> void:
 func _show_placeholder() -> void:
 	hint_lbl.visible   = true
 	draw_area.visible  = false
-	shop_strip.visible = false
 	title_lbl.text     = "Wall Inspector"
-	_clear_shop()
 
 
-func show_wall(apt_floor: Floor, edge: String) -> void:
+func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> void:
+	show()
 	if _apt_floor and _apt_floor.furniture_changed.is_connected(_on_floor_changed):
 		_apt_floor.furniture_changed.disconnect(_on_floor_changed)
+	if _other_floor and _other_floor.furniture_changed.is_connected(_on_floor_changed):
+		_other_floor.furniture_changed.disconnect(_on_floor_changed)
 
 	_apt_floor   = apt_floor
+	_other_floor = other_floor
 	_edge        = edge
 	_selected_id = ""
 	_is_dragging = false
 	_drag_floor_furniture = null
 
 	_apt_floor.furniture_changed.connect(_on_floor_changed)
+	if _other_floor:
+		_other_floor.furniture_changed.connect(_on_floor_changed)
 
 	title_lbl.text = "Wall: " + _edge_label(edge)
 	draw_area.custom_minimum_size = Vector2(_wall_w() * TILE_SIZE, WALL_HEIGHT * TILE_SIZE)
-	hint_lbl.visible   = false
-	draw_area.visible  = true
-	shop_strip.visible = true
-	_build_shop()
+	hint_lbl.visible  = false
+	draw_area.visible = true
+	draw_area.queue_redraw()
+
+
+# Called by Main when the player clicks "Buy" on a wall item in the inventory panel.
+func select_item(fid: String) -> void:
+	if not visible or not _apt_floor:
+		return
+	_selected_id = fid if _selected_id != fid else ""
 	draw_area.queue_redraw()
 
 
@@ -80,42 +91,17 @@ func _on_floor_changed() -> void:
 func _on_close() -> void:
 	if _apt_floor and _apt_floor.furniture_changed.is_connected(_on_floor_changed):
 		_apt_floor.furniture_changed.disconnect(_on_floor_changed)
+	if _other_floor and _other_floor.furniture_changed.is_connected(_on_floor_changed):
+		_other_floor.furniture_changed.disconnect(_on_floor_changed)
 	_apt_floor            = null
+	_other_floor          = null
 	_edge                 = ""
 	_selected_id          = ""
 	_is_dragging          = false
 	_drag_floor_furniture = null
 	_show_placeholder()
+	hide()
 	wall_closed.emit()
-
-
-# ── Shop ──────────────────────────────────────────────────────────────────────
-
-func _clear_shop() -> void:
-	for c in shop_strip.get_children():
-		c.queue_free()
-
-
-func _build_shop() -> void:
-	_clear_shop()
-	var grp := ButtonGroup.new()
-	for f in _wall_furniture:
-		var btn := Button.new()
-		btn.text         = "%s  %d€" % [f["name"], f["buy_price"]]
-		btn.toggle_mode  = true
-		btn.button_group = grp
-		btn.toggled.connect(_on_shop_toggled.bind(f["id"] as String))
-		shop_strip.add_child(btn)
-
-
-func _on_shop_toggled(pressed: bool, fid: String) -> void:
-	_selected_id = fid if pressed else ""
-	draw_area.queue_redraw()
-
-
-func _deselect_shop() -> void:
-	for child in shop_strip.get_children():
-		(child as Button).button_pressed = false
 
 
 # ── Input ─────────────────────────────────────────────────────────────────────
@@ -135,10 +121,9 @@ func _on_draw_input(event: InputEvent) -> void:
 					_drag_origin  = wall_hit as Vector2i
 					_drag_offset  = tile - _drag_origin
 					_drag_pos     = _drag_origin
-					_is_dragging  = true
+					_is_dragging   = true
 					_drag_is_floor = false
-					_selected_id  = ""
-					_deselect_shop()
+					_selected_id   = ""
 				else:
 					var floor_hit: Variant = _floor_item_at(tile)
 					if floor_hit != null:
@@ -150,7 +135,6 @@ func _on_draw_input(event: InputEvent) -> void:
 						_is_dragging           = true
 						_drag_is_floor         = true
 						_selected_id           = ""
-						_deselect_shop()
 					elif _selected_id != "":
 						_try_place(_selected_id, tile)
 			else:
@@ -229,6 +213,8 @@ func _try_place(fid: String, at: Vector2i) -> void:
 	if _wall_fits(at, iw, ih, placed):
 		Audio.play("place")
 		_apt_floor.place_wall_item(_edge, at, fid)
+		_selected_id = ""
+		wall_item_placed.emit(fid)
 
 
 func _drop_wall_drag() -> void:
@@ -386,47 +372,40 @@ func _draw_elevation() -> void:
 		draw_area.draw_rect(zr, Color(1.0, 0.30, 0.20, 0.07))
 		draw_area.draw_rect(zr, Color(1.0, 0.30, 0.20, 0.30), false, 1.0)
 
-	# ── Floor-adjacent pieces ─────────────────────────────────────────────────
+	# ── Mezzanine baseline — the loft's own "floor" height within this wall ────
+	# Sits at 14 tiles from the real floor (≈1.4 m headroom below).
+	const MEZZ_LEVEL := 10   # tiles from top of elevation view
+	var mezz_y := MEZZ_LEVEL * TILE_SIZE
+
+	# ── Floor-adjacent pieces (this floor, interactive) ───────────────────────
 	for entry in _apt_floor.get_adjacent_furniture(_edge):
-		var f: Furniture = entry["furniture"]
-		var wx: int      = entry["wall_x"] as int
-		var fdata        := _find_by_id(f.furniture_id)
-		if fdata.is_empty():
-			continue
-		var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
-		var wall_h: int = fdata.get("wall_h", 5) as int
-		var col         := Color("#" + (fdata.get("color", "888888") as String))
-		var is_dragged  := _is_dragging and _drag_is_floor and _drag_floor_furniture == f
-		if is_dragged:
-			col.a = 0.28
-		var px := wx * TILE_SIZE
-		var pw := item_w * TILE_SIZE
-		var ph := wall_h * TILE_SIZE
-		var py := rh - ph
-		draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), col)
-		draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), Color(0, 0, 0, 0.30), false, 1.0)
-		if not is_dragged:
-			_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
+		_draw_floor_piece(entry["furniture"], entry["wall_x"] as int, rh,
+			_is_dragging and _drag_is_floor and _drag_floor_furniture == entry["furniture"])
+
+	# ── Sibling floor pieces (base ↔ loft, read-only context) ─────────────────
+	if _other_floor:
+		var other_baseline := mezz_y if _other_floor.floor_type == "loft" else rh
+		for entry in _other_floor.get_adjacent_furniture(_edge):
+			_draw_floor_piece(entry["furniture"], entry["wall_x"] as int, other_baseline, false, true)
 
 	# ── Mezzanine slab ───────────────────────────────────────────────────────
 	# Show mezzanine tiles adjacent to this wall as an amber platform slab.
-	# Mezzanine floor sits at 14 tiles from floor bottom (≈ 2.1 m headroom below).
-	const MEZZ_LEVEL := 10   # tiles from top of elevation view
-	var mezz_y   := MEZZ_LEVEL * TILE_SIZE
 	var mezz_col := Color(0.82, 0.70, 0.35, 0.90)
 	var mezz_fg  := Color(0.50, 0.38, 0.10, 0.90)
 	# Determine which wall-axis coords have adjacent mezzanine tiles
-	var wall_coords: Array = []
+	var bounds := _apt_floor.get_room_bounds()
+	var wall_coords_set: Dictionary = {}
 	for tile in _apt_floor.mezzanine_mask:
 		var t := tile as Vector2i
 		var wc := -1
 		match _edge:
-			"north": if t.y == 0:            wc = t.x
-			"south": if t.y == _apt_floor.grid_h - 1: wc = t.x
-			"west":  if t.x == 0:            wc = t.y
-			"east":  if t.x == _apt_floor.grid_w - 1: wc = t.y
+			"north": if t.y < bounds.position.y + Floor.WALL_DEPTH:                          wc = t.x
+			"south": if t.y >= bounds.position.y + bounds.size.y - Floor.WALL_DEPTH:           wc = t.x
+			"west":  if t.x < bounds.position.x + Floor.WALL_DEPTH:                           wc = t.y
+			"east":  if t.x >= bounds.position.x + bounds.size.x - Floor.WALL_DEPTH:           wc = t.y
 		if wc >= 0:
-			wall_coords.append(wc)
+			wall_coords_set[wc] = true
+	var wall_coords: Array = wall_coords_set.keys()
 	# Draw slab for each contiguous run of mezzanine tiles along this wall
 	if not wall_coords.is_empty():
 		wall_coords.sort()
@@ -521,7 +500,7 @@ func _draw_elevation() -> void:
 			var ghost   := Color("#" + (fdata.get("color", "888888") as String))
 			ghost.a = 0.35
 			draw_area.draw_rect(Rect2(2, 2, iw - 4, ih - 4), ghost)
-			_draw_label(4, 13, float(iw - 6), "click wall to place")
+			_draw_label(4, 13, float(iw - 6), "click to place")
 
 
 func _draw_openings(_rw: int, rh: int) -> void:
@@ -568,6 +547,70 @@ func _get_wall_def() -> Dictionary:
 	return {}
 
 
+func _draw_floor_piece(f: Furniture, wx: int, floor_baseline_px: float, is_dragged: bool, is_context: bool = false) -> void:
+	var fdata := _find_by_id(f.furniture_id)
+	if fdata.is_empty():
+		return
+	var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
+	var col         := Color("#" + (fdata.get("color", "888888") as String))
+	if is_dragged:
+		col.a = 0.28
+	elif is_context:
+		col.a = 0.72
+	var px := wx * TILE_SIZE
+	var pw := item_w * TILE_SIZE
+
+	if fdata.get("creates_loft", false):
+		# Elevated bed on legs: legs always reach the real floor, regardless of
+		# which floor tab (base or loft) this is drawn from.
+		_draw_loft_bed(f, px, pw, col, is_dragged)
+		return
+
+	var wall_h: int = fdata.get("wall_h", 5) as int
+	var ph := wall_h * TILE_SIZE
+	var py := floor_baseline_px - ph
+	draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), col)
+	draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), Color(0, 0, 0, 0.30), false, 1.0)
+	if not is_dragged:
+		_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
+
+
+func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: bool) -> void:
+	const LEG_TOP    := 14   # tiles from floor — matches z_bottom clearance below
+	const PLATFORM_H := 6    # tiles — mattress + frame + guard rail, drawn as one block
+	# Remaining (WALL_HEIGHT - LEG_TOP - PLATFORM_H) = 4 tiles (~40 cm) of clear
+	# headroom is left between the platform and the ceiling, intentionally blank.
+	var rh      := WALL_HEIGHT * TILE_SIZE
+	var leg_top_px  := rh - LEG_TOP * TILE_SIZE
+	var plat_top_px := leg_top_px - PLATFORM_H * TILE_SIZE
+	var leg_w   := minf(TILE_SIZE, pw * 0.18)
+	var outline := Color(0, 0, 0, 0.30)
+
+	# Legs
+	draw_area.draw_rect(Rect2(px + 1,               leg_top_px, leg_w, rh - leg_top_px), col)
+	draw_area.draw_rect(Rect2(px + pw - leg_w - 1,   leg_top_px, leg_w, rh - leg_top_px), col)
+	draw_area.draw_rect(Rect2(px + 1,               leg_top_px, leg_w, rh - leg_top_px), outline, false, 1.0)
+	draw_area.draw_rect(Rect2(px + pw - leg_w - 1,   leg_top_px, leg_w, rh - leg_top_px), outline, false, 1.0)
+	# Bracing crossbar near the base of the legs
+	var brace_y := rh - 3 * TILE_SIZE
+	draw_area.draw_line(Vector2(px + 1 + leg_w * 0.5, brace_y),
+		Vector2(px + pw - leg_w * 0.5 - 1, brace_y), outline, 1.5)
+	# Ladder rungs up the left leg
+	for i in range(3):
+		var ry := rh - TILE_SIZE * (3 + i * 3)
+		draw_area.draw_line(Vector2(px + 1, ry), Vector2(px + 1 + leg_w * 1.6, ry), outline, 1.2)
+
+	# Platform (mattress + frame)
+	draw_area.draw_rect(Rect2(px + 1, plat_top_px, pw - 2, PLATFORM_H * TILE_SIZE), col)
+	draw_area.draw_rect(Rect2(px + 1, plat_top_px, pw - 2, PLATFORM_H * TILE_SIZE), outline, false, 1.0)
+	# Guard-rail line along the top edge
+	draw_area.draw_line(Vector2(px + 2, plat_top_px + 2), Vector2(px + pw - 2, plat_top_px + 2),
+		Color(0, 0, 0, 0.45), 1.5)
+
+	if not is_dragged:
+		_draw_label(px + 3, plat_top_px + 10, float(pw - 6), f.furniture_name)
+
+
 func _draw_label(x: float, y: float, max_w: float, text: String) -> void:
 	draw_area.draw_string(ThemeDB.fallback_font, Vector2(x, y), text,
 		HORIZONTAL_ALIGNMENT_LEFT, int(max_w), 9, Color(0.16, 0.13, 0.10, 0.90))
@@ -578,7 +621,8 @@ func _draw_label(x: float, y: float, max_w: float, text: String) -> void:
 func _wall_w() -> int:
 	if not _apt_floor:
 		return 8
-	return _apt_floor.grid_w if _edge in ["north", "south"] else _apt_floor.grid_h
+	var bounds := _apt_floor.get_room_bounds()
+	return bounds.size.x if _edge in ["north", "south"] else bounds.size.y
 
 
 func _edge_label(edge: String) -> String:

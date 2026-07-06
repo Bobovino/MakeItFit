@@ -11,6 +11,9 @@ var required_functions: Array = []
 var fulfilled_functions: Array = []
 var moments: Array = []
 var moment_results: Dictionary = {}  # moment_id -> {fulfilled:[], required:[]}
+var moment_verified: Dictionary = {}  # moment_id -> bool; true once its needs were met with the real furniture state
+var zone_separations: Array = []     # [[ [fnsA], [fnsB] ], ...] — groups that must be in separate zones
+var current_zones: Array = []        # latest zone snapshot from the active floor
 
 var furniture_data: Dictionary = {}
 var levels_data: Dictionary = {}
@@ -43,9 +46,12 @@ func load_level(level_id: String) -> void:
 		budget = current_level.get("starting_budget", 2000) as int
 		moments = current_level.get("moments", []) as Array
 		moment_results = {}
-		required_functions = (current_level.get("tenant", {}) as Dictionary)\
-			.get("required_functions", []).duplicate() as Array
+		moment_verified = {}
+		var _tenant := (current_level.get("tenant", {}) as Dictionary)
+		required_functions = _tenant.get("required_functions", []).duplicate() as Array
+		zone_separations   = _tenant.get("zone_separations",   []).duplicate(true) as Array
 		fulfilled_functions = []
+		current_zones = []
 		allowed_furniture  = (current_level.get("allowed_furniture",  []) as Array).duplicate()
 		starting_inventory = (current_level.get("starting_inventory", []) as Array).duplicate(true)
 		starting_furniture = (current_level.get("starting_furniture", []) as Array).duplicate(true)
@@ -61,8 +67,11 @@ func load_level(level_id: String) -> void:
 			budget = level["starting_budget"]
 			moments = level.get("moments", [])
 			moment_results = {}
+			moment_verified = {}
 			required_functions = level["tenant"]["required_functions"].duplicate()
+			zone_separations   = (level.get("tenant", {}) as Dictionary).get("zone_separations", []).duplicate(true) as Array
 			fulfilled_functions = []
+			current_zones = []
 			allowed_furniture  = (level.get("allowed_furniture",  []) as Array).duplicate()
 			starting_inventory = (level.get("starting_inventory", []) as Array).duplicate(true)
 			starting_furniture = (level.get("starting_furniture", []) as Array).duplicate(true)
@@ -126,68 +135,131 @@ func sell_starting_item(furniture_id: String) -> bool:
 	return true
 
 
-func update_functions(placed_furniture_ids: Array, extra_functions: Array = []) -> void:
+# entry is either a live Furniture node (floor items — reflects its REAL
+# fold state) or a plain furniture-id String (wall items, which don't fold).
+# moment_id selects WHICH moment's stored fold state to read for foldable
+# furniture; "" means "whatever is currently displayed" (used outside moments).
+func _functions_of(entry, moment_id: String = "") -> Array:
+	if entry is Furniture:
+		var fur := entry as Furniture
+		if moment_id != "":
+			return fur.functions_for_moment(moment_id)
+		return fur.functions
+	var f := get_furniture_by_id(entry as String)
+	return (f.get("functions", []) as Array) if not f.is_empty() else []
+
+
+func update_functions(placed_furniture: Array, extra_functions: Array = [], active_moment_id: String = "") -> void:
 	fulfilled_functions = []
-	for fid in placed_furniture_ids:
-		var f := get_furniture_by_id(fid)
-		if f.is_empty():
-			continue
-		for func_name in f["functions"]:
-			if func_name not in fulfilled_functions:
-				fulfilled_functions.append(func_name)
+	for entry in placed_furniture:
+		for fn in _functions_of(entry, active_moment_id):
+			if fn not in fulfilled_functions:
+				fulfilled_functions.append(fn)
 	for fn in extra_functions:
 		if fn not in fulfilled_functions:
 			fulfilled_functions.append(fn)
 
 	if not moments.is_empty():
 		moment_results.clear()
+		# Each moment keeps its OWN fold state per piece of furniture (a sofa
+		# bed can be folded for Day and unfolded for Night at the same time) —
+		# so recompute what's fulfilled separately for every moment, reading
+		# THAT moment's stored state, not whichever one is on screen.
 		for m in moments:
 			var mid     := m["id"]    as String
 			var m_needs := m["needs"] as Array
 			var m_fulfilled: Array = []
-			for fid in placed_furniture_ids:
-				var f := get_furniture_by_id(fid)
-				if f.is_empty():
-					continue
-				var has_states: bool = not (f.get("folded_functions", []) as Array).is_empty()
-				if f.get("foldable", false) and has_states:
-					var ext_funcs := f.get("extended_functions", []) as Array
-					var fld_funcs := f.get("folded_functions",   []) as Array
-					var use_ext := false
-					for fn in ext_funcs:
-						if fn in m_needs:
-							use_ext = true
-							break
-					var chosen := ext_funcs if use_ext else fld_funcs
-					for fn in chosen:
-						if fn not in m_fulfilled:
-							m_fulfilled.append(fn)
-				else:
-					for fn in f["functions"] as Array:
-						if fn not in m_fulfilled:
-							m_fulfilled.append(fn)
+			for entry in placed_furniture:
+				for fn in _functions_of(entry, mid):
+					if fn not in m_fulfilled:
+						m_fulfilled.append(fn)
 			for fn in extra_functions:
 				if fn not in m_fulfilled:
 					m_fulfilled.append(fn)
-			moment_results[mid] = {"fulfilled": m_fulfilled, "required": m_needs}
+			var currently_met := true
+			for need in m_needs:
+				if need not in m_fulfilled:
+					currently_met = false
+					break
+			if currently_met:
+				moment_verified[mid] = true
+			moment_results[mid] = {
+				"fulfilled": m_fulfilled,
+				"required": m_needs,
+				"verified": moment_verified.get(mid, false),
+			}
 		moments_updated.emit(moment_results)
 
 	functions_updated.emit(fulfilled_functions, required_functions)
 
 
+func update_zones(zones: Array) -> void:
+	current_zones = zones
+
+
+func _zone_fns_for_moment(zone: Dictionary, m_needs: Array) -> Array:
+	var fns: Array = []
+	for fid in zone.get("furniture_ids", []) as Array:
+		var fd := get_furniture_by_id(fid)
+		if fd.is_empty():
+			continue
+		var use_fns: Array
+		var has_states: bool = not (fd.get("folded_functions", []) as Array).is_empty()
+		if fd.get("foldable", false) and has_states:
+			var ext_funcs := fd.get("extended_functions", []) as Array
+			var fld_funcs := fd.get("folded_functions",   []) as Array
+			var use_ext   := ext_funcs.any(func(fn): return fn in m_needs)
+			use_fns = ext_funcs if use_ext else fld_funcs
+		else:
+			use_fns = fd.get("functions", []) as Array
+		for fn in use_fns:
+			if fn not in fns:
+				fns.append(fn)
+	return fns
+
+
+func check_zone_separations() -> bool:
+	if zone_separations.is_empty():
+		return true
+	# Build list of (moment_needs) to check — one entry per moment, or a single empty entry if no moments
+	var needs_list: Array = []
+	if moments.is_empty():
+		needs_list.append([])  # no moment filtering
+	else:
+		for m in moments:
+			needs_list.append((m as Dictionary).get("needs", []) as Array)
+
+	for sep in zone_separations:
+		var group_a := sep[0] as Array
+		var group_b := sep[1] as Array
+		for m_needs in needs_list:
+			for zone in current_zones:
+				var z_fns := _zone_fns_for_moment(zone as Dictionary, m_needs) \
+					if not (m_needs as Array).is_empty() \
+					else (zone as Dictionary).get("functions", []) as Array
+				var has_a := group_a.any(func(fn): return fn in z_fns)
+				var has_b := group_b.any(func(fn): return fn in z_fns)
+				if has_a and has_b:
+					return false
+	return true
+
+
 func check_win() -> bool:
+	if not check_zone_separations():
+		return false
 	if moments.is_empty():
 		for req in required_functions:
 			if req not in fulfilled_functions:
 				return false
 		return true
+	# Each moment must have been genuinely satisfied at some point — the player
+	# actually set the furniture correctly for it (folded for Day, unfolded for
+	# Night, etc). Since a shared foldable piece can't be in two states at
+	# once, this checks "was ever verified", not "is true right now".
 	for m in moments:
-		var mid    := m["id"]    as String
-		var m_needs := m["needs"] as Array
-		var m_fulfilled := moment_results.get(mid, {}).get("fulfilled", []) as Array
-		for need in m_needs:
-			if need not in m_fulfilled:
-				return false
+		var mid := m["id"] as String
+		if not moment_verified.get(mid, false):
+			return false
 	return true
 
 
