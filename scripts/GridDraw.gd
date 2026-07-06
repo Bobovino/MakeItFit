@@ -387,6 +387,19 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				draw_line(Vector2(px1 + 1.5, ty), Vector2(px2 - 1.5, ty), RAIL_DASH, 0.8)
 				ty += TILE_SIZE
 
+	# ── 2f. Reveal zones — sub-range of a rail where a piece counts as "revealed"
+	const REVEAL_COL := Color(0.90, 0.30, 0.62, 0.85)
+	for rz in parent.reveal_zones:
+		var zd := rz as Dictionary
+		var zx1: int = zd["x1"]; var zy1: int = zd["y1"]
+		var zx2: int = zd["x2"]; var zy2: int = zd["y2"]
+		var zmn_x := mini(zx1, zx2); var zmn_y := mini(zy1, zy2)
+		var zmx_x := maxi(zx1, zx2); var zmx_y := maxi(zy1, zy2)
+		var qx1 := zmn_x * TILE_SIZE; var qy1 := zmn_y * TILE_SIZE
+		var qx2 := (zmx_x + 1) * TILE_SIZE; var qy2 := (zmx_y + 1) * TILE_SIZE
+		draw_rect(Rect2(qx1, qy1, qx2 - qx1, qy2 - qy1), Color(0.90, 0.30, 0.62, 0.22))
+		draw_rect(Rect2(qx1, qy1, qx2 - qx1, qy2 - qy1), REVEAL_COL, false, 1.2)
+
 	# ── 3. Grid lines — only while furniture is being dragged ─────────────────
 	if show_grid:
 		if show_fine:
@@ -547,27 +560,31 @@ func _draw_segments(parent: Floor) -> void:
 			if gtype == "window":
 				draw_rect(_wall_rect(is_h, mn_x, mn_y, x1, y1, gs, ge, coff, thick), WINDOW_COLOR)
 			elif gtype == "door":
-				var ds: int  = sd.get("door_side", 1) as int  # +1 south/east, -1 north/west
-				var door_px  := DOOR_LEN * TILE_SIZE
-				var arc_col  := Color(DOOR_COLOR.r, DOOR_COLOR.g, DOOR_COLOR.b, 0.40)
-				var dr       := _wall_rect(is_h, mn_x, mn_y, x1, y1, gs, ge, coff, thick)
+				var dtype: String = sd.get("door_type", "swing") as String
+				var dr := _wall_rect(is_h, mn_x, mn_y, x1, y1, gs, ge, coff, thick)
 				draw_rect(dr, FLOOR_COLOR)
-				if is_h:
-					var hinge := Vector2(dr.position.x, y1 * TILE_SIZE)
-					if ds > 0:   # opens south
-						draw_line(hinge, Vector2(hinge.x, hinge.y + door_px), DOOR_COLOR, 1.2)
-						draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
-					else:        # opens north
-						draw_line(hinge, Vector2(hinge.x, hinge.y - door_px), DOOR_COLOR, 1.2)
-						draw_arc(hinge, door_px, -PI * 0.5, 0.0, 20, arc_col, 1.0)
+				if dtype == "sliding":
+					_draw_sliding_door(dr, is_h)
 				else:
-					var hinge := Vector2(x1 * TILE_SIZE, dr.position.y)
-					if ds > 0:   # opens east
-						draw_line(hinge, Vector2(hinge.x + door_px, hinge.y), DOOR_COLOR, 1.2)
-						draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
-					else:        # opens west
-						draw_line(hinge, Vector2(hinge.x - door_px, hinge.y), DOOR_COLOR, 1.2)
-						draw_arc(hinge, door_px, PI * 0.5, PI, 20, arc_col, 1.0)
+					var ds: int  = sd.get("door_side", 1) as int  # +1 south/east, -1 north/west
+					var door_px  := DOOR_LEN * TILE_SIZE
+					var arc_col  := Color(DOOR_COLOR.r, DOOR_COLOR.g, DOOR_COLOR.b, 0.40)
+					if is_h:
+						var hinge := Vector2(dr.position.x, y1 * TILE_SIZE)
+						if ds > 0:   # opens south
+							draw_line(hinge, Vector2(hinge.x, hinge.y + door_px), DOOR_COLOR, 1.2)
+							draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
+						else:        # opens north
+							draw_line(hinge, Vector2(hinge.x, hinge.y - door_px), DOOR_COLOR, 1.2)
+							draw_arc(hinge, door_px, -PI * 0.5, 0.0, 20, arc_col, 1.0)
+					else:
+						var hinge := Vector2(x1 * TILE_SIZE, dr.position.y)
+						if ds > 0:   # opens east
+							draw_line(hinge, Vector2(hinge.x + door_px, hinge.y), DOOR_COLOR, 1.2)
+							draw_arc(hinge, door_px, 0.0, PI * 0.5, 20, arc_col, 1.0)
+						else:        # opens west
+							draw_line(hinge, Vector2(hinge.x - door_px, hinge.y), DOOR_COLOR, 1.2)
+							draw_arc(hinge, door_px, PI * 0.5, PI, 20, arc_col, 1.0)
 
 		# Wall-view side indicators — teal arrow per active face (new view_sides dict)
 		var vs_dict := sd.get("view_sides", {}) as Dictionary
@@ -605,6 +622,23 @@ func _draw_segments(parent: Floor) -> void:
 						draw_line(Vector2(fx, my), Vector2(fx - TICK_PX, my), WV_COL, 2.5)
 						draw_line(Vector2(fx - TICK_PX, my), Vector2(fx - TICK_PX + 5, my - 4), WV_COL, 2.0)
 						draw_line(Vector2(fx - TICK_PX, my), Vector2(fx - TICK_PX + 5, my + 4), WV_COL, 2.0)
+
+
+# Sliding door: no swing arc (nothing to collide with) — drawn as a recessed
+# track with a single leaf, matching the rail-furniture visual language.
+func _draw_sliding_door(dr: Rect2, is_h: bool) -> void:
+	const TRACK_COL := Color(0.30, 0.68, 0.72, 0.90)
+	const PANEL_COL := Color(0.30, 0.68, 0.72, 0.45)
+	if is_h:
+		var cy := dr.position.y + dr.size.y * 0.5
+		draw_line(Vector2(dr.position.x, cy - 1.5), Vector2(dr.end.x, cy - 1.5), TRACK_COL, 1.0)
+		draw_line(Vector2(dr.position.x, cy + 1.5), Vector2(dr.end.x, cy + 1.5), TRACK_COL, 1.0)
+		draw_rect(Rect2(dr.position.x, dr.position.y, dr.size.x * 0.55, dr.size.y), PANEL_COL)
+	else:
+		var cx := dr.position.x + dr.size.x * 0.5
+		draw_line(Vector2(cx - 1.5, dr.position.y), Vector2(cx - 1.5, dr.end.y), TRACK_COL, 1.0)
+		draw_line(Vector2(cx + 1.5, dr.position.y), Vector2(cx + 1.5, dr.end.y), TRACK_COL, 1.0)
+		draw_rect(Rect2(dr.position.x, dr.position.y, dr.size.x, dr.size.y * 0.55), PANEL_COL)
 
 
 # Returns the pixel Rect2 for a wall section [from_t .. to_t] along the segment.

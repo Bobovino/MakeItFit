@@ -149,7 +149,8 @@ func _functions_of(entry, moment_id: String = "") -> Array:
 	return (f.get("functions", []) as Array) if not f.is_empty() else []
 
 
-func update_functions(placed_furniture: Array, extra_functions: Array = [], active_moment_id: String = "") -> void:
+func update_functions(placed_furniture: Array, extra_functions: Array = [], active_moment_id: String = "",
+		free_tiles_by_moment: Dictionary = {}) -> void:
 	fulfilled_functions = []
 	for entry in placed_furniture:
 		for fn in _functions_of(entry, active_moment_id):
@@ -176,6 +177,17 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 			for fn in extra_functions:
 				if fn not in m_fulfilled:
 					m_fulfilled.append(fn)
+			# Space needs: a function satisfied by leaving enough floor open
+			# (e.g. "sport") rather than by any piece of furniture — checked
+			# against this moment's own free-tile count (folded pieces free
+			# up more room than unfolded ones).
+			var space_needs := m.get("space_needs", {}) as Dictionary
+			if not space_needs.is_empty():
+				var free := free_tiles_by_moment.get(mid, 0) as int
+				for fn in space_needs:
+					var min_free := space_needs[fn] as int
+					if free >= min_free and fn not in m_fulfilled:
+						m_fulfilled.append(fn)
 			var currently_met := true
 			for need in m_needs:
 				if need not in m_fulfilled:

@@ -14,7 +14,7 @@ const DEFAULT_GH := 300
 const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
 
-enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE }
+enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE }
 
 # ── Floor geometry ────────────────────────────────────────────────────────────
 var _gw: int = DEFAULT_GW
@@ -25,6 +25,7 @@ var _stair_mask:     Dictionary = {}  # Vector2i -> true (stair tiles, auto-fill
 var _stairs:         Array      = []  # [{x, y, w, h, direction}] placed staircases
 var _segments:       Array      = []  # [{x1,y1,x2,y2,primary,demolished,...}]
 var _rails:          Array      = []  # [{x1,y1,x2,y2}] rail tracks
+var _reveal_zones:   Array      = []  # [{x1,y1,x2,y2}] reveal-zone markers (sub-range of a rail)
 var _cols:           Array      = []  # [{x,y}]
 
 # ── Wall drawing state ────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ var _block:   int   = 1   # block (category) in city map
 var _map_col: int   = 0   # column position in city map grid
 var _map_row: int   = 0   # row position in city map grid
 var _funcs: Dictionary = {
-	"sleep": false, "sit": false, "work": false, "cook": false, "storage": false, "dine": false
+	"sleep": false, "sit": false, "work": false, "cook": false, "storage": false, "dine": false, "dress": false
 }
 
 # ── Tool & interaction state ──────────────────────────────────────────────────
@@ -66,6 +67,7 @@ var _pdrawing: bool = false
 
 # ── Door drag state ───────────────────────────────────────────────────────────
 var _door_dragging: bool = false
+var _door_shift_held: bool = false   # shift state at the moment of the click that started/toggled a door
 var _door_seg_idx:  int  = -1
 var _door_pos:      int  = 0
 var _door_side:     int  = 1   # +1 = south/east, -1 = north/west
@@ -273,10 +275,11 @@ func _build_left(ui: Node) -> void:
 		[Tool.MEZZANINE,     "Mezzanine",      "LMB paint · RMB erase mezzanine/loft tiles"],
 		[Tool.STAIRS,        "Stairs",         "LMB stamp · RMB remove · R rotate · T loft/floor"],
 		[Tool.RAIL,          "Rail",           "Drag to draw sliding rail track"],
+		[Tool.REVEAL,        "Reveal Zone",    "Drag over a rail to mark where a piece counts as revealed"],
 		[Tool.PRIMARY_WALL,  "Primary Wall",   "Drag axis-snapped — cannot demolish"],
 		[Tool.SECONDARY_WALL,"Secondary Wall", "Drag axis-snapped — can demolish"],
 		[Tool.WINDOW,        "Window",         "LMB paint · RMB erase window tiles on a wall"],
-		[Tool.DOOR,          "Door",           "Click wall · drag to choose opening side · click again to remove"],
+		[Tool.DOOR,          "Door",           "Click wall · drag to choose side · Shift+drag/click for sliding · click again to remove"],
 		[Tool.WALL_VIEW,     "Wall View",      "Click wall · drag to choose which face is the interior view · RMB to clear"],
 		[Tool.COLUMN,        "Column",         "Click inside room"],
 		[Tool.ERASE,         "Erase",          "Click any feature or floor tile"],
@@ -296,6 +299,7 @@ func _build_left(ui: Node) -> void:
 			if is_instance_valid(_ov):
 				_ov.set("wall_primary",   _tool == Tool.PRIMARY_WALL)
 				_ov.set("rail_mode",      _tool == Tool.RAIL)
+				_ov.set("reveal_mode",    _tool == Tool.REVEAL)
 				_ov.set("floor_hover",    Vector2i(-1, -1))
 				_ov.set("wall_hover",     Vector2i(-1, -1))
 				_ov.set("win_hover_rect", Rect2())
@@ -499,7 +503,7 @@ func _open_level_details_modal() -> void:
 
 	# ── REQUIRED FUNCTIONS ──
 	_sect(vb, "REQUIRED FUNCTIONS")
-	for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine"]:
+	for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine", "dress"]:
 		var cb := CheckBox.new()
 		cb.text = fn
 		cb.button_pressed = _funcs.get(fn, false) as bool
@@ -586,7 +590,7 @@ func _open_moments_modal() -> void:
 
 
 func _rebuild_moments_list(vb: VBoxContainer, win: Window) -> void:
-	const FNS := ["sleep", "sit", "work", "cook", "storage", "dine"]
+	const FNS := ["sleep", "sit", "work", "cook", "storage", "dine", "dress"]
 	for i in range(_moments.size()):
 		var m   := _moments[i] as Dictionary
 		var mid := m["id"] as String
@@ -679,7 +683,7 @@ func _make_efloor(id: String, label: String, ftype: String) -> Dictionary:
 	return {
 		"id": id, "label": label, "type": ftype,
 		"floor_tiles": [], "mezzanine_tiles": [], "stair_tiles": [],
-		"stairs": [], "rails": [], "segments": [], "columns": []
+		"stairs": [], "rails": [], "reveal_zones": [], "segments": [], "columns": []
 	}
 
 func _make_floor_trio(fid: String, lbl: String) -> Array:
@@ -718,6 +722,7 @@ func _snapshot_to_efloor(fd: Dictionary) -> void:
 	fd["stair_tiles"]     = st   # auto-derived for backward compat; source of truth is "stairs"
 	fd["stairs"]          = _stairs.duplicate(true)
 	fd["rails"]           = _rails.duplicate(true)
+	fd["reveal_zones"]    = _reveal_zones.duplicate(true)
 	fd["segments"]        = _segments.duplicate(true)
 	fd["columns"]         = _cols.duplicate(true)
 
@@ -775,7 +780,8 @@ func _load_active_efloor() -> void:
 	else:
 		for t in fd.get("stair_tiles", []):
 			_stair_mask[Vector2i(t[0] as int, t[1] as int)] = true
-	_rails    = (fd.get("rails",    []) as Array).duplicate(true)
+	_rails        = (fd.get("rails",        []) as Array).duplicate(true)
+	_reveal_zones = (fd.get("reveal_zones", []) as Array).duplicate(true)
 	_segments = (fd.get("segments", []) as Array).duplicate(true)
 	_cols     = (fd.get("columns",  []) as Array).duplicate(true)
 
@@ -1067,6 +1073,10 @@ func _rebuild_floor() -> void:
 	for r in _rails:
 		rail_arr.append((r as Dictionary).duplicate())
 
+	var reveal_arr: Array = []
+	for rz in _reveal_zones:
+		reveal_arr.append((rz as Dictionary).duplicate())
+
 	# Build stair_openings for the editor preview:
 	#   loft floors → parent's loft-targeted stairs
 	#   floor type above another floor → that floor's floor-targeted stairs
@@ -1092,6 +1102,7 @@ func _rebuild_floor() -> void:
 		"stair_tiles":     stair_tiles,
 		"stairs":          _stairs.duplicate(true),
 		"rails":           rail_arr,
+		"reveal_zones":    reveal_arr,
 		"stair_openings":  _preview_so,
 		"segments": _segments.duplicate(true),
 		"columns":  _cols.duplicate(true)
@@ -1225,17 +1236,34 @@ func _input(event: InputEvent) -> void:
 						var fl := _to_floor(sp)
 						var tx := int(fl.x / TILE_SIZE)
 						var ty := int(fl.y / TILE_SIZE)
-						_placed_furniture.append({"id": _placing_furniture_id, "x": tx, "y": ty})
-						# If placed over a drawn rail, mark it as rail-constrained
 						var _pfsize := (_furn_data_by_id(_placing_furniture_id).get("size", {}) as Dictionary)
 						var _pfw: int = _pfsize.get("w", 1) as int
 						var _pfh: int = _pfsize.get("h", 1) as int
+						var _on_floor := true
+						if is_instance_valid(_floor):
+							for _dx in range(_pfw):
+								for _dy in range(_pfh):
+									if not _floor.is_floor_tile(Vector2i(tx + _dx, ty + _dy)):
+										_on_floor = false
+						if not _on_floor:
+							_set_status("Can't place here — no floor under this footprint")
+							get_viewport().set_input_as_handled()
+							return
+						_placed_furniture.append({"id": _placing_furniture_id, "x": tx, "y": ty})
+						# If placed over a drawn rail, mark it as rail-constrained
 						var _ri := _detect_rail_under(tx, ty, _pfw, _pfh)
 						if not _ri.is_empty():
 							var _last := _placed_furniture[_placed_furniture.size() - 1] as Dictionary
 							_last["rail_axis"]  = _ri["axis"]
 							_last["rail_start"] = _ri["start"]
 							_last["rail_end"]   = _ri["end"]
+							# If also dropped over a reveal zone on the same axis, this piece
+							# grants "dress" while parked inside that zone (per moment).
+							var _rev := _detect_reveal_under(tx, ty, _pfw, _pfh)
+							if not _rev.is_empty() and _rev["axis"] == _ri["axis"]:
+								_last["reveal_start"]     = _rev["start"]
+								_last["reveal_end"]       = _rev["end"]
+								_last["reveal_functions"] = ["dress"]
 						# Loft-creating furniture → paint footprint as mezzanine and auto-add loft floor
 						var _pfdata := _furn_data_by_id(_placing_furniture_id)
 						if _pfdata.get("creates_loft", false) as bool:
@@ -1322,6 +1350,7 @@ func _input(event: InputEvent) -> void:
 		if not mb.pressed:
 			return  # releases already handled before _is_ui check
 		if mb.button_index == MOUSE_BUTTON_LEFT:
+			_door_shift_held = mb.shift_pressed
 			_lmb_down(fl, tile)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
 			if _tool == Tool.FLOOR:
@@ -1339,6 +1368,8 @@ func _input(event: InputEvent) -> void:
 					_paint_window_tile(hit["idx"] as int, hit["pos"] as int, true)
 			elif _tool == Tool.RAIL:
 				_erase_rail_at(tile)
+			elif _tool == Tool.REVEAL:
+				_erase_reveal_at(tile)
 			elif _tool == Tool.WALL_VIEW:
 				var hit := _detect_segment_at(fl)
 				if not hit.is_empty():
@@ -1369,6 +1400,7 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(_ov):
 			var is_wall := _tool == Tool.PRIMARY_WALL or _tool == Tool.SECONDARY_WALL
 			var is_rail := _tool == Tool.RAIL
+			var is_reveal := _tool == Tool.REVEAL
 			var snapped := _snap_tile(tile)
 			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE
 			_ov.set("floor_hover",  tile if is_floor_like else Vector2i(-1, -1))
@@ -1379,9 +1411,10 @@ func _input(event: InputEvent) -> void:
 				_ov.set("stair_hover_rect",   _sr)
 				_ov.set("stair_hover_dir",    _stair_dir)
 				_ov.set("stair_hover_target", _stair_target)
-			_ov.set("wall_hover",   snapped if ((is_wall or is_rail) and not _pdrawing) else Vector2i(-1, -1))
+			_ov.set("wall_hover",   snapped if ((is_wall or is_rail or is_reveal) and not _pdrawing) else Vector2i(-1, -1))
 			_ov.set("wall_primary", _tool == Tool.PRIMARY_WALL)
 			_ov.set("rail_mode",    is_rail)
+			_ov.set("reveal_mode",  is_reveal)
 			var win_hr := Rect2()
 			if _tool == Tool.WINDOW and not _window_painting:
 				var hit := _detect_segment_at(fl)
@@ -1438,11 +1471,12 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 			_paint_mezz_tile(tile, false)
 		Tool.STAIRS:
 			_place_stair(tile)
-		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.RAIL:
+		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.RAIL, Tool.REVEAL:
 			_ps = _snap_tile(tile); _pe = _ps; _pdrawing = true
 			if is_instance_valid(_ov):
 				_ov.set("p_start", _ps)
 				_ov.set("rail_mode", _tool == Tool.RAIL)
+				_ov.set("reveal_mode", _tool == Tool.REVEAL)
 				_ov.set("p_end",   _pe)
 				_ov.set("active",  true)
 				_ov.queue_redraw()
@@ -1459,10 +1493,17 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 				var sidx := hit["idx"] as int
 				var sd   := _segments[sidx] as Dictionary
 				if sd.get("has_door", false):
-					sd.erase("has_door"); sd.erase("door_pos"); sd.erase("door_side")
-					_segments[sidx] = sd
-					_rebuild_floor()
-					_set_status("Door removed")
+					if _door_shift_held:
+						var was_sliding := (sd.get("door_type", "swing") as String) == "sliding"
+						sd["door_type"] = "swing" if was_sliding else "sliding"
+						_segments[sidx] = sd
+						_rebuild_floor()
+						_set_status("Door set to %s" % ("swing" if was_sliding else "sliding"))
+					else:
+						sd.erase("has_door"); sd.erase("door_pos"); sd.erase("door_side"); sd.erase("door_type")
+						_segments[sidx] = sd
+						_rebuild_floor()
+						_set_status("Door removed")
 				else:
 					_door_seg_idx  = sidx
 					_door_pos      = hit["pos"] as int
@@ -1523,9 +1564,13 @@ func _lmb_up() -> void:
 			sd["has_door"]  = true
 			sd["door_pos"]  = maxi(0, _door_pos - DOOR_LEN / 2)
 			sd["door_side"] = _door_side
+			sd["door_type"] = "sliding" if _door_shift_held else "swing"
 			_segments[_door_seg_idx] = sd
 			_rebuild_floor()
-			_set_status("Door added (opens %s)" % ("south/east" if _door_side > 0 else "north/west"))
+			if sd["door_type"] == "sliding":
+				_set_status("Sliding door added")
+			else:
+				_set_status("Door added (opens %s)" % ("south/east" if _door_side > 0 else "north/west"))
 		_door_seg_idx = -1
 		if is_instance_valid(_ov):
 			_ov.set("door_drag_active", false)
@@ -1576,6 +1621,10 @@ func _lmb_up() -> void:
 			_rails.append({"x1": _ps.x, "y1": _ps.y, "x2": _pe.x, "y2": _pe.y})
 			_rebuild_floor()
 			_set_status("Rail added (%d tiles)" % maxi(absi(_pe.x - _ps.x), absi(_pe.y - _ps.y)))
+		elif _tool == Tool.REVEAL:
+			_reveal_zones.append({"x1": _ps.x, "y1": _ps.y, "x2": _pe.x, "y2": _pe.y})
+			_rebuild_floor()
+			_set_status("Reveal zone added (%d tiles) — drop a rail piece over it" % maxi(absi(_pe.x - _ps.x), absi(_pe.y - _ps.y)))
 		else:
 			var primary := (_tool == Tool.PRIMARY_WALL)
 			_segments.append({
@@ -1918,7 +1967,7 @@ func _update_cat_filter_lbl() -> void:
 	if not is_instance_valid(_cat_filter_lbl):
 		return
 	_cat_filter_lbl.text = "No restrictions" if _allowed_furniture.is_empty() \
-		else "%d item(s) restricted" % _allowed_furniture.size()
+		else "%d item(s) allowed" % _allowed_furniture.size()
 
 
 func _update_inv_count_lbl() -> void:
@@ -1976,7 +2025,7 @@ func _refresh_editor_furn_panel() -> void:
 	var catalog: Array = _furn_catalog
 	if not _allowed_furniture.is_empty():
 		catalog = catalog.filter(
-			func(f: Dictionary) -> bool: return f["id"] as String not in _allowed_furniture)
+			func(f: Dictionary) -> bool: return f["id"] as String in _allowed_furniture)
 
 	for fraw in catalog:
 		var fdata := fraw as Dictionary
@@ -2102,14 +2151,26 @@ func _open_catalog_filter_modal() -> void:
 		var fname := f["name"] as String
 		var cb := CheckButton.new()
 		cb.text = fname
-		cb.button_pressed = fid not in _allowed_furniture
+		# _allowed_furniture is a WHITELIST (matches Main.gd's shop filter): empty
+		# means "no restriction", so every item shows checked until the player
+		# unchecks the first one, at which point it becomes an explicit whitelist.
+		cb.button_pressed = _allowed_furniture.is_empty() or fid in _allowed_furniture
 		cb.add_theme_font_size_override("font_size", 10)
 		cb.toggled.connect(func(on: bool):
 			if on:
-				_allowed_furniture.erase(fid)
+				if fid not in _allowed_furniture and not _allowed_furniture.is_empty():
+					_allowed_furniture.append(fid)
 			else:
-				if fid not in _allowed_furniture:
-					_allowed_furniture.append(fid))
+				if _allowed_furniture.is_empty():
+					# First uncheck: convert "allow all" into an explicit
+					# whitelist of every other catalog item.
+					for other in _furn_catalog:
+						var oid := (other as Dictionary)["id"] as String
+						if oid != fid:
+							_allowed_furniture.append(oid)
+				else:
+					_allowed_furniture.erase(fid)
+			_update_cat_filter_lbl())
 		vb.add_child(cb)
 		local_checks[fid] = cb
 	add_child(win)
@@ -2379,7 +2440,7 @@ func _confirm_clear_all() -> void:
 		_clear_dlg.get_ok_button().text = "Clear"
 		_clear_dlg.confirmed.connect(func():
 			_floor_mask.clear(); _mezzanine_mask.clear(); _stair_mask.clear()
-			_segments.clear(); _rails.clear(); _cols.clear()
+			_segments.clear(); _rails.clear(); _reveal_zones.clear(); _cols.clear()
 			_rebuild_floor()
 			_set_status("Canvas cleared"))
 		add_child(_clear_dlg)
@@ -2770,6 +2831,48 @@ func _erase_rail_at(tile: Vector2i) -> void:
 			_rails.remove_at(i)
 			_rebuild_floor()
 			_set_status("Rail erased")
+			return
+
+
+# Reveal zone: a sub-range of a rail — a rail piece dropped so it overlaps this
+# zone counts as "revealed" (gains reveal_functions) for whichever moment it's
+# left there. Same detection shape as a rail, just a separate marker list.
+func _detect_reveal_under(tx: int, ty: int, fw: int, fh: int) -> Dictionary:
+	for rz in _reveal_zones:
+		var x1: int = rz["x1"]; var y1: int = rz["y1"]
+		var x2: int = rz["x2"]; var y2: int = rz["y2"]
+		var mn_x := mini(x1, x2); var mx_x := maxi(x1, x2)
+		var mn_y := mini(y1, y2); var mx_y := maxi(y1, y2)
+		var is_h := (y1 == y2)
+		# Only requires being on the SAME rail line (row for "h", column for "v") —
+		# not positional overlap — since a piece is deliberately placed OUTSIDE
+		# the reveal zone (its hidden dock) when first dropped on the rail.
+		if is_h:
+			if ty <= y1 and y1 < ty + fh:
+				var start := mn_x
+				var end   := mx_x - fw
+				if end >= start:
+					return {"axis": "h", "start": start, "end": end}
+		else:
+			if tx <= x1 and x1 < tx + fw:
+				var start := mn_y
+				var end   := mx_y - fh
+				if end >= start:
+					return {"axis": "v", "start": start, "end": end}
+	return {}
+
+
+func _erase_reveal_at(tile: Vector2i) -> void:
+	for i in range(_reveal_zones.size()):
+		var rz := _reveal_zones[i] as Dictionary
+		var x1: int = rz["x1"]; var y1: int = rz["y1"]
+		var x2: int = rz["x2"]; var y2: int = rz["y2"]
+		var mn_x := mini(x1, x2); var mx_x := maxi(x1, x2)
+		var mn_y := mini(y1, y2); var mx_y := maxi(y1, y2)
+		if tile.x >= mn_x and tile.x <= mx_x and tile.y >= mn_y and tile.y <= mx_y:
+			_reveal_zones.remove_at(i)
+			_rebuild_floor()
+			_set_status("Reveal zone erased")
 			return
 
 
@@ -3231,6 +3334,7 @@ func _load_from_dict(d: Dictionary) -> void:
 	# Catalog filter — modal rebuilt on open, so just restore the data
 	_allowed_furniture = (d.get("allowed_furniture", []) as Array).duplicate()
 	_update_cat_filter_lbl()
+	_refresh_editor_furn_panel()
 
 	# Starting furniture
 	_starting_inventory = (d.get("starting_inventory", []) as Array).duplicate(true)
@@ -3247,7 +3351,7 @@ func _load_from_dict(d: Dictionary) -> void:
 		md.erase("needs")
 		_moments.append(md)
 		var mf: Dictionary = {}
-		for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine"]:
+		for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine", "dress"]:
 			mf[fn] = fn in needs
 		_moment_funcs[mid] = mf
 	_active_moment = ""

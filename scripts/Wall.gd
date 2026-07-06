@@ -28,6 +28,7 @@ var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
 var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
 var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
 var rails:          Array      = []   # [{x1,y1,x2,y2}] sliding rail tracks
+var reveal_zones:   Array      = []   # [{x1,y1,x2,y2}] sub-range of a rail where a piece counts as "revealed"
 var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]
 var stairs_data:    Array      = []   # [{rect:Rect2i, direction:String}] one entry per placed stair
 var stair_openings: Array      = []   # same format, but stair footprints from parent floor (for loft rendering)
@@ -110,9 +111,19 @@ func _unregister_stair(furniture: Furniture) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func is_floor_tile(tile: Vector2i) -> bool:
-	if not _use_new_format or floor_mask.is_empty():
+	if not _use_new_format:
 		return tile.x >= 0 and tile.x < grid_w and tile.y >= 0 and tile.y < grid_h
-	return tile in floor_mask
+	if not floor_mask.is_empty():
+		return tile in floor_mask
+	# No painted floor mask: fall back to the room's real interior extent
+	# (derived from wall segments), NOT the raw apartment grid_w/grid_h —
+	# that grid is often a much larger sandbox default, and treating it all
+	# as floor lets furniture be placed in the "void" outside any walls.
+	if not segments.is_empty():
+		var b := get_room_bounds()
+		return tile.x >= b.position.x and tile.x < b.position.x + b.size.x \
+			and tile.y >= b.position.y and tile.y < b.position.y + b.size.y
+	return tile.x >= 0 and tile.x < grid_w and tile.y >= 0 and tile.y < grid_h
 
 
 # Real playable extent of this floor, derived from wall segments (or floor tiles)
@@ -271,6 +282,7 @@ func setup(floor_data: Dictionary) -> void:
 				_sod["w"] as int, _sod["h"] as int)
 			stair_openings.append({"rect": _sor, "direction": _sod.get("direction", "north") as String, "target": _sod.get("target", "loft") as String})
 		rails = (floor_data.get("rails", []) as Array).duplicate(true)
+		reveal_zones = (floor_data.get("reveal_zones", []) as Array).duplicate(true)
 		segments = []
 		for s in floor_data.get("segments", []):
 			var cs: Dictionary = (s as Dictionary).duplicate()
@@ -749,6 +761,36 @@ func _get_tile_color(tile: Vector2i) -> Color:
 
 func get_all_furniture() -> Array:
 	return _get_all_placed_unique()
+
+
+# Open floor tiles for a given moment — total walkable tiles minus whatever
+# every piece of furniture occupies UNDER THAT MOMENT's own fold state (a
+# sofa bed unfolded for Night blocks more floor than it does folded for Day).
+func count_free_tiles_for_moment(moment_id: String) -> int:
+	var floor_tiles_set: Dictionary
+	if not floor_mask.is_empty():
+		floor_tiles_set = floor_mask.duplicate()
+	else:
+		floor_tiles_set = {}
+		var b := get_room_bounds()
+		for x in range(b.position.x, b.position.x + b.size.x):
+			for y in range(b.position.y, b.position.y + b.size.y):
+				floor_tiles_set[Vector2i(x, y)] = true
+
+	var blocked := _partition_tile_set()
+	var occupied: Dictionary = {}
+	for item in get_all_furniture():
+		var f := item as Furniture
+		for t in f.get_occupied_tiles_for_moment(moment_id):
+			occupied[t] = true
+
+	var free := 0
+	for t in floor_tiles_set:
+		if t in blocked:
+			continue
+		if not occupied.has(t):
+			free += 1
+	return free
 
 
 func get_inaccessible_furniture() -> Array:

@@ -12,6 +12,7 @@ var wall_hover:   Vector2i = Vector2i(-1, -1)
 var wall_primary: bool    = false  # true = primary (2 tiles), false = secondary (1 tile)
 var win_hover_rect: Rect2 = Rect2()
 var rail_mode:   bool = false  # true = preview is a rail (teal) not a wall (orange)
+var reveal_mode: bool = false  # true = preview is a reveal zone (rose) marker
 var stair_hover:        bool    = false    # legacy (unused)
 var stair_hover_rect:   Rect2i = Rect2i() # full footprint of stair being previewed
 var stair_hover_dir:    String = "north"  # direction for preview arrow
@@ -48,6 +49,8 @@ func _draw() -> void:
 	const COL_BORDER := Color(0.62, 0.42, 0.18, 0.90)
 	const RAIL_FILL  := Color(0.20, 0.65, 0.70, 0.30)
 	const RAIL_BDR   := Color(0.25, 0.80, 0.85, 0.90)
+	const REVEAL_FILL := Color(0.80, 0.25, 0.55, 0.30)
+	const REVEAL_BDR  := Color(0.95, 0.35, 0.68, 0.90)
 
 	# Floor-paint / mezzanine / stairs hover highlight — brush centred on cursor
 	# Offset uses integer division (floor_brush/2) to match _paint_*_tile() exactly
@@ -135,9 +138,9 @@ func _draw() -> void:
 
 	var thick := 2 if wall_primary else 1  # tiles
 
-	var fill_col   := RAIL_FILL if rail_mode else COL_FILL
-	var border_col := RAIL_BDR  if rail_mode else COL_BORDER
-	var rail_thick := 1 if rail_mode else thick  # rails are always 1 tile thin
+	var fill_col   := REVEAL_FILL if reveal_mode else (RAIL_FILL if rail_mode else COL_FILL)
+	var border_col := REVEAL_BDR  if reveal_mode else (RAIL_BDR  if rail_mode else COL_BORDER)
+	var rail_thick := 1 if (rail_mode or reveal_mode) else thick  # rails/reveal zones are always 1 tile thin
 
 	# Wall/rail hover rect — shows where segment would start before LMB pressed
 	if not active and wall_hover.x >= 0:
@@ -167,22 +170,23 @@ func _draw() -> void:
 	if r.size.x > 0 and r.size.y > 0:
 		draw_rect(r, fill_col)
 		draw_rect(r, border_col, false, 1.5)
-		if rail_mode:
-			# Dashed centre line to distinguish rail from wall
+		if rail_mode or reveal_mode:
+			# Dashed centre line to distinguish rail/reveal zone from wall
+			var dash_col := REVEAL_BDR if reveal_mode else RAIL_BDR
 			var step := 4
 			if is_h:
 				var cy := r.position.y + r.size.y * 0.5
 				var x := r.position.x
 				while x < r.end.x - 2:
 					draw_line(Vector2(x, cy), Vector2(minf(x + step, r.end.x), cy),
-							  RAIL_BDR, 1.0)
+							  dash_col, 1.0)
 					x += step * 2
 			else:
 				var cx := r.position.x + r.size.x * 0.5
 				var y := r.position.y
 				while y < r.end.y - 2:
 					draw_line(Vector2(cx, y), Vector2(cx, minf(y + step, r.end.y)),
-							  RAIL_BDR, 1.0)
+							  dash_col, 1.0)
 					y += step * 2
 
 	# Window hover tile

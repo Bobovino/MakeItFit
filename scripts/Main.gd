@@ -399,11 +399,12 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	if fdata.is_empty() or fdata.get("placement", "floor") != "floor":
 		return null
 	# Apply per-instance rail overrides (axis + extents set by level editor)
-	for key in ["rail_axis", "rail_start", "rail_end"]:
+	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions"]
+	for key in rail_keys:
 		if rail_data.has(key):
 			fdata = fdata.duplicate()
 			break
-	for key in ["rail_axis", "rail_start", "rail_end"]:
+	for key in rail_keys:
 		if rail_data.has(key):
 			fdata[key] = rail_data[key]
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
@@ -415,6 +416,8 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
+	if f.rail_axis != "":
+		f.placed.connect(func(_n): _refresh_functions())
 	if fdata.get("creates_loft", false):
 		_promote_to_loft(f, apt_floor)
 	return f
@@ -618,6 +621,8 @@ func _on_buy_requested(furniture_id: String) -> void:
 	f.setup(fdata, apt_floor)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
+	if f.rail_axis != "":
+		f.placed.connect(func(_n): _refresh_functions())
 	f.placement_confirmed.connect(func():
 		gm.buy_furniture(furniture_id)
 		if fdata.get("creates_loft", false):
@@ -658,7 +663,19 @@ func _refresh_functions() -> void:
 				for fn in piece.functions:
 					if fn not in extra_fns:
 						extra_fns.append(fn)
-	gm.update_functions(all_entries, extra_fns, _active_moment_id)
+	var free_tiles_by_moment: Dictionary = {}
+	for m in gm.moments:
+		var mid := (m as Dictionary)["id"] as String
+		var total := 0
+		for fid in _floors:
+			var fl := _floors[fid] as Floor
+			# Only real navigable floors — skip ceiling/subfloor/roof layers,
+			# which have no real footprint and would otherwise fall back to
+			# the full apartment grid size.
+			if fl.floor_type in ["floor", "loft"]:
+				total += fl.count_free_tiles_for_moment(mid)
+		free_tiles_by_moment[mid] = total
+	gm.update_functions(all_entries, extra_fns, _active_moment_id, free_tiles_by_moment)
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if apt_floor:
 		gm.update_zones(apt_floor.zones)
@@ -735,10 +752,13 @@ func _on_moment_selected(moment_id: String) -> void:
 		var fl := _floors[fid] as Floor
 		for f in fl.get_all_furniture():
 			var fur := f as Furniture
-			if fur.foldable:
-				# Re-apply THIS moment's own remembered fold state — a sofa bed
-				# unfolded for Night stays unfolded there even if Day has it folded.
+			if fur.foldable or fur.rail_axis != "":
+				# Re-apply THIS moment's own remembered fold state / rail position —
+				# a sofa bed unfolded for Night stays unfolded there even if Day has
+				# it folded; a wardrobe pulled out on its rail for one moment stays
+				# out there even if another moment has it tucked away.
 				fur.set_moment_view(moment_id)
+			if fur.foldable:
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
 	_refresh_functions()

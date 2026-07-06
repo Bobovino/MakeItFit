@@ -47,6 +47,16 @@ var rail_start: int    = -1   # first valid tile offset along the rail (-1 = unc
 var rail_end:   int    = -1   # last valid tile offset along the rail
 var _rail_lock: int    = -1   # locked row (h) or column (v) set on drag start
 
+# Rail + moments: a rail piece can be slid into a "reveal zone" (a sub-range
+# along its own rail) to grant extra functions while it sits there — e.g. a
+# wardrobe pulled out of its hidden dock to fulfill "dress" during one moment,
+# then slid back out of the way for another. Like moment_fold_state, each
+# moment remembers its OWN position independently.
+var reveal_start:     int    = -1   # rail-local coord where the reveal zone begins (-1 = none)
+var reveal_end:       int    = -1   # rail-local coord where the reveal zone ends
+var reveal_functions: Array  = []   # extra functions granted while inside the reveal zone
+var moment_rail_pos:  Dictionary = {}   # moment_id -> Vector2i grid_pos left by the player
+
 static var test_mode_active: bool = false
 var _extended_conflict: bool = false
 
@@ -95,6 +105,9 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	rail_axis             = data.get("rail_axis",         "")       as String
 	rail_start            = data.get("rail_start",        -1)       as int
 	rail_end              = data.get("rail_end",          -1)       as int
+	reveal_start          = data.get("reveal_start",      -1)       as int
+	reveal_end            = data.get("reveal_end",        -1)       as int
+	reveal_functions      = (data.get("reveal_functions", []) as Array).duplicate()
 	is_stair              = data.get("is_stair",          false)    as bool
 	stair_direction       = data.get("stair_direction",   "")       as String
 	_base_grid_h          = grid_h
@@ -133,20 +146,46 @@ func toggle_fold() -> bool:
 # whatever other moments are currently set to) — called when the player
 # switches which moment they're viewing.
 func set_moment_view(moment_id: String) -> void:
-	var want_extended: bool = moment_fold_state.get(moment_id, false) as bool
-	if want_extended == is_extended:
-		return
-	if not _apply_fold_state(want_extended):
-		_apply_fold_state(false)  # doesn't fit here anymore — fall back to folded
+	if foldable and not folded_functions_arr.is_empty():
+		var want_extended: bool = moment_fold_state.get(moment_id, false) as bool
+		if want_extended != is_extended:
+			if not _apply_fold_state(want_extended):
+				_apply_fold_state(false)  # doesn't fit here anymore — fall back to folded
+	# Rail furniture: snap back to wherever the player left it FOR this moment
+	# (defaults to its current/spawn position the first time a moment is seen).
+	if rail_axis != "" and moment_rail_pos.has(moment_id):
+		var target: Vector2i = moment_rail_pos[moment_id]
+		if target != grid_pos and _wall_ref:
+			_wall_ref.place_furniture(self, target)
+			position = Vector2(target.x * TILE_SIZE, target.y * TILE_SIZE)
+			queue_redraw()
+
+
+# True when `pos` (a grid position along this piece's own rail) sits inside
+# its reveal zone — e.g. an armario pulled out of its hidden dock.
+func _is_revealed_at(pos: Vector2i) -> bool:
+	if rail_axis == "" or reveal_start < 0 or reveal_end < 0:
+		return false
+	var coord := pos.x if rail_axis == "h" else pos.y
+	return coord >= reveal_start and coord <= reveal_end
 
 
 # Functions this piece contributes for a given moment, based on that moment's
-# OWN stored fold state — independent of whichever moment is on screen right now.
+# OWN stored fold state / rail position — independent of whichever moment is
+# on screen right now.
 func functions_for_moment(moment_id: String) -> Array:
-	if not foldable or folded_functions_arr.is_empty():
-		return functions
-	var extended: bool = moment_fold_state.get(moment_id, false) as bool
-	return extended_functions_arr if extended else folded_functions_arr
+	if foldable and not folded_functions_arr.is_empty():
+		var extended: bool = moment_fold_state.get(moment_id, false) as bool
+		return extended_functions_arr if extended else folded_functions_arr
+	if rail_axis != "" and not reveal_functions.is_empty():
+		var pos: Vector2i = moment_rail_pos.get(moment_id, grid_pos) as Vector2i
+		if _is_revealed_at(pos):
+			var out := functions.duplicate()
+			for fn in reveal_functions:
+				if fn not in out:
+					out.append(fn)
+			return out
+	return functions
 
 
 func _apply_fold_state(want_extended: bool) -> bool:
@@ -883,6 +922,25 @@ func get_occupied_tiles() -> Array:
 	return tiles
 
 
+# Footprint this piece would have for a given moment's OWN stored fold state,
+# without touching its real current grid_h/position. Used for free-space
+# checks (e.g. "sport" needs enough open floor) that must account for a
+# foldable piece being unfolded in one moment but folded in another.
+func get_occupied_tiles_for_moment(moment_id: String) -> Array:
+	var h := grid_h
+	if foldable and extended_add_h > 0:
+		var extended: bool = moment_fold_state.get(moment_id, false) as bool
+		h = (_base_grid_h + extended_add_h) if extended else _base_grid_h
+	var pos: Vector2i = grid_pos
+	if rail_axis != "" and moment_rail_pos.has(moment_id):
+		pos = moment_rail_pos[moment_id]
+	var tiles: Array = []
+	for x in range(grid_w):
+		for y in range(h):
+			tiles.append(Vector2i(pos.x + x, pos.y + y))
+	return tiles
+
+
 func _input(event: InputEvent) -> void:
 	# ── Placement mode: furniture follows cursor until click or Esc ───────────
 	if _placement_mode:
@@ -1024,6 +1082,8 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 
 	if _wall_ref and _wall_ref.can_place(self, Vector2i(snapped_x, snapped_y)):
 		_wall_ref.place_furniture(self, Vector2i(snapped_x, snapped_y))
+		if rail_axis != "" and Furniture.test_mode_active:
+			moment_rail_pos[Furniture.active_moment_id] = grid_pos
 		_play("place")
 		placed.emit(self)
 	else:
