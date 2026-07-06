@@ -24,6 +24,7 @@ var pipe_routes: Array = []     # [{type:"water"|"power", tiles:[Vector2i]}]  pl
 var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
 
 var floor_mask:     Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
+var floor_kind:     Dictionary = {}   # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
 var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
 var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
@@ -109,6 +110,23 @@ func _unregister_stair(furniture: Furniture) -> void:
 	stairs_data = kept
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+func get_tile_kind(tile: Vector2i) -> String:
+	return floor_kind.get(tile, "normal") as String
+
+
+# Balcony tiles only accept balcony-category furniture (and vice versa —
+# balcony furniture only belongs on a balcony). Bathroom tiles accept
+# anything, but bathroom-category furniture is confined to bathroom tiles.
+func _floor_category_ok(furn_category: String, tile_kind: String) -> bool:
+	if tile_kind == "balcony":
+		return furn_category == "balcony"
+	if furn_category == "balcony":
+		return false
+	if furn_category == "bathroom" and tile_kind != "bathroom":
+		return false
+	return true
+
 
 func is_floor_tile(tile: Vector2i) -> bool:
 	if not _use_new_format:
@@ -252,6 +270,9 @@ func setup(floor_data: Dictionary) -> void:
 		floor_mask.clear()
 		for t in floor_data.get("floor_tiles", []):
 			floor_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		floor_kind.clear()
+		for t in floor_data.get("floor_kinds", []):
+			floor_kind[Vector2i(t[0] as int, t[1] as int)] = t[2] as String
 		mezzanine_mask.clear()
 		for t in floor_data.get("mezzanine_tiles", []):
 			mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
@@ -465,6 +486,8 @@ func can_place(furniture: Furniture, at: Vector2i) -> bool:
 		for y in range(furniture.grid_h):
 			var tile := Vector2i(at.x + x, at.y + y)
 			if not is_floor_tile(tile):
+				return false
+			if not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
 				return false
 			if _placed_overlapping_z(tile, furniture.z_bottom, furniture.z_top, furniture) != null:
 				return false

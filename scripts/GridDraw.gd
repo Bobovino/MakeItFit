@@ -145,10 +145,47 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			var t := tile as Vector2i
 			draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), SHADOW_COL)
 
-	# ── 2. Painted floor tiles (cream) ───────────────────────────────────────
+	# ── 2. Painted floor tiles (cream, or tinted by kind) ────────────────────
+	const BALCONY_COL  := Color(0.62, 0.72, 0.58, 1.0)   # outdoor decking green-grey
+	const BATHROOM_COL := Color(0.70, 0.80, 0.84, 1.0)   # cool tile blue
 	for tile in parent.floor_mask:
 		var t := tile as Vector2i
-		draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), FLOOR_COLOR)
+		var kind := parent.get_tile_kind(t) if parent.has_method("get_tile_kind") else "normal"
+		var col := FLOOR_COLOR
+		match kind:
+			"balcony":  col = BALCONY_COL
+			"bathroom": col = BATHROOM_COL
+		draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), col)
+
+	# ── 2a. Balcony railings — drawn along any edge of a balcony tile that
+	# borders a non-floor (exterior/void) tile, marking the building's edge.
+	if not parent.floor_kind.is_empty():
+		const RAIL_BAR_COL := Color(0.94, 0.96, 0.98, 1.0)
+		for tile in parent.floor_kind:
+			var t := tile as Vector2i
+			if (parent.floor_kind[tile] as String) != "balcony":
+				continue
+			var px := t.x * TILE_SIZE; var py := t.y * TILE_SIZE
+			var neighbors := {
+				"north": [Vector2i(t.x, t.y - 1), Vector2(px, py), Vector2(px + TILE_SIZE, py)],
+				"south": [Vector2i(t.x, t.y + 1), Vector2(px, py + TILE_SIZE), Vector2(px + TILE_SIZE, py + TILE_SIZE)],
+				"west":  [Vector2i(t.x - 1, t.y), Vector2(px, py), Vector2(px, py + TILE_SIZE)],
+				"east":  [Vector2i(t.x + 1, t.y), Vector2(px + TILE_SIZE, py), Vector2(px + TILE_SIZE, py + TILE_SIZE)],
+			}
+			for edge_key in neighbors:
+				var edge  := neighbors[edge_key] as Array
+				var ntile := edge[0] as Vector2i
+				if parent.is_floor_tile(ntile):
+					continue
+				var p0 := edge[1] as Vector2; var p1 := edge[2] as Vector2
+				draw_line(p0, p1, RAIL_BAR_COL, 3.0)
+				var tile_center := Vector2(px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.5)
+				var edge_mid    := (p0 + p1) * 0.5
+				var inward      := (tile_center - edge_mid).normalized()
+				var steps := 4
+				for i in range(steps + 1):
+					var pt := p0.lerp(p1, float(i) / steps)
+					draw_line(pt, pt + inward * 5.0, RAIL_BAR_COL, 1.5)
 
 	# ── 2b. Zone overlays — colour-coded by primary function ─────────────────
 	if parent.zones.size() > 1:

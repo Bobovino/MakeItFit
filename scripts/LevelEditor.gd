@@ -32,6 +32,8 @@ var _cols:           Array      = []  # [{x,y}]
 var _floor_painting:   bool = false
 var _floor_erase:      bool = false
 var _floor_brush:      int  = 10  # 1 = tile (10 cm), 10 = cell (1 m = 10×10 tiles)
+var _floor_kind_paint:  String = "normal"  # kind stamped by Floor Paint while painting floor tiles
+var _floor_kind:        Dictionary = {}    # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 var _mezz_painting:    bool = false
 var _mezz_erase:       bool = false
 var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
@@ -332,6 +334,21 @@ func _build_left(ui: Node) -> void:
 			if is_instance_valid(_ov):
 				_ov.set("floor_brush", _floor_brush))
 		brush_row.add_child(bbtn)
+
+	# ── Floor kind selector (Floor Paint) — normal / balcony / bathroom ──────
+	_sect(vb, "FLOOR KIND")
+	var kind_bg := ButtonGroup.new()
+	for kdef: Array in [["normal", "Normal"], ["balcony", "Balcony/Terrace"], ["bathroom", "Bathroom"]]:
+		var kid  := kdef[0] as String
+		var klbl := kdef[1] as String
+		var kbtn := Button.new()
+		kbtn.text          = klbl
+		kbtn.toggle_mode   = true
+		kbtn.button_group  = kind_bg
+		kbtn.button_pressed = (kid == _floor_kind_paint)
+		kbtn.add_theme_font_size_override("font_size", 9)
+		kbtn.pressed.connect(func(): _floor_kind_paint = kid)
+		vb.add_child(kbtn)
 
 	_sect(vb, "ACTIONS")
 	var clear_btn := Button.new()
@@ -682,7 +699,7 @@ func _delete_moment(idx: int) -> void:
 func _make_efloor(id: String, label: String, ftype: String) -> Dictionary:
 	return {
 		"id": id, "label": label, "type": ftype,
-		"floor_tiles": [], "mezzanine_tiles": [], "stair_tiles": [],
+		"floor_tiles": [], "floor_kinds": [], "mezzanine_tiles": [], "stair_tiles": [],
 		"stairs": [], "rails": [], "reveal_zones": [], "segments": [], "columns": []
 	}
 
@@ -713,11 +730,14 @@ func _init_editor_floors() -> void:
 func _snapshot_to_efloor(fd: Dictionary) -> void:
 	var ft: Array = []
 	for t in _floor_mask:     ft.append([(t as Vector2i).x, (t as Vector2i).y])
+	var fk: Array = []
+	for t in _floor_kind:     fk.append([(t as Vector2i).x, (t as Vector2i).y, _floor_kind[t]])
 	var mt: Array = []
 	for t in _mezzanine_mask: mt.append([(t as Vector2i).x, (t as Vector2i).y])
 	var st: Array = []
 	for t in _stair_mask:     st.append([(t as Vector2i).x, (t as Vector2i).y])
 	fd["floor_tiles"]     = ft
+	fd["floor_kinds"]     = fk
 	fd["mezzanine_tiles"] = mt
 	fd["stair_tiles"]     = st   # auto-derived for backward compat; source of truth is "stairs"
 	fd["stairs"]          = _stairs.duplicate(true)
@@ -747,6 +767,7 @@ func _save_active_efloor() -> void:
 	# Derived floor types don't own their floor_tiles — clear them so save is clean
 	if ftype in ["loft", "floor_sub", "ceiling"]:
 		fd["floor_tiles"] = []
+		fd["floor_kinds"] = []
 	_editor_floors[_active_efl] = fd
 
 func _load_active_efloor() -> void:
@@ -768,6 +789,10 @@ func _load_active_efloor() -> void:
 		_:
 			for t in fd.get("floor_tiles", []):
 				_floor_mask[Vector2i(t[0] as int, t[1] as int)] = true
+
+	_floor_kind.clear()
+	for t in fd.get("floor_kinds", []):
+		_floor_kind[Vector2i(t[0] as int, t[1] as int)] = t[2] as String
 
 	_mezzanine_mask.clear()
 	for t in fd.get("mezzanine_tiles", []):
@@ -1077,6 +1102,10 @@ func _rebuild_floor() -> void:
 	for rz in _reveal_zones:
 		reveal_arr.append((rz as Dictionary).duplicate())
 
+	var floor_kinds: Array = []
+	for t in _floor_kind:
+		floor_kinds.append([(t as Vector2i).x, (t as Vector2i).y, _floor_kind[t]])
+
 	# Build stair_openings for the editor preview:
 	#   loft floors → parent's loft-targeted stairs
 	#   floor type above another floor → that floor's floor-targeted stairs
@@ -1098,6 +1127,7 @@ func _rebuild_floor() -> void:
 		"id": "editor_preview", "label": "Ground Floor",
 		"grid_w": _gw, "grid_h": _gh,
 		"floor_tiles":     floor_tiles,
+		"floor_kinds":     floor_kinds,
 		"mezzanine_tiles": mezz_tiles,
 		"stair_tiles":     stair_tiles,
 		"stairs":          _stairs.duplicate(true),
@@ -1700,15 +1730,28 @@ func _paint_floor_tile(tile: Vector2i, erase: bool) -> void:
 			if erase:
 				if t in _floor_mask:
 					_floor_mask.erase(t)
+					_floor_kind.erase(t)
 					if is_instance_valid(_floor):
 						_floor.floor_mask.erase(t)
+						_floor.floor_kind.erase(t)
 					changed = true
 			else:
 				if t not in _floor_mask:
 					_floor_mask[t] = true
-					if is_instance_valid(_floor):
-						_floor.floor_mask[t] = true
 					changed = true
+				if _floor_kind_paint == "normal":
+					if t in _floor_kind:
+						_floor_kind.erase(t)
+						changed = true
+				elif _floor_kind.get(t) != _floor_kind_paint:
+					_floor_kind[t] = _floor_kind_paint
+					changed = true
+				if is_instance_valid(_floor):
+					_floor.floor_mask[t] = true
+					if _floor_kind_paint == "normal":
+						_floor.floor_kind.erase(t)
+					else:
+						_floor.floor_kind[t] = _floor_kind_paint
 	if changed and is_instance_valid(_floor):
 		_floor.grid_draw.queue_redraw()
 
@@ -2439,7 +2482,7 @@ func _confirm_clear_all() -> void:
 		_clear_dlg.dialog_text = "This will erase all floor tiles, walls, doors, windows and rails.\nCannot be undone. Continue?"
 		_clear_dlg.get_ok_button().text = "Clear"
 		_clear_dlg.confirmed.connect(func():
-			_floor_mask.clear(); _mezzanine_mask.clear(); _stair_mask.clear()
+			_floor_mask.clear(); _floor_kind.clear(); _mezzanine_mask.clear(); _stair_mask.clear()
 			_segments.clear(); _rails.clear(); _reveal_zones.clear(); _cols.clear()
 			_rebuild_floor()
 			_set_status("Canvas cleared"))

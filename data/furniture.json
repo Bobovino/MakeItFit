@@ -398,7 +398,8 @@
       "size": {
         "w": 10,
         "h": 6
-      }
+      },
+      "floor_category": "bathroom"
     },
     {
       "id": "toilet",
@@ -413,7 +414,8 @@
       "size": {
         "w": 5,
         "h": 6
-      }
+      },
+      "floor_category": "bathroom"
     },
     {
       "id": "sink",
@@ -428,7 +430,8 @@
       "size": {
         "w": 6,
         "h": 5
-      }
+      },
+      "floor_category": "bathroom"
     },
     {
       "id": "shower",
@@ -443,7 +446,8 @@
       "size": {
         "w": 8,
         "h": 8
-      }
+      },
+      "floor_category": "bathroom"
     },
     {
       "id": "towel_rack",
@@ -458,7 +462,8 @@
       "size": {
         "w": 8,
         "h": 1
-      }
+      },
+      "floor_category": "bathroom"
     },
     {
       "id": "wardrobe",
@@ -631,7 +636,8 @@
       "functions": [],
       "buy_price": 30,
       "sell_price": 10,
-      "color": "508040"
+      "color": "508040",
+      "floor_category": "balcony"
     },
     {
       "id": "wall_plant",
@@ -737,7 +743,8 @@
       "functions": [],
       "buy_price": 40,
       "sell_price": 15,
-      "color": "c8b8a0"
+      "color": "c8b8a0",
+      "floor_category": "bathroom"
     },
     {
       "id": "laundry_basket",
@@ -769,7 +776,8 @@
       ],
       "buy_price": 120,
       "sell_price": 50,
-      "color": "d8e4ec"
+      "color": "d8e4ec",
+      "floor_category": "bathroom"
     },
     {
       "id": "towel_set",
@@ -784,7 +792,8 @@
       "functions": [],
       "buy_price": 30,
       "sell_price": 10,
-      "color": "e8ddd0"
+      "color": "e8ddd0",
+      "floor_category": "bathroom"
     },
     {
       "id": "rug",
@@ -992,7 +1001,8 @@
       ],
       "buy_price": 90,
       "sell_price": 35,
-      "color": "708060"
+      "color": "708060",
+      "floor_category": "balcony"
     },
     {
       "id": "outdoor_table",
@@ -1010,7 +1020,8 @@
       ],
       "buy_price": 140,
       "sell_price": 55,
-      "color": "607050"
+      "color": "607050",
+      "floor_category": "balcony"
     },
     {
       "id": "planter_box",
@@ -1025,7 +1036,8 @@
       "functions": [],
       "buy_price": 60,
       "sell_price": 25,
-      "color": "507040"
+      "color": "507040",
+      "floor_category": "balcony"
     },
     {
       "id": "sun_lounger",
@@ -1043,7 +1055,8 @@
       ],
       "buy_price": 160,
       "sell_price": 60,
-      "color": "d4c070"
+      "color": "d4c070",
+      "floor_category": "balcony"
     },
     {
       "id": "nightstand",

@@ -16,7 +16,7 @@ var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor rel
 
 
 func _ready() -> void:
-	for _lid in ["tut_basics","debug_moments","debug_rails","debug:_rail_moments",
+	for _lid in ["tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony_bathroom",
 			"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
 			"muchos_electrodomésticos",
 			"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]:

@@ -38,6 +38,7 @@ var z_top:    float = 12.0 # tiles from floor level
 var needs_water:  bool = false
 var needs_power:  bool = false
 var zone_divider: bool = false   # acts as a soft wall for zone flood-fill
+var floor_category: String = "any"   # "any" | "balcony" | "bathroom" — which tile kinds accept this piece
 var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
@@ -102,6 +103,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	needs_water           = data.get("needs_water",       false)    as bool
 	needs_power           = data.get("needs_power",       false)    as bool
 	zone_divider          = data.get("zone_divider",      false)    as bool
+	floor_category        = data.get("floor_category",    "any")    as String
 	rail_axis             = data.get("rail_axis",         "")       as String
 	rail_start            = data.get("rail_start",        -1)       as int
 	rail_end              = data.get("rail_end",          -1)       as int
