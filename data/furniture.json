@@ -92,7 +92,13 @@
       ],
       "buy_price": 700,
       "sell_price": 350,
-      "color": "5a7ea0"
+      "color": "5a7ea0",
+      "foldable": true,
+      "extended_add_h": 17,
+      "folded_functions": [],
+      "extended_functions": [
+        "sleep"
+      ]
     },
     {
       "id": "futon",
@@ -399,7 +405,8 @@
         "w": 10,
         "h": 6
       },
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "wall_h": 8
     },
     {
       "id": "toilet",
@@ -415,7 +422,8 @@
         "w": 5,
         "h": 6
       },
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "wall_h": 8
     },
     {
       "id": "sink",
@@ -431,7 +439,8 @@
         "w": 6,
         "h": 5
       },
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "wall_h": 14
     },
     {
       "id": "shower",
@@ -447,7 +456,8 @@
         "w": 8,
         "h": 8
       },
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "wall_h": 20
     },
     {
       "id": "towel_rack",
@@ -671,7 +681,8 @@
       "height_category": "tall",
       "z_top": 18,
       "is_stair": true,
-      "stair_direction": "north"
+      "stair_direction": "north",
+      "wall_h": 20
     },
     {
       "id": "stair_s",
@@ -690,7 +701,8 @@
       "height_category": "tall",
       "z_top": 18,
       "is_stair": true,
-      "stair_direction": "south"
+      "stair_direction": "south",
+      "wall_h": 20
     },
     {
       "id": "stair_e",
@@ -709,7 +721,8 @@
       "height_category": "tall",
       "z_top": 18,
       "is_stair": true,
-      "stair_direction": "east"
+      "stair_direction": "east",
+      "wall_h": 20
     },
     {
       "id": "stair_w",
@@ -728,7 +741,8 @@
       "height_category": "tall",
       "z_top": 18,
       "is_stair": true,
-      "stair_direction": "west"
+      "stair_direction": "west",
+      "wall_h": 20
     },
     {
       "id": "bath_mat",

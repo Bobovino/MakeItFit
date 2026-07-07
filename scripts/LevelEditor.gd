@@ -34,6 +34,14 @@ var _floor_erase:      bool = false
 var _floor_brush:      int  = 10  # 1 = tile (10 cm), 10 = cell (1 m = 10×10 tiles)
 var _floor_kind_paint:  String = "normal"  # kind stamped by Floor Paint while painting floor tiles
 var _floor_kind:        Dictionary = {}    # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
+
+# Sloped ceiling (per active floor) — {axis, low_start, high_end, min_h, max_h}
+var _sc_enabled:   bool   = false
+var _sc_axis:      String = "x"
+var _sc_low_start: int    = 0
+var _sc_high_end:  int    = 10
+var _sc_min_h:     float  = 1.8
+var _sc_max_h:     float  = 2.4
 var _mezz_painting:    bool = false
 var _mezz_erase:       bool = false
 var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
@@ -416,6 +424,11 @@ func _build_right(ui: Node) -> void:
 	det_btn.add_theme_font_size_override("font_size", 10)
 	det_btn.pressed.connect(_open_level_details_modal)
 	vb.add_child(det_btn)
+	var sc_btn := Button.new()
+	sc_btn.text = "Sloped Ceiling…"
+	sc_btn.add_theme_font_size_override("font_size", 10)
+	sc_btn.pressed.connect(_open_sloped_ceiling_modal)
+	vb.add_child(sc_btn)
 
 	# ── Furniture (compact buttons → open modals) ─────────────────────────────
 	_sect(vb, "FURNITURE")
@@ -537,6 +550,105 @@ func _open_level_details_modal() -> void:
 
 	win.close_requested.connect(win.queue_free)
 	win.popup_centered()
+
+
+func _open_sloped_ceiling_modal() -> void:
+	var win := Window.new()
+	win.title = "Sloped Ceiling"
+	win.size  = Vector2i(300, 320)
+	win.wrap_controls = true
+	add_child(win)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	vb.custom_minimum_size = Vector2(280, 0)
+	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	win.add_child(vb)
+
+	var hint := Label.new()
+	hint.text = "Ceiling height ramps linearly from Min (at Low Start) to Max (at High End), along the chosen axis. Tall furniture is blocked wherever the ceiling drops below 2.0m."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.add_theme_font_size_override("font_size", 9)
+	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(hint)
+
+	var en_cb := CheckBox.new()
+	en_cb.text = "Enabled"
+	en_cb.button_pressed = _sc_enabled
+	en_cb.add_theme_font_size_override("font_size", 11)
+	vb.add_child(en_cb)
+
+	var axis_row := HBoxContainer.new()
+	axis_row.add_theme_constant_override("separation", 4)
+	vb.add_child(axis_row)
+	var axis_bg := ButtonGroup.new()
+	for adef: Array in [["x", "Slopes along X"], ["y", "Slopes along Y"]]:
+		var aid  := adef[0] as String
+		var albl := adef[1] as String
+		var abtn := Button.new()
+		abtn.text = albl
+		abtn.toggle_mode  = true
+		abtn.button_group = axis_bg
+		abtn.button_pressed = (aid == _sc_axis)
+		abtn.add_theme_font_size_override("font_size", 9)
+		abtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		abtn.pressed.connect(func(): _sc_axis = aid)
+		axis_row.add_child(abtn)
+
+	var s_low  := _spinbox(vb, "Low Start (tile)",  _sc_low_start, 0, 300, 1)
+	var s_high := _spinbox(vb, "High End (tile)",   _sc_high_end,  0, 300, 1)
+	s_low.value_changed.connect(func(v: float):  _sc_low_start = int(v))
+	s_high.value_changed.connect(func(v: float): _sc_high_end  = int(v))
+
+	var s_min := _float_spinbox(vb, "Min Height (m)", _sc_min_h, 1.0, 3.0, 0.1)
+	var s_max := _float_spinbox(vb, "Max Height (m)", _sc_max_h, 1.0, 3.0, 0.1)
+	s_min.value_changed.connect(func(v: float): _sc_min_h = v)
+	s_max.value_changed.connect(func(v: float): _sc_max_h = v)
+
+	en_cb.toggled.connect(func(on: bool):
+		_sc_enabled = on
+		if is_instance_valid(_floor):
+			_floor.sloped_ceiling = _current_sloped_ceiling_dict()
+			_floor.grid_draw.queue_redraw())
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.add_theme_font_size_override("font_size", 11)
+	close_btn.pressed.connect(func():
+		if is_instance_valid(_floor):
+			_floor.sloped_ceiling = _current_sloped_ceiling_dict()
+			_floor.grid_draw.queue_redraw()
+		win.queue_free())
+	vb.add_child(close_btn)
+
+	win.close_requested.connect(close_btn.pressed.emit)
+	win.popup_centered()
+
+
+func _current_sloped_ceiling_dict() -> Dictionary:
+	if not _sc_enabled:
+		return {}
+	return {
+		"axis": _sc_axis, "low_start": _sc_low_start, "high_end": _sc_high_end,
+		"min_h": _sc_min_h, "max_h": _sc_max_h
+	}
+
+
+func _float_spinbox(p: Control, label: String, val: float, mn: float, mx: float, step: float) -> SpinBox:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	p.add_child(row)
+	var lbl := Label.new()
+	lbl.text = label + ":"
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.custom_minimum_size = Vector2(90, 0)
+	row.add_child(lbl)
+	var sb := SpinBox.new()
+	sb.min_value = mn; sb.max_value = mx; sb.step = step; sb.value = val
+	sb.add_theme_font_size_override("font_size", 10)
+	sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sb)
+	return sb
 
 
 # ── Moment management ─────────────────────────────────────────────────────────
@@ -700,7 +812,8 @@ func _make_efloor(id: String, label: String, ftype: String) -> Dictionary:
 	return {
 		"id": id, "label": label, "type": ftype,
 		"floor_tiles": [], "floor_kinds": [], "mezzanine_tiles": [], "stair_tiles": [],
-		"stairs": [], "rails": [], "reveal_zones": [], "segments": [], "columns": []
+		"stairs": [], "rails": [], "reveal_zones": [], "segments": [], "columns": [],
+		"sloped_ceiling": {}
 	}
 
 func _make_floor_trio(fid: String, lbl: String) -> Array:
@@ -739,6 +852,7 @@ func _snapshot_to_efloor(fd: Dictionary) -> void:
 	fd["floor_tiles"]     = ft
 	fd["floor_kinds"]     = fk
 	fd["mezzanine_tiles"] = mt
+	fd["sloped_ceiling"]  = _current_sloped_ceiling_dict()
 	fd["stair_tiles"]     = st   # auto-derived for backward compat; source of truth is "stairs"
 	fd["stairs"]          = _stairs.duplicate(true)
 	fd["rails"]           = _rails.duplicate(true)
@@ -793,6 +907,14 @@ func _load_active_efloor() -> void:
 	_floor_kind.clear()
 	for t in fd.get("floor_kinds", []):
 		_floor_kind[Vector2i(t[0] as int, t[1] as int)] = t[2] as String
+
+	var _scd := fd.get("sloped_ceiling", {}) as Dictionary
+	_sc_enabled   = not _scd.is_empty()
+	_sc_axis      = _scd.get("axis", "x") as String
+	_sc_low_start = _scd.get("low_start", 0) as int
+	_sc_high_end  = _scd.get("high_end", 10) as int
+	_sc_min_h     = _scd.get("min_h", 1.8) as float
+	_sc_max_h     = _scd.get("max_h", 2.4) as float
 
 	_mezzanine_mask.clear()
 	for t in fd.get("mezzanine_tiles", []):
@@ -1128,6 +1250,7 @@ func _rebuild_floor() -> void:
 		"grid_w": _gw, "grid_h": _gh,
 		"floor_tiles":     floor_tiles,
 		"floor_kinds":     floor_kinds,
+		"sloped_ceiling":  _current_sloped_ceiling_dict(),
 		"mezzanine_tiles": mezz_tiles,
 		"stair_tiles":     stair_tiles,
 		"stairs":          _stairs.duplicate(true),
@@ -2072,8 +2195,6 @@ func _refresh_editor_furn_panel() -> void:
 
 	for fraw in catalog:
 		var fdata := fraw as Dictionary
-		if fdata.get("placement", "floor") != "floor":
-			continue
 		var fid    := fdata["id"] as String
 		var fw: int = (fdata.get("size", {}) as Dictionary).get("w", 5) as int
 		var fh: int = (fdata.get("size", {}) as Dictionary).get("h", 5) as int
@@ -2608,8 +2729,6 @@ func _open_wall_view_modal(seg_idx: int, side: int) -> void:
 	_wv_modal_grp = ButtonGroup.new()
 	for f in _furn_catalog:
 		var fd := f as Dictionary
-		if fd.get("placement", "floor") != "wall":
-			continue
 		var fid := fd["id"] as String
 		var btn := Button.new()
 		btn.text = fd["name"] as String

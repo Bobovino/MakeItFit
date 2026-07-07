@@ -2,6 +2,7 @@ extends PanelContainer
 class_name Inventory
 
 signal buy_requested(furniture_id: String)
+signal view3d_requested(furniture_id: String)
 
 var _gm: GameManager = null
 
@@ -17,16 +18,13 @@ func populate(furniture_list: Array) -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
-	var floor_items := furniture_list.filter(func(f): return f.get("placement", "floor") == "floor")
-	var wall_items  := furniture_list.filter(func(f): return f.get("placement", "floor") == "wall")
-
 	var hdr := Label.new()
-	hdr.text = "FLOOR ITEMS"
+	hdr.text = "ITEMS  (place on the floor plan, or open a wall to hang it there)"
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	item_list.add_child(hdr)
 
-	for f in floor_items:
+	for f in furniture_list:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 
@@ -58,6 +56,14 @@ func populate(furniture_list: Array) -> void:
 		price_lbl.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
 		row.add_child(price_lbl)
 
+		var view3d_btn := Button.new()
+		view3d_btn.text = "3D"
+		view3d_btn.tooltip_text = "Preview in 3D"
+		view3d_btn.add_theme_font_size_override("font_size", 11)
+		view3d_btn.custom_minimum_size.x = 30
+		view3d_btn.pressed.connect(func(): view3d_requested.emit(f["id"] as String))
+		row.add_child(view3d_btn)
+
 		var buy_btn := Button.new()
 		buy_btn.text = "Buy"
 		buy_btn.add_theme_font_size_override("font_size", 11)
@@ -67,51 +73,6 @@ func populate(furniture_list: Array) -> void:
 		row.add_child(buy_btn)
 
 		item_list.add_child(row)
-
-	if not wall_items.is_empty():
-		var sep2 := HSeparator.new()
-		sep2.add_theme_constant_override("separation", 4)
-		item_list.add_child(sep2)
-
-		var wall_hdr := Label.new()
-		wall_hdr.text = "WALL ITEMS"
-		wall_hdr.add_theme_font_size_override("font_size", 9)
-		wall_hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		item_list.add_child(wall_hdr)
-
-		for f in wall_items:
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 6)
-
-			var swatch := ColorRect.new()
-			swatch.color = Color("#" + (f.get("color", "888888") as String))
-			swatch.custom_minimum_size = Vector2(8, 0)
-			swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			row.add_child(swatch)
-
-			var name_lbl := Label.new()
-			name_lbl.text = f["name"]
-			name_lbl.custom_minimum_size.x = 108
-			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			name_lbl.add_theme_font_size_override("font_size", 11)
-			row.add_child(name_lbl)
-
-			var price_lbl := Label.new()
-			price_lbl.text = "%d€" % f["buy_price"]
-			price_lbl.custom_minimum_size.x = 46
-			price_lbl.add_theme_font_size_override("font_size", 11)
-			price_lbl.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
-			row.add_child(price_lbl)
-
-			var buy_btn := Button.new()
-			buy_btn.text = "Place"
-			buy_btn.add_theme_font_size_override("font_size", 11)
-			buy_btn.set_meta("price", f["buy_price"] as int)
-			buy_btn.disabled = _gm != null and _gm.budget < (f["buy_price"] as int)
-			buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
-			row.add_child(buy_btn)
-
-			item_list.add_child(row)
 
 
 # Shows pre-owned items (from starting_inventory). Each entry is {id, count}.

@@ -7,6 +7,11 @@ signal wall_item_placed(furniture_id: String)
 const TILE_SIZE:   int = 12
 const WALL_HEIGHT: int = 24
 
+const MIN_ZOOM := 0.5
+const MAX_ZOOM := 3.0
+var _zoom: float = 1.0
+var _panning: bool = false
+
 var _all_furniture: Array  = []
 var _wall_furniture: Array = []
 var _selected_id: String   = ""
@@ -23,32 +28,63 @@ var _drag_pos:      Vector2i = Vector2i.ZERO
 # Wall item drag
 var _drag_origin: Vector2i = Vector2i.ZERO
 var _drag_offset: Vector2i = Vector2i.ZERO
+var _drag_fid:     String   = ""
 
 # Floor item drag
 var _drag_floor_furniture: Furniture = null
 var _drag_floor_wall_x:    int       = 0
 var _drag_floor_offset_x:  int       = 0
 
+var _hover_tile: Vector2i = Vector2i(-999, -999)   # live cursor tile, for the shop-selection ghost
+
 @onready var title_lbl:  Label         = $VBox/TitleRow/Title
 @onready var close_btn:  Button        = $VBox/TitleRow/CloseBtn
 @onready var hint_lbl:   Label         = $VBox/HintLabel
+@onready var scroll_area: ScrollContainer = $VBox/Scroll
 @onready var draw_area:  Control       = $VBox/Scroll/DrawArea
 
 
 func setup(all_furniture: Array) -> void:
 	_all_furniture  = all_furniture
-	_wall_furniture = all_furniture.filter(func(f): return f.get("placement") == "wall")
+	_wall_furniture = all_furniture   # any item can now be hung on a wall
 	close_btn.pressed.connect(_on_close)
 	draw_area.draw.connect(_draw_elevation)
 	draw_area.gui_input.connect(_on_draw_input)
 	draw_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	scroll_area.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll_area.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll_area.resized.connect(_on_scroll_area_resized)
 	_show_placeholder()
+
+
+# Keeps the wall fully visible without scrollbars — re-fit whenever the panel
+# is resized (split divider drag, window resize), instead of ever scrolling.
+func _on_scroll_area_resized() -> void:
+	if _apt_floor:
+		refit()
+
+
+func refit() -> void:
+	var content_w := _wall_w() * TILE_SIZE
+	var content_h := WALL_HEIGHT * TILE_SIZE
+	var avail := scroll_area.size
+	if avail.x <= 0 or avail.y <= 0 or content_w <= 0 or content_h <= 0:
+		return
+	_zoom = clampf(minf(avail.x / content_w, avail.y / content_h), 0.1, MAX_ZOOM)
+	draw_area.custom_minimum_size = Vector2(content_w * _zoom, content_h * _zoom)
+	draw_area.queue_redraw()
 
 
 func _show_placeholder() -> void:
 	hint_lbl.visible   = true
 	draw_area.visible  = false
 	title_lbl.text     = "Wall Inspector"
+
+
+# True only while an actual wall is open for inspection — unlike `visible`,
+# which stays true even for the idle placeholder panel.
+func is_showing_wall() -> bool:
+	return _apt_floor != null
 
 
 func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> void:
@@ -64,15 +100,16 @@ func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> voi
 	_selected_id = ""
 	_is_dragging = false
 	_drag_floor_furniture = null
+	_panning = false
 
 	_apt_floor.furniture_changed.connect(_on_floor_changed)
 	if _other_floor:
 		_other_floor.furniture_changed.connect(_on_floor_changed)
 
-	title_lbl.text = "Wall: " + _edge_label(edge)
-	draw_area.custom_minimum_size = Vector2(_wall_w() * TILE_SIZE, WALL_HEIGHT * TILE_SIZE)
+	title_lbl.text = "Wall: " + _edge_label(edge) + "  (scroll to zoom, middle-drag to pan)"
 	hint_lbl.visible  = false
 	draw_area.visible = true
+	call_deferred("refit")
 	draw_area.queue_redraw()
 
 
@@ -84,11 +121,23 @@ func select_item(fid: String) -> void:
 	draw_area.queue_redraw()
 
 
+# Called by Main when the player completes the equivalent floor placement instead,
+# so the armed wall-click-to-place doesn't linger waiting for a second click.
+func cancel_selection() -> void:
+	if _selected_id == "":
+		return
+	_selected_id = ""
+	draw_area.queue_redraw()
+
+
 func _on_floor_changed() -> void:
 	draw_area.queue_redraw()
 
 
 func _on_close() -> void:
+	if _apt_floor:
+		_apt_floor.clear_wall_drag_ghost()
+		_apt_floor.clear_floor_drag_ghost()
 	if _apt_floor and _apt_floor.furniture_changed.is_connected(_on_floor_changed):
 		_apt_floor.furniture_changed.disconnect(_on_floor_changed)
 	if _other_floor and _other_floor.furniture_changed.is_connected(_on_floor_changed):
@@ -112,6 +161,20 @@ func _on_draw_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton:
 		var mbe  := event as InputEventMouseButton
+
+		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed:
+			_set_zoom(_zoom + 0.2)
+			get_viewport().set_input_as_handled()
+			return
+		if mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed:
+			_set_zoom(_zoom - 0.2)
+			get_viewport().set_input_as_handled()
+			return
+		if mbe.button_index == MOUSE_BUTTON_MIDDLE:
+			_panning = mbe.pressed
+			get_viewport().set_input_as_handled()
+			return
+
 		var tile := _pixel_to_tile(mbe.position)
 
 		if mbe.button_index == MOUSE_BUTTON_LEFT:
@@ -124,6 +187,8 @@ func _on_draw_input(event: InputEvent) -> void:
 					_is_dragging   = true
 					_drag_is_floor = false
 					_selected_id   = ""
+					_drag_fid      = _apt_floor.get_wall_items(_edge).get(_drag_origin, "") as String
+					_apt_floor.set_wall_drag_ghost(_edge, _drag_pos, _drag_fid)
 				else:
 					var floor_hit: Variant = _floor_item_at(tile)
 					if floor_hit != null:
@@ -135,6 +200,7 @@ func _on_draw_input(event: InputEvent) -> void:
 						_is_dragging           = true
 						_drag_is_floor         = true
 						_selected_id           = ""
+						_push_floor_drag_ghost()
 					elif _selected_id != "":
 						_try_place(_selected_id, tile)
 			else:
@@ -143,27 +209,70 @@ func _on_draw_input(event: InputEvent) -> void:
 						_drop_floor_drag()
 					else:
 						_drop_wall_drag()
+				_apt_floor.clear_wall_drag_ghost()
+				_apt_floor.clear_floor_drag_ghost()
 
 		elif mbe.button_index == MOUSE_BUTTON_RIGHT and mbe.pressed:
 			if _is_dragging:
 				_is_dragging          = false
 				_drag_floor_furniture = null
+				_apt_floor.clear_wall_drag_ghost()
+				_apt_floor.clear_floor_drag_ghost()
 				draw_area.queue_redraw()
 			else:
 				_remove_wall_at(tile)
+
+	elif event is InputEventMouseMotion and _panning:
+		var mme := event as InputEventMouseMotion
+		scroll_area.scroll_horizontal -= int(mme.relative.x)
+		scroll_area.scroll_vertical   -= int(mme.relative.y)
 
 	elif event is InputEventMouseMotion and _is_dragging:
 		var mme := event as InputEventMouseMotion
 		var cur := _pixel_to_tile(mme.position)
 		if _drag_is_floor:
 			_drag_pos.x = cur.x - _drag_floor_offset_x
+			_push_floor_drag_ghost()
 		else:
 			_drag_pos = cur - _drag_offset
+			_apt_floor.set_wall_drag_ghost(_edge, _drag_pos, _drag_fid)
 		draw_area.queue_redraw()
+
+	elif event is InputEventMouseMotion:
+		_hover_tile = _pixel_to_tile((event as InputEventMouseMotion).position)
+		if _selected_id != "":
+			draw_area.queue_redraw()
+
+
+# Converts the wall-local drag position of a floor-adjacent piece back into
+# absolute grid coordinates so the floor plan can mirror the live drag.
+func _push_floor_drag_ghost() -> void:
+	var f := _drag_floor_furniture
+	if not f:
+		return
+	var bounds := _apt_floor.get_room_bounds()
+	var gx := f.grid_pos.x
+	var gy := f.grid_pos.y
+	match _edge:
+		"north", "south":
+			gx = _drag_pos.x + bounds.position.x
+		"west", "east":
+			gy = _drag_pos.x + bounds.position.y
+	_apt_floor.set_floor_drag_ghost(f, gx, gy)
 
 
 func _pixel_to_tile(px: Vector2) -> Vector2i:
-	return Vector2i(int(px.x / TILE_SIZE), int(px.y / TILE_SIZE))
+	var unzoomed := px / _zoom
+	return Vector2i(int(unzoomed.x / TILE_SIZE), int(unzoomed.y / TILE_SIZE))
+
+
+func _set_zoom(new_zoom: float) -> void:
+	var clamped := clampf(new_zoom, MIN_ZOOM, MAX_ZOOM)
+	if clamped == _zoom:
+		return
+	_zoom = clamped
+	draw_area.custom_minimum_size = Vector2(_wall_w() * TILE_SIZE * _zoom, WALL_HEIGHT * TILE_SIZE * _zoom)
+	draw_area.queue_redraw()
 
 
 # ── Placement helpers ─────────────────────────────────────────────────────────
@@ -200,6 +309,15 @@ func _floor_item_at(tile: Vector2i) -> Variant:
 	return null
 
 
+# Floor-standing furniture (beds, desks, wardrobes...) leans flush against the
+# floor when hung on a wall — only true wall-mounted decor (shelves, paintings)
+# can be hung at an arbitrary height.
+func _pinned_wall_y(fdata: Dictionary, ih: int) -> int:
+	if fdata.get("placement", "") == "floor":
+		return WALL_HEIGHT - ih
+	return -1   # not pinned — caller keeps the clicked/dragged y
+
+
 func _try_place(fid: String, at: Vector2i) -> void:
 	var f := _find(fid)
 	if f.is_empty():
@@ -208,7 +326,8 @@ func _try_place(fid: String, at: Vector2i) -> void:
 	var ih: int     = f.get("wall_h", 1) as int
 	var wall_w: int = _wall_w()
 	at.x = clampi(at.x, 0, wall_w - iw)
-	at.y = clampi(at.y, 0, WALL_HEIGHT - ih)
+	var pinned_y := _pinned_wall_y(f, ih)
+	at.y = pinned_y if pinned_y >= 0 else clampi(at.y, 0, WALL_HEIGHT - ih)
 	var placed := _apt_floor.get_wall_items(_edge)
 	if _wall_fits(at, iw, ih, placed):
 		Audio.play("place")
@@ -229,9 +348,10 @@ func _drop_wall_drag() -> void:
 	var iw: int     = f["size"]["w"] as int
 	var ih: int     = f.get("wall_h", 1) as int
 	var wall_w: int = _wall_w()
+	var pinned_y := _pinned_wall_y(f, ih)
 	var at := Vector2i(
 		clampi(_drag_pos.x, 0, wall_w - iw),
-		clampi(_drag_pos.y, 0, WALL_HEIGHT - ih)
+		pinned_y if pinned_y >= 0 else clampi(_drag_pos.y, 0, WALL_HEIGHT - ih)
 	)
 	_apt_floor.remove_wall_item(_edge, _drag_origin)
 	# placed is the same dict reference — origin is already erased
@@ -250,12 +370,13 @@ func _drop_floor_drag() -> void:
 	var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
 	var wall_w: int = _wall_w()
 	var new_wall_x: int = clampi(_drag_pos.x, 0, wall_w - item_w)
+	var bounds := _apt_floor.get_room_bounds()
 	var new_pos := f.grid_pos
 	match _edge:
 		"north", "south":
-			new_pos.x = new_wall_x
+			new_pos.x = new_wall_x + bounds.position.x
 		"west", "east":
-			new_pos.y = new_wall_x
+			new_pos.y = new_wall_x + bounds.position.y
 	if _apt_floor.can_place(f, new_pos):
 		_apt_floor.place_furniture(f, new_pos)
 
@@ -267,6 +388,12 @@ func _wall_fits(at: Vector2i, iw: int, ih: int, placed: Dictionary) -> bool:
 	for zone in _get_restricted_zones():
 		if (zone as Rect2i).intersects(item_rect):
 			return false
+
+	# Sloped ceiling: reject if the item's top edge pokes into the cut zone
+	if _apt_floor and not _apt_floor.sloped_ceiling.is_empty():
+		for tx in range(iw):
+			if at.y < _ceiling_cut_tiles(at.x + tx):
+				return false
 
 	# Floor occlusion: can't place behind adjacent furniture silhouette
 	if _floor_occludes(at, iw, ih):
@@ -345,6 +472,10 @@ func _draw_elevation() -> void:
 	var rw := wall_w * TILE_SIZE
 	var rh := WALL_HEIGHT * TILE_SIZE
 
+	# All draw calls below use raw (unzoomed) tile-pixel coordinates; this
+	# transform scales the whole render to match draw_area's zoomed size.
+	draw_area.draw_set_transform(Vector2.ZERO, 0.0, Vector2(_zoom, _zoom))
+
 	# Wall surface + grid — blueprint palette to match floor plan
 	draw_area.draw_rect(Rect2(0, 0, rw, rh), Color(0.93, 0.90, 0.83))
 	for x in range(wall_w + 1):
@@ -361,6 +492,19 @@ func _draw_elevation() -> void:
 			Color(0.45, 0.42, 0.34, 0.50), 1.0)
 	draw_area.draw_line(Vector2(0, rh), Vector2(rw, rh), Color(0.16, 0.13, 0.10), 4.0)
 	draw_area.draw_line(Vector2(0, 0),  Vector2(rw, 0),  Color(0.16, 0.13, 0.10), 2.0)
+
+	# ── Sloped ceiling cut — grey out the unusable space above the real roofline
+	if not _apt_floor.sloped_ceiling.is_empty():
+		var roof_pts: PackedVector2Array = []
+		for col in range(wall_w + 1):
+			var cut_y := clampf(rh - _ceiling_height_m(col) * 10.0 * TILE_SIZE, 0.0, rh)
+			roof_pts.append(Vector2(col * TILE_SIZE, cut_y))
+		var blocked := roof_pts.duplicate()
+		blocked.append(Vector2(rw, 0))
+		blocked.append(Vector2(0, 0))
+		draw_area.draw_colored_polygon(blocked, Color(0.10, 0.08, 0.06, 0.55))
+		for i in range(roof_pts.size() - 1):
+			draw_area.draw_line(roof_pts[i], roof_pts[i + 1], Color(0.80, 0.30, 0.18, 0.95), 2.0)
 
 	_draw_openings(rw, rh)
 
@@ -462,9 +606,10 @@ func _draw_elevation() -> void:
 			var iw: int      = fdata["size"]["w"] as int
 			var ih: int      = fdata.get("wall_h", 1) as int
 			var wall_w2: int = _wall_w()
+			var pinned_y2 := _pinned_wall_y(fdata, ih)
 			var at := Vector2i(
 				clampi(_drag_pos.x, 0, wall_w2 - iw),
-				clampi(_drag_pos.y, 0, WALL_HEIGHT - ih)
+				pinned_y2 if pinned_y2 >= 0 else clampi(_drag_pos.y, 0, WALL_HEIGHT - ih)
 			)
 			var col := Color("#" + (fdata.get("color", "888888") as String))
 			col.a = 0.60
@@ -491,16 +636,28 @@ func _draw_elevation() -> void:
 			draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), col)
 			draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), Color.WHITE, false, 1.5)
 
-	# ── Shop selection ghost ──────────────────────────────────────────────────
-	if _selected_id != "":
+	# ── Shop selection ghost — follows the cursor so you can see the item before
+	# committing, flush against the floor for floor-standing furniture ─────────
+	if _selected_id != "" and not _is_dragging:
 		var fdata := _find(_selected_id)
 		if not fdata.is_empty():
-			var iw: int = (fdata["size"]["w"] as int) * TILE_SIZE
-			var ih: int = (fdata.get("wall_h", 1) as int) * TILE_SIZE
-			var ghost   := Color("#" + (fdata.get("color", "888888") as String))
-			ghost.a = 0.35
-			draw_area.draw_rect(Rect2(2, 2, iw - 4, ih - 4), ghost)
-			_draw_label(4, 13, float(iw - 6), "click to place")
+			var iw_t: int   = fdata["size"]["w"] as int
+			var ih_t: int   = fdata.get("wall_h", 1) as int
+			var wall_w3: int = _wall_w()
+			var pinned_y3 := _pinned_wall_y(fdata, ih_t)
+			var at := Vector2i(
+				clampi(_hover_tile.x, 0, wall_w3 - iw_t),
+				pinned_y3 if pinned_y3 >= 0 else clampi(_hover_tile.y, 0, WALL_HEIGHT - ih_t)
+			)
+			var px := at.x * TILE_SIZE
+			var py := at.y * TILE_SIZE
+			var iw := iw_t * TILE_SIZE
+			var ih := ih_t * TILE_SIZE
+			var ghost := Color("#" + (fdata.get("color", "888888") as String))
+			ghost.a = 0.45
+			draw_area.draw_rect(Rect2(px + 1, py + 1, iw - 2, ih - 2), ghost)
+			draw_area.draw_rect(Rect2(px + 1, py + 1, iw - 2, ih - 2), Color.WHITE, false, 1.5)
+			_draw_label(px + 3, py + 12, float(iw - 6), fdata["name"] as String)
 
 
 func _draw_openings(_rw: int, rh: int) -> void:
@@ -623,6 +780,53 @@ func _wall_w() -> int:
 		return 8
 	var bounds := _apt_floor.get_room_bounds()
 	return bounds.size.x if _edge in ["north", "south"] else bounds.size.y
+
+
+# ── Sloped ceiling → wall cut ──────────────────────────────────────────────
+# Ceiling height (metres) at a given column of THIS wall's elevation view.
+# `col` is local to the wall (0 at its start). Walls running along the slope
+# axis (north/south for axis "x", east/west for axis "y") get a height that
+# varies per column; the other two walls sit at one fixed coordinate along
+# the slope axis, so they get a single constant height across their span.
+func _ceiling_height_m(col: int) -> float:
+	if not _apt_floor:
+		return float(WALL_HEIGHT) / 10.0
+	var sc: Dictionary = _apt_floor.sloped_ceiling
+	if sc.is_empty():
+		return float(WALL_HEIGHT) / 10.0
+	var axis: String  = sc.get("axis", "x") as String
+	var low_s: int    = sc.get("low_start", 0) as int
+	var high_e: int   = sc.get("high_end", 0) as int
+	var min_h: float  = sc.get("min_h", 1.8) as float
+	var max_h: float  = sc.get("max_h", 2.4) as float
+	var span := high_e - low_s
+	if span <= 0:
+		return max_h
+	var bounds := _apt_floor.get_room_bounds()
+	var progressive := (axis == "x" and _edge in ["north", "south"]) \
+		or (axis == "y" and _edge in ["east", "west"])
+	var coord: int
+	if progressive:
+		coord = (bounds.position.x if _edge in ["north", "south"] else bounds.position.y) + col
+	else:
+		match _edge:
+			"north": coord = bounds.position.y
+			"south": coord = bounds.position.y + bounds.size.y - 1
+			"west":  coord = bounds.position.x
+			"east":  coord = bounds.position.x + bounds.size.x - 1
+			_:       coord = low_s
+	var frac := clampf(float(coord - low_s) / float(span), 0.0, 1.0)
+	return min_h + frac * (max_h - min_h)
+
+
+# Number of tile-rows blocked at the TOP of this wall's elevation (closest to
+# the real ceiling) because the sloped ceiling is lower than the full
+# WALL_HEIGHT (2.4 m) at this column.
+func _ceiling_cut_tiles(col: int) -> int:
+	if not _apt_floor or _apt_floor.sloped_ceiling.is_empty():
+		return 0
+	var avail_tiles := int(round(_ceiling_height_m(col) * 10.0))
+	return clampi(WALL_HEIGHT - avail_tiles, 0, WALL_HEIGHT)
 
 
 func _edge_label(edge: String) -> String:

@@ -41,6 +41,11 @@ var zones: Array = []             # [{tiles:Dictionary, functions:Array[String]}
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
 var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
 
+# Live drag previews so the floor plan and Wall Inspector mirror each other
+# while a piece is being dragged, not just after it's dropped.
+var _wall_drag_ghost:  Dictionary = {}  # {edge:String, origin:Vector2i, fid:String}
+var _floor_drag_ghost: Dictionary = {}  # {furniture:Furniture, gx:int, gy:int}
+
 # Cached floor bounds in local px — set in setup(), used by _input() for edge detection
 var _edge_x0: float = 0.0
 var _edge_y0: float = 0.0
@@ -656,6 +661,30 @@ func remove_wall_item(edge: String, origin: Vector2i) -> void:
 	furniture_changed.emit()
 
 
+func set_wall_drag_ghost(edge: String, origin: Vector2i, fid: String) -> void:
+	_wall_drag_ghost = {"edge": edge, "origin": origin, "fid": fid}
+	furniture_changed.emit()
+
+
+func clear_wall_drag_ghost() -> void:
+	if _wall_drag_ghost.is_empty():
+		return
+	_wall_drag_ghost = {}
+	furniture_changed.emit()
+
+
+func set_floor_drag_ghost(furniture: Furniture, gx: int, gy: int) -> void:
+	_floor_drag_ghost = {"furniture": furniture, "gx": gx, "gy": gy}
+	furniture_changed.emit()
+
+
+func clear_floor_drag_ghost() -> void:
+	if _floor_drag_ghost.is_empty():
+		return
+	_floor_drag_ghost = {}
+	furniture_changed.emit()
+
+
 func get_wall_items(edge: String) -> Dictionary:
 	if not (edge in wall_items):
 		wall_items[edge] = {}
@@ -681,30 +710,38 @@ func get_all_wall_item_ids() -> Array:
 
 
 func get_adjacent_furniture(edge: String) -> Array:
-	# Returns [{furniture, wall_x}] for pieces whose footprint touches this wall edge
+	# Returns [{furniture, wall_x}] for pieces whose footprint touches this wall
+	# edge. `wall_x` is LOCAL to the wall (0 at the wall's start), matching the
+	# coordinate space WallInspector draws in.
 	var result: Array = []
 	var bounds := get_room_bounds()
+	var ghost_f: Furniture = _floor_drag_ghost.get("furniture") as Furniture
 	for item in _get_all_placed_unique():
 		var f := item as Furniture
+		var gx := f.grid_pos.x
+		var gy := f.grid_pos.y
+		if f == ghost_f:
+			gx = _floor_drag_ghost["gx"] as int
+			gy = _floor_drag_ghost["gy"] as int
 		var adjacent := false
 		var wall_x := 0
 		match edge:
 			"north":
-				if f.grid_pos.y < WALL_DEPTH:
+				if gy < bounds.position.y + WALL_DEPTH:
 					adjacent = true
-					wall_x = f.grid_pos.x
+					wall_x = gx - bounds.position.x
 			"south":
-				if f.grid_pos.y + f.grid_h > bounds.position.y + bounds.size.y - WALL_DEPTH:
+				if gy + f.grid_h > bounds.position.y + bounds.size.y - WALL_DEPTH:
 					adjacent = true
-					wall_x = f.grid_pos.x
+					wall_x = gx - bounds.position.x
 			"west":
-				if f.grid_pos.x < WALL_DEPTH:
+				if gx < bounds.position.x + WALL_DEPTH:
 					adjacent = true
-					wall_x = f.grid_pos.y
+					wall_x = gy - bounds.position.y
 			"east":
-				if f.grid_pos.x + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
+				if gx + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
 					adjacent = true
-					wall_x = f.grid_pos.y
+					wall_x = gy - bounds.position.y
 		if adjacent:
 			result.append({"furniture": f, "wall_x": wall_x})
 	return result

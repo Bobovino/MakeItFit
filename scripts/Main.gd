@@ -1,6 +1,7 @@
 extends Node
 
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
+const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
 @onready var gm:           GameManager  = $GameManager
 @onready var room:         Node2D       = $Room
@@ -10,13 +11,34 @@ const FurnitureScene := preload("res://scenes/Furniture.tscn")
 @onready var tenant_card:  TenantCard   = $UI/BottomBar/TenantCard
 @onready var inventory:    Inventory    = $UI/BottomBar/Inventory
 @onready var rent_btn:     Button       = $UI/TopBar/RentButton
+@onready var view3d_btn:   Button       = $UI/TopBar/View3DButton
 @onready var result_screen: ResultScreen = $ResultScreen
 @onready var wall_inspector: WallInspector = $UI/WallInspector
+@onready var divider:      ColorRect     = $UI/Divider
+@onready var ui_layer:     CanvasLayer   = $UI
+
+var _room3d_view = null
 
 const TILE_SIZE := 8          # pixels per grid tile — matches Floor/GridDraw
 const TOP_Y     := 46.0       # top bar height
 const BOT_Y     := 506.0      # bottom bar start
 const FIT_PCT   := 0.95       # fraction of available area to fill
+
+# ── Floor plan / Wall Inspector resizable split ────────────────────────────
+const MIN_SPLIT_X := 450.0
+const MAX_SPLIT_X := 1050.0
+var _split_x:         float = 860.0
+var _dragging_divider: bool = false
+var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
+
+# ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
+const MIN_MANUAL_ZOOM := 0.4
+const MAX_MANUAL_ZOOM := 4.0
+var _base_scale:    float   = 1.0
+var _base_position: Vector2 = Vector2.ZERO
+var _manual_zoom:   float   = 1.0
+var _manual_pan:    Vector2 = Vector2.ZERO
+var _panning_floor: bool    = false
 
 var _floors:            Dictionary = {}
 var _loft_floors:       Dictionary = {}  # base_floor_id -> dynamically created loft Floor node
@@ -47,8 +69,12 @@ func _ready() -> void:
 		moment_selector.wall_selected.connect(_on_moment_selected)
 	if not inventory.buy_requested.is_connected(_on_buy_requested):
 		inventory.buy_requested.connect(_on_buy_requested)
+	if not inventory.view3d_requested.is_connected(_on_view3d_item_requested):
+		inventory.view3d_requested.connect(_on_view3d_item_requested)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
+	if not view3d_btn.pressed.is_connected(_on_view3d_pressed):
+		view3d_btn.pressed.connect(_on_view3d_pressed)
 	if not result_screen.next_level_requested.is_connected(_on_next_level):
 		result_screen.next_level_requested.connect(_on_next_level)
 	if not result_screen.retry_requested.is_connected(_on_retry):
@@ -57,6 +83,13 @@ func _ready() -> void:
 		wall_inspector.wall_closed.connect(_on_inspector_visibility_changed)
 	if not wall_inspector.wall_item_placed.is_connected(_on_wall_item_placed):
 		wall_inspector.wall_item_placed.connect(_on_wall_item_placed)
+	divider.mouse_filter = Control.MOUSE_FILTER_STOP
+	divider.mouse_default_cursor_shape = Control.CURSOR_HSPLIT
+	if not divider.gui_input.is_connected(_on_divider_gui_input):
+		divider.gui_input.connect(_on_divider_gui_input)
+	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
+		return pos.x < _split_x and pos.y > TOP_Y and pos.y < BOT_Y
+	_update_split(_split_x)
 	_apply_ui_theme()
 	_load_level(GameState.pending_level_id)
 
@@ -265,8 +298,7 @@ func _load_level(level_id: String) -> void:
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
 	inventory.setup(gm)
-	var shop_list: Array = gm.furniture_data["furniture"].filter(
-		func(f): return f.get("placement", "floor") in ["floor", "wall"])
+	var shop_list: Array = gm.furniture_data["furniture"]
 	if not gm.allowed_furniture.is_empty():
 		shop_list = shop_list.filter(func(f): return (f["id"] as String) in gm.allowed_furniture)
 	inventory.populate(shop_list)
@@ -396,7 +428,7 @@ func _show_mechanic_intro_if_needed() -> void:
 
 func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, rail_data: Dictionary = {}) -> Furniture:
 	var fdata := gm.get_furniture_by_id(furniture_id)
-	if fdata.is_empty() or fdata.get("placement", "floor") != "floor":
+	if fdata.is_empty():
 		return null
 	# Apply per-instance rail overrides (axis + extents set by level editor)
 	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions"]
@@ -546,17 +578,21 @@ func _switch_floor(floor_id: String) -> void:
 	if floor_id in _floors:
 		var apt_floor := _floors[floor_id] as Floor
 		apt_floor.visible = true
-		_fit_floor(apt_floor)
+		_fit_floor(apt_floor, true)
 	minimap.highlight(floor_id)
 
 
-func _fit_floor(apt_floor: Floor) -> void:
+# Recomputes the "fit to view" baseline (scale/position) for the given floor.
+# `reset_view`: true on an actual floor switch (snaps back to fit, clearing
+# any manual zoom/pan); false when only the available width changed (e.g.
+# dragging the floor/wall split), which re-fits without losing the player's
+# current zoom/pan.
+func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	const H_PAD  := 32.0
 	const V_PAD  := 24.0
-	const LEFT_W := 860.0
 	const PAD_T  := 3     # tile padding around apartment content
 
-	var avail_w := LEFT_W - H_PAD * 2
+	var avail_w := _split_x - H_PAD * 2
 	var avail_h := (BOT_Y - TOP_Y) - V_PAD * 2
 
 	var fw: float; var fh: float
@@ -576,11 +612,66 @@ func _fit_floor(apt_floor: Floor) -> void:
 	var s := minf(avail_w * FIT_PCT / fw, avail_h * FIT_PCT / fh)
 	s = minf(s, 5.0)  # prevent over-zoom on tiny apartments
 
-	room.scale    = Vector2(s, s)
-	room.position = Vector2(
+	_base_scale    = s
+	_base_position = Vector2(
 		H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
 		TOP_Y + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
 	)
+	if reset_view:
+		_manual_zoom = 1.0
+		_manual_pan  = Vector2.ZERO
+	_apply_room_transform()
+
+
+func _apply_room_transform() -> void:
+	var total := _base_scale * _manual_zoom
+	room.scale    = Vector2(total, total)
+	room.position = _base_position + _manual_pan
+
+
+# ── Floor/Wall split divider drag ──────────────────────────────────────────
+func _on_divider_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_dragging_divider = (event as InputEventMouseButton).pressed
+
+
+func _update_split(x: float) -> void:
+	_split_x = clampf(x, MIN_SPLIT_X, MAX_SPLIT_X)
+	divider.offset_left        = _split_x - 3.0
+	divider.offset_right       = _split_x + 3.0
+	wall_inspector.offset_left = _split_x + 3.0
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl:
+		_fit_floor(fl, false)
+
+
+# ── Floor plan zoom (mouse wheel) / pan (middle-drag) ──────────────────────
+func _handle_view_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mbe := event as InputEventMouseButton
+		var in_bounds := mbe.position.x < _split_x and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
+		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed and in_bounds:
+			_zoom_floor(0.15, mbe.position)
+		elif mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed and in_bounds:
+			_zoom_floor(-0.15, mbe.position)
+		elif mbe.button_index == MOUSE_BUTTON_MIDDLE:
+			_panning_floor = mbe.pressed and in_bounds
+	elif event is InputEventMouseMotion and _panning_floor:
+		_manual_pan += (event as InputEventMouseMotion).relative
+		_apply_room_transform()
+
+
+func _zoom_floor(delta: float, cursor_pos: Vector2) -> void:
+	var old_total := _base_scale * _manual_zoom
+	_manual_zoom = clampf(_manual_zoom + delta, MIN_MANUAL_ZOOM, MAX_MANUAL_ZOOM)
+	var new_total := _base_scale * _manual_zoom
+	if new_total == old_total:
+		return
+	# Keep the point under the cursor fixed while zooming
+	var focus_world := (cursor_pos - room.position) / old_total
+	room.position  = cursor_pos - focus_world * new_total
+	room.scale     = Vector2(new_total, new_total)
+	_manual_pan    = room.position - _base_position
 
 
 func _on_wall_edge_clicked(edge: String, apt_floor: Floor) -> void:
@@ -601,6 +692,11 @@ func _on_inspector_visibility_changed() -> void:
 
 func _on_wall_item_placed(furniture_id: String) -> void:
 	gm.buy_furniture(furniture_id)
+	# The wall placement won — cancel the parallel floor-placement ghost so it
+	# doesn't linger following the mouse (and can't be placed a second time for free).
+	if is_instance_valid(_pending_floor_ghost):
+		_pending_floor_ghost.cancel_placement()
+	_pending_floor_ghost = null
 	_refresh_functions()
 
 
@@ -613,9 +709,9 @@ func _on_buy_requested(furniture_id: String) -> void:
 		return
 	if gm.budget < (fdata.get("buy_price", 0) as int):
 		return
-	if fdata.get("placement", "floor") == "wall":
-		wall_inspector.select_item(furniture_id)
-		return
+	# Every item can go on the floor or on a wall — arm both placements at once.
+	# Whichever the player actually clicks into completes the purchase; the other
+	# is cancelled automatically.
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
@@ -625,11 +721,18 @@ func _on_buy_requested(furniture_id: String) -> void:
 		f.placed.connect(func(_n): _refresh_functions())
 	f.placement_confirmed.connect(func():
 		gm.buy_furniture(furniture_id)
+		_pending_floor_ghost = null
+		wall_inspector.cancel_selection()
 		if fdata.get("creates_loft", false):
 			_promote_to_loft(f, apt_floor)
 		_refresh_functions())
-	f.placement_cancelled.connect(_refresh_functions)
+	f.placement_cancelled.connect(func():
+		_pending_floor_ghost = null
+		_refresh_functions())
 	f.begin_placement(apt_floor, get_viewport().get_mouse_position())
+	_pending_floor_ghost = f
+	if wall_inspector.is_showing_wall():
+		wall_inspector.select_item(furniture_id)
 	_refresh_functions()
 
 
@@ -709,6 +812,31 @@ func _all_furniture_accessible() -> bool:
 		if (_floors[fid] as Floor).get_inaccessible_furniture().size() > 0:
 			return false
 	return true
+
+
+func _open_room3d_view() -> Node:
+	if is_instance_valid(_room3d_view):
+		_room3d_view.queue_free()
+	_room3d_view = Room3DViewScene.instantiate()
+	ui_layer.add_child(_room3d_view)
+	_room3d_view.closed.connect(func():
+		_room3d_view.queue_free()
+		_room3d_view = null)
+	return _room3d_view
+
+
+func _on_view3d_pressed() -> void:
+	var apt_floor := _floors.get(_current_floor_id) as Floor
+	if not apt_floor:
+		return
+	_open_room3d_view().build_from_floor(apt_floor, gm.furniture_data["furniture"])
+
+
+func _on_view3d_item_requested(furniture_id: String) -> void:
+	var fdata := gm.get_furniture_by_id(furniture_id)
+	if fdata.is_empty():
+		return
+	_open_room3d_view().build_single_item(fdata)
 
 
 func _on_rent_pressed() -> void:
@@ -876,10 +1004,18 @@ func _exit_demolition_phase() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _dragging_divider:
+		if event is InputEventMouseMotion:
+			_update_split((event as InputEventMouseMotion).position.x)
+		elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT \
+				and not (event as InputEventMouseButton).pressed:
+			_dragging_divider = false
+		return
 	if _active_paint_type != "":
 		_handle_paint_input(event)
 		return
 	if not _demolition_mode:
+		_handle_view_input(event)
 		return
 	if not (event is InputEventMouseButton and (event as InputEventMouseButton).pressed
 			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT):
@@ -1050,7 +1186,7 @@ func _handle_paint_input(event: InputEvent) -> void:
 	if not event is InputEventMouse:
 		return
 	var mp := (event as InputEventMouse).position
-	if mp.x > 860.0 or mp.y < TOP_Y or mp.y > BOT_Y:
+	if mp.x > _split_x or mp.y < TOP_Y or mp.y > BOT_Y:
 		return
 
 	get_viewport().set_input_as_handled()

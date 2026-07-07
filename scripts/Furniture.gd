@@ -9,6 +9,11 @@ signal placement_cancelled
 
 const TILE_SIZE := 8
 
+# Set once by Main._ready() so a floor-placement ghost knows whether a click is
+# actually over the floor pane — otherwise it swallows every left click on
+# screen (other panels, buttons) trying to confirm placement at a stale position.
+static var is_in_floor_pane: Callable = Callable()
+
 func _play(sound: String) -> void:
 	var am := get_node_or_null("/root/Audio")
 	if am:
@@ -951,6 +956,8 @@ func _input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion:
 			_drag(event.position)
 		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if Furniture.is_in_floor_pane.is_valid() and not Furniture.is_in_floor_pane.call(event.position):
+				return   # click landed on another panel (e.g. Wall Inspector) — let it through
 			var sx := int(position.x / TILE_SIZE)
 			var sy := int(position.y / TILE_SIZE)
 			if not (_wall_ref and _wall_ref.can_place(self, Vector2i(sx, sy))):
@@ -966,13 +973,7 @@ func _input(event: InputEvent) -> void:
 			queue_redraw()
 			get_viewport().set_input_as_handled()
 		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			_placement_mode = false
-			_dragging = false
-			if _wall_ref:
-				_wall_ref.grid_draw.show_grid = false
-				_wall_ref.grid_draw.queue_redraw()
-			placement_cancelled.emit()
-			queue_free()
+			cancel_placement()
 			get_viewport().set_input_as_handled()
 		return
 
@@ -1051,6 +1052,7 @@ func _drag(mouse_pos: Vector2) -> void:
 		snapped_x = clampi(snapped_x, 0, _wall_ref.grid_w - grid_w)
 		snapped_y = clampi(snapped_y, 0, _wall_ref.grid_h - grid_h)
 	position = Vector2(snapped_x * TILE_SIZE, snapped_y * TILE_SIZE)
+	_wall_ref.set_floor_drag_ghost(self, snapped_x, snapped_y)
 	queue_redraw()
 
 
@@ -1078,6 +1080,7 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
+		_wall_ref.clear_floor_drag_ghost()
 	queue_redraw()
 	var snapped_x := int(position.x / TILE_SIZE)
 	var snapped_y := int(position.y / TILE_SIZE)
@@ -1091,6 +1094,18 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	else:
 		_play("error")
 		position = _original_pos
+
+
+func cancel_placement() -> void:
+	if not _placement_mode:
+		return
+	_placement_mode = false
+	_dragging = false
+	if _wall_ref:
+		_wall_ref.grid_draw.show_grid = false
+		_wall_ref.grid_draw.queue_redraw()
+	placement_cancelled.emit()
+	queue_free()
 
 
 func begin_placement(floor: Floor, mouse_pos: Vector2) -> void:

@@ -456,6 +456,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	_draw_columns(parent)
 	_draw_segments(parent)
+	_draw_sloped_ceiling(parent)
 
 
 func _draw_edge_overlays(parent: Floor) -> void:
@@ -703,12 +704,14 @@ func _draw_diagonal_splits(parent: Floor) -> void:
 	if not _gm:
 		return
 
+	var bounds := parent.get_room_bounds()
+
 	# Build a map of wall-item shadow tiles → color for each edge
 	var wall_shadow: Dictionary = {}  # Vector2i → Color
 	for edge in parent.wall_items:
 		var items: Dictionary = parent.wall_items[edge] as Dictionary
 		for origin in items:
-			var o      := origin as Vector2i
+			var o      := origin as Vector2i   # local to the wall — 0 at the wall's start
 			var fid    : String = items[origin] as String
 			var fdata  := _gm.get_furniture_by_id(fid)
 			if fdata.is_empty():
@@ -721,10 +724,10 @@ func _draw_diagonal_splits(parent: Floor) -> void:
 				for iy in range(depth):
 					var tile: Vector2i
 					match edge:
-						"north": tile = Vector2i(o.x + ix, iy)
-						"south": tile = Vector2i(o.x + ix, parent.grid_h - 1 - iy)
-						"west":  tile = Vector2i(iy, o.x + ix)
-						"east":  tile = Vector2i(parent.grid_w - 1 - iy, o.x + ix)
+						"north": tile = Vector2i(bounds.position.x + o.x + ix, bounds.position.y + iy)
+						"south": tile = Vector2i(bounds.position.x + o.x + ix, bounds.position.y + bounds.size.y - 1 - iy)
+						"west":  tile = Vector2i(bounds.position.x + iy, bounds.position.y + o.x + ix)
+						"east":  tile = Vector2i(bounds.position.x + bounds.size.x - 1 - iy, bounds.position.y + o.x + ix)
 					wall_shadow[tile] = col
 
 	# Check each floor furniture tile for overlap with wall shadow
@@ -751,40 +754,51 @@ func _draw_diagonal_splits(parent: Floor) -> void:
 		]), floor_col)
 
 
-func _draw_wall_items(parent: Floor, rw: int, rh: int) -> void:
+func _draw_wall_items(parent: Floor, _rw: int, _rh: int) -> void:
 	if not _gm:
 		return
+	var bounds := parent.get_room_bounds()
+	var ghost      := parent._wall_drag_ghost
+	var ghost_edge := ghost.get("edge", "") as String
+	var ghost_origin: Vector2i = ghost.get("origin", Vector2i(-999999, -999999)) as Vector2i
 	for edge in parent.wall_items:
 		var items: Dictionary = parent.wall_items[edge] as Dictionary
 		for origin in items:
-			var o     := origin as Vector2i
-			var fid   : String = items[origin] as String
-			var fdata  := _gm.get_furniture_by_id(fid)
-			if fdata.is_empty():
-				continue
-			var iw: int    = fdata["size"]["w"] as int
-			var depth: int = fdata.get("floor_depth", 1) as int
-			var col        := Color("#" + (fdata.get("color", "aaaaaa") as String))
-			col.a = 0.85
-			match edge:
-				"north":
-					draw_rect(Rect2(o.x * TILE_SIZE, 0, iw * TILE_SIZE, depth * TILE_SIZE), col)
-					draw_rect(Rect2(o.x * TILE_SIZE, 0, iw * TILE_SIZE, depth * TILE_SIZE),
-						Color(0, 0, 0, 0.40), false, 1.0)
-				"south":
-					var ry := rh - depth * TILE_SIZE
-					draw_rect(Rect2(o.x * TILE_SIZE, ry, iw * TILE_SIZE, depth * TILE_SIZE), col)
-					draw_rect(Rect2(o.x * TILE_SIZE, ry, iw * TILE_SIZE, depth * TILE_SIZE),
-						Color(0, 0, 0, 0.40), false, 1.0)
-				"west":
-					draw_rect(Rect2(0, o.x * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE), col)
-					draw_rect(Rect2(0, o.x * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE),
-						Color(0, 0, 0, 0.40), false, 1.0)
-				"east":
-					var rx := rw - depth * TILE_SIZE
-					draw_rect(Rect2(rx, o.x * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE), col)
-					draw_rect(Rect2(rx, o.x * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE),
-						Color(0, 0, 0, 0.40), false, 1.0)
+			var o := origin as Vector2i   # local to the wall — 0 at the wall's start
+			if edge == ghost_edge and o == ghost_origin:
+				continue   # being dragged right now — drawn as a ghost below instead
+			_draw_one_wall_item(bounds, edge, o, items[origin] as String, 0.85)
+	if not ghost.is_empty():
+		_draw_one_wall_item(bounds, ghost_edge, ghost_origin, ghost.get("fid", "") as String, 0.5)
+
+
+func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float) -> void:
+	var fdata := _gm.get_furniture_by_id(fid)
+	if fdata.is_empty():
+		return
+	var iw: int    = fdata["size"]["w"] as int
+	var depth: int = fdata.get("floor_depth", 1) as int
+	var col        := Color("#" + (fdata.get("color", "aaaaaa") as String))
+	col.a = alpha
+	var rect: Rect2
+	match edge:
+		"north":
+			rect = Rect2((bounds.position.x + o.x) * TILE_SIZE, bounds.position.y * TILE_SIZE,
+				iw * TILE_SIZE, depth * TILE_SIZE)
+		"south":
+			rect = Rect2((bounds.position.x + o.x) * TILE_SIZE,
+				(bounds.position.y + bounds.size.y) * TILE_SIZE - depth * TILE_SIZE,
+				iw * TILE_SIZE, depth * TILE_SIZE)
+		"west":
+			rect = Rect2(bounds.position.x * TILE_SIZE, (bounds.position.y + o.x) * TILE_SIZE,
+				depth * TILE_SIZE, iw * TILE_SIZE)
+		"east":
+			rect = Rect2((bounds.position.x + bounds.size.x) * TILE_SIZE - depth * TILE_SIZE,
+				(bounds.position.y + o.x) * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE)
+		_:
+			return
+	draw_rect(rect, col)
+	draw_rect(rect, Color(0, 0, 0, 0.40), false, 1.0)
 
 
 func _draw_wall_feature(wall_def: Dictionary, w: int, h: int) -> void:
@@ -841,8 +855,11 @@ func _draw_sloped_ceiling(parent: Floor) -> void:
 	const CONTOUR_STEP := 0.2   # draw a line every 20cm height change
 	const CONTOUR_COL  := Color(0.42, 0.52, 0.68, 0.55)
 
-	var rw := parent.grid_w * TILE_SIZE
-	var rh := parent.grid_h * TILE_SIZE
+	var bounds := parent.get_room_bounds()
+	var room_x0 := bounds.position.x * TILE_SIZE
+	var room_y0 := bounds.position.y * TILE_SIZE
+	var room_x1 := (bounds.position.x + bounds.size.x) * TILE_SIZE
+	var room_y1 := (bounds.position.y + bounds.size.y) * TILE_SIZE
 	var span := high_e - low_s
 	if span <= 0:
 		return
@@ -854,24 +871,64 @@ func _draw_sloped_ceiling(parent: Floor) -> void:
 		var tile_pos := low_s + int(frac * span)
 		var px := tile_pos * TILE_SIZE
 		if axis == "x":
-			draw_dashed_line(Vector2(px, 0), Vector2(px, rh), CONTOUR_COL, 0.8, 5.0)
+			draw_dashed_line(Vector2(px, room_y0), Vector2(px, room_y1), CONTOUR_COL, 0.8, 5.0)
 			if si % 2 == 0:
-				draw_string(ThemeDB.fallback_font, Vector2(px + 2, 10), "%.1fm" % h_at,
-					HORIZONTAL_ALIGNMENT_LEFT, 32, 6, CONTOUR_COL)
+				draw_string(ThemeDB.fallback_font, Vector2(px + 2, room_y0 + 12), "%.1fm" % h_at,
+					HORIZONTAL_ALIGNMENT_LEFT, 32, 9, CONTOUR_COL)
 		else:
-			draw_dashed_line(Vector2(0, px), Vector2(rw, px), CONTOUR_COL, 0.8, 5.0)
+			draw_dashed_line(Vector2(room_x0, px), Vector2(room_x1, px), CONTOUR_COL, 0.8, 5.0)
 			if si % 2 == 0:
-				draw_string(ThemeDB.fallback_font, Vector2(2, px - 2), "%.1fm" % h_at,
-					HORIZONTAL_ALIGNMENT_LEFT, 32, 6, CONTOUR_COL)
+				draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 2, px - 2), "%.1fm" % h_at,
+					HORIZONTAL_ALIGNMENT_LEFT, 32, 9, CONTOUR_COL)
 
 	# Low-ceiling blocked zone overlay (min_h < 2.0 m blocks tall furniture)
 	if min_h < 2.0:
 		var frac_2m := (2.0 - min_h) / (max_h - min_h)
 		var px_2m := int((low_s + frac_2m * span) * TILE_SIZE)
 		if axis == "x":
-			draw_rect(Rect2(0, 0, px_2m, rh), Color(0.25, 0.30, 0.50, 0.07))
+			draw_rect(Rect2(room_x0, room_y0, px_2m - room_x0, room_y1 - room_y0), Color(0.25, 0.30, 0.50, 0.07))
 		else:
-			draw_rect(Rect2(0, 0, rw, px_2m), Color(0.25, 0.30, 0.50, 0.07))
+			draw_rect(Rect2(room_x0, room_y0, room_x1 - room_x0, px_2m - room_y0), Color(0.25, 0.30, 0.50, 0.07))
+
+	_draw_slope_info(axis, low_s, high_e, min_h, max_h, span, room_x0, room_y0, room_x1, room_y1)
+
+
+func _draw_slope_info(axis: String, low_s: int, high_e: int, min_h: float,
+		max_h: float, span: int, room_x0: int, room_y0: int, room_x1: int, room_y1: int) -> void:
+	const START_COL := Color(0.30, 0.42, 0.62, 0.9)
+	const END_COL   := Color(0.62, 0.30, 0.30, 0.9)
+	const INFO_COL  := Color(0.15, 0.15, 0.18, 1.0)
+	const INFO_BG    := Color(0.93, 0.93, 0.90, 0.85)
+
+	var span_m := float(span) / METER_TILES
+	var angle_deg := rad_to_deg(atan2(max_h - min_h, span_m)) if span_m > 0.0 else 0.0
+
+	var px_start := low_s * TILE_SIZE
+	var px_end   := high_e * TILE_SIZE
+
+	var label := "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)" % \
+		[angle_deg, min_h, max_h, span_m, low_s, high_e]
+
+	if axis == "x":
+		draw_line(Vector2(px_start, room_y0), Vector2(px_start, room_y1), START_COL, 2.0)
+		draw_string(ThemeDB.fallback_font, Vector2(px_start + 4, room_y1 - 6),
+			"%.2fm" % min_h, HORIZONTAL_ALIGNMENT_LEFT, 90, 12, START_COL)
+		draw_line(Vector2(px_end, room_y0), Vector2(px_end, room_y1), END_COL, 2.0)
+		draw_string(ThemeDB.fallback_font, Vector2(px_end - 46, room_y1 - 6),
+			"%.2fm" % max_h, HORIZONTAL_ALIGNMENT_RIGHT, 90, 12, END_COL)
+		draw_rect(Rect2(room_x0, room_y0 - 16, room_x1 - room_x0, 15), INFO_BG)
+		draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 4, room_y0 - 5),
+			label, HORIZONTAL_ALIGNMENT_LEFT, room_x1 - room_x0 - 8, 11, INFO_COL)
+	else:
+		draw_line(Vector2(room_x0, px_start), Vector2(room_x1, px_start), START_COL, 2.0)
+		draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 4, px_start - 4),
+			"%.2fm" % min_h, HORIZONTAL_ALIGNMENT_LEFT, 90, 12, START_COL)
+		draw_line(Vector2(room_x0, px_end), Vector2(room_x1, px_end), END_COL, 2.0)
+		draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 4, px_end + 14),
+			"%.2fm" % max_h, HORIZONTAL_ALIGNMENT_LEFT, 90, 12, END_COL)
+		draw_rect(Rect2(room_x1 + 2, room_y0, 160, 15), INFO_BG)
+		draw_string(ThemeDB.fallback_font, Vector2(room_x1 + 6, room_y0 + 11),
+			label, HORIZONTAL_ALIGNMENT_LEFT, 154, 11, INFO_COL)
 
 
 func _draw_partitions(parent: Floor) -> void:

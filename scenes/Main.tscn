@@ -30,6 +30,11 @@ text = "Budget: 3000€"
 theme_override_font_sizes/font_size = 18
 size_flags_horizontal = 3
 
+[node name="View3DButton" type="Button" parent="UI/TopBar"]
+text = "3D View"
+theme_override_font_sizes/font_size = 14
+custom_minimum_size = Vector2(90, 0)
+
 [node name="RentButton" type="Button" parent="UI/TopBar"]
 text = "RENT OUT"
 disabled = true
@@ -37,9 +42,9 @@ theme_override_font_sizes/font_size = 16
 custom_minimum_size = Vector2(180, 0)
 
 [node name="Divider" type="ColorRect" parent="UI"]
-offset_left = 859.0
+offset_left = 857.0
 offset_top = 46.0
-offset_right = 861.0
+offset_right = 863.0
 offset_bottom = 506.0
 color = Color(0.20, 0.26, 0.34, 1)
 
@@ -51,10 +56,12 @@ offset_bottom = 506.0
 script = ExtResource("7")
 
 [node name="VBox" type="VBoxContainer" parent="UI/WallInspector"]
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 6.0
 offset_top = 6.0
-offset_right = 414.0
-offset_bottom = 454.0
+offset_right = -6.0
+offset_bottom = -6.0
 
 [node name="TitleRow" type="HBoxContainer" parent="UI/WallInspector/VBox"]
 
