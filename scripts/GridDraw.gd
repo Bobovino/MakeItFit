@@ -498,7 +498,10 @@ func _draw_edge_overlays(parent: Floor) -> void:
 
 
 func _draw_segments(parent: Floor) -> void:
-	const PRIMARY_COL   := Color(0.16, 0.13, 0.10, 1.0)
+	# Contrasts against both the cream floor AND the dark canvas background —
+	# a near-black ink (previously ~equal to CANVAS_BG) made walls vanish
+	# whenever there was no stray floor tile just outside them for contrast.
+	const PRIMARY_COL   := Color(0.36, 0.29, 0.21, 1.0)
 	const SECONDARY_COL := Color(0.40, 0.36, 0.30, 0.85)
 	const DEMO_COL      := Color(0.78, 0.40, 0.16, 0.18)
 	# Thickness in TILES — walls render as filled tile cells, not lines

@@ -149,17 +149,10 @@ func is_floor_tile(tile: Vector2i) -> bool:
 	return tile.x >= 0 and tile.x < grid_w and tile.y >= 0 and tile.y < grid_h
 
 
-# Real playable extent of this floor, derived from wall segments (or floor tiles)
-# rather than the apartment-level grid_w/grid_h, which can be a much larger
-# sandbox default unrelated to this room's actual footprint.
+# Real playable extent of this floor, derived from wall segments — the walls
+# are the source of truth for the room's footprint; floor tiles are pruned to
+# fit inside them (see _prune_floor_mask_to_walls), not the other way around.
 func get_room_bounds() -> Rect2i:
-	if not floor_mask.is_empty():
-		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
-		for t in floor_mask:
-			var tv := t as Vector2i
-			minx = min(minx, tv.x); maxx = max(maxx, tv.x)
-			miny = min(miny, tv.y); maxy = max(maxy, tv.y)
-		return Rect2i(int(minx), int(miny), int(maxx - minx) + 1, int(maxy - miny) + 1)
 	if not segments.is_empty():
 		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
 		for s in segments:
@@ -169,7 +162,46 @@ func get_room_bounds() -> Rect2i:
 			miny = min(miny, min(sd["y1"] as int, sd["y2"] as int))
 			maxy = max(maxy, max(sd["y1"] as int, sd["y2"] as int))
 		return Rect2i(int(minx), int(miny), int(maxx - minx), int(maxy - miny))
+	if not floor_mask.is_empty():
+		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
+		for t in floor_mask:
+			var tv := t as Vector2i
+			minx = min(minx, tv.x); maxx = max(maxx, tv.x)
+			miny = min(miny, tv.y); maxy = max(maxy, tv.y)
+		return Rect2i(int(minx), int(miny), int(maxx - minx) + 1, int(maxy - miny) + 1)
 	return Rect2i(0, 0, grid_w, grid_h)
+
+
+# Wall segments are the source of truth for the main room's footprint. A
+# painted floor tile that falls outside the polygon they enclose is dropped
+# UNLESS it carries a floor_kind tag (balcony, bathroom nook, etc.) — those are
+# deliberate exterior/alcove extensions with no walls of their own. Untagged
+# stray tiles left over from an earlier wall edit are what silently inflated
+# get_room_bounds() and, from there, every wall/3D-view calculation that
+# relies on it — get_room_bounds() itself now reads segments directly, but a
+# stray tile can still cause bogus placement/occlusion elsewhere, so drop it.
+func _prune_floor_mask_to_walls() -> void:
+	if floor_mask.is_empty() or segments.is_empty():
+		return
+	var poly := _wall_polygon()
+	if poly.size() < 3:
+		return
+	var pruned: Dictionary = {}
+	for t in floor_mask:
+		var tv := t as Vector2i
+		if floor_kind.has(tv) or Geometry2D.is_point_in_polygon(Vector2(tv.x + 0.5, tv.y + 0.5), poly):
+			pruned[tv] = true
+	floor_mask = pruned
+
+
+# Builds the closed outer polygon from the wall segment chain (each segment's
+# start point connects to the previous one's end).
+func _wall_polygon() -> PackedVector2Array:
+	var poly := PackedVector2Array()
+	for s in segments:
+		var sd := s as Dictionary
+		poly.append(Vector2(sd["x1"] as int, sd["y1"] as int))
+	return poly
 
 
 func get_light(tile: Vector2i) -> float:
@@ -317,6 +349,7 @@ func setup(floor_data: Dictionary) -> void:
 			segments.append(cs)
 		wall_definitions = []
 		partitions       = []
+		_prune_floor_mask_to_walls()
 	else:
 		floor_mask       = {}
 		segments         = []
