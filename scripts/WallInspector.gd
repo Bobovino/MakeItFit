@@ -372,17 +372,47 @@ func _drop_floor_drag() -> void:
 	var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
 	var wall_w: int = _wall_w()
 	var new_wall_x: int = clampi(_drag_pos.x, 0, wall_w - item_w)
+	# Magnetize to the side walls too, same tolerance as Wall.snap_to_wall —
+	# otherwise a drag that ends a tile or two short of the corner looks fine
+	# here (this view always pins to the floor) but shows a gap in that other
+	# wall's own view.
+	if new_wall_x <= Floor.WALL_SNAP:
+		new_wall_x = 0
+	elif wall_w - item_w - new_wall_x <= Floor.WALL_SNAP:
+		new_wall_x = wall_w - item_w
 	var bounds := _apt_floor.get_room_bounds()
-	var new_pos := f.grid_pos
+
+	# Dragging a piece within THIS wall's view means "against this wall" —
+	# pin the perpendicular distance flush too, not just the along-wall slide.
+	var flush := f.grid_pos
+	match _edge:
+		"north":
+			flush.x = new_wall_x + bounds.position.x
+			flush.y = bounds.position.y
+		"south":
+			flush.x = new_wall_x + bounds.position.x
+			flush.y = bounds.position.y + bounds.size.y - f.grid_h
+		"west":
+			flush.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
+			flush.x = bounds.position.x
+		"east":
+			flush.y = new_wall_x + bounds.position.y
+			flush.x = bounds.position.x + bounds.size.x - f.grid_w
+
+	if _apt_floor.can_place(f, flush):
+		_apt_floor.place_furniture(f, flush)
+		return
+
+	# Flush pin blocked (e.g. another piece in the way) — fall back to sliding
+	# along the wall only, keeping whatever perpendicular gap it already had.
+	var slide := f.grid_pos
 	match _edge:
 		"north", "south":
-			new_pos.x = new_wall_x + bounds.position.x
-		"west":
-			new_pos.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
-		"east":
-			new_pos.y = new_wall_x + bounds.position.y
-	if _apt_floor.can_place(f, new_pos):
-		_apt_floor.place_furniture(f, new_pos)
+			slide.x = new_wall_x + bounds.position.x
+		"west", "east":
+			slide.y = flush.y
+	if _apt_floor.can_place(f, slide):
+		_apt_floor.place_furniture(f, slide)
 
 
 func _wall_fits(at: Vector2i, iw: int, ih: int, placed: Dictionary) -> bool:
