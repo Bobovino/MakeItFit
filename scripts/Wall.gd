@@ -518,6 +518,35 @@ func _input(event: InputEvent) -> void:
 	wall_edge_clicked.emit(edge)
 
 
+const WALL_SNAP := 3   # tiles — placing within this distance of a wall snaps flush against it
+
+# Nudges a placement position flush against any wall it's within WALL_SNAP
+# tiles of, so "close to the wall" in the top-down actually means "touching"
+# everywhere that reads adjacency (Wall Inspector mirror, occlusion, etc.),
+# not just visually close at the floor plan's small scale.
+func snap_to_wall(furniture: Furniture, at: Vector2i) -> Vector2i:
+	var bounds := get_room_bounds()
+	var snap_pos := at
+	if at.x - bounds.position.x <= WALL_SNAP:
+		snap_pos.x = bounds.position.x
+	elif (bounds.position.x + bounds.size.x) - (at.x + furniture.grid_w) <= WALL_SNAP:
+		snap_pos.x = bounds.position.x + bounds.size.x - furniture.grid_w
+	if at.y - bounds.position.y <= WALL_SNAP:
+		snap_pos.y = bounds.position.y
+	elif (bounds.position.y + bounds.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP:
+		snap_pos.y = bounds.position.y + bounds.size.y - furniture.grid_h
+	if snap_pos == at or can_place(furniture, snap_pos):
+		return snap_pos
+	# Full snap blocked (e.g. corner obstruction) — try each axis independently
+	var x_only := Vector2i(snap_pos.x, at.y)
+	if x_only != at and can_place(furniture, x_only):
+		return x_only
+	var y_only := Vector2i(at.x, snap_pos.y)
+	if y_only != at and can_place(furniture, y_only):
+		return y_only
+	return at
+
+
 func can_place(furniture: Furniture, at: Vector2i) -> bool:
 	var blocked := _partition_tile_set()
 	for x in range(furniture.grid_w):

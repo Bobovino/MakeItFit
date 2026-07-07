@@ -960,13 +960,14 @@ func _input(event: InputEvent) -> void:
 				return   # click landed on another panel (e.g. Wall Inspector) — let it through
 			var sx := int(position.x / TILE_SIZE)
 			var sy := int(position.y / TILE_SIZE)
-			if not (_wall_ref and _wall_ref.can_place(self, Vector2i(sx, sy))):
+			var snap_pos := _wall_ref.snap_to_wall(self, Vector2i(sx, sy)) if _wall_ref else Vector2i(sx, sy)
+			if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
 				_play("error")
 				get_viewport().set_input_as_handled()
 				return
 			_placement_mode = false
 			_dragging = false
-			_wall_ref.place_furniture(self, Vector2i(sx, sy))
+			_wall_ref.place_furniture(self, snap_pos)
 			_wall_ref.grid_draw.show_grid = false
 			_wall_ref.grid_draw.queue_redraw()
 			placement_confirmed.emit()
@@ -1084,9 +1085,10 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	queue_redraw()
 	var snapped_x := int(position.x / TILE_SIZE)
 	var snapped_y := int(position.y / TILE_SIZE)
+	var snap_pos := _wall_ref.snap_to_wall(self, Vector2i(snapped_x, snapped_y)) if _wall_ref else Vector2i(snapped_x, snapped_y)
 
-	if _wall_ref and _wall_ref.can_place(self, Vector2i(snapped_x, snapped_y)):
-		_wall_ref.place_furniture(self, Vector2i(snapped_x, snapped_y))
+	if _wall_ref and _wall_ref.can_place(self, snap_pos):
+		_wall_ref.place_furniture(self, snap_pos)
 		if rail_axis != "" and Furniture.test_mode_active:
 			moment_rail_pos[Furniture.active_moment_id] = grid_pos
 		_play("place")
