@@ -526,7 +526,14 @@ func _draw_segments(parent: Floor) -> void:
 
 		var col    := PRIMARY_COL if primary else SECONDARY_COL
 		var thick  := PRIMARY_T   if primary else SECONDARY_T      # tiles
-		var coff   := 0
+		# Primary walls are centred on the segment line (half in, half out of
+		# the room); secondary walls start at the line instead. This offset was
+		# hardcoded to 0 for both, so primary walls always rendered entirely on
+		# one side of the line — matching the hover/active-edge highlight (which
+		# IS centred, via draw_line's stroke) only for north/west, and leaving a
+		# visible gap for south/east where the wall fill sat entirely outside
+		# the room instead of straddling the boundary.
+		var coff   := -(thick / 2) if primary else 0
 
 		# Demolished → dashed guide line only
 		if dem:
