@@ -615,6 +615,8 @@ func place_furniture(furniture: Furniture, at: Vector2i) -> void:
 
 func remove_furniture(furniture: Furniture) -> void:
 	_remove_from_grid(furniture)
+	if _floor_drag_ghost.get("furniture") == furniture:
+		clear_floor_drag_ghost()
 	furniture.queue_free()
 	_compute_light_map()
 	_recalculate_zones()
@@ -777,7 +779,8 @@ func get_adjacent_furniture(edge: String) -> Array:
 	# coordinate space WallInspector draws in.
 	var result: Array = []
 	var bounds := get_room_bounds()
-	var ghost_f: Furniture = _floor_drag_ghost.get("furniture") as Furniture
+	var ghost_raw: Object = _floor_drag_ghost.get("furniture")
+	var ghost_f: Furniture = (ghost_raw as Furniture) if is_instance_valid(ghost_raw) else null
 	for item in _get_all_placed_unique():
 		var f := item as Furniture
 		var gx := f.grid_pos.x
