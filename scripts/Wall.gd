@@ -770,7 +770,9 @@ func get_adjacent_furniture(edge: String) -> Array:
 			"west":
 				if gx < bounds.position.x + WALL_DEPTH:
 					adjacent = true
-					wall_x = gy - bounds.position.y
+					# Flipped vs. east: facing west, north is on your right, so
+					# wall_x (left-to-right in the elevation view) runs south→north.
+					wall_x = bounds.size.y - (gy - bounds.position.y) - f.grid_h
 			"east":
 				if gx + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
 					adjacent = true

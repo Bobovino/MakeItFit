@@ -793,7 +793,8 @@ func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String,
 				(bounds.position.y + bounds.size.y) * TILE_SIZE - depth * TILE_SIZE,
 				iw * TILE_SIZE, depth * TILE_SIZE)
 		"west":
-			rect = Rect2(bounds.position.x * TILE_SIZE, (bounds.position.y + o.x) * TILE_SIZE,
+			rect = Rect2(bounds.position.x * TILE_SIZE,
+				(bounds.position.y + bounds.size.y - o.x - iw) * TILE_SIZE,
 				depth * TILE_SIZE, iw * TILE_SIZE)
 		"east":
 			rect = Rect2((bounds.position.x + bounds.size.x) * TILE_SIZE - depth * TILE_SIZE,

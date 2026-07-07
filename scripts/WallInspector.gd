@@ -256,7 +256,9 @@ func _push_floor_drag_ghost() -> void:
 	match _edge:
 		"north", "south":
 			gx = _drag_pos.x + bounds.position.x
-		"west", "east":
+		"west":
+			gy = bounds.size.y - _drag_pos.x - f.grid_h + bounds.position.y
+		"east":
 			gy = _drag_pos.x + bounds.position.y
 	_apt_floor.set_floor_drag_ghost(f, gx, gy)
 
@@ -375,7 +377,9 @@ func _drop_floor_drag() -> void:
 	match _edge:
 		"north", "south":
 			new_pos.x = new_wall_x + bounds.position.x
-		"west", "east":
+		"west":
+			new_pos.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
+		"east":
 			new_pos.y = new_wall_x + bounds.position.y
 	if _apt_floor.can_place(f, new_pos):
 		_apt_floor.place_furniture(f, new_pos)
