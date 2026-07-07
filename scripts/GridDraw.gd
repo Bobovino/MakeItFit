@@ -504,10 +504,13 @@ func _draw_segments(parent: Floor) -> void:
 	const PRIMARY_COL   := Color(0.36, 0.29, 0.21, 1.0)
 	const SECONDARY_COL := Color(0.40, 0.36, 0.30, 0.85)
 	const DEMO_COL      := Color(0.78, 0.40, 0.16, 0.18)
-	# Thickness in TILES — walls render as filled tile cells, not lines
-	# Primary  = 2 tiles = 20 cm (pared de carga) — centred on edge
-	# Secondary = 1 tile = 10 cm (tabique)         — starts at edge
-	const PRIMARY_T   := 2
+	# Thickness in TILES — walls render as filled tile cells, not lines.
+	# Kept at the minimum (1 tile = 10 cm) for both primary and secondary walls
+	# so there's no centering/offset math to get wrong — the fill starts
+	# exactly at the segment line, matching the (always-centered) hover line
+	# closely enough that no gap is visible, regardless of which side a wall
+	# faces.
+	const PRIMARY_T   := 1
 	const SECONDARY_T := 1
 	const DOOR_LEN    := 10
 
@@ -526,14 +529,7 @@ func _draw_segments(parent: Floor) -> void:
 
 		var col    := PRIMARY_COL if primary else SECONDARY_COL
 		var thick  := PRIMARY_T   if primary else SECONDARY_T      # tiles
-		# Primary walls are centred on the segment line (half in, half out of
-		# the room); secondary walls start at the line instead. This offset was
-		# hardcoded to 0 for both, so primary walls always rendered entirely on
-		# one side of the line — matching the hover/active-edge highlight (which
-		# IS centred, via draw_line's stroke) only for north/west, and leaving a
-		# visible gap for south/east where the wall fill sat entirely outside
-		# the room instead of straddling the boundary.
-		var coff   := -(thick / 2) if primary else 0
+		var coff   := 0   # fill starts exactly at the segment line (thickness is 1 tile either way)
 
 		# Demolished → dashed guide line only
 		if dem:
