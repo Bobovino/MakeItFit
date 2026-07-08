@@ -512,7 +512,11 @@ func toggle_column(x: int, y: int) -> void:
 
 # General Builder-tab erase: tries a nearby wall segment first (only ones the
 # player could have added or that are otherwise demolishable), then a column
-# at the given tile, then a painted floor-kind tag, then a rail track.
+# at the given tile, then a painted floor-kind tag, then a reveal zone, then a
+# rail track. Reveal zones are checked before rails deliberately — a reveal
+# zone is a narrow sub-range nested inside a rail, so a click aimed at one is
+# also near the rail it sits on; checking rails first would let an Erase
+# click meant to remove a small reveal zone take out the whole rail instead.
 # Returns true if something was actually removed.
 func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 	var idx := find_segment_near(local_pos, 1.5)
@@ -533,6 +537,8 @@ func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 		floor_kind.erase(tile)
 		if grid_draw:
 			grid_draw.queue_redraw()
+		return true
+	if erase_reveal_zone_near(local_pos):
 		return true
 	if erase_rail_near(local_pos):
 		return true
@@ -660,6 +666,48 @@ func erase_rail_near(local_pos: Vector2) -> bool:
 	if idx < 0:
 		return false
 	rails.remove_at(idx)
+	if grid_draw:
+		grid_draw.queue_redraw()
+	return true
+
+
+# Reveal zones are a sub-range of a rail — same {x1,y1,x2,y2} shape again —
+# marking where a rail piece counts as "revealed" for a moment. Independent
+# of the rail tool since a rail can have zero, one, or several reveal zones.
+func can_add_reveal_zone(x1: int, y1: int, x2: int, y2: int) -> bool:
+	return x1 == x2 or y1 == y2
+
+
+func add_reveal_zone(x1: int, y1: int, x2: int, y2: int) -> void:
+	reveal_zones.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2})
+	if grid_draw:
+		grid_draw.queue_redraw()
+
+
+func find_reveal_zone_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
+	var snap := float(TILE_SIZE) * snap_tiles
+	var best_d := snap
+	var best_i := -1
+	for i in range(reveal_zones.size()):
+		var rd := reveal_zones[i] as Dictionary
+		var pa := Vector2(rd["x1"] as int * TILE_SIZE, rd["y1"] as int * TILE_SIZE)
+		var pb := Vector2(rd["x2"] as int * TILE_SIZE, rd["y2"] as int * TILE_SIZE)
+		var seg := pb - pa
+		var seg_len := seg.length()
+		if seg_len < 1.0:
+			continue
+		var t := clampf((fl_pos - pa).dot(seg) / (seg_len * seg_len), 0.0, 1.0)
+		var d := fl_pos.distance_to(pa + seg * t)
+		if d < best_d:
+			best_d = d; best_i = i
+	return best_i
+
+
+func erase_reveal_zone_near(local_pos: Vector2) -> bool:
+	var idx := find_reveal_zone_near(local_pos, 1.5)
+	if idx < 0:
+		return false
+	reveal_zones.remove_at(idx)
 	if grid_draw:
 		grid_draw.queue_redraw()
 	return true
