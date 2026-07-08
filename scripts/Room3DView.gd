@@ -28,6 +28,19 @@ var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
 const CLICK_MOVE_THRESHOLD := 6.0
 
+# Floor-furniture dragging: reach back into the live Floor this diorama was
+# built from so a drag here actually moves the piece (unlike everything else
+# in this file, which is throwaway presentation geometry). Wall-mounted items
+# aren't draggable here, just the floor-standing boxes from _add_furniture_box.
+var _apt_floor:    Floor  = null
+var _room_bounds:  Rect2i = Rect2i()
+var _furniture_entries: Array = []   # [{furniture, mesh, pos, size}]
+var _dragging_furniture: bool = false
+var _drag_target:   Dictionary = {}
+var _drag_offset:   Vector2    = Vector2.ZERO   # tile-space grab offset
+var _drag_orig_pos: Vector3    = Vector3.ZERO
+var _drag_last_tile: Vector2i  = Vector2i.ZERO
+
 # Walls between the camera and the room center fade out so the view isn't
 # blocked — each entry is {mat: StandardMaterial3D, normal: Vector3, base: Color}.
 var _wall_data: Array = []
@@ -74,21 +87,132 @@ func _on_container_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_press_pos = mb.position
+				var vp_pos := _to_vp(mb.position)
+				var hit := _pick_furniture(vp_pos)
+				if not hit.is_empty():
+					_begin_furniture_drag(hit, vp_pos)
+				else:
+					_dragging = true
 			else:
-				if mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
+				if _dragging_furniture:
+					_finish_furniture_drag()
+				elif mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
 					_on_item_clicked()
-			_dragging = mb.pressed
+				_dragging = false
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
 			_dist = maxf(1.5, _dist - 0.5)
 			_update_camera()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_dist = minf(30.0, _dist + 0.5)
 			_update_camera()
-	elif event is InputEventMouseMotion and _dragging:
+	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		_yaw   -= mm.relative.x * 0.4
-		_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
-		_update_camera()
+		if _dragging_furniture:
+			_update_furniture_drag(_to_vp(mm.position))
+		elif _dragging:
+			_yaw   -= mm.relative.x * 0.4
+			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
+			_update_camera()
+
+
+# Picking / dragging helpers
+
+func _to_vp(pos: Vector2) -> Vector2:
+	var csize := container.size
+	if csize.x <= 0.0 or csize.y <= 0.0:
+		return pos
+	return pos * (Vector2(sub_vp.size) / csize)
+
+
+func _ground_hit(vp_pos: Vector2) -> Vector3:
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	if absf(dir.y) < 0.0001:
+		return from
+	var t := -from.y / dir.y
+	return from + dir * t
+
+
+func _room_local_to_tile(local: Vector3) -> Vector2:
+	return Vector2(local.x / TILE_M + _room_bounds.position.x,
+		local.z / TILE_M + _room_bounds.position.y)
+
+
+func _ray_box_t(from: Vector3, dir: Vector3, box_min: Vector3, box_max: Vector3) -> float:
+	var tmin := -INF
+	var tmax := INF
+	for axis in range(3):
+		var o: float = from[axis]
+		var d: float = dir[axis]
+		var mn: float = box_min[axis]
+		var mx: float = box_max[axis]
+		if absf(d) < 1e-6:
+			if o < mn or o > mx:
+				return INF
+			continue
+		var t1 := (mn - o) / d
+		var t2 := (mx - o) / d
+		if t1 > t2:
+			var tmp := t1; t1 = t2; t2 = tmp
+		tmin = maxf(tmin, t1)
+		tmax = minf(tmax, t2)
+		if tmin > tmax:
+			return INF
+	if tmax < 0.0:
+		return INF
+	return tmin if tmin >= 0.0 else tmax
+
+
+func _pick_furniture(vp_pos: Vector2) -> Dictionary:
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	var best_t := INF
+	var best: Dictionary = {}
+	for entry in _furniture_entries:
+		var pos: Vector3 = entry["pos"]
+		var size: Vector3 = entry["size"]
+		var t := _ray_box_t(from, dir, pos - size * 0.5, pos + size * 0.5)
+		if t < best_t:
+			best_t = t
+			best = entry
+	return best
+
+
+func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
+	_drag_target        = hit
+	_dragging_furniture = true
+	_drag_orig_pos       = hit["pos"]
+	var f: Furniture     = hit["furniture"]
+	var tile             := _room_local_to_tile(_ground_hit(vp_pos))
+	_drag_offset         = Vector2(f.grid_pos.x, f.grid_pos.y) - tile
+	_drag_last_tile      = f.grid_pos
+
+
+func _update_furniture_drag(vp_pos: Vector2) -> void:
+	var tile := _room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset
+	var grid := Vector2i(roundi(tile.x), roundi(tile.y))
+	_drag_last_tile = grid
+	var mesh: MeshInstance3D = _drag_target["mesh"]
+	var size: Vector3 = _drag_target["size"]
+	mesh.position.x = (grid.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
+	mesh.position.z = (grid.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	_drag_target["pos"] = mesh.position
+
+
+func _finish_furniture_drag() -> void:
+	_dragging_furniture = false
+	var f: Furniture = _drag_target["furniture"]
+	var mesh: MeshInstance3D = _drag_target["mesh"]
+	var size: Vector3 = _drag_target["size"]
+	var snapped := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
+	if _apt_floor and _apt_floor.can_place(f, snapped):
+		_apt_floor.place_furniture(f, snapped)
+		mesh.position.x = (snapped.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
+		mesh.position.z = (snapped.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	else:
+		mesh.position = _drag_orig_pos
+	_drag_target["pos"] = mesh.position
+	_drag_target = {}
 
 
 # A real click (not a camera-drag) on the preview toggles a foldable item
@@ -143,8 +267,13 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	for c in build_root.get_children():
 		c.queue_free()
 	_wall_data.clear()
+	_furniture_entries.clear()
+	_dragging_furniture = false
+	_drag_target = {}
 
+	_apt_floor = apt_floor
 	var bounds := apt_floor.get_room_bounds()
+	_room_bounds = bounds
 	var w := bounds.size.x * TILE_M
 	var d := bounds.size.y * TILE_M
 
@@ -153,6 +282,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 
 	_add_floor(w, d)
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
+	_add_balcony_extras(bounds)
 	_update_camera()   # also applies initial wall-fade now that _wall_data exists
 
 	for item in apt_floor.get_all_furniture():
@@ -245,6 +375,45 @@ func _box(box_size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 
 func _add_floor(w: float, d: float) -> void:
 	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83))
+
+
+const RAIL_H_M     := 0.9
+const RAIL_THICK_M := 0.03
+
+# Balconies/bathroom nooks are floor_kind-tagged tiles that sit OUTSIDE the
+# wall-bounds rectangle _add_floor already covers (see Wall.gd's
+# _prune_floor_mask_to_walls) — without this they'd be invisible in 3D even
+# though they're walkable. Each one also gets a railing along any edge that
+# borders a non-floor (exterior) tile, mirroring GridDraw's 2D balcony rail.
+func _add_balcony_extras(bounds: Rect2i) -> void:
+	if not _apt_floor or _apt_floor.floor_kind.is_empty():
+		return
+	var floor_col := Color(0.93, 0.90, 0.83)
+	var rail_col  := Color(0.9, 0.92, 0.95)
+	for tile in _apt_floor.floor_kind:
+		var t := tile as Vector2i
+		var local_x := (t.x - bounds.position.x) * TILE_M
+		var local_z := (t.y - bounds.position.y) * TILE_M
+		if not bounds.has_point(t):
+			_box(Vector3(TILE_M, 0.05, TILE_M),
+				Vector3(local_x + TILE_M * 0.5, -0.025, local_z + TILE_M * 0.5), floor_col)
+		if (_apt_floor.floor_kind[tile] as String) != "balcony":
+			continue
+		var edges := [
+			[Vector2i(t.x, t.y - 1), Vector3(local_x + TILE_M * 0.5, 0.0, local_z), true],
+			[Vector2i(t.x, t.y + 1), Vector3(local_x + TILE_M * 0.5, 0.0, local_z + TILE_M), true],
+			[Vector2i(t.x - 1, t.y), Vector3(local_x, 0.0, local_z + TILE_M * 0.5), false],
+			[Vector2i(t.x + 1, t.y), Vector3(local_x + TILE_M, 0.0, local_z + TILE_M * 0.5), false],
+		]
+		for e in edges:
+			var ntile: Vector2i = e[0]
+			var center: Vector3 = e[1]
+			var horizontal: bool = e[2]
+			if _apt_floor.is_floor_tile(ntile):
+				continue
+			var size := Vector3(TILE_M, RAIL_H_M, RAIL_THICK_M) if horizontal \
+				else Vector3(RAIL_THICK_M, RAIL_H_M, TILE_M)
+			_box(size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col)
 
 
 # Ceiling height (metres) at a given absolute world tile coordinate along the
@@ -372,7 +541,10 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var local_x := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
 	var local_z := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
 	var col := Color("#" + (fdata.get("color", "888888") as String))
-	_box(Vector3(fw, height_m, fd), Vector3(local_x, height_m * 0.5, local_z), col)
+	var size := Vector3(fw, height_m, fd)
+	var pos  := Vector3(local_x, height_m * 0.5, local_z)
+	var mi   := _box(size, pos, col)
+	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": size})
 
 
 # `origin` is wall-local: origin.x along the wall, origin.y from the TOP of
