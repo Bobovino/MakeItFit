@@ -329,6 +329,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 			mat.albedo_color.a = 1.0
 		(_buying_mesh.mesh as BoxMesh).size = tr["size"]
 		_buying_mesh.position = tr["pos"]
+		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, tr["size"])
 		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": tr["size"]})
 		_buying_furniture = null
 		_buying_fdata     = {}
@@ -348,6 +349,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	var mat := _buying_mesh.material_override as StandardMaterial3D
 	if mat:
 		mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
+	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, size)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": size})
 	_buying_furniture = null
 	_buying_fdata     = {}
@@ -910,6 +912,55 @@ func _box(box_size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 	return mi
 
 
+# Swaps a placeholder box's own surface for a real model (Kenney Furniture
+# Kit, CC0 — see assets/models/furniture/LICENSE.txt), scaled uniformly so it
+# never exceeds the box on any axis and grounded/centered inside it. `mi`
+# keeps its existing transform/size as the pick/drag/fold anchor the rest of
+# this script already relies on — only its own mesh surface is removed, the
+# model renders as a child instead. No-op (box stays visible) if the item has
+# no "model" entry or the file can't be loaded.
+func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3) -> void:
+	if model_path.is_empty() or not ResourceLoader.exists(model_path):
+		return
+	var packed := load(model_path) as PackedScene
+	if not packed:
+		return
+	var inst := packed.instantiate() as Node3D
+	if not inst:
+		return
+	var native := _node_aabb(inst)
+	if native.size.x <= 0.0001 or native.size.y <= 0.0001 or native.size.z <= 0.0001:
+		inst.queue_free()
+		return
+	mi.mesh = null
+	mi.add_child(inst)
+	var scale := minf(minf(box_size.x / native.size.x, box_size.y / native.size.y), box_size.z / native.size.z)
+	inst.scale = Vector3.ONE * scale
+	inst.position = Vector3(
+		-(native.position.x + native.size.x * 0.5) * scale,
+		-box_size.y * 0.5 - native.position.y * scale,
+		-(native.position.z + native.size.z * 0.5) * scale)
+
+
+func _node_aabb(node: Node3D) -> AABB:
+	var result := AABB()
+	var first := true
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			var mesh: Mesh = (child as MeshInstance3D).mesh
+			if mesh:
+				var aabb: AABB = (child as MeshInstance3D).transform * mesh.get_aabb()
+				result = aabb if first else result.merge(aabb)
+				first = false
+		if child is Node3D:
+			var sub := _node_aabb(child as Node3D)
+			if sub.size != Vector3.ZERO:
+				sub = (child as Node3D).transform * sub
+				result = sub if first else result.merge(sub)
+				first = false
+	return result
+
+
 func _add_floor(w: float, d: float) -> void:
 	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83))
 
@@ -1081,6 +1132,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var size := Vector3(fw, height_m, fd)
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
 	var mi   := _box(size, pos, col)
+	_apply_item_model(mi, fdata.get("model", "") as String, size)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": size})
 
 
@@ -1096,4 +1148,5 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
 	var mi := _box(tr["size"], tr["pos"], col)
+	_apply_item_model(mi, fdata.get("model", "") as String, tr["size"])
 	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": tr["size"]})

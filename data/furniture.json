@@ -15,7 +15,8 @@
       ],
       "buy_price": 300,
       "sell_price": 150,
-      "color": "7a9ec0"
+      "color": "7a9ec0",
+      "model": "res://assets/models/furniture/bedSingle.glb"
     },
     {
       "id": "storage_bed",
@@ -33,7 +34,8 @@
       ],
       "buy_price": 420,
       "sell_price": 180,
-      "color": "5888b0"
+      "color": "5888b0",
+      "model": "res://assets/models/furniture/cabinetBedDrawer.glb"
     },
     {
       "id": "high_bed",
@@ -54,7 +56,8 @@
       ],
       "buy_price": 500,
       "sell_price": 250,
-      "color": "6a8eb0"
+      "color": "6a8eb0",
+      "model": "res://assets/models/furniture/bedBunk.glb"
     },
     {
       "id": "bunk_bed",
@@ -75,7 +78,8 @@
       ],
       "buy_price": 550,
       "sell_price": 220,
-      "color": "6a8ea8"
+      "color": "6a8ea8",
+      "model": "res://assets/models/furniture/bedBunk.glb"
     },
     {
       "id": "murphy_bed",
@@ -98,7 +102,8 @@
       "folded_functions": [],
       "extended_functions": [
         "sleep"
-      ]
+      ],
+      "model": "res://assets/models/furniture/cabinetBed.glb"
     },
     {
       "id": "futon",
@@ -124,7 +129,8 @@
       ],
       "buy_price": 280,
       "sell_price": 100,
-      "color": "c8a870"
+      "color": "c8a870",
+      "model": "res://assets/models/furniture/loungeSofa.glb"
     },
     {
       "id": "sofa",
@@ -142,7 +148,8 @@
       ],
       "buy_price": 250,
       "sell_price": 100,
-      "color": "c87848"
+      "color": "c87848",
+      "model": "res://assets/models/furniture/loungeSofa.glb"
     },
     {
       "id": "sofa_bed",
@@ -169,7 +176,8 @@
       ],
       "buy_price": 450,
       "sell_price": 200,
-      "color": "b86838"
+      "color": "b86838",
+      "model": "res://assets/models/furniture/loungeSofaLong.glb"
     },
     {
       "id": "lounge_chair",
@@ -187,7 +195,8 @@
       ],
       "buy_price": 180,
       "sell_price": 70,
-      "color": "a87050"
+      "color": "a87050",
+      "model": "res://assets/models/furniture/loungeChair.glb"
     },
     {
       "id": "barcelona_chair",
@@ -205,7 +214,8 @@
       ],
       "buy_price": 500,
       "sell_price": 200,
-      "color": "1c1008"
+      "color": "1c1008",
+      "model": "res://assets/models/furniture/loungeDesignChair.glb"
     },
     {
       "id": "puff",
@@ -222,7 +232,8 @@
       ],
       "buy_price": 80,
       "sell_price": 30,
-      "color": "d07848"
+      "color": "d07848",
+      "model": "res://assets/models/furniture/loungeSofaOttoman.glb"
     },
     {
       "id": "ottoman",
@@ -240,7 +251,8 @@
       ],
       "buy_price": 200,
       "sell_price": 80,
-      "color": "c8a060"
+      "color": "c8a060",
+      "model": "res://assets/models/furniture/loungeSofaOttoman.glb"
     },
     {
       "id": "stool",
@@ -257,7 +269,8 @@
       ],
       "buy_price": 50,
       "sell_price": 20,
-      "color": "c09060"
+      "color": "c09060",
+      "model": "res://assets/models/furniture/stoolBar.glb"
     },
     {
       "id": "desk",
@@ -275,7 +288,8 @@
       ],
       "buy_price": 200,
       "sell_price": 80,
-      "color": "6a9e78"
+      "color": "6a9e78",
+      "model": "res://assets/models/furniture/desk.glb"
     },
     {
       "id": "small_desk",
@@ -293,7 +307,8 @@
       ],
       "buy_price": 120,
       "sell_price": 40,
-      "color": "7aae88"
+      "color": "7aae88",
+      "model": "res://assets/models/furniture/deskCorner.glb"
     },
     {
       "id": "murphy_desk",
@@ -316,7 +331,8 @@
       ],
       "buy_price": 500,
       "sell_price": 220,
-      "color": "5a8e68"
+      "color": "5a8e68",
+      "model": "res://assets/models/furniture/cabinetBedDrawerTable.glb"
     },
     {
       "id": "dining_table",
@@ -334,7 +350,8 @@
       ],
       "buy_price": 250,
       "sell_price": 100,
-      "color": "b09060"
+      "color": "b09060",
+      "model": "res://assets/models/furniture/table.glb"
     },
     {
       "id": "coffee_table",
@@ -351,7 +368,8 @@
       ],
       "buy_price": 100,
       "sell_price": 40,
-      "color": "b09870"
+      "color": "b09870",
+      "model": "res://assets/models/furniture/tableCoffee.glb"
     },
     {
       "id": "kitchen",
@@ -370,7 +388,8 @@
       ],
       "buy_price": 600,
       "sell_price": 200,
-      "color": "a09888"
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenBar.glb"
     },
     {
       "id": "kitchen_small",
@@ -389,7 +408,8 @@
       ],
       "buy_price": 400,
       "sell_price": 140,
-      "color": "908878"
+      "color": "908878",
+      "model": "res://assets/models/furniture/kitchenCabinet.glb"
     },
     {
       "id": "bathtub",
@@ -406,7 +426,8 @@
         "h": 6
       },
       "floor_category": "bathroom",
-      "wall_h": 8
+      "wall_h": 8,
+      "model": "res://assets/models/furniture/bathtub.glb"
     },
     {
       "id": "toilet",
@@ -423,7 +444,8 @@
         "h": 6
       },
       "floor_category": "bathroom",
-      "wall_h": 8
+      "wall_h": 8,
+      "model": "res://assets/models/furniture/toilet.glb"
     },
     {
       "id": "sink",
@@ -440,7 +462,8 @@
         "h": 5
       },
       "floor_category": "bathroom",
-      "wall_h": 14
+      "wall_h": 14,
+      "model": "res://assets/models/furniture/bathroomSink.glb"
     },
     {
       "id": "shower",
@@ -457,7 +480,8 @@
         "h": 8
       },
       "floor_category": "bathroom",
-      "wall_h": 20
+      "wall_h": 20,
+      "model": "res://assets/models/furniture/shower.glb"
     },
     {
       "id": "towel_rack",
@@ -473,7 +497,8 @@
         "w": 8,
         "h": 1
       },
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/coatRackStanding.glb"
     },
     {
       "id": "wardrobe",
@@ -494,7 +519,8 @@
       "buy_price": 300,
       "sell_price": 100,
       "color": "b08848",
-      "zone_divider": true
+      "zone_divider": true,
+      "model": "res://assets/models/furniture/bookcaseClosedDoors.glb"
     },
     {
       "id": "bookshelf",
@@ -514,7 +540,8 @@
       "buy_price": 150,
       "sell_price": 50,
       "color": "9a7840",
-      "zone_divider": true
+      "zone_divider": true,
+      "model": "res://assets/models/furniture/bookcaseOpen.glb"
     },
     {
       "id": "pantry",
@@ -534,7 +561,8 @@
       "buy_price": 200,
       "sell_price": 70,
       "color": "8a7060",
-      "zone_divider": true
+      "zone_divider": true,
+      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb"
     },
     {
       "id": "wall_shelf",
@@ -551,7 +579,8 @@
       ],
       "buy_price": 80,
       "sell_price": 30,
-      "color": "987840"
+      "color": "987840",
+      "model": "res://assets/models/furniture/bookcaseOpenLow.glb"
     },
     {
       "id": "wall_cabinet",
@@ -569,7 +598,8 @@
       ],
       "buy_price": 400,
       "sell_price": 150,
-      "color": "887030"
+      "color": "887030",
+      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb"
     },
     {
       "id": "wall_hanger",
@@ -586,7 +616,8 @@
       ],
       "buy_price": 40,
       "sell_price": 15,
-      "color": "987840"
+      "color": "987840",
+      "model": "res://assets/models/furniture/coatRack.glb"
     },
     {
       "id": "tv",
@@ -601,7 +632,8 @@
       "functions": [],
       "buy_price": 350,
       "sell_price": 150,
-      "color": "303028"
+      "color": "303028",
+      "model": "res://assets/models/furniture/televisionModern.glb"
     },
     {
       "id": "mirror",
@@ -616,7 +648,8 @@
       "functions": [],
       "buy_price": 120,
       "sell_price": 50,
-      "color": "90b8c8"
+      "color": "90b8c8",
+      "model": "res://assets/models/furniture/bathroomMirror.glb"
     },
     {
       "id": "painting",
@@ -647,7 +680,8 @@
       "buy_price": 30,
       "sell_price": 10,
       "color": "508040",
-      "floor_category": "balcony"
+      "floor_category": "balcony",
+      "model": "res://assets/models/furniture/pottedPlant.glb"
     },
     {
       "id": "wall_plant",
@@ -662,7 +696,8 @@
       "functions": [],
       "buy_price": 25,
       "sell_price": 8,
-      "color": "488038"
+      "color": "488038",
+      "model": "res://assets/models/furniture/plantSmall1.glb"
     },
     {
       "id": "stair_n",
@@ -682,7 +717,8 @@
       "z_top": 18,
       "is_stair": true,
       "stair_direction": "north",
-      "wall_h": 20
+      "wall_h": 20,
+      "model": "res://assets/models/furniture/stairs.glb"
     },
     {
       "id": "stair_s",
@@ -702,7 +738,8 @@
       "z_top": 18,
       "is_stair": true,
       "stair_direction": "south",
-      "wall_h": 20
+      "wall_h": 20,
+      "model": "res://assets/models/furniture/stairs.glb"
     },
     {
       "id": "stair_e",
@@ -722,7 +759,8 @@
       "z_top": 18,
       "is_stair": true,
       "stair_direction": "east",
-      "wall_h": 20
+      "wall_h": 20,
+      "model": "res://assets/models/furniture/stairs.glb"
     },
     {
       "id": "stair_w",
@@ -742,7 +780,8 @@
       "z_top": 18,
       "is_stair": true,
       "stair_direction": "west",
-      "wall_h": 20
+      "wall_h": 20,
+      "model": "res://assets/models/furniture/stairs.glb"
     },
     {
       "id": "bath_mat",
@@ -758,7 +797,8 @@
       "buy_price": 40,
       "sell_price": 15,
       "color": "c8b8a0",
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/rugDoormat.glb"
     },
     {
       "id": "laundry_basket",
@@ -773,7 +813,8 @@
       "functions": [],
       "buy_price": 50,
       "sell_price": 20,
-      "color": "d0c0a8"
+      "color": "d0c0a8",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb"
     },
     {
       "id": "bathroom_cabinet",
@@ -791,7 +832,8 @@
       "buy_price": 120,
       "sell_price": 50,
       "color": "d8e4ec",
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/bathroomCabinet.glb"
     },
     {
       "id": "towel_set",
@@ -807,7 +849,8 @@
       "buy_price": 30,
       "sell_price": 10,
       "color": "e8ddd0",
-      "floor_category": "bathroom"
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/pillow.glb"
     },
     {
       "id": "rug",
@@ -822,7 +865,8 @@
       "functions": [],
       "buy_price": 120,
       "sell_price": 45,
-      "color": "a07898"
+      "color": "a07898",
+      "model": "res://assets/models/furniture/rugRectangle.glb"
     },
     {
       "id": "floor_lamp",
@@ -837,7 +881,8 @@
       "functions": [],
       "buy_price": 60,
       "sell_price": 25,
-      "color": "d4c060"
+      "color": "d4c060",
+      "model": "res://assets/models/furniture/lampRoundFloor.glb"
     },
     {
       "id": "side_table",
@@ -852,7 +897,8 @@
       "functions": [],
       "buy_price": 80,
       "sell_price": 30,
-      "color": "907858"
+      "color": "907858",
+      "model": "res://assets/models/furniture/sideTable.glb"
     },
     {
       "id": "tv_stand",
@@ -867,7 +913,8 @@
       "functions": [],
       "buy_price": 150,
       "sell_price": 60,
-      "color": "604838"
+      "color": "604838",
+      "model": "res://assets/models/furniture/cabinetTelevision.glb"
     },
     {
       "id": "office_chair",
@@ -885,7 +932,8 @@
       ],
       "buy_price": 180,
       "sell_price": 70,
-      "color": "506070"
+      "color": "506070",
+      "model": "res://assets/models/furniture/chairDesk.glb"
     },
     {
       "id": "filing_cabinet",
@@ -902,7 +950,8 @@
       ],
       "buy_price": 130,
       "sell_price": 50,
-      "color": "6878a0"
+      "color": "6878a0",
+      "model": "res://assets/models/furniture/kitchenCabinetDrawer.glb"
     },
     {
       "id": "whiteboard",
@@ -932,7 +981,8 @@
       "functions": [],
       "buy_price": 40,
       "sell_price": 15,
-      "color": "d4b060"
+      "color": "d4b060",
+      "model": "res://assets/models/furniture/lampRoundTable.glb"
     },
     {
       "id": "fridge",
@@ -950,7 +1000,8 @@
       ],
       "buy_price": 350,
       "sell_price": 140,
-      "color": "c0ccd8"
+      "color": "c0ccd8",
+      "model": "res://assets/models/furniture/kitchenFridge.glb"
     },
     {
       "id": "kitchen_island",
@@ -965,7 +1016,8 @@
       "functions": [],
       "buy_price": 280,
       "sell_price": 100,
-      "color": "c0b090"
+      "color": "c0b090",
+      "model": "res://assets/models/furniture/kitchenBar.glb"
     },
     {
       "id": "bar_stool",
@@ -982,7 +1034,8 @@
       ],
       "buy_price": 70,
       "sell_price": 25,
-      "color": "806848"
+      "color": "806848",
+      "model": "res://assets/models/furniture/stoolBar.glb"
     },
     {
       "id": "kitchen_rack",
@@ -997,7 +1050,8 @@
       "functions": [],
       "buy_price": 50,
       "sell_price": 20,
-      "color": "909898"
+      "color": "909898",
+      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb"
     },
     {
       "id": "outdoor_chair",
@@ -1016,7 +1070,8 @@
       "buy_price": 90,
       "sell_price": 35,
       "color": "708060",
-      "floor_category": "balcony"
+      "floor_category": "balcony",
+      "model": "res://assets/models/furniture/chairRounded.glb"
     },
     {
       "id": "outdoor_table",
@@ -1035,7 +1090,8 @@
       "buy_price": 140,
       "sell_price": 55,
       "color": "607050",
-      "floor_category": "balcony"
+      "floor_category": "balcony",
+      "model": "res://assets/models/furniture/tableRound.glb"
     },
     {
       "id": "planter_box",
@@ -1051,7 +1107,8 @@
       "buy_price": 60,
       "sell_price": 25,
       "color": "507040",
-      "floor_category": "balcony"
+      "floor_category": "balcony",
+      "model": "res://assets/models/furniture/pottedPlant.glb"
     },
     {
       "id": "sun_lounger",
@@ -1070,7 +1127,8 @@
       "buy_price": 160,
       "sell_price": 60,
       "color": "d4c070",
-      "floor_category": "balcony"
+      "floor_category": "balcony",
+      "model": "res://assets/models/furniture/loungeChairRelax.glb"
     },
     {
       "id": "nightstand",
@@ -1085,7 +1143,8 @@
       "functions": [],
       "buy_price": 70,
       "sell_price": 28,
-      "color": "907858"
+      "color": "907858",
+      "model": "res://assets/models/furniture/sideTableDrawers.glb"
     },
     {
       "id": "dresser",
@@ -1102,7 +1161,8 @@
       ],
       "buy_price": 200,
       "sell_price": 80,
-      "color": "887050"
+      "color": "887050",
+      "model": "res://assets/models/furniture/cabinetBedDrawer.glb"
     },
     {
       "id": "floor_mirror",
@@ -1118,7 +1178,8 @@
       "functions": [],
       "buy_price": 90,
       "sell_price": 35,
-      "color": "c0c8d0"
+      "color": "c0c8d0",
+      "model": "res://assets/models/furniture/bathroomMirror.glb"
     },
     {
       "id": "clothes_rack",
@@ -1135,7 +1196,8 @@
       ],
       "buy_price": 80,
       "sell_price": 30,
-      "color": "909898"
+      "color": "909898",
+      "model": "res://assets/models/furniture/coatRackStanding.glb"
     },
     {
       "id": "bedroom_rug",
@@ -1150,7 +1212,8 @@
       "functions": [],
       "buy_price": 100,
       "sell_price": 38,
-      "color": "c08878"
+      "color": "c08878",
+      "model": "res://assets/models/furniture/rugRectangle.glb"
     }
   ],
   "paintable": [
@@ -1178,7 +1241,7 @@
       ],
       "cost_per_tile": 35,
       "min_tiles": 8,
-      "max_aspect": 7.0,
+      "max_aspect": 7,
       "min_short_side": 2,
       "color": [
         0.76,
@@ -1194,7 +1257,7 @@
       ],
       "cost_per_tile": 15,
       "min_tiles": 6,
-      "max_aspect": 5.0,
+      "max_aspect": 5,
       "min_short_side": 2,
       "color": [
         0.38,
@@ -1210,7 +1273,7 @@
       ],
       "cost_per_tile": 25,
       "min_tiles": 6,
-      "max_aspect": 5.0,
+      "max_aspect": 5,
       "min_short_side": 2,
       "color": [
         0.62,
@@ -1226,7 +1289,7 @@
       ],
       "cost_per_tile": 20,
       "min_tiles": 8,
-      "max_aspect": 4.0,
+      "max_aspect": 4,
       "min_short_side": 3,
       "color": [
         0.72,
@@ -1242,7 +1305,7 @@
       ],
       "cost_per_tile": 15,
       "min_tiles": 4,
-      "max_aspect": 6.0,
+      "max_aspect": 6,
       "min_short_side": 1,
       "color": [
         0.65,
@@ -1259,7 +1322,7 @@
       ],
       "cost_per_tile": 40,
       "min_tiles": 6,
-      "max_aspect": 4.0,
+      "max_aspect": 4,
       "min_short_side": 2,
       "color": [
         0.6,
