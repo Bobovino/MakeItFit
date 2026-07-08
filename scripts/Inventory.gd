@@ -140,6 +140,7 @@ func _build_builder_tool_row() -> VBoxContainer:
 		[["", "Select"], ["wall", "Wall"], ["column", "Column"], ["erase", "Erase"]],
 		[["balcony", "Balcony"], ["bathroom", "Bathroom"], ["window", "Window"], ["door", "Door"]],
 		[["rail", "Rail"], ["reveal", "Reveal Zone"]],
+		[["pipe_water", "Pipe: Water"], ["pipe_power", "Pipe: Power"]],
 	]
 	for row_specs: Array in rows:
 		var row := HBoxContainer.new()

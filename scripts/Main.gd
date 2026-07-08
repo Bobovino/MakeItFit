@@ -66,6 +66,8 @@ var _builder_press_tile:  Vector2i  = Vector2i.ZERO
 var _builder_cur_tile:    Vector2i  = Vector2i.ZERO
 var _builder_ghost:       Line2D    = null
 var _builder_press_consumed: bool   = false  # only consume the matching release
+var _builder_pipe_tiles:  Array     = []  # Vector2i path being drawn for pipe_water/pipe_power
+var _builder_pipe_ghost:  Line2D    = null
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -1525,6 +1527,21 @@ func _on_builder_tool_selected(tool_id: String) -> void:
 	_active_builder_tool = tool_id
 	for fid in _floors:
 		(_floors[fid] as Floor).input_suppressed = (tool_id != "")
+	# Pipe routes/connection points live on every Floor but are normally only
+	# rendered on the (player-inaccessible, hidden_floors) subfloor layer —
+	# show them directly on the current floor's own plan while a pipe tool
+	# is active, since that's the floor the routes are actually being drawn
+	# and read against (get_unconnected_needs checks furniture on this same
+	# floor, not a separate subfloor node).
+	# Keep pipes visible for "erase" too — Erase is the shared removal tool
+	# for everything the Builder tab adds, including pipe routes.
+	var show_pipes := tool_id == "pipe_water" or tool_id == "pipe_power" or tool_id == "erase"
+	var cur_fl := _floors.get(_current_floor_id) as Floor
+	if cur_fl:
+		var gd := cur_fl.get_node_or_null("GridDraw") as GridDraw
+		if gd:
+			gd.show_subfloor = show_pipes
+			gd.queue_redraw()
 
 
 func _builder_tile_at(fl: Floor) -> Vector2i:
@@ -1588,6 +1605,10 @@ func _handle_builder_input(event: InputEvent) -> void:
 						_refresh_functions()
 					else:
 						Audio.play("error")
+				"pipe_water", "pipe_power":
+					_builder_drawing    = true
+					_builder_pipe_tiles = [tile]
+					_update_builder_pipe_ghost(fl)
 			# Consume the event so Floor.gd's own _input() (wall-edge-click
 			# detection, used by the normal Select mode) doesn't also react
 			# to the same press/release and pop open the Wall Inspector.
@@ -1605,6 +1626,8 @@ func _handle_builder_input(event: InputEvent) -> void:
 				_commit_builder_rail(fl)
 			elif _builder_drawing and _active_builder_tool == "reveal":
 				_commit_builder_reveal(fl)
+			elif _builder_drawing and (_active_builder_tool == "pipe_water" or _active_builder_tool == "pipe_power"):
+				_commit_builder_pipe(fl)
 			_builder_drawing = false
 			_clear_builder_ghost()
 			get_viewport().set_input_as_handled()
@@ -1620,6 +1643,10 @@ func _handle_builder_input(event: InputEvent) -> void:
 					tile.x = _builder_press_tile.x
 				_builder_cur_tile = tile
 				_update_builder_ghost(fl)
+			"pipe_water", "pipe_power":
+				if _builder_pipe_tiles.is_empty() or tile != _builder_pipe_tiles[-1]:
+					_builder_pipe_tiles.append(tile)
+					_update_builder_pipe_ghost(fl)
 			"balcony", "bathroom":
 				if tile != _builder_cur_tile:
 					_builder_cur_tile = tile
@@ -1670,6 +1697,36 @@ func _commit_builder_reveal(fl: Floor) -> void:
 	Audio.play("place")
 
 
+func _commit_builder_pipe(fl: Floor) -> void:
+	var pipe_type := "water" if _active_builder_tool == "pipe_water" else "power"
+	if _builder_pipe_tiles.size() < 2:
+		_builder_pipe_tiles = []
+		_clear_builder_pipe_ghost()
+		return
+	fl.add_pipe_route(pipe_type, _builder_pipe_tiles.duplicate())
+	Audio.play("place")
+	_builder_pipe_tiles = []
+	_clear_builder_pipe_ghost()
+
+
+func _update_builder_pipe_ghost(fl: Floor) -> void:
+	if not is_instance_valid(_builder_pipe_ghost):
+		_builder_pipe_ghost = Line2D.new()
+		_builder_pipe_ghost.width = 2.5
+		_builder_pipe_ghost.default_color = Color(0.95, 0.65, 0.25, 0.9)
+		fl.add_child(_builder_pipe_ghost)
+	var pts := PackedVector2Array()
+	for t in _builder_pipe_tiles:
+		pts.append((Vector2(t) + Vector2(0.5, 0.5)) * Floor.TILE_SIZE)
+	_builder_pipe_ghost.points = pts
+
+
+func _clear_builder_pipe_ghost() -> void:
+	if is_instance_valid(_builder_pipe_ghost):
+		_builder_pipe_ghost.queue_free()
+	_builder_pipe_ghost = null
+
+
 func _update_builder_ghost(fl: Floor) -> void:
 	if not is_instance_valid(_builder_ghost):
 		_builder_ghost = Line2D.new()
@@ -1691,7 +1748,9 @@ func _clear_builder_ghost() -> void:
 func _cancel_builder_drawing() -> void:
 	_builder_drawing = false
 	_builder_press_consumed = false
+	_builder_pipe_tiles = []
 	_clear_builder_ghost()
+	_clear_builder_pipe_ghost()
 
 
 func _get_or_create_paint_piece(type_id: String, fl: Floor) -> PaintedFurniture:

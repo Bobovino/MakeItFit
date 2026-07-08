@@ -513,11 +513,11 @@ func toggle_column(x: int, y: int) -> void:
 # General Builder-tab erase: tries a nearby wall segment first (only ones the
 # player could have added or that are otherwise demolishable), then a column
 # at the given tile, then a painted floor-kind tag, then a reveal zone, then a
-# rail track. Reveal zones are checked before rails deliberately — a reveal
-# zone is a narrow sub-range nested inside a rail, so a click aimed at one is
-# also near the rail it sits on; checking rails first would let an Erase
-# click meant to remove a small reveal zone take out the whole rail instead.
-# Returns true if something was actually removed.
+# rail track, then a pipe route. Reveal zones are checked before rails
+# deliberately — a reveal zone is a narrow sub-range nested inside a rail, so
+# a click aimed at one is also near the rail it sits on; checking rails first
+# would let an Erase click meant to remove a small reveal zone take out the
+# whole rail instead. Returns true if something was actually removed.
 func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 	var idx := find_segment_near(local_pos, 1.5)
 	if idx >= 0:
@@ -541,6 +541,10 @@ func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 	if erase_reveal_zone_near(local_pos):
 		return true
 	if erase_rail_near(local_pos):
+		return true
+	var pipe_type := pipe_route_type_near(local_pos, 1.5)
+	if pipe_type != "":
+		clear_pipe_route(pipe_type)
 		return true
 	return false
 
@@ -1104,13 +1108,41 @@ func check_extended_conflict(furniture: Furniture) -> bool:
 
 
 func add_pipe_route(type: String, tiles: Array) -> void:
-	# Remove existing route of same type first
+	# Remove existing route of same type first — one continuous route per type.
 	pipe_routes = pipe_routes.filter(func(r): return r["type"] != type)
 	pipe_routes.append({"type": type, "tiles": tiles})
+	if grid_draw:
+		grid_draw.queue_redraw()
 
 
 func clear_pipe_route(type: String) -> void:
 	pipe_routes = pipe_routes.filter(func(r): return r["type"] != type)
+	if grid_draw:
+		grid_draw.queue_redraw()
+
+
+# Builder-tab erase hit-test: which route type (if any) passes near this
+# point. Distance-to-polyline (not exact tile membership) since a freeform
+# drawn path only records the tiles actually visited during the drag — a
+# click between two recorded points would otherwise never register a hit.
+func pipe_route_type_near(local_pos: Vector2, snap_tiles: float = 1.5) -> String:
+	var snap := float(TILE_SIZE) * snap_tiles
+	var best_d := snap
+	var best_type := ""
+	for route in pipe_routes:
+		var tiles: Array = route["tiles"]
+		for i in range(tiles.size() - 1):
+			var pa := (Vector2(tiles[i] as Vector2i) + Vector2(0.5, 0.5)) * TILE_SIZE
+			var pb := (Vector2(tiles[i + 1] as Vector2i) + Vector2(0.5, 0.5)) * TILE_SIZE
+			var seg := pb - pa
+			var seg_len := seg.length()
+			if seg_len < 1.0:
+				continue
+			var t := clampf((local_pos - pa).dot(seg) / (seg_len * seg_len), 0.0, 1.0)
+			var d := local_pos.distance_to(pa + seg * t)
+			if d < best_d:
+				best_d = d; best_type = route["type"] as String
+	return best_type
 
 
 func get_unconnected_needs(furniture_list: Array) -> Dictionary:
