@@ -75,6 +75,7 @@ var _buying_on_wall: bool = false   # last hover: floor ghost or wall ghost?
 # Walls between the camera and the room center fade out so the view isn't
 # blocked — each entry is {mat: StandardMaterial3D, normal: Vector3, base: Color}.
 var _wall_data: Array = []
+var _cam_flat_dir: Vector3 = Vector3.ZERO   # XZ camera direction from center, set by _update_wall_visibility
 
 # ── Foldable-item demo (single-item preview only) ──────────────────────────
 # Click the item to toggle folded/extended; before the first click it loops
@@ -496,9 +497,18 @@ func _wall_plane_hit(edge: String, from: Vector3, dir: Vector3) -> Dictionary:
 	return {"along_m": along, "height_m": hit.y}
 
 
-# Ray test against all four wall planes at once — used for the buy ghost,
-# where we don't know which wall (if any) the cursor is over yet.
+# Ray test against the wall planes at once — used for the buy ghost, where we
+# don't know which wall (if any) the cursor is over yet. The two "near" walls
+# (the ones _update_wall_visibility fades out so the dollhouse cutaway doesn't
+# block the view) are excluded: a ray toward the middle of the floor passes
+# straight through that invisible near plane on its way from the camera, which
+# would otherwise register as a (wrong) wall hit before ever reaching the
+# floor and make it impossible to drop anything in the middle of the room.
 func _wall_hit_test(from: Vector3, dir: Vector3) -> Dictionary:
+	var normals := {
+		"north": Vector3(0, 0, -1), "south": Vector3(0, 0, 1),
+		"west":  Vector3(-1, 0, 0), "east":  Vector3(1, 0, 0),
+	}
 	var planes := [
 		{"edge": "north", "axis": "z", "coord": 0.0,       "len": _room_w_m},
 		{"edge": "south", "axis": "z", "coord": _room_d_m, "len": _room_w_m},
@@ -508,6 +518,9 @@ func _wall_hit_test(from: Vector3, dir: Vector3) -> Dictionary:
 	var best_t := INF
 	var best: Dictionary = {}
 	for p in planes:
+		var edge: String = p["edge"]
+		if (normals[edge] as Vector3).dot(_cam_flat_dir) > 0.0:
+			continue   # near/faded wall — not a valid drop target
 		var axis: String = p["axis"]
 		var o: float = (from.z if axis == "z" else from.x)
 		var d: float = (dir.z if axis == "z" else dir.x)
@@ -523,7 +536,7 @@ func _wall_hit_test(from: Vector3, dir: Vector3) -> Dictionary:
 		if along < 0.0 or along > (p["len"] as float):
 			continue
 		best_t = t
-		best = {"edge": p["edge"], "along_m": along, "height_m": hit.y, "t": t}
+		best = {"edge": edge, "along_m": along, "height_m": hit.y, "t": t}
 	return best
 
 
@@ -765,6 +778,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	if flat.length() < 0.001:
 		return
 	flat = flat.normalized()
+	_cam_flat_dir = flat
 	for wd in _wall_data:
 		var normal: Vector3 = wd["normal"]
 		var mat: StandardMaterial3D = wd["mat"]

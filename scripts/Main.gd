@@ -41,6 +41,7 @@ var _view_mode: int = ViewMode.SPLIT
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
+var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside SPLIT mode
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -693,19 +694,28 @@ func _set_view_mode(mode: int) -> void:
 			_teardown_mode3d_view()
 			room.visible    = true
 			divider.visible = true
+			wall_inspector.show()   # SPLIT always shows it docked, even as the idle placeholder
 			wall_inspector.offset_left   = _split_x + 3.0
 			wall_inspector.offset_top    = TOP_Y
 			wall_inspector.offset_right  = SCREEN_W
 			wall_inspector.offset_bottom = BOT_Y
 			_hide_modal_backdrop()
+			_set_mode_hint("")
 		ViewMode.TOPDOWN_MODAL:
 			_teardown_mode3d_view()
 			room.visible    = true
 			divider.visible = false
-			if wall_inspector.visible:
+			# `.visible` stays true for the idle placeholder panel too (it's only
+			# ever hidden by its own close button) — is_showing_wall() is the
+			# actual "a wall is open" check, otherwise the modal+backdrop would
+			# cover the top-down plan immediately on switching into this mode.
+			if wall_inspector.is_showing_wall():
 				_position_wall_inspector_modal()
+				_set_mode_hint("")
 			else:
+				wall_inspector.hide()
 				_hide_modal_backdrop()
+				_set_mode_hint("Click a highlighted wall edge on the plan to inspect it or hang items")
 		ViewMode.VIEW3D:
 			# Wall items are placed/moved directly in the 3D view here (drag onto
 			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
@@ -714,6 +724,7 @@ func _set_view_mode(mode: int) -> void:
 			wall_inspector.hide()
 			_hide_modal_backdrop()
 			_ensure_mode3d_view()
+			_set_mode_hint("Drop items on the floor, or drag them onto a wall to hang them")
 
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:
@@ -785,6 +796,30 @@ func _hide_modal_backdrop() -> void:
 		_modal_backdrop.visible = false
 
 
+# TOPDOWN_MODAL/VIEW3D have no permanent docked Wall Inspector to hint at wall
+# access the way SPLIT's placeholder panel does — this small banner fills
+# that gap. Empty text hides it (used for SPLIT, and whenever a wall is open).
+func _set_mode_hint(text: String) -> void:
+	if text == "":
+		if is_instance_valid(_mode_hint_lbl):
+			_mode_hint_lbl.visible = false
+		return
+	if not is_instance_valid(_mode_hint_lbl):
+		_mode_hint_lbl = Label.new()
+		_mode_hint_lbl.add_theme_font_size_override("font_size", 12)
+		_mode_hint_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_mode_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_mode_hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui_layer.add_child(_mode_hint_lbl)
+	_mode_hint_lbl.text = text
+	_mode_hint_lbl.offset_left   = 0.0
+	_mode_hint_lbl.offset_right  = SCREEN_W
+	_mode_hint_lbl.offset_top    = TOP_Y + 6.0
+	_mode_hint_lbl.offset_bottom = TOP_Y + 26.0
+	_mode_hint_lbl.visible = true
+	ui_layer.move_child(_mode_hint_lbl, ui_layer.get_child_count() - 1)
+
+
 # Right-click removal of a wall-mounted item dropped directly in the 3D view —
 # mirrors WallInspector._remove_wall_at (no refund, matching that 2D behavior).
 func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> void:
@@ -835,6 +870,7 @@ func _on_wall_edge_clicked(edge: String, apt_floor: Floor) -> void:
 	wall_inspector.show_wall(apt_floor, edge, sibling)
 	if _view_mode != ViewMode.SPLIT:
 		_position_wall_inspector_modal()
+		_set_mode_hint("")
 
 
 func _on_inspector_visibility_changed() -> void:
@@ -842,6 +878,8 @@ func _on_inspector_visibility_changed() -> void:
 		for fid in _floors:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 		_hide_modal_backdrop()
+		if _view_mode == ViewMode.TOPDOWN_MODAL:
+			_set_mode_hint("Click a highlighted wall edge on the plan to inspect it or hang items")
 
 
 func _on_wall_item_placed(furniture_id: String) -> void:
