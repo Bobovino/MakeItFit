@@ -31,6 +31,18 @@ var _split_x:         float = 860.0
 var _dragging_divider: bool = false
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
+# ── View mode: split (default) / top-down with a modal wall panel (mobile-
+# friendly) / 3D-primary. All three read and write the same Floor data —
+# switching modes never converts or loses anything, it just changes which
+# surface is on screen.
+enum ViewMode { SPLIT, TOPDOWN_MODAL, VIEW3D }
+const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
+var _view_mode: int = ViewMode.SPLIT
+var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
+var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
+var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
+var _edge_buttons:   Dictionary = {}  # "north"/"south"/"east"/"west" -> Button — quick wall access outside SPLIT mode
+
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
 const MAX_MANUAL_ZOOM := 4.0
@@ -88,7 +100,7 @@ func _ready() -> void:
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
-		return pos.x < _split_x and pos.y > TOP_Y and pos.y < BOT_Y
+		return pos.x < _floor_pane_right_x() and pos.y > TOP_Y and pos.y < BOT_Y
 	_update_split(_split_x)
 	_apply_ui_theme()
 	_load_level(GameState.pending_level_id)
@@ -151,6 +163,50 @@ func _apply_ui_theme() -> void:
 		top.move_child(test_btn, top.get_child_count() - 2)
 	if top.has_node("TestBtn"):
 		top.get_node("TestBtn").visible = false  # updated after level load
+
+	# View-mode switcher: Split (default) / Top-down + modal wall panel
+	# (mobile-friendly) / 3D-primary. Mutually exclusive via a ButtonGroup.
+	if not top.has_node("ViewModeBox"):
+		var box := HBoxContainer.new()
+		box.name = "ViewModeBox"
+		var group := ButtonGroup.new()
+		var specs := [
+			[ViewMode.SPLIT,         "Split"],
+			[ViewMode.TOPDOWN_MODAL, "Top-Down"],
+			[ViewMode.VIEW3D,        "3D"],
+		]
+		for spec in specs:
+			var mode: int = spec[0]
+			var btn := Button.new()
+			btn.name          = "ViewMode%d" % mode
+			btn.text          = spec[1]
+			btn.toggle_mode   = true
+			btn.button_group  = group
+			btn.button_pressed = (mode == ViewMode.SPLIT)
+			btn.add_theme_font_size_override("font_size", 11)
+			btn.pressed.connect(_set_view_mode.bind(mode))
+			box.add_child(btn)
+			_mode_buttons[mode] = btn
+		top.add_child(box)
+		top.move_child(box, top.get_child_count() - 2)
+
+	# Quick wall access for TOPDOWN_MODAL/VIEW3D — those modes have no 2D wall
+	# edge to click, so the four walls get their own small buttons instead.
+	if not top.has_node("EdgeBox"):
+		var ebox := HBoxContainer.new()
+		ebox.name = "EdgeBox"
+		for edge in ["north", "south", "east", "west"]:
+			var ebtn := Button.new()
+			ebtn.name = "Edge_%s" % edge
+			ebtn.text = edge.substr(0, 1).to_upper()
+			ebtn.tooltip_text = edge.capitalize() + " wall"
+			ebtn.add_theme_font_size_override("font_size", 11)
+			ebtn.pressed.connect(_on_edge_button_pressed.bind(edge))
+			ebox.add_child(ebtn)
+			_edge_buttons[edge] = ebtn
+		top.add_child(ebox)
+		top.move_child(ebox, top.get_child_count() - 2)
+	(top.get_node("EdgeBox") as HBoxContainer).visible = _view_mode != ViewMode.SPLIT
 
 
 func _go_back() -> void:
@@ -592,7 +648,7 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	const V_PAD  := 24.0
 	const PAD_T  := 3     # tile padding around apartment content
 
-	var avail_w := _split_x - H_PAD * 2
+	var avail_w := (_split_x if _view_mode == ViewMode.SPLIT else SCREEN_W) - H_PAD * 2
 	var avail_h := (BOT_Y - TOP_Y) - V_PAD * 2
 
 	var fw: float; var fh: float
@@ -637,19 +693,137 @@ func _on_divider_gui_input(event: InputEvent) -> void:
 
 func _update_split(x: float) -> void:
 	_split_x = clampf(x, MIN_SPLIT_X, MAX_SPLIT_X)
-	divider.offset_left        = _split_x - 3.0
-	divider.offset_right       = _split_x + 3.0
-	wall_inspector.offset_left = _split_x + 3.0
+	if _view_mode == ViewMode.SPLIT:
+		divider.offset_left        = _split_x - 3.0
+		divider.offset_right       = _split_x + 3.0
+		wall_inspector.offset_left = _split_x + 3.0
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl:
 		_fit_floor(fl, false)
 
 
+# ── View mode switcher ──────────────────────────────────────────────────────
+func _set_view_mode(mode: int) -> void:
+	_view_mode = mode
+	for m in _mode_buttons:
+		(_mode_buttons[m] as Button).button_pressed = (m == mode)
+	var top := $UI/TopBar as HBoxContainer
+	if top.has_node("EdgeBox"):
+		(top.get_node("EdgeBox") as HBoxContainer).visible = mode != ViewMode.SPLIT
+
+	match mode:
+		ViewMode.SPLIT:
+			_teardown_mode3d_view()
+			room.visible    = true
+			divider.visible = true
+			wall_inspector.offset_left   = _split_x + 3.0
+			wall_inspector.offset_top    = TOP_Y
+			wall_inspector.offset_right  = SCREEN_W
+			wall_inspector.offset_bottom = BOT_Y
+			_hide_modal_backdrop()
+		ViewMode.TOPDOWN_MODAL:
+			_teardown_mode3d_view()
+			room.visible    = true
+			divider.visible = false
+			if wall_inspector.visible:
+				_position_wall_inspector_modal()
+			else:
+				_hide_modal_backdrop()
+		ViewMode.VIEW3D:
+			room.visible    = false
+			divider.visible = false
+			if wall_inspector.visible:
+				_position_wall_inspector_modal()
+			else:
+				_hide_modal_backdrop()
+			_ensure_mode3d_view()
+
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl and mode != ViewMode.VIEW3D:
+		_fit_floor(fl, false)
+
+
+# Persistent 3D view used by VIEW3D mode — distinct from the quick full-screen
+# "reveal" opened by the 3D-view TopBar button, which stays a one-off overlay.
+# This one fits the same TOP_Y..BOT_Y band the 2D floor plan normally uses, so
+# budget/inventory/tenant-needs stay visible and usable while working in 3D.
+func _ensure_mode3d_view() -> void:
+	var fl := _floors.get(_current_floor_id) as Floor
+	if not fl:
+		return
+	if not is_instance_valid(_mode3d_view):
+		_mode3d_view = Room3DViewScene.instantiate()
+		ui_layer.add_child(_mode3d_view)
+		_mode3d_view.anchor_left   = 0.0
+		_mode3d_view.anchor_top    = 0.0
+		_mode3d_view.anchor_right  = 0.0
+		_mode3d_view.anchor_bottom = 0.0
+		if _mode3d_view.has_node("CloseBtn"):
+			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
+		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
+	_mode3d_view.offset_left   = 0.0
+	_mode3d_view.offset_top    = TOP_Y
+	_mode3d_view.offset_right  = SCREEN_W
+	_mode3d_view.offset_bottom = BOT_Y
+	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"])
+
+
+func _teardown_mode3d_view() -> void:
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.queue_free()
+	_mode3d_view = null
+
+
+# TOPDOWN_MODAL / VIEW3D show the Wall Inspector as a centered modal (with a
+# dismiss-on-tap backdrop) instead of the SPLIT mode's permanent docked panel —
+# there's no room for a permanent side panel once the floor plan (or the 3D
+# view) is using the full width.
+func _position_wall_inspector_modal() -> void:
+	if not is_instance_valid(_modal_backdrop):
+		_modal_backdrop = ColorRect.new()
+		_modal_backdrop.color = Color(0.0, 0.0, 0.0, 0.55)
+		_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+		_modal_backdrop.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+				wall_inspector.close_btn.pressed.emit())
+		ui_layer.add_child(_modal_backdrop)
+		ui_layer.move_child(_modal_backdrop, wall_inspector.get_index())
+	_modal_backdrop.offset_left   = 0.0
+	_modal_backdrop.offset_top    = 0.0
+	_modal_backdrop.offset_right  = SCREEN_W
+	_modal_backdrop.offset_bottom = BOT_Y + 214.0   # covers BottomBar too
+	_modal_backdrop.visible = true
+
+	const MW := 760.0
+	const MH := 480.0
+	wall_inspector.offset_left   = (SCREEN_W - MW) * 0.5
+	wall_inspector.offset_top    = TOP_Y + 20.0
+	wall_inspector.offset_right  = (SCREEN_W + MW) * 0.5
+	wall_inspector.offset_bottom = TOP_Y + 20.0 + MH
+
+
+func _hide_modal_backdrop() -> void:
+	if is_instance_valid(_modal_backdrop):
+		_modal_backdrop.visible = false
+
+
+# Quick wall access for TOPDOWN_MODAL/VIEW3D, where there's no 2D wall edge to
+# click — routes through the exact same path a 2D wall click uses.
+func _on_edge_button_pressed(edge: String) -> void:
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl:
+		_on_wall_edge_clicked(edge, fl)
+
+
 # ── Floor plan zoom (mouse wheel) / pan (middle-drag) ──────────────────────
+func _floor_pane_right_x() -> float:
+	return _split_x if _view_mode == ViewMode.SPLIT else SCREEN_W
+
+
 func _handle_view_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mbe := event as InputEventMouseButton
-		var in_bounds := mbe.position.x < _split_x and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
+		var in_bounds := mbe.position.x < _floor_pane_right_x() and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
 		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed and in_bounds:
 			_zoom_floor(0.15, mbe.position)
 		elif mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed and in_bounds:
@@ -682,12 +856,15 @@ func _on_wall_edge_clicked(edge: String, apt_floor: Floor) -> void:
 		else apt_floor.floor_id + "_loft")
 	var sibling := _floors.get(sibling_id) as Floor
 	wall_inspector.show_wall(apt_floor, edge, sibling)
+	if _view_mode != ViewMode.SPLIT:
+		_position_wall_inspector_modal()
 
 
 func _on_inspector_visibility_changed() -> void:
 	if not wall_inspector.visible:
 		for fid in _floors:
 			(_floors[fid] as Floor).set_active_wall_edge("")
+		_hide_modal_backdrop()
 
 
 func _on_wall_item_placed(furniture_id: String) -> void:
@@ -719,18 +896,43 @@ func _on_buy_requested(furniture_id: String) -> void:
 	f.fold_toggled.connect(_refresh_functions)
 	if f.rail_axis != "":
 		f.placed.connect(func(_n): _refresh_functions())
-	f.placement_confirmed.connect(func():
-		gm.buy_furniture(furniture_id)
-		_pending_floor_ghost = null
-		wall_inspector.cancel_selection()
-		if fdata.get("creates_loft", false):
-			_promote_to_loft(f, apt_floor)
-		_refresh_functions())
-	f.placement_cancelled.connect(func():
-		_pending_floor_ghost = null
-		_refresh_functions())
-	f.begin_placement(apt_floor, get_viewport().get_mouse_position())
-	_pending_floor_ghost = f
+
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		# 3D-primary mode: the 2D floor plan is hidden, so only arm the 3D
+		# ghost (plus the wall-panel shop-select below, same as the 2D flow) —
+		# nothing to race against a 2D ghost that isn't even on screen.
+		var on_confirmed: Callable
+		var on_cancelled: Callable
+		on_confirmed = func(_f: Furniture):
+			_mode3d_view.buy_confirmed.disconnect(on_confirmed)
+			_mode3d_view.buy_cancelled.disconnect(on_cancelled)
+			gm.buy_furniture(furniture_id)
+			wall_inspector.cancel_selection()
+			if fdata.get("creates_loft", false):
+				_promote_to_loft(f, apt_floor)
+			_refresh_functions()
+		on_cancelled = func(_f: Furniture):
+			_mode3d_view.buy_confirmed.disconnect(on_confirmed)
+			_mode3d_view.buy_cancelled.disconnect(on_cancelled)
+			f.queue_free()
+			_refresh_functions()
+		_mode3d_view.buy_confirmed.connect(on_confirmed)
+		_mode3d_view.buy_cancelled.connect(on_cancelled)
+		_mode3d_view.start_buying(f, fdata)
+	else:
+		f.placement_confirmed.connect(func():
+			gm.buy_furniture(furniture_id)
+			_pending_floor_ghost = null
+			wall_inspector.cancel_selection()
+			if fdata.get("creates_loft", false):
+				_promote_to_loft(f, apt_floor)
+			_refresh_functions())
+		f.placement_cancelled.connect(func():
+			_pending_floor_ghost = null
+			_refresh_functions())
+		f.begin_placement(apt_floor, get_viewport().get_mouse_position())
+		_pending_floor_ghost = f
+
 	if wall_inspector.is_showing_wall():
 		wall_inspector.select_item(furniture_id)
 	_refresh_functions()
