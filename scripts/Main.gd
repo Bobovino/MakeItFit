@@ -1572,6 +1572,22 @@ func _handle_builder_input(event: InputEvent) -> void:
 					_builder_drawing  = true
 					_builder_cur_tile = tile
 					_paint_floor_tile(fl, tile, _active_builder_tool)
+				"window":
+					var local_w := fl.to_local(get_viewport().get_mouse_position())
+					var idx_w := fl.find_segment_near(local_w, 1.5)
+					if idx_w >= 0 and fl.toggle_window_on_segment(idx_w):
+						Audio.play("place")
+						_refresh_functions()
+					else:
+						Audio.play("error")
+				"door":
+					var local_d := fl.to_local(get_viewport().get_mouse_position())
+					var idx_d := fl.find_segment_near(local_d, 1.5)
+					if idx_d >= 0 and fl.toggle_door_on_segment(idx_d):
+						Audio.play("place")
+						_refresh_functions()
+					else:
+						Audio.play("error")
 			# Consume the event so Floor.gd's own _input() (wall-edge-click
 			# detection, used by the normal Select mode) doesn't also react
 			# to the same press/release and pop open the Wall Inspector.

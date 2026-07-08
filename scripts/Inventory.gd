@@ -138,7 +138,7 @@ func _build_builder_tool_row() -> VBoxContainer:
 	_builder_tool_buttons = []
 	var rows := [
 		[["", "Select"], ["wall", "Wall"], ["column", "Column"], ["erase", "Erase"]],
-		[["balcony", "Balcony"], ["bathroom", "Bathroom"]],
+		[["balcony", "Balcony"], ["bathroom", "Bathroom"], ["window", "Window"], ["door", "Door"]],
 	]
 	for row_specs: Array in rows:
 		var row := HBoxContainer.new()

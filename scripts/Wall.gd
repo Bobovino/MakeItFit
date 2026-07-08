@@ -553,6 +553,53 @@ func paint_floor_kind(tile: Vector2i, kind: String) -> void:
 		grid_draw.queue_redraw()
 
 
+# Click-again-to-remove, mirroring toggle_column. A segment can carry a
+# window or a door but not both (mirrors LevelEditor's single-feature-per-
+# segment model); the shared window/door tools reject the segment (returns
+# false) if the other feature is already present so a stray click can't
+# silently overwrite it.
+func toggle_window_on_segment(idx: int) -> bool:
+	if idx < 0 or idx >= segments.size():
+		return false
+	var sd := segments[idx] as Dictionary
+	if sd.get("demolished", false):
+		return false
+	if sd.get("has_window", false):
+		sd.erase("has_window"); sd.erase("window_pos"); sd.erase("window_len")
+	else:
+		if sd.get("has_door", false):
+			return false
+		var seg_len: int = maxi(absi((sd["x2"] as int) - (sd["x1"] as int)), absi((sd["y2"] as int) - (sd["y1"] as int)))
+		var wl: int = mini(10, seg_len)
+		sd["has_window"] = true
+		sd["window_pos"] = maxi(0, (seg_len - wl) / 2)
+		sd["window_len"] = wl
+	if grid_draw:
+		_compute_light_map()
+		grid_draw.queue_redraw()
+	return true
+
+
+func toggle_door_on_segment(idx: int) -> bool:
+	if idx < 0 or idx >= segments.size():
+		return false
+	var sd := segments[idx] as Dictionary
+	if sd.get("demolished", false):
+		return false
+	if sd.get("has_door", false):
+		sd.erase("has_door"); sd.erase("door_pos")
+	else:
+		if sd.get("has_window", false):
+			return false
+		var seg_len: int = maxi(absi((sd["x2"] as int) - (sd["x1"] as int)), absi((sd["y2"] as int) - (sd["y1"] as int)))
+		var dl := mini(10, seg_len)
+		sd["has_door"] = true
+		sd["door_pos"] = maxi(0, (seg_len - dl) / 2)
+	if grid_draw:
+		grid_draw.queue_redraw()
+	return true
+
+
 func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
 	var snap := float(TILE_SIZE) * snap_tiles
 	var best_d := snap
