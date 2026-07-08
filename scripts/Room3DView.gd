@@ -179,6 +179,12 @@ func _input(event: InputEvent) -> void:
 	if _buying_furniture and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_cancel_buy()
 		get_viewport().set_input_as_handled()
+	elif close_btn.visible and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		# close_btn is only shown for the standalone single-item preview
+		# (build_single_item) — the persistent room 3D view mode hides it and
+		# has no "closed" concept, so this never fires there.
+		closed.emit()
+		get_viewport().set_input_as_handled()
 
 
 # Picking / dragging helpers
@@ -748,9 +754,16 @@ func _finish_furniture_drag() -> void:
 
 
 # A real click (not a camera-drag) on the preview toggles a foldable item
-# between its folded and extended shape; harmless no-op for anything else.
+# between its folded and extended shape. For non-foldable items in the
+# standalone single-item preview (build_single_item — close_btn.visible is
+# only true there, never in the persistent room 3D view mode) there's
+# nothing to toggle, so the same "click on empty space" instead acts as a
+# click-outside-the-modal dismiss, since this view has no separate
+# backdrop/frame to click outside of.
 func _on_item_clicked() -> void:
 	if not _foldable:
+		if close_btn.visible:
+			closed.emit()
 		return
 	_fold_auto   = false
 	_fold_target = 0.0 if _fold_target > 0.5 else 1.0
