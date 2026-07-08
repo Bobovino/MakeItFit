@@ -11,8 +11,10 @@ class_name Room3DView
 
 signal closed
 signal sell_requested(furniture: Furniture)   # right-click on a floor piece — Main.gd handles the refund
-signal buy_confirmed(furniture: Furniture)    # a piece bought via start_buying() was placed
+signal buy_confirmed(furniture: Furniture)    # a piece bought via start_buying() was placed on the floor
+signal buy_confirmed_wall(furniture_id: String, edge: String, origin: Vector2i)  # ...or on a wall instead
 signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was backed out (Esc)
+signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a wall piece
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -40,6 +42,9 @@ const CLICK_MOVE_THRESHOLD := 6.0
 # aren't draggable here, just the floor-standing boxes from _add_furniture_box.
 var _apt_floor:    Floor  = null
 var _room_bounds:  Rect2i = Rect2i()
+var _catalog: Array = []   # furniture data array, kept for wall-item placement/validation math
+var _room_w_m: float = 0.0
+var _room_d_m: float = 0.0
 var _furniture_entries: Array = []   # [{furniture, mesh, pos, size}]
 var _dragging_furniture: bool = false
 var _drag_target:   Dictionary = {}
@@ -47,12 +52,25 @@ var _drag_offset:   Vector2    = Vector2.ZERO   # tile-space grab offset
 var _drag_orig_pos: Vector3    = Vector3.ZERO
 var _drag_last_tile: Vector2   = Vector2.ZERO   # continuous — 3D drag is no longer grid-snapped
 
-# Buying a new floor item directly in 3D: Main.gd instantiates+setup()s the
+# Wall-mounted items: rendered by _add_wall_item_box, but (unlike floor
+# furniture) they have no live Furniture node — Floor just tracks them as
+# {origin: fid} strings per edge. Dragging/selling them here has to go
+# through Floor.place_wall_item/remove_wall_item directly instead.
+const WALL_HEIGHT_TILES := WALL_TILES
+var _wall_item_entries: Array = []   # [{edge, origin, fid, mesh, iw, ih}]
+var _dragging_wall_item: bool = false
+var _drag_wall_target:   Dictionary = {}
+
+# Buying a new item directly in 3D: Main.gd instantiates+setup()s the
 # Furniture node (same as it does for the 2D purchase flow) and hands it here
 # via start_buying() instead of Furniture.begin_placement(); everything after
-# that — ghost follow, snap, commit — reuses the drag machinery above.
+# that — ghost follow, snap, commit — reuses the drag machinery above. The
+# ghost can land on the floor OR on a wall, decided each frame by whichever
+# the cursor ray is actually pointing at.
 var _buying_furniture: Furniture = null
+var _buying_fdata: Dictionary = {}
 var _buying_mesh: MeshInstance3D = null
+var _buying_on_wall: bool = false   # last hover: floor ghost or wall ghost?
 
 # Walls between the camera and the room center fade out so the view isn't
 # blocked — each entry is {mat: StandardMaterial3D, normal: Vector3, base: Color}.
@@ -104,14 +122,20 @@ func _on_container_input(event: InputEvent) -> void:
 					_confirm_buy(_to_vp(mb.position))
 					return
 				var vp_pos := _to_vp(mb.position)
-				var hit := _pick_furniture(vp_pos)
-				if not hit.is_empty():
-					_begin_furniture_drag(hit, vp_pos)
+				var wall_hit := _pick_wall_item(vp_pos)
+				if not wall_hit.is_empty():
+					_begin_wall_item_drag(wall_hit, vp_pos)
 				else:
-					_dragging = true
+					var hit := _pick_furniture(vp_pos)
+					if not hit.is_empty():
+						_begin_furniture_drag(hit, vp_pos)
+					else:
+						_dragging = true
 			else:
 				if _dragging_furniture:
 					_finish_furniture_drag()
+				elif _dragging_wall_item:
+					_finish_wall_item_drag()
 				elif mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
 					_on_item_clicked()
 				_dragging = false
@@ -119,7 +143,12 @@ func _on_container_input(event: InputEvent) -> void:
 			if _buying_furniture:
 				_cancel_buy()
 				return
-			var hit := _pick_furniture(_to_vp(mb.position))
+			var vp_pos := _to_vp(mb.position)
+			var wall_hit := _pick_wall_item(vp_pos)
+			if not wall_hit.is_empty():
+				_sell_wall_item(wall_hit)
+				return
+			var hit := _pick_furniture(vp_pos)
 			if not hit.is_empty():
 				_sell_furniture(hit)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
@@ -134,6 +163,8 @@ func _on_container_input(event: InputEvent) -> void:
 			_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
 			_update_furniture_drag(_to_vp(mm.position))
+		elif _dragging_wall_item:
+			_update_wall_item_drag(_to_vp(mm.position))
 		elif _dragging:
 			_yaw   -= mm.relative.x * 0.4
 			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
@@ -238,10 +269,13 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 # Mirrors Furniture.begin_placement(): Main.gd creates and setup()s the
 # Furniture node for a purchase (deducting budget only once it's actually
 # placed, same as the 2D flow), then hands it here instead of calling
-# begin_placement() so the ghost follows the 3D ground-raycast instead of a
-# 2D mouse position.
+# begin_placement() so the ghost follows the cursor in 3D instead of a 2D
+# mouse position. The ghost can land on the floor or on a wall — whichever
+# the cursor ray is actually pointing at each frame (see _scene_hit).
 func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	_buying_furniture = furniture
+	_buying_fdata     = fdata
+	_buying_on_wall   = false
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	col.a = 0.55
@@ -250,13 +284,57 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 
 
 func _update_buy_ghost(vp_pos: Vector2) -> void:
-	var tile := _room_local_to_tile(_ground_hit(vp_pos))
-	var size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
-	_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
-	_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	var hit := _scene_hit(vp_pos)
+	if hit.is_empty():
+		return
+	var iw: int = _buying_furniture.grid_w
+	var box := _buying_mesh.mesh as BoxMesh
+	if hit["mode"] == "wall":
+		_buying_on_wall = true
+		var edge: String = hit["edge"]
+		var wall_h: int = _buying_fdata.get("wall_h", 8) as int
+		var depth: int  = _buying_fdata.get("floor_depth", 1) as int
+		var origin := _wall_origin_from_hit(edge, hit["along_m"], hit["height_m"], iw, wall_h, _buying_fdata)
+		var tr := _wall_item_mesh_transform(edge, origin, iw, wall_h, depth)
+		box.size = tr["size"]
+		_buying_mesh.position = tr["pos"]
+		_buying_mesh.set_meta("wall_edge", edge)
+		_buying_mesh.set_meta("wall_origin", origin)
+	else:
+		_buying_on_wall = false
+		var tile := _room_local_to_tile(hit["pos"] as Vector3)
+		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
+		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
+		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
+		_buying_mesh.position.y = box.size.y * 0.5
+		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
+	if _buying_on_wall:
+		var edge: String = _buying_mesh.get_meta("wall_edge", "")
+		var origin: Vector2i = _buying_mesh.get_meta("wall_origin", Vector2i.ZERO)
+		var iw: int = _buying_furniture.grid_w
+		var ih: int = _buying_fdata.get("wall_h", 8) as int
+		if edge == "" or not _can_place_wall_item(edge, origin, iw, ih, Vector2i(-999999, -999999)):
+			return
+		var fid := _buying_furniture.furniture_id
+		if _apt_floor:
+			_apt_floor.place_wall_item(edge, origin, fid)
+		var depth: int = _buying_fdata.get("floor_depth", 1) as int
+		var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+		var mat := _buying_mesh.material_override as StandardMaterial3D
+		if mat:
+			mat.albedo_color.a = 1.0
+		(_buying_mesh.mesh as BoxMesh).size = tr["size"]
+		_buying_mesh.position = tr["pos"]
+		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": tr["size"]})
+		_buying_furniture = null
+		_buying_fdata     = {}
+		_buying_mesh      = null
+		buy_confirmed_wall.emit(fid, edge, origin)
+		return
+
 	if not _apt_floor:
 		return
 	var tile := _room_local_to_tile(_ground_hit(vp_pos))
@@ -271,7 +349,8 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": size})
 	_buying_furniture = null
-	_buying_mesh = null
+	_buying_fdata     = {}
+	_buying_mesh      = null
 	buy_confirmed.emit(f)
 
 
@@ -280,7 +359,8 @@ func _cancel_buy() -> void:
 	if is_instance_valid(_buying_mesh):
 		_buying_mesh.queue_free()
 	_buying_furniture = null
-	_buying_mesh = null
+	_buying_fdata     = {}
+	_buying_mesh      = null
 	buy_cancelled.emit(f)
 
 
@@ -293,6 +373,347 @@ func _sell_furniture(hit: Dictionary) -> void:
 	if is_instance_valid(mesh):
 		mesh.queue_free()
 	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
+
+
+# ── Wall-mounted items ──────────────────────────────────────────────────────
+# Unlike floor furniture, a wall item has no live Furniture node — Floor just
+# tracks {origin: furniture_id} strings per edge (see Wall.gd's wall_items).
+# Dragging/selling them here goes through Floor.place_wall_item/
+# remove_wall_item directly instead of a Furniture node's own API.
+
+func _pick_wall_item(vp_pos: Vector2) -> Dictionary:
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	var best_t := INF
+	var best: Dictionary = {}
+	for entry in _wall_item_entries:
+		var mesh: MeshInstance3D = entry["mesh"]
+		var pos: Vector3 = mesh.position
+		var size: Vector3 = entry["size"]
+		var t := _ray_box_t(from, dir, pos - size * 0.5, pos + size * 0.5)
+		if t < best_t:
+			best_t = t
+			best = entry
+	return best
+
+
+func _begin_wall_item_drag(hit: Dictionary, vp_pos: Vector2) -> void:
+	_drag_wall_target   = hit.duplicate()
+	_dragging_wall_item = true
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	var wh := _wall_plane_hit(hit["edge"], from, dir)
+	var origin: Vector2i = hit["origin"]
+	_drag_wall_target["offset_along_m"] = origin.x * TILE_M - (wh.get("along_m", 0.0) as float)
+	_drag_wall_target["offset_ceil_m"]  = origin.y * TILE_M - (WALL_H_M - (wh.get("height_m", WALL_H_M) as float))
+	_drag_wall_target["preview_origin"] = origin
+
+
+func _update_wall_item_drag(vp_pos: Vector2) -> void:
+	var edge: String = _drag_wall_target["edge"]
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	var wh := _wall_plane_hit(edge, from, dir)
+	if wh.is_empty():
+		return
+	var fid: String = _drag_wall_target["fid"]
+	var fdata := _find_furniture_data(_catalog, fid)
+	var iw: int = (fdata.get("size", {}) as Dictionary).get("w", 1) as int
+	var ih: int = fdata.get("wall_h", 1) as int
+	var along_m: float = (wh["along_m"] as float) + (_drag_wall_target["offset_along_m"] as float)
+	var from_ceil_m: float = (WALL_H_M - (wh["height_m"] as float)) + (_drag_wall_target["offset_ceil_m"] as float)
+	var wall_w := _wall_usable_width(edge)
+	var x := clampi(int(round(along_m / TILE_M)), 0, wall_w - iw)
+	var pinned: bool = (fdata.get("placement", "") as String) == "floor"
+	var y := (WALL_HEIGHT_TILES - ih) if pinned else clampi(int(round(from_ceil_m / TILE_M)), 0, WALL_HEIGHT_TILES - ih)
+	var origin := Vector2i(x, y)
+	_drag_wall_target["preview_origin"] = origin
+	var depth: int = fdata.get("floor_depth", 1) as int
+	var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+	var mesh: MeshInstance3D = _drag_wall_target["mesh"]
+	mesh.position = tr["pos"]
+
+
+func _finish_wall_item_drag() -> void:
+	_dragging_wall_item = false
+	var edge: String = _drag_wall_target["edge"]
+	var old_origin: Vector2i = _drag_wall_target["origin"]
+	var new_origin: Vector2i = _drag_wall_target.get("preview_origin", old_origin)
+	var fid: String = _drag_wall_target["fid"]
+	var fdata := _find_furniture_data(_catalog, fid)
+	var iw: int = (fdata.get("size", {}) as Dictionary).get("w", 1) as int
+	var ih: int = fdata.get("wall_h", 1) as int
+	var depth: int = fdata.get("floor_depth", 1) as int
+	var mesh: MeshInstance3D = _drag_wall_target["mesh"]
+	var final_origin := old_origin
+	if new_origin != old_origin and _apt_floor:
+		_apt_floor.remove_wall_item(edge, old_origin)
+		if _can_place_wall_item(edge, new_origin, iw, ih, new_origin):
+			_apt_floor.place_wall_item(edge, new_origin, fid)
+			final_origin = new_origin
+		else:
+			_apt_floor.place_wall_item(edge, old_origin, fid)
+	var tr := _wall_item_mesh_transform(edge, final_origin, iw, ih, depth)
+	mesh.position = tr["pos"]
+	for i in range(_wall_item_entries.size() - 1, -1, -1):
+		if _wall_item_entries[i]["mesh"] == mesh:
+			_wall_item_entries[i]["origin"] = final_origin
+			_wall_item_entries[i]["size"]   = tr["size"]
+	_drag_wall_target = {}
+
+
+func _sell_wall_item(hit: Dictionary) -> void:
+	var edge: String = hit["edge"]
+	var origin: Vector2i = hit["origin"]
+	var mesh: MeshInstance3D = hit["mesh"]
+	for i in range(_wall_item_entries.size() - 1, -1, -1):
+		if _wall_item_entries[i]["mesh"] == mesh:
+			_wall_item_entries.remove_at(i)
+	if is_instance_valid(mesh):
+		mesh.queue_free()
+	wall_sell_requested.emit(edge, origin)   # Main.gd handles apt_floor.remove_wall_item
+
+
+# Ray-plane intersection against a single wall's (infinite) plane — used for
+# dragging an existing wall item, where the edge is already fixed and mustn't
+# flip to a different wall mid-drag just because the cursor strayed past the
+# room's corner.
+func _wall_plane_hit(edge: String, from: Vector3, dir: Vector3) -> Dictionary:
+	var axis := "z" if edge in ["north", "south"] else "x"
+	var coord := 0.0
+	match edge:
+		"south": coord = _room_d_m
+		"east":  coord = _room_w_m
+	var o: float = (from.z if axis == "z" else from.x)
+	var d: float = (dir.z if axis == "z" else dir.x)
+	if absf(d) < 1e-6:
+		return {}
+	var t := (coord - o) / d
+	if t < 0.0:
+		return {}
+	var hit := from + dir * t
+	var along: float = (hit.x if axis == "z" else hit.z)
+	return {"along_m": along, "height_m": hit.y}
+
+
+# Ray test against all four wall planes at once — used for the buy ghost,
+# where we don't know which wall (if any) the cursor is over yet.
+func _wall_hit_test(from: Vector3, dir: Vector3) -> Dictionary:
+	var planes := [
+		{"edge": "north", "axis": "z", "coord": 0.0,       "len": _room_w_m},
+		{"edge": "south", "axis": "z", "coord": _room_d_m, "len": _room_w_m},
+		{"edge": "west",  "axis": "x", "coord": 0.0,       "len": _room_d_m},
+		{"edge": "east",  "axis": "x", "coord": _room_w_m, "len": _room_d_m},
+	]
+	var best_t := INF
+	var best: Dictionary = {}
+	for p in planes:
+		var axis: String = p["axis"]
+		var o: float = (from.z if axis == "z" else from.x)
+		var d: float = (dir.z if axis == "z" else dir.x)
+		if absf(d) < 1e-6:
+			continue
+		var t := ((p["coord"] as float) - o) / d
+		if t < 0.0 or t >= best_t:
+			continue
+		var hit := from + dir * t
+		if hit.y < 0.0 or hit.y > WALL_H_M:
+			continue
+		var along: float = (hit.x if axis == "z" else hit.z)
+		if along < 0.0 or along > (p["len"] as float):
+			continue
+		best_t = t
+		best = {"edge": p["edge"], "along_m": along, "height_m": hit.y, "t": t}
+	return best
+
+
+# Combines the ground-plane hit with the four wall-plane hits and returns
+# whichever the cursor ray actually reaches first — that's "what the cursor
+# is pointing at" for buy-ghost purposes.
+func _scene_hit(vp_pos: Vector2) -> Dictionary:
+	var from := cam.project_ray_origin(vp_pos)
+	var dir  := cam.project_ray_normal(vp_pos)
+	var ground_t := INF
+	if absf(dir.y) > 0.0001:
+		var t := -from.y / dir.y
+		if t >= 0.0:
+			ground_t = t
+	var wall := _wall_hit_test(from, dir)
+	if not wall.is_empty() and (wall["t"] as float) < ground_t:
+		wall["mode"] = "wall"
+		return wall
+	if ground_t < INF:
+		return {"mode": "floor", "pos": from + dir * ground_t}
+	return {}
+
+
+func _wall_usable_width(edge: String) -> int:
+	if not _apt_floor:
+		return 8
+	# -1: see Wall.WALL_SNAP / get_adjacent_furniture's comment — the raw
+	# bounds span reaches corner-tile to corner-tile, but a wall item can
+	# never actually reach either corner tile.
+	var raw := _room_bounds.size.x if edge in ["north", "south"] else _room_bounds.size.y
+	return raw - 1
+
+
+func _wall_restricted_zones(edge: String) -> Array:
+	var zones: Array = []
+	if not _apt_floor:
+		return zones
+	for wd in _apt_floor.wall_definitions:
+		var d := wd as Dictionary
+		if d.get("edge", "") != edge:
+			continue
+		if d.get("has_window", false):
+			zones.append(Rect2i(d.get("window_x", 5) as int, 0, d.get("window_len", 15) as int, WALL_HEIGHT_TILES))
+		if d.get("has_door", false):
+			zones.append(Rect2i(d.get("door_x", 0) as int, 0, 10, WALL_HEIGHT_TILES))
+	return zones
+
+
+# Ceiling height (metres) at a given column of this wall's elevation —
+# mirrors WallInspector._ceiling_height_m exactly, just fed from Room3DView's
+# own state instead of a 2D panel's.
+func _wall_ceiling_height_m(edge: String, col: int) -> float:
+	if not _apt_floor or _apt_floor.sloped_ceiling.is_empty():
+		return WALL_H_M
+	var sc: Dictionary = _apt_floor.sloped_ceiling
+	var axis: String  = sc.get("axis", "x") as String
+	var low_s: int    = sc.get("low_start", 0) as int
+	var high_e: int   = sc.get("high_end", 0) as int
+	var min_h: float  = sc.get("min_h", 1.8) as float
+	var max_h: float  = sc.get("max_h", 2.4) as float
+	var span := high_e - low_s
+	if span <= 0:
+		return max_h
+	var bounds := _room_bounds
+	var progressive := (axis == "x" and edge in ["north", "south"]) \
+		or (axis == "y" and edge in ["east", "west"])
+	var coord: int
+	if progressive:
+		coord = (bounds.position.x if edge in ["north", "south"] else bounds.position.y) + col
+	else:
+		match edge:
+			"north": coord = bounds.position.y
+			"south": coord = bounds.position.y + bounds.size.y - 1
+			"west":  coord = bounds.position.x
+			"east":  coord = bounds.position.x + bounds.size.x - 1
+			_:       coord = low_s
+	var frac := clampf(float(coord - low_s) / float(span), 0.0, 1.0)
+	return min_h + frac * (max_h - min_h)
+
+
+func _wall_ceiling_cut_tiles(edge: String, col: int) -> int:
+	if not _apt_floor or _apt_floor.sloped_ceiling.is_empty():
+		return 0
+	var avail_tiles := int(round(_wall_ceiling_height_m(edge, col) * 10.0))
+	return clampi(WALL_HEIGHT_TILES - avail_tiles, 0, WALL_HEIGHT_TILES)
+
+
+func _wall_floor_occludes(edge: String, at: Vector2i, iw: int, ih: int) -> bool:
+	if not _apt_floor:
+		return false
+	var item_rect := Rect2i(at.x, at.y, iw, ih)
+	for entry in _apt_floor.get_adjacent_furniture(edge):
+		var f: Furniture = entry["furniture"]
+		var wx: int = entry["wall_x"] as int
+		var fdata := _find_furniture_data(_catalog, f.furniture_id)
+		if fdata.is_empty():
+			continue
+		var item_w: int = (f.grid_w if edge in ["north", "south"] else f.grid_h)
+		var wall_h: int = fdata.get("wall_h", 5) as int
+		var py_tile: int = WALL_HEIGHT_TILES - wall_h
+		var sil := Rect2i(wx, py_tile, item_w, wall_h)
+		if sil.intersects(item_rect):
+			return true
+	return false
+
+
+# Mirrors WallInspector._wall_fits — restricted zones, sloped-ceiling cut,
+# floor-silhouette occlusion, and overlap with other wall items on this edge.
+# `ignore_origin` lets a drag-in-progress check against its own new spot
+# without also comparing itself (used when the caller hasn't removed the old
+# entry yet).
+func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_origin: Vector2i) -> bool:
+	var item_rect := Rect2i(at.x, at.y, iw, ih)
+	for zone in _wall_restricted_zones(edge):
+		if (zone as Rect2i).intersects(item_rect):
+			return false
+	if _apt_floor and not _apt_floor.sloped_ceiling.is_empty():
+		for tx in range(iw):
+			if at.y < _wall_ceiling_cut_tiles(edge, at.x + tx):
+				return false
+	if _wall_floor_occludes(edge, at, iw, ih):
+		return false
+	var wall_w := _wall_usable_width(edge)
+	if at.x < 0 or at.x + iw > wall_w or at.y < 0 or at.y + ih > WALL_HEIGHT_TILES:
+		return false
+	if not _apt_floor:
+		return true
+	var placed := _apt_floor.get_wall_items(edge)
+	for tx in range(iw):
+		for ty in range(ih):
+			var check := Vector2i(at.x + tx, at.y + ty)
+			for origin in placed:
+				var o := origin as Vector2i
+				if o == ignore_origin:
+					continue
+				var pf := _find_furniture_data(_catalog, placed[origin] as String)
+				if pf.is_empty():
+					continue
+				var pw: int = (pf.get("size", {}) as Dictionary).get("w", 1) as int
+				var ph: int = pf.get("wall_h", 1) as int
+				if check.x >= o.x and check.x < o.x + pw and check.y >= o.y and check.y < o.y + ph:
+					return false
+	return true
+
+
+# Converts a raw ray-hit on a wall plane into a wall-local origin tile,
+# clamped/magnetized the same way WallInspector._try_place snaps a click —
+# `iw`/`ih` are the item's footprint (ih = wall_h, its mounted height).
+func _wall_origin_from_hit(edge: String, along_m: float, height_m: float, iw: int, ih: int, fdata: Dictionary) -> Vector2i:
+	var wall_w := _wall_usable_width(edge)
+	var x := clampi(int(round(along_m / TILE_M - iw * 0.5)), 0, wall_w - iw)
+	if x <= int(Floor.WALL_SNAP):
+		x = 0
+	elif wall_w - iw - x <= int(Floor.WALL_SNAP):
+		x = wall_w - iw
+	var pinned: bool = (fdata.get("placement", "") as String) == "floor"
+	var y: int
+	if pinned:
+		y = WALL_HEIGHT_TILES - ih
+	else:
+		var from_ceiling_m := WALL_H_M - height_m
+		y = clampi(int(round(from_ceiling_m / TILE_M - ih * 0.5)), 0, WALL_HEIGHT_TILES - ih)
+	return Vector2i(x, y)
+
+
+# Mirrors _add_wall_item_box's placement math so the buy ghost, drag preview,
+# and the final placed mesh all agree on where a wall item sits.
+func _wall_item_mesh_transform(edge: String, origin: Vector2i, iw: int, ih: int, depth: int) -> Dictionary:
+	var iw_m    := iw * TILE_M
+	var ih_m    := ih * TILE_M
+	var depth_m := maxf(depth * TILE_M, 0.05)
+	var top_from_floor_m := WALL_H_M - origin.y * TILE_M
+	var center_y := top_from_floor_m - ih_m * 0.5
+	var along    := origin.x * TILE_M + iw_m * 0.5
+	var size: Vector3
+	var pos: Vector3
+	match edge:
+		"north":
+			size = Vector3(iw_m, ih_m, depth_m)
+			pos  = Vector3(along, center_y, depth_m * 0.5)
+		"south":
+			size = Vector3(iw_m, ih_m, depth_m)
+			pos  = Vector3(along, center_y, _room_d_m - depth_m * 0.5)
+		"west":
+			size = Vector3(depth_m, ih_m, iw_m)
+			pos  = Vector3(depth_m * 0.5, center_y, along)
+		_:   # "east"
+			size = Vector3(depth_m, ih_m, iw_m)
+			pos  = Vector3(_room_w_m - depth_m * 0.5, center_y, along)
+	return {"size": size, "pos": pos}
 
 
 func _finish_furniture_drag() -> void:
@@ -364,14 +785,20 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 		c.queue_free()
 	_wall_data.clear()
 	_furniture_entries.clear()
+	_wall_item_entries.clear()
 	_dragging_furniture = false
+	_dragging_wall_item = false
 	_drag_target = {}
+	_drag_wall_target = {}
 
 	_apt_floor = apt_floor
+	_catalog   = catalog
 	var bounds := apt_floor.get_room_bounds()
 	_room_bounds = bounds
 	var w := bounds.size.x * TILE_M
 	var d := bounds.size.y * TILE_M
+	_room_w_m = w
+	_room_d_m = d
 
 	_center = Vector3(w * 0.5, WALL_H_M * 0.35, d * 0.5)
 	_dist   = maxf(w, d) * 1.4 + 2.0
@@ -387,7 +814,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	for edge in apt_floor.wall_items:
 		var items: Dictionary = apt_floor.wall_items[edge] as Dictionary
 		for origin in items:
-			_add_wall_item_box(edge, origin as Vector2i, items[origin] as String, w, d, catalog)
+			_add_wall_item_box(edge, origin as Vector2i, items[origin] as String, catalog)
 
 
 # Product-shot mode: a single item on a small floor pad, slowly auto-rotating,
@@ -645,24 +1072,14 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 
 # `origin` is wall-local: origin.x along the wall, origin.y from the TOP of
 # the wall (0 = ceiling, WALL_TILES = floor) — matches WallInspector.
-func _add_wall_item_box(edge: String, origin: Vector2i, fid: String,
-		w: float, d: float, catalog: Array) -> void:
+func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Array) -> void:
 	var fdata := _find_furniture_data(catalog, fid)
 	if fdata.is_empty():
 		return
 	var iw: int    = (fdata.get("size", {}) as Dictionary).get("w", 5) as int
 	var ih: int    = fdata.get("wall_h", 5) as int
 	var depth: int = fdata.get("floor_depth", 1) as int
-	var iw_m    := iw * TILE_M
-	var ih_m    := ih * TILE_M
-	var depth_m := maxf(depth * TILE_M, 0.05)
-	var top_from_floor_m := WALL_H_M - origin.y * TILE_M
-	var center_y := top_from_floor_m - ih_m * 0.5
-	var along    := origin.x * TILE_M + iw_m * 0.5
 	var col := Color("#" + (fdata.get("color", "888888") as String))
-
-	match edge:
-		"north": _box(Vector3(iw_m, ih_m, depth_m), Vector3(along, center_y, depth_m * 0.5), col)
-		"south": _box(Vector3(iw_m, ih_m, depth_m), Vector3(along, center_y, d - depth_m * 0.5), col)
-		"west":  _box(Vector3(depth_m, ih_m, iw_m), Vector3(depth_m * 0.5, center_y, along), col)
-		"east":  _box(Vector3(depth_m, ih_m, iw_m), Vector3(w - depth_m * 0.5, center_y, along), col)
+	var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+	var mi := _box(tr["size"], tr["pos"], col)
+	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": tr["size"]})

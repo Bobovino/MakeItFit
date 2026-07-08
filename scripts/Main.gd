@@ -41,7 +41,6 @@ var _view_mode: int = ViewMode.SPLIT
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
-var _edge_buttons:   Dictionary = {}  # "north"/"south"/"east"/"west" -> Button — quick wall access outside SPLIT mode
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -85,8 +84,7 @@ func _ready() -> void:
 		inventory.view3d_requested.connect(_on_view3d_item_requested)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
-	if not view3d_btn.pressed.is_connected(_on_view3d_pressed):
-		view3d_btn.pressed.connect(_on_view3d_pressed)
+	view3d_btn.visible = false   # superseded by the persistent 3D view mode
 	if not result_screen.next_level_requested.is_connected(_on_next_level):
 		result_screen.next_level_requested.connect(_on_next_level)
 	if not result_screen.retry_requested.is_connected(_on_retry):
@@ -189,24 +187,6 @@ func _apply_ui_theme() -> void:
 			_mode_buttons[mode] = btn
 		top.add_child(box)
 		top.move_child(box, top.get_child_count() - 2)
-
-	# Quick wall access for TOPDOWN_MODAL/VIEW3D — those modes have no 2D wall
-	# edge to click, so the four walls get their own small buttons instead.
-	if not top.has_node("EdgeBox"):
-		var ebox := HBoxContainer.new()
-		ebox.name = "EdgeBox"
-		for edge in ["north", "south", "east", "west"]:
-			var ebtn := Button.new()
-			ebtn.name = "Edge_%s" % edge
-			ebtn.text = edge.substr(0, 1).to_upper()
-			ebtn.tooltip_text = edge.capitalize() + " wall"
-			ebtn.add_theme_font_size_override("font_size", 11)
-			ebtn.pressed.connect(_on_edge_button_pressed.bind(edge))
-			ebox.add_child(ebtn)
-			_edge_buttons[edge] = ebtn
-		top.add_child(ebox)
-		top.move_child(ebox, top.get_child_count() - 2)
-	(top.get_node("EdgeBox") as HBoxContainer).visible = _view_mode != ViewMode.SPLIT
 
 
 func _go_back() -> void:
@@ -707,9 +687,6 @@ func _set_view_mode(mode: int) -> void:
 	_view_mode = mode
 	for m in _mode_buttons:
 		(_mode_buttons[m] as Button).button_pressed = (m == mode)
-	var top := $UI/TopBar as HBoxContainer
-	if top.has_node("EdgeBox"):
-		(top.get_node("EdgeBox") as HBoxContainer).visible = mode != ViewMode.SPLIT
 
 	match mode:
 		ViewMode.SPLIT:
@@ -730,12 +707,12 @@ func _set_view_mode(mode: int) -> void:
 			else:
 				_hide_modal_backdrop()
 		ViewMode.VIEW3D:
+			# Wall items are placed/moved directly in the 3D view here (drag onto
+			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
 			room.visible    = false
 			divider.visible = false
-			if wall_inspector.visible:
-				_position_wall_inspector_modal()
-			else:
-				_hide_modal_backdrop()
+			wall_inspector.hide()
+			_hide_modal_backdrop()
 			_ensure_mode3d_view()
 
 	var fl := _floors.get(_current_floor_id) as Floor
@@ -761,6 +738,7 @@ func _ensure_mode3d_view() -> void:
 		if _mode3d_view.has_node("CloseBtn"):
 			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
+		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
 	_mode3d_view.offset_left   = 0.0
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = SCREEN_W
@@ -807,12 +785,11 @@ func _hide_modal_backdrop() -> void:
 		_modal_backdrop.visible = false
 
 
-# Quick wall access for TOPDOWN_MODAL/VIEW3D, where there's no 2D wall edge to
-# click — routes through the exact same path a 2D wall click uses.
-func _on_edge_button_pressed(edge: String) -> void:
-	var fl := _floors.get(_current_floor_id) as Floor
-	if fl:
-		_on_wall_edge_clicked(edge, fl)
+# Right-click removal of a wall-mounted item dropped directly in the 3D view —
+# mirrors WallInspector._remove_wall_at (no refund, matching that 2D behavior).
+func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> void:
+	apt_floor.remove_wall_item(edge, origin)
+	_refresh_functions()
 
 
 # ── Floor plan zoom (mouse wheel) / pan (middle-drag) ──────────────────────
@@ -898,26 +875,40 @@ func _on_buy_requested(furniture_id: String) -> void:
 		f.placed.connect(func(_n): _refresh_functions())
 
 	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
-		# 3D-primary mode: the 2D floor plan is hidden, so only arm the 3D
-		# ghost (plus the wall-panel shop-select below, same as the 2D flow) —
-		# nothing to race against a 2D ghost that isn't even on screen.
-		var on_confirmed: Callable
-		var on_cancelled: Callable
-		on_confirmed = func(_f: Furniture):
-			_mode3d_view.buy_confirmed.disconnect(on_confirmed)
-			_mode3d_view.buy_cancelled.disconnect(on_cancelled)
+		# 3D-primary mode: the floor ghost (`f`) is armed, but the player can
+		# just as easily drop the item on a wall instead — Room3DView decides
+		# which happened and fires the matching signal below. There's no 2D
+		# floor plan or Wall Inspector on screen to race against here.
+		#
+		# The three handlers below disconnect each other once one of them
+		# fires. GDScript locals declared with `var` and reassigned via
+		# `x = func(): ...` do NOT reliably close over each other by live
+		# reference when a lambda refers to a sibling var assigned later (or
+		# to itself) in the same statement block — a `Dictionary` is used as
+		# a shared mutable box instead, since its *contents* are looked up at
+		# call time rather than captured at closure-creation time.
+		var h := {}
+		h["confirmed"] = func(_f: Furniture):
+			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
+			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
 			gm.buy_furniture(furniture_id)
-			wall_inspector.cancel_selection()
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
 			_refresh_functions()
-		on_cancelled = func(_f: Furniture):
-			_mode3d_view.buy_confirmed.disconnect(on_confirmed)
-			_mode3d_view.buy_cancelled.disconnect(on_cancelled)
+		h["wall_confirmed"] = func(_fid: String, _edge: String, _origin: Vector2i):
+			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
+			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
+			f.queue_free()   # the floor ghost was never used — it landed on a wall instead
+			gm.buy_furniture(furniture_id)
+			_refresh_functions()
+		h["cancelled"] = func(_f: Furniture):
+			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
+			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
 			f.queue_free()
 			_refresh_functions()
-		_mode3d_view.buy_confirmed.connect(on_confirmed)
-		_mode3d_view.buy_cancelled.connect(on_cancelled)
+		_mode3d_view.buy_confirmed.connect(h["confirmed"], CONNECT_ONE_SHOT)
+		_mode3d_view.buy_confirmed_wall.connect(h["wall_confirmed"], CONNECT_ONE_SHOT)
+		_mode3d_view.buy_cancelled.connect(h["cancelled"], CONNECT_ONE_SHOT)
 		_mode3d_view.start_buying(f, fdata)
 	else:
 		f.placement_confirmed.connect(func():
@@ -932,9 +923,9 @@ func _on_buy_requested(furniture_id: String) -> void:
 			_refresh_functions())
 		f.begin_placement(apt_floor, get_viewport().get_mouse_position())
 		_pending_floor_ghost = f
+		if wall_inspector.is_showing_wall():
+			wall_inspector.select_item(furniture_id)
 
-	if wall_inspector.is_showing_wall():
-		wall_inspector.select_item(furniture_id)
 	_refresh_functions()
 
 
@@ -1025,13 +1016,6 @@ func _open_room3d_view() -> Node:
 		_room3d_view.queue_free()
 		_room3d_view = null)
 	return _room3d_view
-
-
-func _on_view3d_pressed() -> void:
-	var apt_floor := _floors.get(_current_floor_id) as Floor
-	if not apt_floor:
-		return
-	_open_room3d_view().build_from_floor(apt_floor, gm.furniture_data["furniture"])
 
 
 func _on_view3d_item_requested(furniture_id: String) -> void:
