@@ -328,6 +328,12 @@ func _try_place(fid: String, at: Vector2i) -> void:
 	var ih: int     = f.get("wall_h", 1) as int
 	var wall_w: int = _wall_w()
 	at.x = clampi(at.x, 0, wall_w - iw)
+	# Magnetize to the side walls — clicking near an end should mean "in that
+	# corner", not "a few tiles short of it".
+	if at.x <= Floor.WALL_SNAP:
+		at.x = 0
+	elif wall_w - iw - at.x <= Floor.WALL_SNAP:
+		at.x = wall_w - iw
 	var pinned_y := _pinned_wall_y(f, ih)
 	at.y = pinned_y if pinned_y >= 0 else clampi(at.y, 0, WALL_HEIGHT - ih)
 	var placed := _apt_floor.get_wall_items(_edge)
@@ -679,8 +685,13 @@ func _draw_elevation() -> void:
 			var ih_t: int   = fdata.get("wall_h", 1) as int
 			var wall_w3: int = _wall_w()
 			var pinned_y3 := _pinned_wall_y(fdata, ih_t)
+			var hover_x := clampi(_hover_tile.x, 0, wall_w3 - iw_t)
+			if hover_x <= Floor.WALL_SNAP:
+				hover_x = 0
+			elif wall_w3 - iw_t - hover_x <= Floor.WALL_SNAP:
+				hover_x = wall_w3 - iw_t
 			var at := Vector2i(
-				clampi(_hover_tile.x, 0, wall_w3 - iw_t),
+				hover_x,
 				pinned_y3 if pinned_y3 >= 0 else clampi(_hover_tile.y, 0, WALL_HEIGHT - ih_t)
 			)
 			var px := at.x * TILE_SIZE
