@@ -4,80 +4,162 @@ class_name Inventory
 signal buy_requested(furniture_id: String)
 signal view3d_requested(furniture_id: String)
 
-var _gm: GameManager = null
+# "Builder" is anything that shapes the room itself rather than furnishing it
+# (currently just staircases) — kept as a plain id-flag check so future
+# additions (rails, wall pieces, etc., if they ever become buyable catalog
+# items) only need to satisfy this one predicate to land in the right tab.
+enum Category { FURNITURE, BUILDER }
 
-@onready var item_list: VBoxContainer = $ScrollContainer/ItemList
+var _gm: GameManager = null
+var _category: int = Category.FURNITURE
+var _full_list: Array = []
+var _owned_list: Array = []
+var _owned_catalog: Array = []
+
+@onready var scroll:    ScrollContainer = $ScrollContainer
+@onready var item_list: VBoxContainer   = $ScrollContainer/ItemList
+
+var _filter_box: HBoxContainer = null
 
 
 func setup(game_manager: GameManager) -> void:
 	_gm = game_manager
 	_gm.budget_changed.connect(_refresh_affordability)
+	_ensure_filter_box()
+
+
+func _ensure_filter_box() -> void:
+	if is_instance_valid(_filter_box):
+		return
+	_filter_box = HBoxContainer.new()
+	_filter_box.name = "CategoryFilter"
+	_filter_box.add_theme_constant_override("separation", 4)
+	var group := ButtonGroup.new()
+	var specs := [
+		[Category.FURNITURE, "Furniture"],
+		[Category.BUILDER,   "Builder"],
+	]
+	for spec in specs:
+		var cat: int = spec[0]
+		var btn := Button.new()
+		btn.text           = spec[1]
+		btn.toggle_mode    = true
+		btn.button_group   = group
+		btn.button_pressed = (cat == _category)
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_set_category.bind(cat))
+		_filter_box.add_child(btn)
+
+	# PanelContainer only auto-fills a single child, so wrap the pre-existing
+	# ScrollContainer alongside the new filter row in a VBoxContainer instead
+	# of trying to lay both out directly as PanelContainer children.
+	remove_child(scroll)
+	var root := VBoxContainer.new()
+	root.name = "Root"
+	root.add_theme_constant_override("separation", 4)
+	add_child(root)
+	root.add_child(_filter_box)
+	root.add_child(scroll)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+
+func _set_category(cat: int) -> void:
+	if _category == cat:
+		return
+	_category = cat
+	_render()
+
+
+func _is_builder(f: Dictionary) -> bool:
+	return f.get("is_stair", false) as bool
 
 
 func populate(furniture_list: Array) -> void:
+	_full_list = furniture_list
+	_render()
+
+
+func _render() -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
 	var hdr := Label.new()
-	hdr.text = "ITEMS  (place on the floor plan, or open a wall to hang it there)"
+	hdr.text = ("ITEMS  (place on the floor plan, or open a wall to hang it there)"
+		if _category == Category.FURNITURE
+		else "BUILDER  (staircases and other room-shaping pieces)")
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	item_list.add_child(hdr)
 
-	for f in furniture_list:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+	var shown := _full_list.filter(func(f): return _is_builder(f) == (_category == Category.BUILDER))
+	for f in shown:
+		item_list.add_child(_build_shop_row(f))
 
-		# Color swatch
-		var swatch := ColorRect.new()
-		swatch.color = Color("#" + (f.get("color", "888888") as String))
-		swatch.custom_minimum_size = Vector2(8, 0)
-		swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		row.add_child(swatch)
+	if not _owned_list.is_empty():
+		_render_owned_section()
 
-		var name_lbl := Label.new()
-		name_lbl.text = f["name"]
-		name_lbl.custom_minimum_size.x = 108
-		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		row.add_child(name_lbl)
 
-		var func_lbl := Label.new()
-		func_lbl.text = _fmt_funcs(f["functions"])
-		func_lbl.custom_minimum_size.x = 100
-		func_lbl.add_theme_font_size_override("font_size", 10)
-		func_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		row.add_child(func_lbl)
+func _build_shop_row(f: Dictionary) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
 
-		var price_lbl := Label.new()
-		price_lbl.text = "%d€" % f["buy_price"]
-		price_lbl.custom_minimum_size.x = 46
-		price_lbl.add_theme_font_size_override("font_size", 11)
-		price_lbl.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
-		row.add_child(price_lbl)
+	# Color swatch
+	var swatch := ColorRect.new()
+	swatch.color = Color("#" + (f.get("color", "888888") as String))
+	swatch.custom_minimum_size = Vector2(8, 0)
+	swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row.add_child(swatch)
 
-		var view3d_btn := Button.new()
-		view3d_btn.text = "3D"
-		view3d_btn.tooltip_text = "Preview in 3D"
-		view3d_btn.add_theme_font_size_override("font_size", 11)
-		view3d_btn.custom_minimum_size.x = 30
-		view3d_btn.pressed.connect(func(): view3d_requested.emit(f["id"] as String))
-		row.add_child(view3d_btn)
+	var name_lbl := Label.new()
+	name_lbl.text = f["name"]
+	name_lbl.custom_minimum_size.x = 108
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	row.add_child(name_lbl)
 
-		var buy_btn := Button.new()
-		buy_btn.text = "Buy"
-		buy_btn.add_theme_font_size_override("font_size", 11)
-		buy_btn.set_meta("price", f["buy_price"] as int)
-		buy_btn.disabled = _gm != null and _gm.budget < (f["buy_price"] as int)
-		buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
-		row.add_child(buy_btn)
+	var func_lbl := Label.new()
+	func_lbl.text = _fmt_funcs(f["functions"])
+	func_lbl.custom_minimum_size.x = 100
+	func_lbl.add_theme_font_size_override("font_size", 10)
+	func_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	row.add_child(func_lbl)
 
-		item_list.add_child(row)
+	var price_lbl := Label.new()
+	price_lbl.text = "%d€" % f["buy_price"]
+	price_lbl.custom_minimum_size.x = 46
+	price_lbl.add_theme_font_size_override("font_size", 11)
+	price_lbl.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
+	row.add_child(price_lbl)
+
+	var view3d_btn := Button.new()
+	view3d_btn.text = "3D"
+	view3d_btn.tooltip_text = "Preview in 3D"
+	view3d_btn.add_theme_font_size_override("font_size", 11)
+	view3d_btn.custom_minimum_size.x = 30
+	view3d_btn.pressed.connect(func(): view3d_requested.emit(f["id"] as String))
+	row.add_child(view3d_btn)
+
+	var buy_btn := Button.new()
+	buy_btn.text = "Buy"
+	buy_btn.add_theme_font_size_override("font_size", 11)
+	buy_btn.set_meta("price", f["buy_price"] as int)
+	buy_btn.disabled = _gm != null and _gm.budget < (f["buy_price"] as int)
+	buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
+	row.add_child(buy_btn)
+
+	return row
 
 
 # Shows pre-owned items (from starting_inventory). Each entry is {id, count}.
 # The player can sell them for sell_price or place them for free.
 func populate_owned(owned_list: Array, catalog: Array) -> void:
+	_owned_list    = owned_list
+	_owned_catalog = catalog
+	_render_owned_section()
+
+
+func _render_owned_section() -> void:
 	var sep := HSeparator.new()
 	sep.add_theme_constant_override("separation", 4)
 	item_list.add_child(sep)
@@ -88,14 +170,14 @@ func populate_owned(owned_list: Array, catalog: Array) -> void:
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	item_list.add_child(hdr)
 
-	for entry in owned_list:
+	for entry in _owned_list:
 		var fid   := (entry as Dictionary)["id"] as String
 		var count := (entry as Dictionary)["count"] as int
 		var fdata := {}
-		for f in catalog:
+		for f in _owned_catalog:
 			if (f as Dictionary)["id"] == fid:
 				fdata = f as Dictionary; break
-		if fdata.is_empty():
+		if fdata.is_empty() or _is_builder(fdata) != (_category == Category.BUILDER):
 			continue
 
 		for _i in range(count):
