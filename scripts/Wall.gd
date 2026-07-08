@@ -12,6 +12,10 @@ const FLOOR_HEIGHT_TILES := 28  # nominal room height in tiles (≈2.8 m at 10 c
 var floor_id: String = ""
 var floor_label: String = ""
 var floor_type: String = "floor"
+# Set by Main.gd while a Builder-tab tool (wall/column/erase) is active, so
+# this Floor's own click-to-inspect-a-wall _input() doesn't also react to the
+# same press/release the builder tool just handled.
+var input_suppressed: bool = false
 var parent_id: String = ""
 var grid_w: int = 8
 var grid_h: int = 6
@@ -36,8 +40,8 @@ var stair_openings: Array      = []   # same format, but stair footprints from p
 var _use_new_format: bool      = false
 
 var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z) — rasterized cache,
-                                   # derived from the continuous positions below, used by
-                                   # lighting/zones/needs/adjacency (all inherently tile-discrete).
+								   # derived from the continuous positions below, used by
+								   # lighting/zones/needs/adjacency (all inherently tile-discrete).
 var _placed_continuous: Array = []  # [{furniture:Furniture, pos:Vector2}] — precise overlap source of truth
 var floor_z_offset: int = 0       # global Z of this floor's floor level (tiles)
 var zones: Array = []             # [{tiles:Dictionary, functions:Array[String]}] — recalculated on furniture change
@@ -459,6 +463,74 @@ func demolish_segment(idx: int) -> void:
 		grid_draw.queue_redraw()
 
 
+# ── Player-authored building (Builder tab) ──────────────────────────────────
+# Walls added in gameplay are always non-"primary" (demolishable) — permanent
+# structural walls stay level-author-only, authored via LevelEditor.gd.
+
+func can_add_segment(x1: int, y1: int, x2: int, y2: int) -> bool:
+	if x1 != x2 and y1 != y2:
+		return false  # must be axis-aligned, same as every other segment
+	if x1 == x2:
+		for y in range(mini(y1, y2), maxi(y1, y2) + 1):
+			if _placed_any_at(Vector2i(x1, y)):
+				return false
+	else:
+		for x in range(mini(x1, x2), maxi(x1, x2) + 1):
+			if _placed_any_at(Vector2i(x, y1)):
+				return false
+	return true
+
+
+func add_segment(x1: int, y1: int, x2: int, y2: int) -> void:
+	segments.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2, "primary": false, "demolished": false})
+	if grid_draw:
+		_compute_light_map()
+		grid_draw.queue_redraw()
+
+
+func can_place_column(x: int, y: int) -> bool:
+	return not _placed_any_at(Vector2i(x, y))
+
+
+# Click-again-to-remove, mirroring LevelEditor._toggle_column.
+func toggle_column(x: int, y: int) -> void:
+	for i in range(columns.size()):
+		var c := columns[i] as Dictionary
+		if (c["x"] as int) == x and (c["y"] as int) == y:
+			columns.remove_at(i)
+			if grid_draw:
+				_compute_light_map()
+				grid_draw.queue_redraw()
+			return
+	if not can_place_column(x, y):
+		return
+	columns.append({"x": x, "y": y})
+	if grid_draw:
+		_compute_light_map()
+		grid_draw.queue_redraw()
+
+
+# General Builder-tab erase: tries a nearby wall segment first (only ones the
+# player could have added or that are otherwise demolishable), then a column
+# at the given tile. Returns true if something was actually removed.
+func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
+	var idx := find_segment_near(local_pos, 1.5)
+	if idx >= 0:
+		var sd := segments[idx] as Dictionary
+		if not sd.get("primary", false) and not sd.get("demolished", false):
+			demolish_segment(idx)
+			return true
+	for i in range(columns.size()):
+		var c := columns[i] as Dictionary
+		if (c["x"] as int) == tile.x and (c["y"] as int) == tile.y:
+			columns.remove_at(i)
+			if grid_draw:
+				_compute_light_map()
+				grid_draw.queue_redraw()
+			return true
+	return false
+
+
 func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
 	var snap := float(TILE_SIZE) * snap_tiles
 	var best_d := snap
@@ -489,7 +561,7 @@ func _near_edge(local: Vector2, x0: float, y0: float, x1: float, y1: float) -> S
 
 
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or input_suppressed:
 		return
 	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
 		return

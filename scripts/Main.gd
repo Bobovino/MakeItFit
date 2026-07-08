@@ -58,6 +58,13 @@ var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
 var _demolition_mode:   bool = false
 var _demo_overlay:      Control = null
+
+# ── Builder tab tools (free-form geometry editing during play) ────────────
+var _active_builder_tool: String    = ""    # "", "wall", "column", "erase"
+var _builder_drawing:     bool      = false
+var _builder_press_tile:  Vector2i  = Vector2i.ZERO
+var _builder_cur_tile:    Vector2i  = Vector2i.ZERO
+var _builder_ghost:       Line2D    = null
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -83,6 +90,8 @@ func _ready() -> void:
 		inventory.buy_requested.connect(_on_buy_requested)
 	if not inventory.view3d_requested.is_connected(_on_view3d_item_requested):
 		inventory.view3d_requested.connect(_on_view3d_item_requested)
+	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
+		inventory.builder_tool_selected.connect(_on_builder_tool_selected)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
 	view3d_btn.visible = false   # superseded by the persistent 3D view mode
@@ -1251,6 +1260,9 @@ func _input(event: InputEvent) -> void:
 	if _active_paint_type != "":
 		_handle_paint_input(event)
 		return
+	if _active_builder_tool != "":
+		_handle_builder_input(event)
+		return
 	if not _demolition_mode:
 		_handle_view_input(event)
 		return
@@ -1499,6 +1511,117 @@ func _apply_paint(tile: Vector2i, on: bool) -> void:
 	_last_paint_tile = tile
 	_refresh_functions()
 	_update_paint_status()
+
+
+# ── Builder tab tools ───────────────────────────────────────────────────────
+# Free-form geometry editing during play (walls/columns/erase for now).
+# Unlike the paid pre-furnish Demolition Phase (which removes the LEVEL's
+# pre-existing walls at a cost), these are the player's own construction —
+# free to add and free to undo, same as arranging furniture is free.
+
+func _on_builder_tool_selected(tool_id: String) -> void:
+	_cancel_builder_drawing()
+	_active_builder_tool = tool_id
+	for fid in _floors:
+		(_floors[fid] as Floor).input_suppressed = (tool_id != "")
+
+
+func _builder_tile_at(fl: Floor) -> Vector2i:
+	var local := fl.to_local(get_viewport().get_mouse_position())
+	return Vector2i(floori(local.x / Floor.TILE_SIZE), floori(local.y / Floor.TILE_SIZE))
+
+
+func _handle_builder_input(event: InputEvent) -> void:
+	var fl := _floors.get(_current_floor_id) as Floor
+	if not fl:
+		return
+	if event is InputEventMouseButton:
+		var mbe := event as InputEventMouseButton
+		if mbe.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mbe.pressed:
+			if mbe.position.x >= _floor_pane_right_x() or mbe.position.y < TOP_Y or mbe.position.y > BOT_Y:
+				return
+			var tile := _builder_tile_at(fl)
+			match _active_builder_tool:
+				"wall":
+					_builder_press_tile = tile
+					_builder_cur_tile   = tile
+					_builder_drawing    = true
+					_update_builder_ghost(fl)
+				"column":
+					var already := false
+					for c in fl.columns:
+						if (c["x"] as int) == tile.x and (c["y"] as int) == tile.y:
+							already = true
+							break
+					if already or fl.can_place_column(tile.x, tile.y):
+						fl.toggle_column(tile.x, tile.y)
+						Audio.play("place")
+						_refresh_functions()
+					else:
+						Audio.play("error")
+				"erase":
+					var local := fl.to_local(get_viewport().get_mouse_position())
+					if fl.erase_near(local, tile):
+						Audio.play("demolish")
+						_refresh_functions()
+			# Consume the event so Floor.gd's own _input() (wall-edge-click
+			# detection, used by the normal Select mode) doesn't also react
+			# to the same press/release and pop open the Wall Inspector.
+			get_viewport().set_input_as_handled()
+		else:
+			if _builder_drawing:
+				_commit_builder_wall(fl)
+			_builder_drawing = false
+			_clear_builder_ghost()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _builder_drawing:
+		var tile := _builder_tile_at(fl)
+		# Axis-snap to whichever direction has moved further, same as
+		# LevelEditor's wall-drawing preview.
+		if absi(tile.x - _builder_press_tile.x) >= absi(tile.y - _builder_press_tile.y):
+			tile.y = _builder_press_tile.y
+		else:
+			tile.x = _builder_press_tile.x
+		_builder_cur_tile = tile
+		_update_builder_ghost(fl)
+
+
+func _commit_builder_wall(fl: Floor) -> void:
+	var ps := _builder_press_tile
+	var pe := _builder_cur_tile
+	if ps == pe:
+		return
+	if not fl.can_add_segment(ps.x, ps.y, pe.x, pe.y):
+		Audio.play("error")
+		return
+	fl.add_segment(ps.x, ps.y, pe.x, pe.y)
+	Audio.play("place")
+	_refresh_functions()
+
+
+func _update_builder_ghost(fl: Floor) -> void:
+	if not is_instance_valid(_builder_ghost):
+		_builder_ghost = Line2D.new()
+		_builder_ghost.width = 3.0
+		_builder_ghost.default_color = Color(0.95, 0.65, 0.25, 0.9)
+		fl.add_child(_builder_ghost)
+	_builder_ghost.points = PackedVector2Array([
+		Vector2(_builder_press_tile) * Floor.TILE_SIZE,
+		Vector2(_builder_cur_tile)   * Floor.TILE_SIZE,
+	])
+
+
+func _clear_builder_ghost() -> void:
+	if is_instance_valid(_builder_ghost):
+		_builder_ghost.queue_free()
+	_builder_ghost = null
+
+
+func _cancel_builder_drawing() -> void:
+	_builder_drawing = false
+	_clear_builder_ghost()
 
 
 func _get_or_create_paint_piece(type_id: String, fl: Floor) -> PaintedFurniture:

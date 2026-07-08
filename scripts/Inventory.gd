@@ -3,6 +3,7 @@ class_name Inventory
 
 signal buy_requested(furniture_id: String)
 signal view3d_requested(furniture_id: String)
+signal builder_tool_selected(tool_id: String)   # "" = no tool (back to select/place mode)
 
 # "Builder" is anything that shapes the room itself rather than furnishing it
 # (currently just staircases) — kept as a plain id-flag check so future
@@ -20,6 +21,8 @@ var _owned_catalog: Array = []
 @onready var item_list: VBoxContainer   = $ScrollContainer/ItemList
 
 var _filter_box: HBoxContainer = null
+var _builder_tool_box: HBoxContainer = null
+var _builder_tool: String = ""
 
 
 func setup(game_manager: GameManager) -> void:
@@ -68,7 +71,22 @@ func _set_category(cat: int) -> void:
 	if _category == cat:
 		return
 	_category = cat
+	if cat != Category.BUILDER and _builder_tool != "":
+		_builder_tool = ""
+		builder_tool_selected.emit("")
 	_render()
+
+
+func _set_builder_tool(tool_id: String) -> void:
+	_builder_tool = tool_id
+	# Don't rely solely on ButtonGroup's own exclusivity bookkeeping — it can
+	# leave two buttons visually pressed at once when toggled rapidly. Force
+	# every button in the row to match _builder_tool explicitly.
+	if is_instance_valid(_builder_tool_box):
+		for btn in _builder_tool_box.get_children():
+			if btn is Button:
+				(btn as Button).button_pressed = ((btn as Button).get_meta("tool_id", "") == tool_id)
+	builder_tool_selected.emit(_builder_tool)
 
 
 func _is_builder(f: Dictionary) -> bool:
@@ -84,10 +102,13 @@ func _render() -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
+	if _category == Category.BUILDER:
+		item_list.add_child(_build_builder_tool_row())
+
 	var hdr := Label.new()
 	hdr.text = ("ITEMS  (place on the floor plan, or open a wall to hang it there)"
 		if _category == Category.FURNITURE
-		else "BUILDER  (staircases and other room-shaping pieces)")
+		else "STAIRCASES  (room-shaping pieces, bought and placed like furniture)")
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	item_list.add_child(hdr)
@@ -98,6 +119,48 @@ func _render() -> void:
 
 	if not _owned_list.is_empty():
 		_render_owned_section()
+
+
+# Free-form building tools (walls, columns, erase, ...) — distinct from the
+# buyable staircase items below them: these mutate room geometry directly
+# rather than being placed Furniture pieces, so they're driven by a tool
+# selector instead of a Buy button.
+func _build_builder_tool_row() -> VBoxContainer:
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 4)
+
+	var hdr := Label.new()
+	hdr.text = "TOOLS  (drag on the floor plan to build)"
+	hdr.add_theme_font_size_override("font_size", 9)
+	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	wrap.add_child(hdr)
+
+	_builder_tool_box = HBoxContainer.new()
+	_builder_tool_box.add_theme_constant_override("separation", 4)
+	var group := ButtonGroup.new()
+	var specs := [
+		["", "Select"],
+		["wall", "Wall"],
+		["column", "Column"],
+		["erase", "Erase"],
+	]
+	for spec in specs:
+		var tid: String = spec[0]
+		var btn := Button.new()
+		btn.text = spec[1]
+		btn.toggle_mode = true
+		btn.button_group = group
+		btn.button_pressed = (tid == _builder_tool)
+		btn.set_meta("tool_id", tid)
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_set_builder_tool.bind(tid))
+		_builder_tool_box.add_child(btn)
+
+	wrap.add_child(_builder_tool_box)
+	var sep := HSeparator.new()
+	wrap.add_child(sep)
+	return wrap
 
 
 func _build_shop_row(f: Dictionary) -> HBoxContainer:
