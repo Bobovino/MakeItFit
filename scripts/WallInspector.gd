@@ -631,11 +631,11 @@ func _draw_elevation() -> void:
 		var py := o.y * TILE_SIZE
 		var pw := iw * TILE_SIZE
 		var ph := ih * TILE_SIZE
-		draw_area.draw_rect(Rect2(px + 1, py + 1, pw - 2, ph - 2), col)
-		draw_area.draw_rect(Rect2(px + 1, py + 1, pw - 2, ph - 2), Color(0, 0, 0, 0.45), false, 1.0)
+		draw_area.draw_rect(Rect2(px, py, pw, ph), col)
+		draw_area.draw_rect(Rect2(px, py, pw, ph), Color(0, 0, 0, 0.45), false, 1.0)
 		_draw_label(px + 3, py + 11, float(pw - 6), fdata["name"] as String)
 		var depth_px: int = (fdata.get("floor_depth", 1) as int) * TILE_SIZE
-		draw_area.draw_rect(Rect2(px + 1, rh - depth_px, pw - 2, depth_px),
+		draw_area.draw_rect(Rect2(px, rh - depth_px, pw, depth_px),
 			Color(col.r, col.g, col.b, 0.18))
 
 	# ── Wall item drag ghost ──────────────────────────────────────────────────
@@ -653,10 +653,10 @@ func _draw_elevation() -> void:
 			)
 			var col := Color("#" + (fdata.get("color", "888888") as String))
 			col.a = 0.60
-			draw_area.draw_rect(Rect2(at.x * TILE_SIZE + 1, at.y * TILE_SIZE + 1,
-				iw * TILE_SIZE - 2, ih * TILE_SIZE - 2), col)
-			draw_area.draw_rect(Rect2(at.x * TILE_SIZE + 1, at.y * TILE_SIZE + 1,
-				iw * TILE_SIZE - 2, ih * TILE_SIZE - 2), Color.WHITE, false, 1.5)
+			draw_area.draw_rect(Rect2(at.x * TILE_SIZE, at.y * TILE_SIZE,
+				iw * TILE_SIZE, ih * TILE_SIZE), col)
+			draw_area.draw_rect(Rect2(at.x * TILE_SIZE, at.y * TILE_SIZE,
+				iw * TILE_SIZE, ih * TILE_SIZE), Color.WHITE, false, 1.5)
 
 	# ── Floor item drag ghost ─────────────────────────────────────────────────
 	if _is_dragging and _drag_is_floor and _drag_floor_furniture:
@@ -673,8 +673,8 @@ func _draw_elevation() -> void:
 			var pw := item_w * TILE_SIZE
 			var ph := wall_h * TILE_SIZE
 			var py := rh - ph
-			draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), col)
-			draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), Color.WHITE, false, 1.5)
+			draw_area.draw_rect(Rect2(px, py, pw, ph), col)
+			draw_area.draw_rect(Rect2(px, py, pw, ph), Color.WHITE, false, 1.5)
 
 	# ── Shop selection ghost — follows the cursor so you can see the item before
 	# committing, flush against the floor for floor-standing furniture ─────────
@@ -700,8 +700,8 @@ func _draw_elevation() -> void:
 			var ih := ih_t * TILE_SIZE
 			var ghost := Color("#" + (fdata.get("color", "888888") as String))
 			ghost.a = 0.45
-			draw_area.draw_rect(Rect2(px + 1, py + 1, iw - 2, ih - 2), ghost)
-			draw_area.draw_rect(Rect2(px + 1, py + 1, iw - 2, ih - 2), Color.WHITE, false, 1.5)
+			draw_area.draw_rect(Rect2(px, py, iw, ih), ghost)
+			draw_area.draw_rect(Rect2(px, py, iw, ih), Color.WHITE, false, 1.5)
 			_draw_label(px + 3, py + 12, float(iw - 6), fdata["name"] as String)
 
 
@@ -771,8 +771,8 @@ func _draw_floor_piece(f: Furniture, wx: int, floor_baseline_px: float, is_dragg
 	var wall_h: int = fdata.get("wall_h", 5) as int
 	var ph := wall_h * TILE_SIZE
 	var py := floor_baseline_px - ph
-	draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), col)
-	draw_area.draw_rect(Rect2(px + 1, py, pw - 2, ph), Color(0, 0, 0, 0.30), false, 1.0)
+	draw_area.draw_rect(Rect2(px, py, pw, ph), col)
+	draw_area.draw_rect(Rect2(px, py, pw, ph), Color(0, 0, 0, 0.30), false, 1.0)
 	if not is_dragged:
 		_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
 
@@ -803,8 +803,8 @@ func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: 
 		draw_area.draw_line(Vector2(px + 1, ry), Vector2(px + 1 + leg_w * 1.6, ry), outline, 1.2)
 
 	# Platform (mattress + frame)
-	draw_area.draw_rect(Rect2(px + 1, plat_top_px, pw - 2, PLATFORM_H * TILE_SIZE), col)
-	draw_area.draw_rect(Rect2(px + 1, plat_top_px, pw - 2, PLATFORM_H * TILE_SIZE), outline, false, 1.0)
+	draw_area.draw_rect(Rect2(px, plat_top_px, pw, PLATFORM_H * TILE_SIZE), col)
+	draw_area.draw_rect(Rect2(px, plat_top_px, pw, PLATFORM_H * TILE_SIZE), outline, false, 1.0)
 	# Guard-rail line along the top edge
 	draw_area.draw_line(Vector2(px + 2, plat_top_px + 2), Vector2(px + pw - 2, plat_top_px + 2),
 		Color(0, 0, 0, 0.45), 1.5)
