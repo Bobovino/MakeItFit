@@ -65,6 +65,7 @@ var _builder_drawing:     bool      = false
 var _builder_press_tile:  Vector2i  = Vector2i.ZERO
 var _builder_cur_tile:    Vector2i  = Vector2i.ZERO
 var _builder_ghost:       Line2D    = null
+var _builder_press_consumed: bool   = false  # only consume the matching release
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -1542,6 +1543,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 		if mbe.pressed:
 			if mbe.position.x >= _floor_pane_right_x() or mbe.position.y < TOP_Y or mbe.position.y > BOT_Y:
 				return
+			_builder_press_consumed = true
 			var tile := _builder_tile_at(fl)
 			match _active_builder_tool:
 				"wall":
@@ -1570,7 +1572,13 @@ func _handle_builder_input(event: InputEvent) -> void:
 			# detection, used by the normal Select mode) doesn't also react
 			# to the same press/release and pop open the Wall Inspector.
 			get_viewport().set_input_as_handled()
-		else:
+		elif _builder_press_consumed:
+			# Only swallow the release that matches a press we actually
+			# handled — otherwise a release over UI (e.g. a Builder-tab
+			# button click that started elsewhere) gets eaten here too,
+			# since _input() runs before Control._gui_input and leaves the
+			# button's own click never firing.
+			_builder_press_consumed = false
 			if _builder_drawing:
 				_commit_builder_wall(fl)
 			_builder_drawing = false
@@ -1621,6 +1629,7 @@ func _clear_builder_ghost() -> void:
 
 func _cancel_builder_drawing() -> void:
 	_builder_drawing = false
+	_builder_press_consumed = false
 	_clear_builder_ghost()
 
 
