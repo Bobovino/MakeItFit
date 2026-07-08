@@ -1143,8 +1143,16 @@ func _has_foldable_furniture() -> bool:
 func _level_has_demolishable_partitions() -> bool:
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
+		# New-format levels (all real level data today) use segments, where
+		# "primary" is the load-bearing/permanent flag — see Wall.gd's
+		# demolish_segment(), which refuses to touch a primary segment.
+		for sd in fl.segments:
+			var s := sd as Dictionary
+			if not s.get("primary", false) and not s.get("demolished", false):
+				return true
+		# Old-format fallback — no real level uses this today, kept for safety.
 		for p in fl.partitions:
-			if not p.get("load_bearing", false):
+			if not p.get("load_bearing", false) and not p.get("demolished", false):
 				return true
 	return false
 
@@ -1169,11 +1177,16 @@ func _enter_demolition_phase() -> void:
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	# Anchors default to 0 (top-left) — offsets below are absolute canvas
+	# pixels, matching TopBar/Divider/WallInspector's convention elsewhere in
+	# this scene. PRESET_CENTER_RIGHT was pinning both anchors to the right
+	# edge, which pushed this panel far off-screen (offset_left=868 measured
+	# from x=1280, landing around x=2148) — the demolition overlay has never
+	# actually been visible until this fix.
 	panel.offset_left = 868
-	panel.offset_right = -4
+	panel.offset_right = 1276
 	panel.offset_top = 60
-	panel.offset_bottom = -4
+	panel.offset_bottom = 716
 	_demo_overlay.add_child(panel)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -1248,9 +1261,29 @@ func _input(event: InputEvent) -> void:
 	if not fl:
 		return
 	var local := fl.to_local(get_viewport().get_mouse_position())
+
+	# New-format levels (all real level data today): hit-test against the
+	# actual segment geometry via the same helper Wall.gd's own wall-edge
+	# click detection uses, rather than reconstructing hit math here.
+	var seg_idx := fl.find_segment_near(local, 1.5)
+	if seg_idx >= 0:
+		var sd: Dictionary = fl.segments[seg_idx]
+		if sd.get("primary", false) or sd.get("demolished", false):
+			return
+		var seg_cost: int = sd.get("demolish_cost", 500) as int
+		if gm.budget < seg_cost:
+			Audio.play("error")
+			return
+		fl.demolish_segment(seg_idx)
+		gm.spend(seg_cost)
+		_update_demo_budget_label()
+		Audio.play("demolish")
+		get_viewport().set_input_as_handled()
+		return
+
+	# Old-format fallback — no real level uses this today, kept for safety.
 	var tx := int(local.x / Floor.TILE_SIZE)
 	var ty := int(local.y / Floor.TILE_SIZE)
-
 	for i in range(fl.partitions.size()):
 		var p: Dictionary = fl.partitions[i]
 		if p.get("load_bearing", false) or p.get("demolished", false):
