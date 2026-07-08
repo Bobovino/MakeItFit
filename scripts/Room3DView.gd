@@ -1,12 +1,18 @@
 extends Control
 class_name Room3DView
 
-# Presentation-only low-poly 3D viewer. Builds a throwaway diorama of the
-# current floor from the same data the 2D blueprint views use (grid_w/h,
-# wall_h, floor_depth, color) — it never writes back to Floor/Furniture, and
-# has no placement logic. Purely for "wow moment" reveals.
+# Low-poly 3D room view, built as a diorama from the same data the 2D
+# blueprint views use (grid_w/h, wall_h, floor_depth, color). Floor furniture
+# here is a first-class interactive surface, not just a "wow moment" reveal:
+# it can be picked up, dragged, bought, and sold directly in 3D, going through
+# the exact same Floor.can_place/snap_to_wall/place_furniture calls the 2D
+# views use — there's only one source of truth (Floor), this is just another
+# way to look at and edit it. Wall-mounted items aren't editable here yet.
 
 signal closed
+signal sell_requested(furniture: Furniture)   # right-click on a floor piece — Main.gd handles the refund
+signal buy_confirmed(furniture: Furniture)    # a piece bought via start_buying() was placed
+signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was backed out (Esc)
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -39,7 +45,14 @@ var _dragging_furniture: bool = false
 var _drag_target:   Dictionary = {}
 var _drag_offset:   Vector2    = Vector2.ZERO   # tile-space grab offset
 var _drag_orig_pos: Vector3    = Vector3.ZERO
-var _drag_last_tile: Vector2i  = Vector2i.ZERO
+var _drag_last_tile: Vector2   = Vector2.ZERO   # continuous — 3D drag is no longer grid-snapped
+
+# Buying a new floor item directly in 3D: Main.gd instantiates+setup()s the
+# Furniture node (same as it does for the 2D purchase flow) and hands it here
+# via start_buying() instead of Furniture.begin_placement(); everything after
+# that — ghost follow, snap, commit — reuses the drag machinery above.
+var _buying_furniture: Furniture = null
+var _buying_mesh: MeshInstance3D = null
 
 # Walls between the camera and the room center fade out so the view isn't
 # blocked — each entry is {mat: StandardMaterial3D, normal: Vector3, base: Color}.
@@ -87,6 +100,9 @@ func _on_container_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_press_pos = mb.position
+				if _buying_furniture:
+					_confirm_buy(_to_vp(mb.position))
+					return
 				var vp_pos := _to_vp(mb.position)
 				var hit := _pick_furniture(vp_pos)
 				if not hit.is_empty():
@@ -99,6 +115,13 @@ func _on_container_input(event: InputEvent) -> void:
 				elif mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
 					_on_item_clicked()
 				_dragging = false
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if _buying_furniture:
+				_cancel_buy()
+				return
+			var hit := _pick_furniture(_to_vp(mb.position))
+			if not hit.is_empty():
+				_sell_furniture(hit)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
 			_dist = maxf(1.5, _dist - 0.5)
 			_update_camera()
@@ -107,12 +130,23 @@ func _on_container_input(event: InputEvent) -> void:
 			_update_camera()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		if _dragging_furniture:
+		if _buying_furniture:
+			_update_buy_ghost(_to_vp(mm.position))
+		elif _dragging_furniture:
 			_update_furniture_drag(_to_vp(mm.position))
 		elif _dragging:
 			_yaw   -= mm.relative.x * 0.4
 			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
 			_update_camera()
+
+
+# gui_input only reliably delivers mouse/touch events here (the container
+# doesn't hold keyboard focus), so Esc-to-cancel a purchase is handled through
+# the normal _input() channel instead, same as Furniture.gd's 2D equivalent.
+func _input(event: InputEvent) -> void:
+	if _buying_furniture and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_cancel_buy()
+		get_viewport().set_input_as_handled()
 
 
 # Picking / dragging helpers
@@ -189,14 +223,76 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 
 
 func _update_furniture_drag(vp_pos: Vector2) -> void:
+	# Continuous — no rounding to a tile grid. 3D is the source of truth now,
+	# so the piece follows the cursor at whatever fractional position it's at;
+	# snap_to_wall() below (on release) is the only thing that pulls it flush.
 	var tile := _room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset
-	var grid := Vector2i(roundi(tile.x), roundi(tile.y))
-	_drag_last_tile = grid
+	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var size: Vector3 = _drag_target["size"]
-	mesh.position.x = (grid.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
-	mesh.position.z = (grid.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
+	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
 	_drag_target["pos"] = mesh.position
+
+
+# Mirrors Furniture.begin_placement(): Main.gd creates and setup()s the
+# Furniture node for a purchase (deducting budget only once it's actually
+# placed, same as the 2D flow), then hands it here instead of calling
+# begin_placement() so the ghost follows the 3D ground-raycast instead of a
+# 2D mouse position.
+func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
+	_buying_furniture = furniture
+	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
+	var col := Color("#" + (fdata.get("color", "888888") as String))
+	col.a = 0.55
+	var size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
+	_buying_mesh = _box(size, Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5), col)
+
+
+func _update_buy_ghost(vp_pos: Vector2) -> void:
+	var tile := _room_local_to_tile(_ground_hit(vp_pos))
+	var size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
+	_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
+	_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+
+
+func _confirm_buy(vp_pos: Vector2) -> void:
+	if not _apt_floor:
+		return
+	var tile := _room_local_to_tile(_ground_hit(vp_pos))
+	var snapped := _apt_floor.snap_to_wall(_buying_furniture, tile)
+	if not _apt_floor.can_place(_buying_furniture, snapped):
+		return
+	_apt_floor.place_furniture(_buying_furniture, snapped)
+	var f := _buying_furniture
+	var size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
+	var mat := _buying_mesh.material_override as StandardMaterial3D
+	if mat:
+		mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
+	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": size})
+	_buying_furniture = null
+	_buying_mesh = null
+	buy_confirmed.emit(f)
+
+
+func _cancel_buy() -> void:
+	var f := _buying_furniture
+	if is_instance_valid(_buying_mesh):
+		_buying_mesh.queue_free()
+	_buying_furniture = null
+	_buying_mesh = null
+	buy_cancelled.emit(f)
+
+
+func _sell_furniture(hit: Dictionary) -> void:
+	var f: Furniture = hit["furniture"]
+	var mesh: MeshInstance3D = hit["mesh"]
+	for i in range(_furniture_entries.size() - 1, -1, -1):
+		if _furniture_entries[i]["furniture"] == f:
+			_furniture_entries.remove_at(i)
+	if is_instance_valid(mesh):
+		mesh.queue_free()
+	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
 
 
 func _finish_furniture_drag() -> void:

@@ -22,7 +22,7 @@ func _play(sound: String) -> void:
 var furniture_id: String = ""
 var grid_w: int = 1
 var grid_h: int = 1
-var grid_pos: Vector2i = Vector2i.ZERO
+var grid_pos: Vector2 = Vector2.ZERO   # continuous tile-space position — 3D is the source of truth
 var functions: Array = []
 var buy_price: int = 0
 var sell_price: int = 0
@@ -51,7 +51,7 @@ var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 var rail_axis:  String = ""   # "h" | "v" | "" = free
 var rail_start: int    = -1   # first valid tile offset along the rail (-1 = unclamped)
 var rail_end:   int    = -1   # last valid tile offset along the rail
-var _rail_lock: int    = -1   # locked row (h) or column (v) set on drag start
+var _rail_lock: float  = -1.0   # locked row (h) or column (v) set on drag start
 
 # Rail + moments: a rail piece can be slid into a "reveal zone" (a sub-range
 # along its own rail) to grant extra functions while it sits there — e.g. a
@@ -61,7 +61,7 @@ var _rail_lock: int    = -1   # locked row (h) or column (v) set on drag start
 var reveal_start:     int    = -1   # rail-local coord where the reveal zone begins (-1 = none)
 var reveal_end:       int    = -1   # rail-local coord where the reveal zone ends
 var reveal_functions: Array  = []   # extra functions granted while inside the reveal zone
-var moment_rail_pos:  Dictionary = {}   # moment_id -> Vector2i grid_pos left by the player
+var moment_rail_pos:  Dictionary = {}   # moment_id -> Vector2 grid_pos left by the player
 
 static var test_mode_active: bool = false
 var _extended_conflict: bool = false
@@ -161,16 +161,16 @@ func set_moment_view(moment_id: String) -> void:
 	# Rail furniture: snap back to wherever the player left it FOR this moment
 	# (defaults to its current/spawn position the first time a moment is seen).
 	if rail_axis != "" and moment_rail_pos.has(moment_id):
-		var target: Vector2i = moment_rail_pos[moment_id]
+		var target: Vector2 = moment_rail_pos[moment_id]
 		if target != grid_pos and _wall_ref:
 			_wall_ref.place_furniture(self, target)
-			position = Vector2(target.x * TILE_SIZE, target.y * TILE_SIZE)
+			position = target * TILE_SIZE
 			queue_redraw()
 
 
 # True when `pos` (a grid position along this piece's own rail) sits inside
 # its reveal zone — e.g. an armario pulled out of its hidden dock.
-func _is_revealed_at(pos: Vector2i) -> bool:
+func _is_revealed_at(pos: Vector2) -> bool:
 	if rail_axis == "" or reveal_start < 0 or reveal_end < 0:
 		return false
 	var coord := pos.x if rail_axis == "h" else pos.y
@@ -185,7 +185,7 @@ func functions_for_moment(moment_id: String) -> Array:
 		var extended: bool = moment_fold_state.get(moment_id, false) as bool
 		return extended_functions_arr if extended else folded_functions_arr
 	if rail_axis != "" and not reveal_functions.is_empty():
-		var pos: Vector2i = moment_rail_pos.get(moment_id, grid_pos) as Vector2i
+		var pos: Vector2 = moment_rail_pos.get(moment_id, grid_pos) as Vector2
 		if _is_revealed_at(pos):
 			var out := functions.duplicate()
 			for fn in reveal_functions:
@@ -916,16 +916,17 @@ func _draw_cotes(fW: float, fH: float) -> void:
 			"%.1fm" % (d_e * 0.1), HORIZONTAL_ALIGNMENT_LEFT, -1, FS, COL)
 
 
-func set_grid_pos(gx: int, gy: int) -> void:
-	grid_pos = Vector2i(gx, gy)
+func set_grid_pos(gx: float, gy: float) -> void:
+	grid_pos = Vector2(gx, gy)
 	position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
 
 
 func get_occupied_tiles() -> Array:
 	var tiles: Array = []
+	var origin := Vector2i(floori(grid_pos.x), floori(grid_pos.y))
 	for x in range(grid_w):
 		for y in range(grid_h):
-			tiles.append(Vector2i(grid_pos.x + x, grid_pos.y + y))
+			tiles.append(Vector2i(origin.x + x, origin.y + y))
 	return tiles
 
 
@@ -938,13 +939,14 @@ func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 	if foldable and extended_add_h > 0:
 		var extended: bool = moment_fold_state.get(moment_id, false) as bool
 		h = (_base_grid_h + extended_add_h) if extended else _base_grid_h
-	var pos: Vector2i = grid_pos
+	var pos: Vector2 = grid_pos
 	if rail_axis != "" and moment_rail_pos.has(moment_id):
 		pos = moment_rail_pos[moment_id]
+	var origin := Vector2i(floori(pos.x), floori(pos.y))
 	var tiles: Array = []
 	for x in range(grid_w):
 		for y in range(h):
-			tiles.append(Vector2i(pos.x + x, pos.y + y))
+			tiles.append(Vector2i(origin.x + x, origin.y + y))
 	return tiles
 
 
@@ -958,9 +960,9 @@ func _input(event: InputEvent) -> void:
 		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			if Furniture.is_in_floor_pane.is_valid() and not Furniture.is_in_floor_pane.call(event.position):
 				return   # click landed on another panel (e.g. Wall Inspector) — let it through
-			var sx := int(position.x / TILE_SIZE)
-			var sy := int(position.y / TILE_SIZE)
-			var snap_pos := _wall_ref.snap_to_wall(self, Vector2i(sx, sy)) if _wall_ref else Vector2i(sx, sy)
+			var sx := position.x / TILE_SIZE
+			var sy := position.y / TILE_SIZE
+			var snap_pos := _wall_ref.snap_to_wall(self, Vector2(sx, sy)) if _wall_ref else Vector2(sx, sy)
 			if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
 				_play("error")
 				get_viewport().set_input_as_handled()
@@ -1037,23 +1039,23 @@ func _drag(mouse_pos: Vector2) -> void:
 	if not _wall_ref:
 		return
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
-	var snapped_x := int(target.x / TILE_SIZE)
-	var snapped_y := int(target.y / TILE_SIZE)
+	var tx := target.x / TILE_SIZE
+	var ty := target.y / TILE_SIZE
 	if rail_axis == "h" and _rail_lock >= 0:
-		snapped_y = _rail_lock
-		var mn_x := 0                        if rail_start < 0 else rail_start
-		var mx_x := _wall_ref.grid_w - grid_w if rail_end   < 0 else rail_end
-		snapped_x = clampi(snapped_x, mn_x, mx_x)
+		ty = _rail_lock
+		var mn_x := 0.0                              if rail_start < 0 else float(rail_start)
+		var mx_x := float(_wall_ref.grid_w - grid_w) if rail_end   < 0 else float(rail_end)
+		tx = clampf(tx, mn_x, mx_x)
 	elif rail_axis == "v" and _rail_lock >= 0:
-		snapped_x = _rail_lock
-		var mn_y := 0                        if rail_start < 0 else rail_start
-		var mx_y := _wall_ref.grid_h - grid_h if rail_end   < 0 else rail_end
-		snapped_y = clampi(snapped_y, mn_y, mx_y)
+		tx = _rail_lock
+		var mn_y := 0.0                              if rail_start < 0 else float(rail_start)
+		var mx_y := float(_wall_ref.grid_h - grid_h) if rail_end   < 0 else float(rail_end)
+		ty = clampf(ty, mn_y, mx_y)
 	else:
-		snapped_x = clampi(snapped_x, 0, _wall_ref.grid_w - grid_w)
-		snapped_y = clampi(snapped_y, 0, _wall_ref.grid_h - grid_h)
-	position = Vector2(snapped_x * TILE_SIZE, snapped_y * TILE_SIZE)
-	_wall_ref.set_floor_drag_ghost(self, snapped_x, snapped_y)
+		tx = clampf(tx, 0.0, float(_wall_ref.grid_w - grid_w))
+		ty = clampf(ty, 0.0, float(_wall_ref.grid_h - grid_h))
+	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
+	_wall_ref.set_floor_drag_ghost(self, tx, ty)
 	queue_redraw()
 
 
@@ -1062,12 +1064,12 @@ func _rotate() -> void:
 	var new_w := grid_h
 	var new_h := grid_w
 	if _wall_ref:
-		var cx := clampi(grid_pos.x, 0, _wall_ref.grid_w - new_w)
-		var cy := clampi(grid_pos.y, 0, _wall_ref.grid_h - new_h)
+		var cx := clampf(grid_pos.x, 0.0, float(_wall_ref.grid_w - new_w))
+		var cy := clampf(grid_pos.y, 0.0, float(_wall_ref.grid_h - new_h))
 		grid_w = new_w
 		grid_h = new_h
 		rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
-		_wall_ref.place_furniture(self, Vector2i(cx, cy))
+		_wall_ref.place_furniture(self, Vector2(cx, cy))
 	else:
 		grid_w = new_w
 		grid_h = new_h
@@ -1083,9 +1085,9 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 		_wall_ref.grid_draw.queue_redraw()
 		_wall_ref.clear_floor_drag_ghost()
 	queue_redraw()
-	var snapped_x := int(position.x / TILE_SIZE)
-	var snapped_y := int(position.y / TILE_SIZE)
-	var snap_pos := _wall_ref.snap_to_wall(self, Vector2i(snapped_x, snapped_y)) if _wall_ref else Vector2i(snapped_x, snapped_y)
+	var snapped_x := position.x / TILE_SIZE
+	var snapped_y := position.y / TILE_SIZE
+	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(snapped_x, snapped_y)) if _wall_ref else Vector2(snapped_x, snapped_y)
 
 	if _wall_ref and _wall_ref.can_place(self, snap_pos):
 		_wall_ref.place_furniture(self, snap_pos)

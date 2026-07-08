@@ -581,14 +581,14 @@ func _draw_elevation() -> void:
 
 	# ── Floor-adjacent pieces (this floor, interactive) ───────────────────────
 	for entry in _apt_floor.get_adjacent_furniture(_edge):
-		_draw_floor_piece(entry["furniture"], entry["wall_x"] as int, rh,
+		_draw_floor_piece(entry["furniture"], entry["wall_x"] as float, rh,
 			_is_dragging and _drag_is_floor and _drag_floor_furniture == entry["furniture"])
 
 	# ── Sibling floor pieces (base ↔ loft, read-only context) ─────────────────
 	if _other_floor:
 		var other_baseline := mezz_y if _other_floor.floor_type == "loft" else rh
 		for entry in _other_floor.get_adjacent_furniture(_edge):
-			_draw_floor_piece(entry["furniture"], entry["wall_x"] as int, other_baseline, false, true)
+			_draw_floor_piece(entry["furniture"], entry["wall_x"] as float, other_baseline, false, true)
 
 	# ── Mezzanine slab ───────────────────────────────────────────────────────
 	# Show mezzanine tiles adjacent to this wall as an amber platform slab.
@@ -767,7 +767,7 @@ func _get_wall_def() -> Dictionary:
 	return {}
 
 
-func _draw_floor_piece(f: Furniture, wx: int, floor_baseline_px: float, is_dragged: bool, is_context: bool = false) -> void:
+func _draw_floor_piece(f: Furniture, wx: float, floor_baseline_px: float, is_dragged: bool, is_context: bool = false) -> void:
 	var fdata := _find_by_id(f.furniture_id)
 	if fdata.is_empty():
 		return

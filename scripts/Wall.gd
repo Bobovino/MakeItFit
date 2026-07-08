@@ -35,7 +35,10 @@ var stairs_data:    Array      = []   # [{rect:Rect2i, direction:String}] one en
 var stair_openings: Array      = []   # same format, but stair footprints from parent floor (for loft rendering)
 var _use_new_format: bool      = false
 
-var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z)
+var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z) — rasterized cache,
+                                   # derived from the continuous positions below, used by
+                                   # lighting/zones/needs/adjacency (all inherently tile-discrete).
+var _placed_continuous: Array = []  # [{furniture:Furniture, pos:Vector2}] — precise overlap source of truth
 var floor_z_offset: int = 0       # global Z of this floor's floor level (tiles)
 var zones: Array = []             # [{tiles:Dictionary, functions:Array[String]}] — recalculated on furniture change
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
@@ -85,6 +88,22 @@ func _placed_remove_tile(tile: Vector2i, furniture: Furniture) -> void:
 	arr.erase(furniture)
 	if arr.is_empty():
 		_placed.erase(tile)
+
+# Rasterizes a continuous rect (float origin, integer w/h in tiles) down to
+# the set of integer tiles it overlaps at least partially — the bridge that
+# lets lighting/zones/needs/adjacency (all inherently tile-discrete systems)
+# keep working unchanged while furniture position itself is continuous.
+func _rect_tiles(at: Vector2, w: int, h: int) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	var x0 := floori(at.x)
+	var y0 := floori(at.y)
+	var x1 := floori(at.x + w - 0.001)
+	var y1 := floori(at.y + h - 0.001)
+	for x in range(x0, x1 + 1):
+		for y in range(y0, y1 + 1):
+			tiles.append(Vector2i(x, y))
+	return tiles
+
 
 func _get_all_placed_unique() -> Array:
 	var seen: Array = []
@@ -518,53 +537,66 @@ func _input(event: InputEvent) -> void:
 	wall_edge_clicked.emit(edge)
 
 
-const WALL_SNAP := 3   # tiles — placing within this distance of a wall snaps flush against it
+const WALL_SNAP := 3.0   # tiles — placing within this distance of a wall snaps flush against it
 
 # Nudges a placement position flush against any wall it's within WALL_SNAP
 # tiles of, so "close to the wall" in the top-down actually means "touching"
 # everywhere that reads adjacency (Wall Inspector mirror, occlusion, etc.),
 # not just visually close at the floor plan's small scale.
-func snap_to_wall(furniture: Furniture, at: Vector2i) -> Vector2i:
+func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 	var bounds := get_room_bounds()
 	var snap_pos := at
 	# bounds.position itself is the wall's own tile (blocked by
 	# _partition_tile_set), so touching the west/north wall means sitting one
-	# tile in from it. The far side needs no such offset: subtracting the
-	# furniture's size from bounds.position + bounds.size already lands one
-	# tile short of that wall's own blocked tile.
+	# tile in from it — genuinely so now, not a hack: the wall occupies the
+	# continuous interval [bounds.position, bounds.position+1), so a flush
+	# furniture edge really does sit at exactly bounds.position + 1.0. The far
+	# side needs no such offset: subtracting the furniture's size from
+	# bounds.position + bounds.size already lands one tile short of that
+	# wall's own blocked tile.
 	if at.x - bounds.position.x <= WALL_SNAP:
-		snap_pos.x = bounds.position.x + 1
+		snap_pos.x = bounds.position.x + 1.0
 	elif (bounds.position.x + bounds.size.x) - (at.x + furniture.grid_w) <= WALL_SNAP:
 		snap_pos.x = bounds.position.x + bounds.size.x - furniture.grid_w
 	if at.y - bounds.position.y <= WALL_SNAP:
-		snap_pos.y = bounds.position.y + 1
+		snap_pos.y = bounds.position.y + 1.0
 	elif (bounds.position.y + bounds.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP:
 		snap_pos.y = bounds.position.y + bounds.size.y - furniture.grid_h
 	if snap_pos == at or can_place(furniture, snap_pos):
 		return snap_pos
 	# Full snap blocked (e.g. corner obstruction) — try each axis independently
-	var x_only := Vector2i(snap_pos.x, at.y)
+	var x_only := Vector2(snap_pos.x, at.y)
 	if x_only != at and can_place(furniture, x_only):
 		return x_only
-	var y_only := Vector2i(at.x, snap_pos.y)
+	var y_only := Vector2(at.x, snap_pos.y)
 	if y_only != at and can_place(furniture, y_only):
 		return y_only
 	return at
 
 
-func can_place(furniture: Furniture, at: Vector2i) -> bool:
+func can_place(furniture: Furniture, at: Vector2) -> bool:
 	var blocked := _partition_tile_set()
-	for x in range(furniture.grid_w):
-		for y in range(furniture.grid_h):
-			var tile := Vector2i(at.x + x, at.y + y)
-			if not is_floor_tile(tile):
-				return false
-			if not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
-				return false
-			if _placed_overlapping_z(tile, furniture.z_bottom, furniture.z_top, furniture) != null:
-				return false
-			if tile in blocked:
-				return false
+	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
+		if not is_floor_tile(tile):
+			return false
+		if not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
+			return false
+		if tile in blocked:
+			return false
+
+	# Furniture-vs-furniture overlap: precise continuous rects + Z-range test,
+	# not tile-quantized — two pieces can sit flush at a fractional boundary
+	# without a false collision from tile rounding.
+	var new_rect := Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))
+	for entry in _placed_continuous:
+		var f: Furniture = entry["furniture"]
+		if f == furniture:
+			continue
+		if furniture.z_top <= f.z_bottom or furniture.z_bottom >= f.z_top:
+			continue   # different Z layers (e.g. loft above, ground below) never collide
+		var other_rect := Rect2(entry["pos"] as Vector2, Vector2(f.grid_w, f.grid_h))
+		if new_rect.intersects(other_rect):
+			return false
 
 	# Sloped ceiling: tall furniture blocked in low zones
 	if furniture.height_category == "tall" and not sloped_ceiling.is_empty():
@@ -576,26 +608,22 @@ func can_place(furniture: Furniture, at: Vector2i) -> bool:
 		var max_h  := sc.get("max_h", 2.4) as float
 		var span   := float(high_e - low_s)
 		if span > 0:
-			for x in range(furniture.grid_w):
-				for y in range(furniture.grid_h):
-					var tile := Vector2i(at.x + x, at.y + y)
-					var coord := tile.x if axis == "x" else tile.y
-					var frac  := clampf(float(coord - low_s) / span, 0.0, 1.0)
-					var ceil_h := min_h + frac * (max_h - min_h)
-					if ceil_h < 2.0:
-						return false
+			for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
+				var coord := tile.x if axis == "x" else tile.y
+				var frac  := clampf(float(coord - low_s) / span, 0.0, 1.0)
+				var ceil_h := min_h + frac * (max_h - min_h)
+				if ceil_h < 2.0:
+					return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
-	var new_rect := Rect2i(at.x, at.y, furniture.grid_w, furniture.grid_h)
-	for item in _get_all_placed_unique():
-		var f := item as Furniture
+	for entry in _placed_continuous:
+		var f: Furniture = entry["furniture"]
 		if f == furniture or f.ghost_radius <= 0:
 			continue
-		var ghost := Rect2i(
-			f.grid_pos.x - f.ghost_radius,
-			f.grid_pos.y - f.ghost_radius,
-			f.grid_w + f.ghost_radius * 2,
-			f.grid_h + f.ghost_radius * 2
+		var fpos: Vector2 = entry["pos"]
+		var ghost := Rect2(
+			fpos - Vector2(f.ghost_radius, f.ghost_radius),
+			Vector2(f.grid_w + f.ghost_radius * 2, f.grid_h + f.ghost_radius * 2)
 		)
 		if ghost.intersects(new_rect):
 			return false
@@ -603,16 +631,16 @@ func can_place(furniture: Furniture, at: Vector2i) -> bool:
 	return true
 
 
-func place_furniture(furniture: Furniture, at: Vector2i) -> void:
+func place_furniture(furniture: Furniture, at: Vector2) -> void:
 	_remove_from_grid(furniture)
-	for x in range(furniture.grid_w):
-		for y in range(furniture.grid_h):
-			_placed_add(Vector2i(at.x + x, at.y + y), furniture)
+	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
+		_placed_add(tile, furniture)
+	_placed_continuous.append({"furniture": furniture, "pos": at})
 	furniture.grid_pos = at
-	furniture.position = Vector2(at.x * TILE_SIZE, at.y * TILE_SIZE)
+	furniture.position = at * TILE_SIZE
 	# Stair furniture: register block in stairs_data + populate stair_mask
 	if furniture.is_stair:
-		_register_stair(furniture, at)
+		_register_stair(furniture, Vector2i(floori(at.x), floori(at.y)))
 	_compute_light_map()
 	_recalculate_zones()
 	furniture_changed.emit()
@@ -648,9 +676,8 @@ func _recalculate_zones() -> void:
 		var f := item as Furniture
 		if not f.zone_divider:
 			continue
-		for dx in range(f.grid_w):
-			for dy in range(f.grid_h):
-				divider_tiles[Vector2i(f.grid_pos.x + dx, f.grid_pos.y + dy)] = true
+		for t in _rect_tiles(f.grid_pos, f.grid_w, f.grid_h):
+			divider_tiles[t] = true
 
 	# BFS flood-fill to find connected components
 	var visited: Dictionary = {}
@@ -679,17 +706,15 @@ func _recalculate_zones() -> void:
 			if f.zone_divider:
 				continue
 			var found := false
-			for dx in range(f.grid_w):
-				if found: break
-				for dy in range(f.grid_h):
-					if Vector2i(f.grid_pos.x + dx, f.grid_pos.y + dy) in zone_tiles:
-						for fn in f.functions:
-							if fn not in zone_fns:
-								zone_fns.append(fn as String)
-						if f.furniture_id not in zone_fids:
-							zone_fids.append(f.furniture_id)
-						found = true
-						break
+			for ft in _rect_tiles(f.grid_pos, f.grid_w, f.grid_h):
+				if ft in zone_tiles:
+					for fn in f.functions:
+						if fn not in zone_fns:
+							zone_fns.append(fn as String)
+					if f.furniture_id not in zone_fids:
+						zone_fids.append(f.furniture_id)
+					found = true
+					break
 		zones.append({"tiles": zone_tiles, "functions": zone_fns, "furniture_ids": zone_fids})
 	grid_draw.queue_redraw()
 
@@ -697,6 +722,9 @@ func _recalculate_zones() -> void:
 func _remove_from_grid(furniture: Furniture) -> void:
 	for tile in _placed.keys():
 		_placed_remove_tile(tile, furniture)
+	for i in range(_placed_continuous.size() - 1, -1, -1):
+		if _placed_continuous[i]["furniture"] == furniture:
+			_placed_continuous.remove_at(i)
 	if furniture.is_stair:
 		_unregister_stair(furniture)
 
@@ -742,7 +770,7 @@ func clear_wall_drag_ghost() -> void:
 	furniture_changed.emit()
 
 
-func set_floor_drag_ghost(furniture: Furniture, gx: int, gy: int) -> void:
+func set_floor_drag_ghost(furniture: Furniture, gx: float, gy: float) -> void:
 	_floor_drag_ghost = {"furniture": furniture, "gx": gx, "gy": gy}
 	furniture_changed.emit()
 
@@ -791,10 +819,10 @@ func get_adjacent_furniture(edge: String) -> Array:
 		var gx := f.grid_pos.x
 		var gy := f.grid_pos.y
 		if f == ghost_f:
-			gx = _floor_drag_ghost["gx"] as int
-			gy = _floor_drag_ghost["gy"] as int
+			gx = _floor_drag_ghost["gx"] as float
+			gy = _floor_drag_ghost["gy"] as float
 		var adjacent := false
-		var wall_x := 0
+		var wall_x := 0.0
 		match edge:
 			"north":
 				if gy < bounds.position.y + WALL_DEPTH:
@@ -830,11 +858,11 @@ func get_adjacent_furniture(edge: String) -> Array:
 func check_extended_conflict(furniture: Furniture) -> bool:
 	if not furniture.foldable or furniture.extended_add_h <= 0:
 		return false
-	var start_y := furniture.grid_pos.y + furniture.grid_h
+	var start_y := floori(furniture.grid_pos.y) + furniture.grid_h
 	var end_y   := start_y + furniture.extended_add_h
 	for y in range(start_y, end_y):
 		for x in range(furniture.grid_w):
-			var tile := Vector2i(furniture.grid_pos.x + x, y)
+			var tile := Vector2i(floori(furniture.grid_pos.x) + x, y)
 			if tile.y >= grid_h or tile.x < 0 or tile.x >= grid_w:
 				return true
 			if _placed_overlapping_z(tile, furniture.z_bottom, furniture.z_top, furniture) != null:
@@ -872,7 +900,7 @@ func get_unconnected_needs(furniture_list: Array) -> Dictionary:
 		if fur.needs_water:
 			var connected := false
 			for t in routed_water:
-				if Rect2i(fur.grid_pos, Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
+				if Rect2i(Vector2i(floori(fur.grid_pos.x), floori(fur.grid_pos.y)), Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
 					connected = true
 					break
 			if not connected:
@@ -880,7 +908,7 @@ func get_unconnected_needs(furniture_list: Array) -> Dictionary:
 		if fur.needs_power:
 			var connected := false
 			for t in routed_power:
-				if Rect2i(fur.grid_pos, Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
+				if Rect2i(Vector2i(floori(fur.grid_pos.x), floori(fur.grid_pos.y)), Vector2i(fur.grid_w, fur.grid_h)).has_point(t):
 					connected = true
 					break
 			if not connected:
@@ -942,8 +970,8 @@ func get_inaccessible_furniture() -> Array:
 
 
 func _has_adjacent_free(f: Furniture) -> bool:
-	var x0 := f.grid_pos.x
-	var y0 := f.grid_pos.y
+	var x0 := floori(f.grid_pos.x)
+	var y0 := floori(f.grid_pos.y)
 	var x1 := x0 + f.grid_w
 	var y1 := y0 + f.grid_h
 	for x in range(x0, x1):
