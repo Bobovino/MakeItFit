@@ -527,12 +527,17 @@ const WALL_SNAP := 3   # tiles — placing within this distance of a wall snaps 
 func snap_to_wall(furniture: Furniture, at: Vector2i) -> Vector2i:
 	var bounds := get_room_bounds()
 	var snap_pos := at
+	# bounds.position itself is the wall's own tile (blocked by
+	# _partition_tile_set), so touching the west/north wall means sitting one
+	# tile in from it. The far side needs no such offset: subtracting the
+	# furniture's size from bounds.position + bounds.size already lands one
+	# tile short of that wall's own blocked tile.
 	if at.x - bounds.position.x <= WALL_SNAP:
-		snap_pos.x = bounds.position.x
+		snap_pos.x = bounds.position.x + 1
 	elif (bounds.position.x + bounds.size.x) - (at.x + furniture.grid_w) <= WALL_SNAP:
 		snap_pos.x = bounds.position.x + bounds.size.x - furniture.grid_w
 	if at.y - bounds.position.y <= WALL_SNAP:
-		snap_pos.y = bounds.position.y
+		snap_pos.y = bounds.position.y + 1
 	elif (bounds.position.y + bounds.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP:
 		snap_pos.y = bounds.position.y + bounds.size.y - furniture.grid_h
 	if snap_pos == at or can_place(furniture, snap_pos):

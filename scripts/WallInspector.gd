@@ -390,19 +390,33 @@ func _drop_floor_drag() -> void:
 
 	# Dragging a piece within THIS wall's view means "against this wall" —
 	# pin the perpendicular distance flush too, not just the along-wall slide.
+	# bounds.position itself is the wall's own tile (blocked), so touching the
+	# west/north wall means sitting one tile in from it — both as the pinned
+	# perpendicular distance and, when the along-wall slide is snapped all the
+	# way to that end, as the along-wall coordinate too. The far end (east/
+	# south) needs no such offset; the existing subtraction already lands one
+	# tile short of that wall's own blocked tile.
 	var flush := f.grid_pos
 	match _edge:
 		"north":
 			flush.x = new_wall_x + bounds.position.x
-			flush.y = bounds.position.y
+			if new_wall_x == 0:
+				flush.x += 1
+			flush.y = bounds.position.y + 1
 		"south":
 			flush.x = new_wall_x + bounds.position.x
+			if new_wall_x == 0:
+				flush.x += 1
 			flush.y = bounds.position.y + bounds.size.y - f.grid_h
 		"west":
 			flush.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
-			flush.x = bounds.position.x
+			if new_wall_x == wall_w - item_w:
+				flush.y += 1
+			flush.x = bounds.position.x + 1
 		"east":
 			flush.y = new_wall_x + bounds.position.y
+			if new_wall_x == 0:
+				flush.y += 1
 			flush.x = bounds.position.x + bounds.size.x - f.grid_w
 
 	if _apt_floor.can_place(f, flush):
