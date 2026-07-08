@@ -512,8 +512,8 @@ func toggle_column(x: int, y: int) -> void:
 
 # General Builder-tab erase: tries a nearby wall segment first (only ones the
 # player could have added or that are otherwise demolishable), then a column
-# at the given tile, then a painted floor-kind tag. Returns true if something
-# was actually removed.
+# at the given tile, then a painted floor-kind tag, then a rail track.
+# Returns true if something was actually removed.
 func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 	var idx := find_segment_near(local_pos, 1.5)
 	if idx >= 0:
@@ -533,6 +533,8 @@ func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 		floor_kind.erase(tile)
 		if grid_draw:
 			grid_draw.queue_redraw()
+		return true
+	if erase_rail_near(local_pos):
 		return true
 	return false
 
@@ -619,6 +621,48 @@ func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
 		if d < best_d:
 			best_d = d; best_i = i
 	return best_i
+
+
+# Rails are axis-aligned sliding-furniture tracks — same {x1,y1,x2,y2} shape
+# as a wall segment but stored separately since they never block movement or
+# placement, only constrain how a piece dropped onto one can later slide.
+func can_add_rail(x1: int, y1: int, x2: int, y2: int) -> bool:
+	return x1 == x2 or y1 == y2  # must be axis-aligned; may cross furniture/floor freely
+
+
+func add_rail(x1: int, y1: int, x2: int, y2: int) -> void:
+	rails.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2})
+	if grid_draw:
+		grid_draw.queue_redraw()
+
+
+func find_rail_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
+	var snap := float(TILE_SIZE) * snap_tiles
+	var best_d := snap
+	var best_i := -1
+	for i in range(rails.size()):
+		var rd := rails[i] as Dictionary
+		var pa := Vector2(rd["x1"] as int * TILE_SIZE, rd["y1"] as int * TILE_SIZE)
+		var pb := Vector2(rd["x2"] as int * TILE_SIZE, rd["y2"] as int * TILE_SIZE)
+		var seg := pb - pa
+		var len := seg.length()
+		if len < 1.0:
+			continue
+		var t := clampf((fl_pos - pa).dot(seg) / (len * len), 0.0, 1.0)
+		var d := fl_pos.distance_to(pa + seg * t)
+		if d < best_d:
+			best_d = d; best_i = i
+	return best_i
+
+
+func erase_rail_near(local_pos: Vector2) -> bool:
+	var idx := find_rail_near(local_pos, 1.5)
+	if idx < 0:
+		return false
+	rails.remove_at(idx)
+	if grid_draw:
+		grid_draw.queue_redraw()
+	return true
 
 
 func _near_edge(local: Vector2, x0: float, y0: float, x1: float, y1: float) -> String:

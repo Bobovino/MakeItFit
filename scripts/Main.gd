@@ -1546,7 +1546,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 			_builder_press_consumed = true
 			var tile := _builder_tile_at(fl)
 			match _active_builder_tool:
-				"wall":
+				"wall", "rail":
 					_builder_press_tile = tile
 					_builder_cur_tile   = tile
 					_builder_drawing    = true
@@ -1601,13 +1601,15 @@ func _handle_builder_input(event: InputEvent) -> void:
 			_builder_press_consumed = false
 			if _builder_drawing and _active_builder_tool == "wall":
 				_commit_builder_wall(fl)
+			elif _builder_drawing and _active_builder_tool == "rail":
+				_commit_builder_rail(fl)
 			_builder_drawing = false
 			_clear_builder_ghost()
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and _builder_drawing:
 		var tile := _builder_tile_at(fl)
 		match _active_builder_tool:
-			"wall":
+			"wall", "rail":
 				# Axis-snap to whichever direction has moved further, same as
 				# LevelEditor's wall-drawing preview.
 				if absi(tile.x - _builder_press_tile.x) >= absi(tile.y - _builder_press_tile.y):
@@ -1640,6 +1642,18 @@ func _commit_builder_wall(fl: Floor) -> void:
 	fl.add_segment(ps.x, ps.y, pe.x, pe.y)
 	Audio.play("place")
 	_refresh_functions()
+
+
+func _commit_builder_rail(fl: Floor) -> void:
+	var ps := _builder_press_tile
+	var pe := _builder_cur_tile
+	if ps == pe:
+		return
+	if not fl.can_add_rail(ps.x, ps.y, pe.x, pe.y):
+		Audio.play("error")
+		return
+	fl.add_rail(ps.x, ps.y, pe.x, pe.y)
+	Audio.play("place")
 
 
 func _update_builder_ghost(fl: Floor) -> void:
