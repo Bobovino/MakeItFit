@@ -391,31 +391,35 @@ func _drop_floor_drag() -> void:
 	# Dragging a piece within THIS wall's view means "against this wall" —
 	# pin the perpendicular distance flush too, not just the along-wall slide.
 	# bounds.position itself is the wall's own tile (blocked), so touching the
-	# west/north wall means sitting one tile in from it — both as the pinned
-	# perpendicular distance and, when the along-wall slide is snapped all the
-	# way to that end, as the along-wall coordinate too. The far end (east/
-	# south) needs no such offset; the existing subtraction already lands one
-	# tile short of that wall's own blocked tile.
+	# west/north wall means sitting one tile in from it — that's the pinned
+	# perpendicular distance below, always.
+	#
+	# _wall_w() is one tile narrower than the raw bounds span for the same
+	# reason (see its own comment), so new_wall_x's two extremes line up with
+	# the two ends of the wall as drawn. For "north"/"south"/"east" the
+	# along-wall coordinate is built by adding new_wall_x directly onto
+	# bounds.position, so shrinking the range by 1 shifts BOTH extremes one
+	# tile short of their true target — each needs its own +1. "west" is
+	# built from bounds.size instead, which already absorbs the shrink
+	# correctly at both ends, so it needs no per-extreme patching.
 	var flush := f.grid_pos
 	match _edge:
 		"north":
 			flush.x = new_wall_x + bounds.position.x
-			if new_wall_x == 0:
+			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.x += 1
 			flush.y = bounds.position.y + 1
 		"south":
 			flush.x = new_wall_x + bounds.position.x
-			if new_wall_x == 0:
+			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.x += 1
 			flush.y = bounds.position.y + bounds.size.y - f.grid_h
 		"west":
 			flush.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
-			if new_wall_x == wall_w - item_w:
-				flush.y += 1
 			flush.x = bounds.position.x + 1
 		"east":
 			flush.y = new_wall_x + bounds.position.y
-			if new_wall_x == 0:
+			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.y += 1
 			flush.x = bounds.position.x + bounds.size.x - f.grid_w
 
@@ -838,7 +842,13 @@ func _wall_w() -> int:
 	if not _apt_floor:
 		return 8
 	var bounds := _apt_floor.get_room_bounds()
-	return bounds.size.x if _edge in ["north", "south"] else bounds.size.y
+	# -1: bounds.size spans corner-tile to corner-tile (e.g. west wall's own
+	# tile to east wall's own tile), but a floor piece can never actually
+	# reach either corner tile — those are blocked, same as bounds.position
+	# itself (see get_adjacent_furniture / snap_to_wall). The elevation
+	# view's usable width is one tile narrower than the raw bounds span.
+	var raw := bounds.size.x if _edge in ["north", "south"] else bounds.size.y
+	return raw - 1
 
 
 # ── Sloped ceiling → wall cut ──────────────────────────────────────────────

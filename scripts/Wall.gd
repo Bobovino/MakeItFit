@@ -799,21 +799,29 @@ func get_adjacent_furniture(edge: String) -> Array:
 			"north":
 				if gy < bounds.position.y + WALL_DEPTH:
 					adjacent = true
-					wall_x = gx - bounds.position.x
+					# -1: bounds.position.x is the west wall's own (blocked) tile,
+					# so the first tile a floor piece can actually occupy is one
+					# in from it. Without this offset, a piece truly flush
+					# against the west wall reports wall_x = 1, not 0, and the
+					# Wall Inspector draws it a tile short of that wall's face.
+					wall_x = gx - bounds.position.x - 1
 			"south":
 				if gy + f.grid_h > bounds.position.y + bounds.size.y - WALL_DEPTH:
 					adjacent = true
-					wall_x = gx - bounds.position.x
+					wall_x = gx - bounds.position.x - 1
 			"west":
 				if gx < bounds.position.x + WALL_DEPTH:
 					adjacent = true
 					# Flipped vs. east: facing west, north is on your right, so
 					# wall_x (left-to-right in the elevation view) runs south→north.
+					# No -1 needed here: this formula already lands on 0 for a
+					# south-flush piece and (bounds.size.y - 1 - f.grid_h) for a
+					# north-flush one, matching the corrected range below.
 					wall_x = bounds.size.y - (gy - bounds.position.y) - f.grid_h
 			"east":
 				if gx + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
 					adjacent = true
-					wall_x = gy - bounds.position.y
+					wall_x = gy - bounds.position.y - 1
 		if adjacent:
 			result.append({"furniture": f, "wall_x": wall_x})
 	return result
