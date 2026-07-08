@@ -887,7 +887,9 @@ func build_single_item(fdata: Dictionary) -> void:
 		_center = Vector3(0.0, height_m * 0.4, 0.0)
 		_dist   = maxf(fw, maxf(fd, height_m)) * 2.2 + 1.0
 		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83))
-		_box(Vector3(fw, height_m, fd), Vector3(0.0, height_m * 0.5, 0.0), col)
+		var item_size := Vector3(fw, height_m, fd)
+		var item_mi := _box(item_size, Vector3(0.0, height_m * 0.5, 0.0), col)
+		_apply_item_model(item_mi, fdata.get("model", "") as String, item_size)
 
 	_update_camera()
 
