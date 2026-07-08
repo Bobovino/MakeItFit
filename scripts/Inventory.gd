@@ -21,7 +21,7 @@ var _owned_catalog: Array = []
 @onready var item_list: VBoxContainer   = $ScrollContainer/ItemList
 
 var _filter_box: HBoxContainer = null
-var _builder_tool_box: HBoxContainer = null
+var _builder_tool_buttons: Array = []
 var _builder_tool: String = ""
 
 
@@ -81,11 +81,10 @@ func _set_builder_tool(tool_id: String) -> void:
 	_builder_tool = tool_id
 	# Don't rely solely on ButtonGroup's own exclusivity bookkeeping — it can
 	# leave two buttons visually pressed at once when toggled rapidly. Force
-	# every button in the row to match _builder_tool explicitly.
-	if is_instance_valid(_builder_tool_box):
-		for btn in _builder_tool_box.get_children():
-			if btn is Button:
-				(btn as Button).button_pressed = ((btn as Button).get_meta("tool_id", "") == tool_id)
+	# every button across both tool rows to match _builder_tool explicitly.
+	for btn in _builder_tool_buttons:
+		if is_instance_valid(btn):
+			(btn as Button).button_pressed = ((btn as Button).get_meta("tool_id", "") == tool_id)
 	builder_tool_selected.emit(_builder_tool)
 
 
@@ -135,29 +134,30 @@ func _build_builder_tool_row() -> VBoxContainer:
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	wrap.add_child(hdr)
 
-	_builder_tool_box = HBoxContainer.new()
-	_builder_tool_box.add_theme_constant_override("separation", 4)
 	var group := ButtonGroup.new()
-	var specs := [
-		["", "Select"],
-		["wall", "Wall"],
-		["column", "Column"],
-		["erase", "Erase"],
+	_builder_tool_buttons = []
+	var rows := [
+		[["", "Select"], ["wall", "Wall"], ["column", "Column"], ["erase", "Erase"]],
+		[["balcony", "Balcony"], ["bathroom", "Bathroom"]],
 	]
-	for spec in specs:
-		var tid: String = spec[0]
-		var btn := Button.new()
-		btn.text = spec[1]
-		btn.toggle_mode = true
-		btn.button_group = group
-		btn.button_pressed = (tid == _builder_tool)
-		btn.set_meta("tool_id", tid)
-		btn.add_theme_font_size_override("font_size", 11)
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.pressed.connect(_set_builder_tool.bind(tid))
-		_builder_tool_box.add_child(btn)
+	for row_specs: Array in rows:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		for spec in row_specs:
+			var tid: String = spec[0]
+			var btn := Button.new()
+			btn.text = spec[1]
+			btn.toggle_mode = true
+			btn.button_group = group
+			btn.button_pressed = (tid == _builder_tool)
+			btn.set_meta("tool_id", tid)
+			btn.add_theme_font_size_override("font_size", 11)
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			btn.pressed.connect(_set_builder_tool.bind(tid))
+			row.add_child(btn)
+			_builder_tool_buttons.append(btn)
+		wrap.add_child(row)
 
-	wrap.add_child(_builder_tool_box)
 	var sep := HSeparator.new()
 	wrap.add_child(sep)
 	return wrap

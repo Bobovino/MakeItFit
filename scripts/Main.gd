@@ -1568,6 +1568,10 @@ func _handle_builder_input(event: InputEvent) -> void:
 					if fl.erase_near(local, tile):
 						Audio.play("demolish")
 						_refresh_functions()
+				"balcony", "bathroom":
+					_builder_drawing  = true
+					_builder_cur_tile = tile
+					_paint_floor_tile(fl, tile, _active_builder_tool)
 			# Consume the event so Floor.gd's own _input() (wall-edge-click
 			# detection, used by the normal Select mode) doesn't also react
 			# to the same press/release and pop open the Wall Inspector.
@@ -1579,21 +1583,34 @@ func _handle_builder_input(event: InputEvent) -> void:
 			# since _input() runs before Control._gui_input and leaves the
 			# button's own click never firing.
 			_builder_press_consumed = false
-			if _builder_drawing:
+			if _builder_drawing and _active_builder_tool == "wall":
 				_commit_builder_wall(fl)
 			_builder_drawing = false
 			_clear_builder_ghost()
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and _builder_drawing:
 		var tile := _builder_tile_at(fl)
-		# Axis-snap to whichever direction has moved further, same as
-		# LevelEditor's wall-drawing preview.
-		if absi(tile.x - _builder_press_tile.x) >= absi(tile.y - _builder_press_tile.y):
-			tile.y = _builder_press_tile.y
-		else:
-			tile.x = _builder_press_tile.x
-		_builder_cur_tile = tile
-		_update_builder_ghost(fl)
+		match _active_builder_tool:
+			"wall":
+				# Axis-snap to whichever direction has moved further, same as
+				# LevelEditor's wall-drawing preview.
+				if absi(tile.x - _builder_press_tile.x) >= absi(tile.y - _builder_press_tile.y):
+					tile.y = _builder_press_tile.y
+				else:
+					tile.x = _builder_press_tile.x
+				_builder_cur_tile = tile
+				_update_builder_ghost(fl)
+			"balcony", "bathroom":
+				if tile != _builder_cur_tile:
+					_builder_cur_tile = tile
+					_paint_floor_tile(fl, tile, _active_builder_tool)
+
+
+func _paint_floor_tile(fl: Floor, tile: Vector2i, kind: String) -> void:
+	if tile.x < 0 or tile.y < 0 or tile.x >= fl.grid_w or tile.y >= fl.grid_h:
+		return
+	fl.paint_floor_kind(tile, kind)
+	Audio.play("place")
 
 
 func _commit_builder_wall(fl: Floor) -> void:

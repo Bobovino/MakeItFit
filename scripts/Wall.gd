@@ -512,7 +512,8 @@ func toggle_column(x: int, y: int) -> void:
 
 # General Builder-tab erase: tries a nearby wall segment first (only ones the
 # player could have added or that are otherwise demolishable), then a column
-# at the given tile. Returns true if something was actually removed.
+# at the given tile, then a painted floor-kind tag. Returns true if something
+# was actually removed.
 func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 	var idx := find_segment_near(local_pos, 1.5)
 	if idx >= 0:
@@ -528,7 +529,28 @@ func erase_near(local_pos: Vector2, tile: Vector2i) -> bool:
 				_compute_light_map()
 				grid_draw.queue_redraw()
 			return true
+	if floor_kind.has(tile):
+		floor_kind.erase(tile)
+		if grid_draw:
+			grid_draw.queue_redraw()
+		return true
 	return false
+
+
+# Stamps a tile with a floor kind ("balcony"/"bathroom"), or clears the tag
+# when kind is "normal" — mirrors LevelEditor's Floor Paint tool.
+func paint_floor_kind(tile: Vector2i, kind: String) -> void:
+	if kind == "normal":
+		if floor_kind.has(tile):
+			floor_kind.erase(tile)
+		else:
+			return
+	else:
+		if floor_kind.get(tile, "normal") == kind:
+			return
+		floor_kind[tile] = kind
+	if grid_draw:
+		grid_draw.queue_redraw()
 
 
 func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
