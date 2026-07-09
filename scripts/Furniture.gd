@@ -219,7 +219,7 @@ func _apply_fold_state(want_extended: bool) -> bool:
 func _draw() -> void:
 	var w := grid_w * TILE_SIZE
 	var h := grid_h * TILE_SIZE
-	var ink := Color(0.16, 0.13, 0.10, 0.85)
+	var ink := Color(0.08, 0.16, 0.26, 0.90)  # cool drafting-ink navy (blueprint)
 
 	# Base fill + crisp outline
 	draw_rect(Rect2(0, 0, w, h), _color)

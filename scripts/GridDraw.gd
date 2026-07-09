@@ -2,12 +2,22 @@ extends Node2D
 class_name GridDraw
 
 const TILE_SIZE    := 8
-const FLOOR_COLOR  := Color(0.93, 0.90, 0.83, 1.0)   # warm drafting-paper cream
-const WALL_COLOR   := Color(0.16, 0.13, 0.10, 1.0)   # dark charcoal ink
-const GRID_MINOR   := Color(0.55, 0.52, 0.44, 0.22)  # subtle warm grid
-const GRID_MAJOR   := Color(0.45, 0.42, 0.34, 0.50)  # metre markers
-const DOOR_COLOR   := Color(0.62, 0.40, 0.18, 1.0)   # warm chestnut
-const WINDOW_COLOR := Color(0.42, 0.68, 0.88, 0.85)  # sky blue pane
+# ── Cyanotype blueprint palette ───────────────────────────────────────────────
+# Everything reads as a classic architectural blueprint: white/cyan ink on
+# deep blue. Room interior is a slightly lighter blue so it reads as "inside".
+const BP_PAPER     := Color(0.055, 0.145, 0.255, 1.0)  # deep blueprint blue (outside)
+const BP_FLOOR     := Color(0.098, 0.235, 0.380, 1.0)  # room interior (lighter blue)
+const BP_INK       := Color(0.86, 0.94, 1.00, 1.0)     # bright white-cyan drafting ink
+const BP_INK_SOFT  := Color(0.66, 0.82, 0.96, 1.0)     # secondary lines
+const BP_GRID_FINE := Color(0.42, 0.64, 0.86, 0.16)    # 10 cm subcell grid
+const BP_GRID_MAJ  := Color(0.56, 0.78, 0.98, 0.38)    # 1 m grid lines
+
+const FLOOR_COLOR  := BP_FLOOR
+const WALL_COLOR   := BP_INK
+const GRID_MINOR   := BP_GRID_FINE
+const GRID_MAJOR   := BP_GRID_MAJ
+const DOOR_COLOR   := Color(0.55, 0.82, 0.98, 1.0)   # cyan swing
+const WINDOW_COLOR := Color(0.60, 0.86, 1.00, 0.95)  # bright glazing
 const EDGE_HOVER   := Color(1.0, 0.88, 0.2, 0.55)
 const EDGE_ACTIVE  := Color(1.0, 0.60, 0.0, 1.0)
 const WALL_THICK   := 6.0
@@ -118,11 +128,11 @@ func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
 
 
 func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void:
-	# Dark drawing-table canvas
-	const CANVAS_BG   := Color(0.13, 0.12, 0.11, 1.0)
-	# Grid lines — visible on both dark canvas and cream floor tiles
-	const FINE_COL    := Color(0.44, 0.41, 0.36, 1.0)  # 10 cm subcell lines
-	const MAJOR_COL   := Color(0.64, 0.60, 0.52, 1.0)  # 1 m cell lines (brighter)
+	# Deep blueprint-blue canvas
+	const CANVAS_BG   := BP_PAPER
+	# Grid lines — cyan, visible on both the deep-blue paper and lighter floor
+	const FINE_COL    := Color(0.34, 0.54, 0.76, 0.55)  # 10 cm subcell lines
+	const MAJOR_COL   := Color(0.52, 0.74, 0.96, 0.75)  # 1 m cell lines (brighter)
 
 	var ww := w * TILE_SIZE
 	var hh := h * TILE_SIZE
@@ -145,9 +155,9 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			var t := tile as Vector2i
 			draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), SHADOW_COL)
 
-	# ── 2. Painted floor tiles (cream, or tinted by kind) ────────────────────
-	const BALCONY_COL  := Color(0.62, 0.72, 0.58, 1.0)   # outdoor decking green-grey
-	const BATHROOM_COL := Color(0.70, 0.80, 0.84, 1.0)   # cool tile blue
+	# ── 2. Painted floor tiles (blueprint blue, or tinted by kind) ───────────
+	const BALCONY_COL  := Color(0.14, 0.34, 0.32, 1.0)   # outdoor decking (teal-blue)
+	const BATHROOM_COL := Color(0.16, 0.34, 0.46, 1.0)   # wet-room (brighter cyan-blue)
 	for tile in parent.floor_mask:
 		var t := tile as Vector2i
 		var kind := parent.get_tile_kind(t) if parent.has_method("get_tile_kind") else "normal"
@@ -437,19 +447,28 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		draw_rect(Rect2(qx1, qy1, qx2 - qx1, qy2 - qy1), Color(0.90, 0.30, 0.62, 0.22))
 		draw_rect(Rect2(qx1, qy1, qx2 - qx1, qy2 - qy1), REVEAL_COL, false, 1.2)
 
-	# ── 3. Grid lines — only while furniture is being dragged ─────────────────
-	if show_grid:
-		if show_fine:
-			for x in range(w + 1):
-				if x % METER_TILES != 0:
-					draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), FINE_COL, 1.0)
-			for y in range(h + 1):
-				if y % METER_TILES != 0:
-					draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), FINE_COL, 1.0)
-		for x in range(0, w + 1, METER_TILES):
-			draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), MAJOR_COL, 2.0)
-		for y in range(0, h + 1, METER_TILES):
-			draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), MAJOR_COL, 2.0)
+	# ── 3. Blueprint grid — always visible (the defining blueprint element).
+	# Fine 10 cm lines get brighter while dragging; 1 m lines are always drawn.
+	var fine_col := FINE_COL if show_grid else Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, 0.22)
+	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, 0.40)
+	if show_fine:
+		for x in range(w + 1):
+			if x % METER_TILES != 0:
+				draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), fine_col, 1.0)
+		for y in range(h + 1):
+			if y % METER_TILES != 0:
+				draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), fine_col, 1.0)
+	for x in range(0, w + 1, METER_TILES):
+		draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), maj_col, 2.0)
+	for y in range(0, h + 1, METER_TILES):
+		draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), maj_col, 2.0)
+
+	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
+	const FRAME_COL := Color(0.56, 0.78, 0.98, 0.70)
+	var m1 := 4.0
+	var m2 := 7.0
+	draw_rect(Rect2(m1, m1, ww - m1 * 2, hh - m1 * 2), FRAME_COL, false, 1.5)
+	draw_rect(Rect2(m2, m2, ww - m2 * 2, hh - m2 * 2), Color(FRAME_COL.r, FRAME_COL.g, FRAME_COL.b, 0.35), false, 1.0)
 
 	# ── 4. Natural light hatching (only over painted tiles) ───────────────────
 	_draw_natural_light(parent)
@@ -501,9 +520,9 @@ func _draw_segments(parent: Floor) -> void:
 	# Contrasts against both the cream floor AND the dark canvas background —
 	# a near-black ink (previously ~equal to CANVAS_BG) made walls vanish
 	# whenever there was no stray floor tile just outside them for contrast.
-	const PRIMARY_COL   := Color(0.36, 0.29, 0.21, 1.0)
-	const SECONDARY_COL := Color(0.40, 0.36, 0.30, 0.85)
-	const DEMO_COL      := Color(0.78, 0.40, 0.16, 0.18)
+	const PRIMARY_COL   := Color(0.90, 0.96, 1.00, 1.0)   # bold white blueprint wall
+	const SECONDARY_COL := Color(0.62, 0.80, 0.96, 0.90)  # lighter interior partition
+	const DEMO_COL      := Color(0.95, 0.55, 0.35, 0.55)  # orange demolition guide
 	# Thickness in TILES — walls render as filled tile cells, not lines.
 	# Kept at the minimum (1 tile = 10 cm) for both primary and secondary walls
 	# so there's no centering/offset math to get wrong — the fill starts
@@ -972,16 +991,17 @@ func _draw_partitions(parent: Floor) -> void:
 
 
 func _draw_columns(parent: Floor) -> void:
-	const COL_COL  := Color(0.16, 0.13, 0.10, 1.0)
-	const COL_H    := Color(0.30, 0.26, 0.22, 0.40)
+	# Structural column: filled white square with an X (standard blueprint symbol)
+	const COL_COL  := Color(0.86, 0.94, 1.00, 1.0)
+	const COL_H    := Color(0.30, 0.50, 0.72, 0.90)
 	for col in parent.columns:
 		var cx: int = col["x"] as int
 		var cy: int = col["y"] as int
 		var r := Rect2(cx * TILE_SIZE, cy * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 		draw_rect(r, COL_COL)
 		draw_rect(r, COL_H, false, 1.5)
-		draw_line(r.position + Vector2(2, 2), r.end - Vector2(2, 2), Color(1, 1, 1, 0.12), 1.0)
-		draw_line(r.position + Vector2(r.size.x - 2, 2), r.position + Vector2(2, r.size.y - 2), Color(1, 1, 1, 0.12), 1.0)
+		draw_line(r.position + Vector2(2, 2), r.end - Vector2(2, 2), Color(0.10, 0.24, 0.40, 0.55), 1.0)
+		draw_line(r.position + Vector2(r.size.x - 2, 2), r.position + Vector2(2, r.size.y - 2), Color(0.10, 0.24, 0.40, 0.55), 1.0)
 
 
 func _draw_subfloor_layer(parent: Floor) -> void:
@@ -1062,7 +1082,7 @@ func _draw_natural_light(parent: Floor) -> void:
 
 			# Remap: 0 at LIT_MIN → 1 at full dark
 			var t := 1.0 - (intensity / LIT_MIN)
-			var col := Color(0.10, 0.08, 0.05, t * MAX_ALPHA)
+			var col := Color(0.02, 0.06, 0.13, t * MAX_ALPHA)
 
 			var px := float(gx * TILE_SIZE)
 			var py := float(gy * TILE_SIZE)
