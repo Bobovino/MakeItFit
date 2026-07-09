@@ -161,11 +161,14 @@ func _build_builder_tool_row() -> VBoxContainer:
 			var tid: String = spec[0]
 			var btn := Button.new()
 			btn.text = spec[1]
+			btn.icon = IconGen.make(tid)
+			btn.expand_icon = false
 			btn.toggle_mode = true
 			btn.button_group = group
 			btn.button_pressed = (tid == _builder_tool)
 			btn.set_meta("tool_id", tid)
 			btn.add_theme_font_size_override("font_size", 11)
+			btn.add_theme_constant_override("h_separation", 4)
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.pressed.connect(_set_builder_tool.bind(tid))
 			row.add_child(btn)
