@@ -62,16 +62,21 @@ static func make_rent_btn_style() -> Array:
 	n.set_content_margin(SIDE_RIGHT, 24)
 	n.set_content_margin(SIDE_TOP, 8)
 	n.set_content_margin(SIDE_BOTTOM, 8)
+	n.shadow_size = 8
+	n.shadow_color = Color(0.95, 0.88, 0.55, 0.25)
 	var h := _btn(Color(0.55, 0.44, 0.10), Color(1.0, 0.95, 0.68), 2)
 	h.set_content_margin(SIDE_LEFT, 24)
 	h.set_content_margin(SIDE_RIGHT, 24)
 	h.set_content_margin(SIDE_TOP, 8)
 	h.set_content_margin(SIDE_BOTTOM, 8)
+	h.shadow_size = 10
+	h.shadow_color = Color(1.0, 0.95, 0.68, 0.35)
 	var d := _btn(Color(0.12, 0.14, 0.18), Color(0.22, 0.26, 0.32), 1)
 	d.set_content_margin(SIDE_LEFT, 24)
 	d.set_content_margin(SIDE_RIGHT, 24)
 	d.set_content_margin(SIDE_TOP, 8)
 	d.set_content_margin(SIDE_BOTTOM, 8)
+	d.shadow_size = 0
 	return [n, h, d]
 
 
@@ -81,6 +86,11 @@ static func _panel(bg: Color, border: Color, margin: int) -> StyleBoxFlat:
 	s.border_color = border
 	s.set_border_width_all(1)
 	s.set_content_margin_all(margin)
+	s.set_corner_radius_all(8)
+	s.anti_aliasing = true
+	s.shadow_color = Color(0, 0, 0, 0.35)
+	s.shadow_size = 6
+	s.shadow_offset = Vector2(0, 3)
 	return s
 
 
@@ -89,12 +99,13 @@ static func _btn(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
 	s.bg_color = bg
 	s.border_color = border
 	s.set_border_width_all(bw)
-	s.set_content_margin(SIDE_LEFT, 10)
-	s.set_content_margin(SIDE_RIGHT, 10)
-	s.set_content_margin(SIDE_TOP, 4)
-	s.set_content_margin(SIDE_BOTTOM, 4)
-	s.corner_radius_top_left     = 2
-	s.corner_radius_top_right    = 2
-	s.corner_radius_bottom_left  = 2
-	s.corner_radius_bottom_right = 2
+	s.set_content_margin(SIDE_LEFT, 12)
+	s.set_content_margin(SIDE_RIGHT, 12)
+	s.set_content_margin(SIDE_TOP, 6)
+	s.set_content_margin(SIDE_BOTTOM, 6)
+	s.set_corner_radius_all(5)
+	s.anti_aliasing = true
+	s.shadow_color = Color(0, 0, 0, 0.25)
+	s.shadow_size = 3
+	s.shadow_offset = Vector2(0, 2)
 	return s

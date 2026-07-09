@@ -286,13 +286,19 @@ func _create_card(ld: Dictionary) -> Button:
 	sn.bg_color     = Color(0.12, 0.15, 0.20)
 	sn.border_color = Color(0.22, 0.28, 0.36)
 	sn.set_border_width_all(1)
-	sn.set_corner_radius_all(3)
+	sn.set_corner_radius_all(7)
 	sn.set_content_margin_all(0)
+	sn.anti_aliasing = true
+	sn.shadow_color = Color(0, 0, 0, 0.30)
+	sn.shadow_size = 5
+	sn.shadow_offset = Vector2(0, 2)
 	card.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
 	sh.border_color = GameTheme.C_AMBER
 	sh.set_border_width_all(2)
+	sh.shadow_color = Color(0.95, 0.88, 0.55, 0.30)
+	sh.shadow_size = 8
 	card.add_theme_stylebox_override("hover", sh)
 	card.add_theme_stylebox_override("pressed", sh)
 
