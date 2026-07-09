@@ -69,6 +69,11 @@ var _builder_ghost:       Line2D    = null
 var _builder_press_consumed: bool   = false  # only consume the matching release
 var _builder_pipe_tiles:  Array     = []  # Vector2i path being drawn for pipe_water/pipe_power
 var _builder_pipe_ghost:  Line2D    = null
+# Snapshot-based undo: each entry is {floor_id, data} where data is a deep
+# copy of the Floor's Builder-mutable fields, captured BEFORE the action that
+# entry undoes. One shared stack across tools/floors keeps ordering simple.
+const BUILDER_UNDO_MAX := 50
+var _builder_undo_stack: Array = []
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -96,6 +101,8 @@ func _ready() -> void:
 		inventory.view3d_requested.connect(_on_view3d_item_requested)
 	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
 		inventory.builder_tool_selected.connect(_on_builder_tool_selected)
+	if not inventory.undo_requested.is_connected(_undo_builder_action):
+		inventory.undo_requested.connect(_undo_builder_action)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
 	view3d_btn.visible = false   # superseded by the persistent 3D view mode
@@ -227,6 +234,7 @@ func _go_back() -> void:
 func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)
+	_builder_undo_stack.clear()
 
 	_active_paint_type = ""
 	_painting          = false
@@ -1287,6 +1295,12 @@ func _exit_demolition_phase() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.pressed and not ke.echo and ke.keycode == KEY_Z and (ke.ctrl_pressed or ke.meta_pressed):
+			_undo_builder_action()
+			get_viewport().set_input_as_handled()
+			return
 	if _dragging_divider:
 		if event is InputEventMouseMotion:
 			_update_split((event as InputEventMouseMotion).position.x)
@@ -1609,6 +1623,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 							already = true
 							break
 					if already or fl.can_place_column(tile.x, tile.y):
+						_push_builder_undo(fl)
 						fl.toggle_column(tile.x, tile.y)
 						Audio.play("place")
 						_refresh_functions()
@@ -1616,27 +1631,41 @@ func _handle_builder_input(event: InputEvent) -> void:
 						Audio.play("error")
 				"erase":
 					var local := fl.to_local(get_viewport().get_mouse_position())
+					_push_builder_undo(fl)
 					if fl.erase_near(local, tile):
 						Audio.play("demolish")
 						_refresh_functions()
+					else:
+						_builder_undo_stack.pop_back()  # nothing erased — drop the wasted snapshot
 				"balcony", "bathroom":
 					_builder_drawing  = true
 					_builder_cur_tile = tile
+					_push_builder_undo(fl)  # one snapshot per stroke, not per tile painted
 					_paint_floor_tile(fl, tile, _active_builder_tool)
 				"window":
 					var local_w := fl.to_local(get_viewport().get_mouse_position())
 					var idx_w := fl.find_segment_near(local_w, 1.5)
-					if idx_w >= 0 and fl.toggle_window_on_segment(idx_w):
-						Audio.play("place")
-						_refresh_functions()
+					if idx_w >= 0:
+						_push_builder_undo(fl)
+						if fl.toggle_window_on_segment(idx_w):
+							Audio.play("place")
+							_refresh_functions()
+						else:
+							_builder_undo_stack.pop_back()
+							Audio.play("error")
 					else:
 						Audio.play("error")
 				"door":
 					var local_d := fl.to_local(get_viewport().get_mouse_position())
 					var idx_d := fl.find_segment_near(local_d, 1.5)
-					if idx_d >= 0 and fl.toggle_door_on_segment(idx_d):
-						Audio.play("place")
-						_refresh_functions()
+					if idx_d >= 0:
+						_push_builder_undo(fl)
+						if fl.toggle_door_on_segment(idx_d):
+							Audio.play("place")
+							_refresh_functions()
+						else:
+							_builder_undo_stack.pop_back()
+							Audio.play("error")
 					else:
 						Audio.play("error")
 				"pipe_water", "pipe_power":
@@ -1687,6 +1716,49 @@ func _handle_builder_input(event: InputEvent) -> void:
 					_paint_floor_tile(fl, tile, _active_builder_tool)
 
 
+# ── Builder tab undo ──────────────────────────────────────────────────────
+# Snapshot-based rather than per-tool inverse operations: every commit action
+# for every tool (wall/column/erase/paint/window/door/rail/reveal/pipe) only
+# ever touches these six Floor fields, so capturing all six before a mutation
+# and restoring them wholesale on undo covers every tool with one mechanism.
+func _push_builder_undo(fl: Floor) -> void:
+	_builder_undo_stack.append({
+		"floor_id": fl.name,
+		"data": {
+			"segments":         fl.segments.duplicate(true),
+			"columns":          fl.columns.duplicate(true),
+			"floor_kind":       fl.floor_kind.duplicate(true),
+			"rails":            fl.rails.duplicate(true),
+			"reveal_zones":     fl.reveal_zones.duplicate(true),
+			"pipe_routes":      fl.pipe_routes.duplicate(true),
+		},
+	})
+	if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
+		_builder_undo_stack.pop_front()
+
+
+func _undo_builder_action() -> void:
+	if _builder_undo_stack.is_empty():
+		return
+	var entry := _builder_undo_stack.pop_back() as Dictionary
+	var fl := _floors.get(entry["floor_id"] as String) as Floor
+	if not fl:
+		return
+	var data := entry["data"] as Dictionary
+	fl.segments     = (data["segments"] as Array).duplicate(true)
+	fl.columns      = (data["columns"] as Array).duplicate(true)
+	fl.floor_kind   = (data["floor_kind"] as Dictionary).duplicate(true)
+	fl.rails        = (data["rails"] as Array).duplicate(true)
+	fl.reveal_zones = (data["reveal_zones"] as Array).duplicate(true)
+	fl.pipe_routes  = (data["pipe_routes"] as Array).duplicate(true)
+	if fl.has_method("_compute_light_map"):
+		fl._compute_light_map()
+	if fl.grid_draw:
+		fl.grid_draw.queue_redraw()
+	_refresh_functions()
+	Audio.play("click")
+
+
 func _paint_floor_tile(fl: Floor, tile: Vector2i, kind: String) -> void:
 	if tile.x < 0 or tile.y < 0 or tile.x >= fl.grid_w or tile.y >= fl.grid_h:
 		return
@@ -1702,6 +1774,7 @@ func _commit_builder_wall(fl: Floor) -> void:
 	if not fl.can_add_segment(ps.x, ps.y, pe.x, pe.y):
 		Audio.play("error")
 		return
+	_push_builder_undo(fl)
 	fl.add_segment(ps.x, ps.y, pe.x, pe.y)
 	Audio.play("place")
 	_refresh_functions()
@@ -1715,6 +1788,7 @@ func _commit_builder_rail(fl: Floor) -> void:
 	if not fl.can_add_rail(ps.x, ps.y, pe.x, pe.y):
 		Audio.play("error")
 		return
+	_push_builder_undo(fl)
 	fl.add_rail(ps.x, ps.y, pe.x, pe.y)
 	Audio.play("place")
 
@@ -1727,6 +1801,7 @@ func _commit_builder_reveal(fl: Floor) -> void:
 	if not fl.can_add_reveal_zone(ps.x, ps.y, pe.x, pe.y):
 		Audio.play("error")
 		return
+	_push_builder_undo(fl)
 	fl.add_reveal_zone(ps.x, ps.y, pe.x, pe.y)
 	Audio.play("place")
 
@@ -1737,6 +1812,7 @@ func _commit_builder_pipe(fl: Floor) -> void:
 		_builder_pipe_tiles = []
 		_clear_builder_pipe_ghost()
 		return
+	_push_builder_undo(fl)
 	fl.add_pipe_route(pipe_type, _builder_pipe_tiles.duplicate())
 	Audio.play("place")
 	_builder_pipe_tiles = []

@@ -4,6 +4,7 @@ class_name Inventory
 signal buy_requested(furniture_id: String)
 signal view3d_requested(furniture_id: String)
 signal builder_tool_selected(tool_id: String)   # "" = no tool (back to select/place mode)
+signal undo_requested
 
 # "Builder" is anything that shapes the room itself rather than furnishing it
 # (currently just staircases) — kept as a plain id-flag check so future
@@ -129,11 +130,21 @@ func _build_builder_tool_row() -> VBoxContainer:
 	var wrap := VBoxContainer.new()
 	wrap.add_theme_constant_override("separation", 4)
 
+	var hdr_row := HBoxContainer.new()
 	var hdr := Label.new()
 	hdr.text = "TOOLS  (drag on the floor plan to build)"
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	wrap.add_child(hdr)
+	hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr_row.add_child(hdr)
+
+	var undo_btn := Button.new()
+	undo_btn.text = "↶ Undo"
+	undo_btn.tooltip_text = "Undo last Builder action (Ctrl+Z)"
+	undo_btn.add_theme_font_size_override("font_size", 10)
+	undo_btn.pressed.connect(func(): undo_requested.emit())
+	hdr_row.add_child(undo_btn)
+	wrap.add_child(hdr_row)
 
 	var group := ButtonGroup.new()
 	_builder_tool_buttons = []
