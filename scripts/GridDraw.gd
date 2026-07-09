@@ -477,6 +477,115 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	_draw_segments(parent)
 	_draw_sloped_ceiling(parent)
 
+	# ── 5. Blueprint annotations: dimension lines + corner title block ────────
+	_draw_dimensions(parent, ww, hh)
+	_draw_title_block(parent, ww, hh)
+
+
+# Is this Floor node a real floor plate (worth annotating) vs a subfloor/
+# ceiling/roof overlay layer? Real plates carry wall segments or a floor mask.
+func _is_plate(parent: Floor) -> bool:
+	return not parent.segments.is_empty() or not parent.floor_mask.is_empty()
+
+
+# Room bounding box (in tiles): prefer the floor mask, fall back to the extent
+# of the wall segments, then to the whole grid.
+func _room_bounds_tiles(parent: Floor) -> Rect2i:
+	var mnx := 1 << 30; var mny := 1 << 30
+	var mxx := -(1 << 30); var mxy := -(1 << 30)
+	if not parent.floor_mask.is_empty():
+		for tile in parent.floor_mask:
+			var t := tile as Vector2i
+			mnx = mini(mnx, t.x); mny = mini(mny, t.y)
+			mxx = maxi(mxx, t.x); mxy = maxi(mxy, t.y)
+		return Rect2i(mnx, mny, mxx - mnx + 1, mxy - mny + 1)
+	if not parent.segments.is_empty():
+		for seg in parent.segments:
+			var sd := seg as Dictionary
+			for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
+				mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
+				mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
+		return Rect2i(mnx, mny, mxx - mnx, mxy - mny)
+	return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+
+
+func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
+	if not _is_plate(parent):
+		return
+	const DIM_COL := Color(0.62, 0.82, 0.98, 0.85)
+	var b := _room_bounds_tiles(parent)
+	var font := ThemeDB.fallback_font
+	var left   := float(b.position.x * TILE_SIZE)
+	var right  := float((b.position.x + b.size.x) * TILE_SIZE)
+	var top    := float(b.position.y * TILE_SIZE)
+	var bottom := float((b.position.y + b.size.y) * TILE_SIZE)
+	var w_m := b.size.x / float(METER_TILES)
+	var h_m := b.size.y / float(METER_TILES)
+
+	# Horizontal dim: prefer the side (above/below the room) with more free space
+	var gap_above := top
+	var gap_below := hh - bottom
+	var dy := bottom + 6.0 if gap_below >= gap_above else top - 6.0
+	if maxf(gap_above, gap_below) >= 6.0:
+		draw_line(Vector2(left, dy), Vector2(right, dy), DIM_COL, 1.0)
+		draw_line(Vector2(left, dy - 2), Vector2(left, dy + 2), DIM_COL, 1.0)
+		draw_line(Vector2(right, dy - 2), Vector2(right, dy + 2), DIM_COL, 1.0)
+		var wtxt := "%.1f m" % w_m
+		var wsz := font.get_string_size(wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7)
+		draw_string(font, Vector2((left + right) * 0.5 - wsz.x * 0.5, dy - 2), wtxt,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
+
+	# Vertical dim: prefer the side (left/right of the room) with more space
+	var gap_left  := left
+	var gap_right := ww - right
+	var dx := right + 6.0 if gap_right >= gap_left else left - 6.0
+	if maxf(gap_left, gap_right) >= 6.0:
+		draw_line(Vector2(dx, top), Vector2(dx, bottom), DIM_COL, 1.0)
+		draw_line(Vector2(dx - 2, top), Vector2(dx + 2, top), DIM_COL, 1.0)
+		draw_line(Vector2(dx - 2, bottom), Vector2(dx + 2, bottom), DIM_COL, 1.0)
+		var htxt := "%.1f m" % h_m
+		draw_string(font, Vector2(dx + 2, (top + bottom) * 0.5 + 3), htxt,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
+
+
+func _draw_title_block(parent: Floor, ww: int, hh: int) -> void:
+	if _gm == null or _gm.current_level.is_empty():
+		return
+	if not _is_plate(parent):
+		return  # skip on overlay-only layers
+	var lvl: Dictionary = _gm.current_level
+	var font := ThemeDB.fallback_font
+	var b := _room_bounds_tiles(parent)
+	var area_m2 := b.size.x * b.size.y / float(METER_TILES * METER_TILES)
+	var tenant := (lvl.get("tenant", {}) as Dictionary).get("name", "—") as String
+	var title := (lvl.get("name", "APARTMENT") as String).to_upper()
+
+	# Block geometry — bottom-right corner, inside the sheet frame
+	var bw := 116.0
+	var bh := 40.0
+	var pad := 8.0
+	var bx := ww - bw - pad
+	var by := hh - bh - pad
+
+	const BG   := Color(0.055, 0.145, 0.255, 0.92)
+	const LINE := Color(0.62, 0.82, 0.98, 0.85)
+	const INK  := Color(0.86, 0.94, 1.00, 1.0)
+	const MUT  := Color(0.60, 0.76, 0.94, 0.80)
+	draw_rect(Rect2(bx, by, bw, bh), BG)
+	draw_rect(Rect2(bx, by, bw, bh), LINE, false, 1.2)
+	# Title bar
+	draw_rect(Rect2(bx, by, bw, 12), Color(0.10, 0.24, 0.40, 0.90))
+	draw_line(Vector2(bx, by + 12), Vector2(bx + bw, by + 12), LINE, 1.0)
+	draw_string(font, Vector2(bx + 4, by + 9), title, HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 7, INK)
+	# Rows
+	draw_string(font, Vector2(bx + 4, by + 22), "TENANT", HORIZONTAL_ALIGNMENT_LEFT, 60, 6, MUT)
+	draw_string(font, Vector2(bx + 44, by + 22), tenant, HORIZONTAL_ALIGNMENT_LEFT, bw - 48, 7, INK)
+	draw_string(font, Vector2(bx + 4, by + 31), "AREA", HORIZONTAL_ALIGNMENT_LEFT, 40, 6, MUT)
+	draw_string(font, Vector2(bx + 44, by + 31), "%.1f m2" % area_m2, HORIZONTAL_ALIGNMENT_LEFT, 50, 7, INK)
+	# Scale marker, bottom divider
+	draw_line(Vector2(bx, by + 34), Vector2(bx + bw, by + 34), Color(LINE.r, LINE.g, LINE.b, 0.4), 0.7)
+	draw_string(font, Vector2(bx + 4, by + 39), "SCALE 1:50", HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 6, MUT)
+
 
 func _draw_edge_overlays(parent: Floor) -> void:
 	if parent._use_new_format:

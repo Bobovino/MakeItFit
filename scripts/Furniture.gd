@@ -219,10 +219,13 @@ func _apply_fold_state(want_extended: bool) -> bool:
 func _draw() -> void:
 	var w := grid_w * TILE_SIZE
 	var h := grid_h * TILE_SIZE
-	var ink := Color(0.08, 0.16, 0.26, 0.90)  # cool drafting-ink navy (blueprint)
+	# Blueprint line-work: bright white-cyan ink, no colour fill. A faint white
+	# glaze keeps the footprint readable (it's a packing puzzle — occupied cells
+	# must read at a glance) while the piece stays part of the drawing.
+	var ink := Color(0.88, 0.95, 1.00, 1.0)
 
-	# Base fill + crisp outline
-	draw_rect(Rect2(0, 0, w, h), _color)
+	# Faint glaze + crisp white outline
+	draw_rect(Rect2(0, 0, w, h), Color(0.86, 0.94, 1.00, 0.10))
 	draw_rect(Rect2(0, 0, w, h), ink, false, 1.5)
 
 	# Architectural symbol
@@ -257,8 +260,8 @@ func _draw() -> void:
 				Color(ink.r, ink.g, ink.b, 0.55))
 		elif test_mode_active:
 			# Dashed preview of extended zone (not currently extended)
-			var ec    := Color(0.88, 0.10, 0.10, 0.45) if _extended_conflict else Color(_color.r, _color.g, _color.b, 0.32)
-			var ec_bd := Color(0.88, 0.10, 0.10, 0.85) if _extended_conflict else Color(_color.r * 0.8, _color.g * 0.8, _color.b * 0.8, 0.70)
+			var ec    := Color(0.88, 0.10, 0.10, 0.45) if _extended_conflict else Color(0.60, 0.82, 0.98, 0.20)
+			var ec_bd := Color(0.88, 0.10, 0.10, 0.85) if _extended_conflict else Color(0.66, 0.86, 1.00, 0.75)
 			draw_rect(Rect2(0, h, w, ext_h), ec)
 			draw_dashed_line(Vector2(0, h),         Vector2(w, h),         ec_bd, 1.5, 5.0)
 			draw_dashed_line(Vector2(0, h),         Vector2(0, h + ext_h), ec_bd, 1.0, 4.0)
