@@ -26,9 +26,21 @@ const DEFAULT_OWNED := ["tut_basics","debug_moments","debug_rails","debug:_rail_
 
 
 func _ready() -> void:
+	_apply_global_font()
 	load_game()
 	for _lid in DEFAULT_OWNED:
 		own_level(_lid)
+
+
+# Sets the engine-wide fallback font once at boot. Every themed Control (none
+# of GameTheme's styles set a font override) and every draw_string(ThemeDB.
+# fallback_font, ...) call throughout the codebase — furniture labels, the
+# blueprint title block/dimensions, wall-panel item names — all resolve to
+# this same font as a result, without touching each call site individually.
+func _apply_global_font() -> void:
+	const FONT_PATH := "res://assets/fonts/SpaceGrotesk.ttf"
+	if ResourceLoader.exists(FONT_PATH):
+		ThemeDB.fallback_font = load(FONT_PATH)
 
 
 # ── Persistence ───────────────────────────────────────────────────────────────
