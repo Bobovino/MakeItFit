@@ -1115,8 +1115,8 @@ func cancel_placement() -> void:
 	queue_free()
 
 
-func begin_placement(floor: Floor, mouse_pos: Vector2) -> void:
-	_wall_ref       = floor
+func begin_placement(apt_floor: Floor, mouse_pos: Vector2) -> void:
+	_wall_ref       = apt_floor
 	_placement_mode = true
 	_dragging       = true
 	_drag_offset    = -Vector2(grid_w, grid_h) * TILE_SIZE * 0.5

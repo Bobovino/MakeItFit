@@ -623,10 +623,10 @@ func find_segment_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
 		var pa := Vector2(sd["x1"] as int * TILE_SIZE, sd["y1"] as int * TILE_SIZE)
 		var pb := Vector2(sd["x2"] as int * TILE_SIZE, sd["y2"] as int * TILE_SIZE)
 		var seg := pb - pa
-		var len := seg.length()
-		if len < 1.0:
+		var seg_len := seg.length()
+		if seg_len < 1.0:
 			continue
-		var t   := clampf((fl_pos - pa).dot(seg) / (len * len), 0.0, 1.0)
+		var t   := clampf((fl_pos - pa).dot(seg) / (seg_len * seg_len), 0.0, 1.0)
 		var d   := fl_pos.distance_to(pa + seg * t)
 		if d < best_d:
 			best_d = d; best_i = i
@@ -655,10 +655,10 @@ func find_rail_near(fl_pos: Vector2, snap_tiles: float = 1.5) -> int:
 		var pa := Vector2(rd["x1"] as int * TILE_SIZE, rd["y1"] as int * TILE_SIZE)
 		var pb := Vector2(rd["x2"] as int * TILE_SIZE, rd["y2"] as int * TILE_SIZE)
 		var seg := pb - pa
-		var len := seg.length()
-		if len < 1.0:
+		var seg_len := seg.length()
+		if seg_len < 1.0:
 			continue
-		var t := clampf((fl_pos - pa).dot(seg) / (len * len), 0.0, 1.0)
+		var t := clampf((fl_pos - pa).dot(seg) / (seg_len * seg_len), 0.0, 1.0)
 		var d := fl_pos.distance_to(pa + seg * t)
 		if d < best_d:
 			best_d = d; best_i = i
@@ -942,7 +942,6 @@ func _recalculate_zones() -> void:
 			var f := item as Furniture
 			if f.zone_divider:
 				continue
-			var found := false
 			for ft in _rect_tiles(f.grid_pos, f.grid_w, f.grid_h):
 				if ft in zone_tiles:
 					for fn in f.functions:
@@ -950,7 +949,6 @@ func _recalculate_zones() -> void:
 							zone_fns.append(fn as String)
 					if f.furniture_id not in zone_fids:
 						zone_fids.append(f.furniture_id)
-					found = true
 					break
 		zones.append({"tiles": zone_tiles, "functions": zone_fns, "furniture_ids": zone_fids})
 	grid_draw.queue_redraw()

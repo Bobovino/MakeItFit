@@ -242,8 +242,8 @@ func _pick_furniture(vp_pos: Vector2) -> Dictionary:
 	var best: Dictionary = {}
 	for entry in _furniture_entries:
 		var pos: Vector3 = entry["pos"]
-		var size: Vector3 = entry["size"]
-		var t := _ray_box_t(from, dir, pos - size * 0.5, pos + size * 0.5)
+		var item_size: Vector3 = entry["size"]
+		var t := _ray_box_t(from, dir, pos - item_size * 0.5, pos + item_size * 0.5)
 		if t < best_t:
 			best_t = t
 			best = entry
@@ -267,9 +267,9 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	var tile := _room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset
 	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
-	var size: Vector3 = _drag_target["size"]
-	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
-	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	var item_size: Vector3 = _drag_target["size"]
+	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
+	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	_drag_target["pos"] = mesh.position
 
 
@@ -286,8 +286,8 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	col.a = 0.55
-	var size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
-	_buying_mesh = _box(size, Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5), col)
+	var box_size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
+	_buying_mesh = _box(box_size, Vector3(box_size.x * 0.5, box_size.y * 0.5, box_size.z * 0.5), col)
 
 
 func _update_buy_ghost(vp_pos: Vector2) -> void:
@@ -302,9 +302,9 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		var wall_h: int = _buying_fdata.get("wall_h", 8) as int
 		var depth: int  = _buying_fdata.get("floor_depth", 1) as int
 		var origin := _wall_origin_from_hit(edge, hit["along_m"], hit["height_m"], iw, wall_h, _buying_fdata)
-		var tr := _wall_item_mesh_transform(edge, origin, iw, wall_h, depth)
-		box.size = tr["size"]
-		_buying_mesh.position = tr["pos"]
+		var xf := _wall_item_mesh_transform(edge, origin, iw, wall_h, depth)
+		box.size = xf["size"]
+		_buying_mesh.position = xf["pos"]
 		_buying_mesh.set_meta("wall_edge", edge)
 		_buying_mesh.set_meta("wall_origin", origin)
 	else:
@@ -329,14 +329,14 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		if _apt_floor:
 			_apt_floor.place_wall_item(edge, origin, fid)
 		var depth: int = _buying_fdata.get("floor_depth", 1) as int
-		var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
-		var mat := _buying_mesh.material_override as StandardMaterial3D
-		if mat:
-			mat.albedo_color.a = 1.0
-		(_buying_mesh.mesh as BoxMesh).size = tr["size"]
-		_buying_mesh.position = tr["pos"]
-		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, tr["size"])
-		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": tr["size"]})
+		var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+		var wall_ghost_mat := _buying_mesh.material_override as StandardMaterial3D
+		if wall_ghost_mat:
+			wall_ghost_mat.albedo_color.a = 1.0
+		(_buying_mesh.mesh as BoxMesh).size = xf["size"]
+		_buying_mesh.position = xf["pos"]
+		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, xf["size"])
+		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": xf["size"]})
 		_buying_furniture = null
 		_buying_fdata     = {}
 		_buying_mesh      = null
@@ -346,17 +346,17 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	if not _apt_floor:
 		return
 	var tile := _room_local_to_tile(_ground_hit(vp_pos))
-	var snapped := _apt_floor.snap_to_wall(_buying_furniture, tile)
-	if not _apt_floor.can_place(_buying_furniture, snapped):
+	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
+	if not _apt_floor.can_place(_buying_furniture, snap_pos):
 		return
-	_apt_floor.place_furniture(_buying_furniture, snapped)
+	_apt_floor.place_furniture(_buying_furniture, snap_pos)
 	var f := _buying_furniture
-	var size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
-	var mat := _buying_mesh.material_override as StandardMaterial3D
-	if mat:
-		mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
-	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, size)
-	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": size})
+	var item_size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
+	var ghost_mat := _buying_mesh.material_override as StandardMaterial3D
+	if ghost_mat:
+		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
+	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, item_size)
+	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
@@ -398,8 +398,8 @@ func _pick_wall_item(vp_pos: Vector2) -> Dictionary:
 	for entry in _wall_item_entries:
 		var mesh: MeshInstance3D = entry["mesh"]
 		var pos: Vector3 = mesh.position
-		var size: Vector3 = entry["size"]
-		var t := _ray_box_t(from, dir, pos - size * 0.5, pos + size * 0.5)
+		var item_size: Vector3 = entry["size"]
+		var t := _ray_box_t(from, dir, pos - item_size * 0.5, pos + item_size * 0.5)
 		if t < best_t:
 			best_t = t
 			best = entry
@@ -438,9 +438,9 @@ func _update_wall_item_drag(vp_pos: Vector2) -> void:
 	var origin := Vector2i(x, y)
 	_drag_wall_target["preview_origin"] = origin
 	var depth: int = fdata.get("floor_depth", 1) as int
-	var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+	var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
 	var mesh: MeshInstance3D = _drag_wall_target["mesh"]
-	mesh.position = tr["pos"]
+	mesh.position = xf["pos"]
 
 
 func _finish_wall_item_drag() -> void:
@@ -462,12 +462,12 @@ func _finish_wall_item_drag() -> void:
 			final_origin = new_origin
 		else:
 			_apt_floor.place_wall_item(edge, old_origin, fid)
-	var tr := _wall_item_mesh_transform(edge, final_origin, iw, ih, depth)
-	mesh.position = tr["pos"]
+	var xf := _wall_item_mesh_transform(edge, final_origin, iw, ih, depth)
+	mesh.position = xf["pos"]
 	for i in range(_wall_item_entries.size() - 1, -1, -1):
 		if _wall_item_entries[i]["mesh"] == mesh:
 			_wall_item_entries[i]["origin"] = final_origin
-			_wall_item_entries[i]["size"]   = tr["size"]
+			_wall_item_entries[i]["size"]   = xf["size"]
 	_drag_wall_target = {}
 
 
@@ -719,34 +719,34 @@ func _wall_item_mesh_transform(edge: String, origin: Vector2i, iw: int, ih: int,
 	var top_from_floor_m := WALL_H_M - origin.y * TILE_M
 	var center_y := top_from_floor_m - ih_m * 0.5
 	var along    := origin.x * TILE_M + iw_m * 0.5
-	var size: Vector3
+	var sz: Vector3
 	var pos: Vector3
 	match edge:
 		"north":
-			size = Vector3(iw_m, ih_m, depth_m)
-			pos  = Vector3(along, center_y, depth_m * 0.5)
+			sz  = Vector3(iw_m, ih_m, depth_m)
+			pos = Vector3(along, center_y, depth_m * 0.5)
 		"south":
-			size = Vector3(iw_m, ih_m, depth_m)
-			pos  = Vector3(along, center_y, _room_d_m - depth_m * 0.5)
+			sz  = Vector3(iw_m, ih_m, depth_m)
+			pos = Vector3(along, center_y, _room_d_m - depth_m * 0.5)
 		"west":
-			size = Vector3(depth_m, ih_m, iw_m)
-			pos  = Vector3(depth_m * 0.5, center_y, along)
+			sz  = Vector3(depth_m, ih_m, iw_m)
+			pos = Vector3(depth_m * 0.5, center_y, along)
 		_:   # "east"
-			size = Vector3(depth_m, ih_m, iw_m)
-			pos  = Vector3(_room_w_m - depth_m * 0.5, center_y, along)
-	return {"size": size, "pos": pos}
+			sz  = Vector3(depth_m, ih_m, iw_m)
+			pos = Vector3(_room_w_m - depth_m * 0.5, center_y, along)
+	return {"size": sz, "pos": pos}
 
 
 func _finish_furniture_drag() -> void:
 	_dragging_furniture = false
 	var f: Furniture = _drag_target["furniture"]
 	var mesh: MeshInstance3D = _drag_target["mesh"]
-	var size: Vector3 = _drag_target["size"]
-	var snapped := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
-	if _apt_floor and _apt_floor.can_place(f, snapped):
-		_apt_floor.place_furniture(f, snapped)
-		mesh.position.x = (snapped.x - _room_bounds.position.x) * TILE_M + size.x * 0.5
-		mesh.position.z = (snapped.y - _room_bounds.position.y) * TILE_M + size.z * 0.5
+	var item_size: Vector3 = _drag_target["size"]
+	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
+	if _apt_floor and _apt_floor.can_place(f, snap_pos):
+		_apt_floor.place_furniture(f, snap_pos)
+		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
+		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	else:
 		mesh.position = _drag_orig_pos
 	_drag_target["pos"] = mesh.position
@@ -796,13 +796,13 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	_cam_flat_dir = flat
 	for wd in _wall_data:
 		var normal: Vector3 = wd["normal"]
-		var mat: StandardMaterial3D = wd["mat"]
+		var wall_mat: StandardMaterial3D = wd["mat"]
 		var base: Color = wd["base"]
 		# Positive dot = camera is on the outside of this wall, looking in —
 		# that's the wall we need to hide.
 		var facing := clampf(normal.dot(flat), 0.0, 1.0)
 		var alpha := lerpf(1.0, 0.08, facing)
-		mat.albedo_color = Color(base.r, base.g, base.b, alpha)
+		wall_mat.albedo_color = Color(base.r, base.g, base.b, alpha)
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
@@ -949,12 +949,12 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 		return
 	mi.mesh = null
 	mi.add_child(inst)
-	var scale := minf(minf(box_size.x / native.size.x, box_size.y / native.size.y), box_size.z / native.size.z)
-	inst.scale = Vector3.ONE * scale
+	var fit_scale := minf(minf(box_size.x / native.size.x, box_size.y / native.size.y), box_size.z / native.size.z)
+	inst.scale = Vector3.ONE * fit_scale
 	inst.position = Vector3(
-		-(native.position.x + native.size.x * 0.5) * scale,
-		-box_size.y * 0.5 - native.position.y * scale,
-		-(native.position.z + native.size.z * 0.5) * scale)
+		-(native.position.x + native.size.x * 0.5) * fit_scale,
+		-box_size.y * 0.5 - native.position.y * fit_scale,
+		-(native.position.z + native.size.z * 0.5) * fit_scale)
 
 
 func _node_aabb(node: Node3D) -> AABB:
@@ -1014,9 +1014,9 @@ func _add_balcony_extras(bounds: Rect2i) -> void:
 			var horizontal: bool = e[2]
 			if _apt_floor.is_floor_tile(ntile):
 				continue
-			var size := Vector3(TILE_M, RAIL_H_M, RAIL_THICK_M) if horizontal \
+			var rail_size := Vector3(TILE_M, RAIL_H_M, RAIL_THICK_M) if horizontal \
 				else Vector3(RAIL_THICK_M, RAIL_H_M, TILE_M)
-			_box(size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col)
+			_box(rail_size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col)
 
 
 # Ceiling height (metres) at a given absolute world tile coordinate along the
@@ -1144,11 +1144,11 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var local_x := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
 	var local_z := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
 	var col := Color("#" + (fdata.get("color", "888888") as String))
-	var size := Vector3(fw, height_m, fd)
+	var box_size := Vector3(fw, height_m, fd)
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
-	var mi   := _box(size, pos, col)
-	_apply_item_model(mi, fdata.get("model", "") as String, size)
-	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": size})
+	var mi   := _box(box_size, pos, col)
+	_apply_item_model(mi, fdata.get("model", "") as String, box_size)
+	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 
 
 # `origin` is wall-local: origin.x along the wall, origin.y from the TOP of
@@ -1161,7 +1161,7 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	var ih: int    = fdata.get("wall_h", 5) as int
 	var depth: int = fdata.get("floor_depth", 1) as int
 	var col := Color("#" + (fdata.get("color", "888888") as String))
-	var tr := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
-	var mi := _box(tr["size"], tr["pos"], col)
-	_apply_item_model(mi, fdata.get("model", "") as String, tr["size"])
-	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": tr["size"]})
+	var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
+	var mi := _box(xf["size"], xf["pos"], col)
+	_apply_item_model(mi, fdata.get("model", "") as String, xf["size"])
+	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": xf["size"]})

@@ -127,8 +127,8 @@ func _render() -> void:
 # rather than being placed Furniture pieces, so they're driven by a tool
 # selector instead of a Buy button.
 func _build_builder_tool_row() -> VBoxContainer:
-	var wrap := VBoxContainer.new()
-	wrap.add_theme_constant_override("separation", 4)
+	var tool_panel := VBoxContainer.new()
+	tool_panel.add_theme_constant_override("separation", 4)
 
 	var hdr_row := HBoxContainer.new()
 	var hdr := Label.new()
@@ -144,7 +144,7 @@ func _build_builder_tool_row() -> VBoxContainer:
 	undo_btn.add_theme_font_size_override("font_size", 10)
 	undo_btn.pressed.connect(func(): undo_requested.emit())
 	hdr_row.add_child(undo_btn)
-	wrap.add_child(hdr_row)
+	tool_panel.add_child(hdr_row)
 
 	var group := ButtonGroup.new()
 	_builder_tool_buttons = []
@@ -170,11 +170,11 @@ func _build_builder_tool_row() -> VBoxContainer:
 			btn.pressed.connect(_set_builder_tool.bind(tid))
 			row.add_child(btn)
 			_builder_tool_buttons.append(btn)
-		wrap.add_child(row)
+		tool_panel.add_child(row)
 
 	var sep := HSeparator.new()
-	wrap.add_child(sep)
-	return wrap
+	tool_panel.add_child(sep)
+	return tool_panel
 
 
 func _build_shop_row(f: Dictionary) -> PanelContainer:

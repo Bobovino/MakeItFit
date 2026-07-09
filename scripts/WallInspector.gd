@@ -625,12 +625,12 @@ func _draw_elevation() -> void:
 				draw_area.draw_string(ThemeDB.fallback_font, Vector2(sx + 2, mezz_y - 3),
 					"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
 				run_s = wc; run_e = wc + 1
-		var sx := run_s * TILE_SIZE; var sw := (run_e - run_s) * TILE_SIZE
-		draw_area.draw_rect(Rect2(sx, mezz_y, sw, 3), mezz_col)
-		draw_area.draw_rect(Rect2(sx, 0, sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
-		draw_area.draw_line(Vector2(sx, mezz_y), Vector2(sx + sw, mezz_y), mezz_fg, 2.0)
-		draw_area.draw_string(ThemeDB.fallback_font, Vector2(sx + 2, mezz_y - 3),
-			"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
+		var last_sx := run_s * TILE_SIZE; var last_sw := (run_e - run_s) * TILE_SIZE
+		draw_area.draw_rect(Rect2(last_sx, mezz_y, last_sw, 3), mezz_col)
+		draw_area.draw_rect(Rect2(last_sx, 0, last_sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
+		draw_area.draw_line(Vector2(last_sx, mezz_y), Vector2(last_sx + last_sw, mezz_y), mezz_fg, 2.0)
+		draw_area.draw_string(ThemeDB.fallback_font, Vector2(last_sx + 2, mezz_y - 3),
+			"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, last_sw - 4, 7, mezz_fg)
 
 	# ── Hung wall items ───────────────────────────────────────────────────────
 	var placed := _apt_floor.get_wall_items(_edge)

@@ -25,6 +25,14 @@ config/icon="res://icon.svg"
 Audio="*res://scripts/AudioManager.gd"
 GameState="*res://scripts/GameState.gd"
 
+[debug]
+
+; Tile-space math throughout the codebase (pixel ÷ TILE_SIZE, grid row/col
+; from counts, etc.) is deliberately integer division — the warning fires on
+; every such site with no real bug to fix, so it's disabled project-wide
+; rather than sprinkling @warning_ignore on ~20 call sites.
+gdscript/warnings/integer_division=0
+
 [display]
 
 window/size/viewport_width=1280
