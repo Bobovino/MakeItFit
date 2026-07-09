@@ -534,22 +534,22 @@ func _draw_elevation() -> void:
 	# transform scales the whole render to match draw_area's zoomed size.
 	draw_area.draw_set_transform(Vector2.ZERO, 0.0, Vector2(_zoom, _zoom))
 
-	# Wall surface + grid — blueprint palette to match floor plan
-	draw_area.draw_rect(Rect2(0, 0, rw, rh), Color(0.93, 0.90, 0.83))
+	# Wall surface + grid — same cyanotype blueprint palette as the floor plan
+	draw_area.draw_rect(Rect2(0, 0, rw, rh), GridDraw.BP_FLOOR)
 	for x in range(wall_w + 1):
 		draw_area.draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh),
-			Color(0.55, 0.52, 0.44, 0.22), 0.5)
+			GridDraw.BP_GRID_FINE, 0.5)
 	for y in range(WALL_HEIGHT + 1):
 		draw_area.draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE),
-			Color(0.55, 0.52, 0.44, 0.22), 0.5)
+			GridDraw.BP_GRID_FINE, 0.5)
 	for x in range(0, wall_w + 1, 10):
 		draw_area.draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh),
-			Color(0.45, 0.42, 0.34, 0.50), 1.0)
+			GridDraw.BP_GRID_MAJ, 1.0)
 	for y in range(0, WALL_HEIGHT + 1, 10):
 		draw_area.draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE),
-			Color(0.45, 0.42, 0.34, 0.50), 1.0)
-	draw_area.draw_line(Vector2(0, rh), Vector2(rw, rh), Color(0.16, 0.13, 0.10), 4.0)
-	draw_area.draw_line(Vector2(0, 0),  Vector2(rw, 0),  Color(0.16, 0.13, 0.10), 2.0)
+			GridDraw.BP_GRID_MAJ, 1.0)
+	draw_area.draw_line(Vector2(0, rh), Vector2(rw, rh), GridDraw.BP_INK, 4.0)
+	draw_area.draw_line(Vector2(0, 0),  Vector2(rw, 0),  GridDraw.BP_INK, 2.0)
 
 	# ── Sloped ceiling cut — grey out the unusable space above the real roofline
 	if not _apt_floor.sloped_ceiling.is_empty():
@@ -560,7 +560,7 @@ func _draw_elevation() -> void:
 		var blocked := roof_pts.duplicate()
 		blocked.append(Vector2(rw, 0))
 		blocked.append(Vector2(0, 0))
-		draw_area.draw_colored_polygon(blocked, Color(0.10, 0.08, 0.06, 0.55))
+		draw_area.draw_colored_polygon(blocked, Color(0.02, 0.05, 0.11, 0.65))
 		for i in range(roof_pts.size() - 1):
 			draw_area.draw_line(roof_pts[i], roof_pts[i + 1], Color(0.80, 0.30, 0.18, 0.95), 2.0)
 
@@ -644,17 +644,17 @@ func _draw_elevation() -> void:
 			continue
 		var iw: int = fdata["size"]["w"] as int
 		var ih: int = fdata.get("wall_h", 3) as int
-		var col     := Color("#" + (fdata.get("color", "aaaaaa") as String))
+		var col     := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10)
 		var px := o.x * TILE_SIZE
 		var py := o.y * TILE_SIZE
 		var pw := iw * TILE_SIZE
 		var ph := ih * TILE_SIZE
 		draw_area.draw_rect(Rect2(px, py, pw, ph), col)
-		draw_area.draw_rect(Rect2(px, py, pw, ph), Color(0, 0, 0, 0.45), false, 1.0)
+		draw_area.draw_rect(Rect2(px, py, pw, ph), GridDraw.BP_INK, false, 1.5)
 		_draw_label(px + 3, py + 11, float(pw - 6), fdata["name"] as String)
 		var depth_px: int = (fdata.get("floor_depth", 1) as int) * TILE_SIZE
 		draw_area.draw_rect(Rect2(px, rh - depth_px, pw, depth_px),
-			Color(col.r, col.g, col.b, 0.18))
+			Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10))
 
 	# ── Wall item drag ghost ──────────────────────────────────────────────────
 	if _is_dragging and not _drag_is_floor and (_drag_origin in placed):
@@ -734,22 +734,22 @@ func _draw_openings(_rw: int, rh: int) -> void:
 		var sill: int = 8  * TILE_SIZE
 		var wh: int   = 12 * TILE_SIZE
 		var wy: int   = rh - sill - wh
-		draw_area.draw_rect(Rect2(wx, wy, wlen, wh), Color(0.55, 0.80, 0.95))
-		draw_area.draw_rect(Rect2(wx - 2, wy + wh, wlen + 4, 3), Color(0.85, 0.80, 0.72))
-		draw_area.draw_rect(Rect2(wx, wy, wlen, wh), Color(0.92, 0.90, 0.85), false, 3.0)
+		draw_area.draw_rect(Rect2(wx, wy, wlen, wh), GridDraw.WINDOW_COLOR)
+		draw_area.draw_rect(Rect2(wx - 2, wy + wh, wlen + 4, 3), GridDraw.BP_INK)
+		draw_area.draw_rect(Rect2(wx, wy, wlen, wh), GridDraw.BP_INK, false, 3.0)
 		draw_area.draw_line(Vector2(wx + wlen * 0.5, wy), Vector2(wx + wlen * 0.5, wy + wh),
-			Color(0.92, 0.90, 0.85), 2.0)
+			GridDraw.BP_INK, 2.0)
 		draw_area.draw_line(Vector2(wx, wy + wh * 0.5), Vector2(wx + wlen, wy + wh * 0.5),
-			Color(0.92, 0.90, 0.85), 2.0)
+			GridDraw.BP_INK, 2.0)
 
 	if wd.get("has_door", false):
 		var dx: int = (wd.get("door_x", 0) as int) * TILE_SIZE
 		var dw: int = 10 * TILE_SIZE
 		var dh: int = 21 * TILE_SIZE
 		var dy: int = rh - dh
-		draw_area.draw_rect(Rect2(dx, dy, dw, dh), Color(0.12, 0.08, 0.05))
-		draw_area.draw_rect(Rect2(dx + 3, dy + 3, dw - 6, dh - 3), Color(0.62, 0.43, 0.22))
-		draw_area.draw_rect(Rect2(dx, dy, dw, dh), Color(0.35, 0.22, 0.10), false, 3.0)
+		draw_area.draw_rect(Rect2(dx, dy, dw, dh), Color(0.03, 0.07, 0.13))
+		draw_area.draw_rect(Rect2(dx + 3, dy + 3, dw - 6, dh - 3), Color(0.20, 0.42, 0.58))
+		draw_area.draw_rect(Rect2(dx, dy, dw, dh), GridDraw.BP_INK, false, 3.0)
 		draw_area.draw_rect(Rect2(dx + 7, dy + 8, dw - 14, dh / 2.0 - 12),
 			Color(0, 0, 0, 0.15), false, 1.0)
 		draw_area.draw_rect(Rect2(dx + 7, dy + dh / 2.0 + 4, dw - 14, dh / 2.0 - 16),
@@ -772,11 +772,14 @@ func _draw_floor_piece(f: Furniture, wx: float, floor_baseline_px: float, is_dra
 	if fdata.is_empty():
 		return
 	var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
-	var col         := Color("#" + (fdata.get("color", "888888") as String))
+	# Blueprint line-symbol, matching the top-down view: white ink + faint
+	# glaze rather than a per-item colour fill (kept only in the 3D view).
+	var col := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10)
+	var outline_a := 1.0
 	if is_dragged:
-		col.a = 0.28
+		outline_a = 0.35
 	elif is_context:
-		col.a = 0.72
+		outline_a = 0.75
 	var px := wx * TILE_SIZE
 	var pw := item_w * TILE_SIZE
 
@@ -790,7 +793,8 @@ func _draw_floor_piece(f: Furniture, wx: float, floor_baseline_px: float, is_dra
 	var ph := wall_h * TILE_SIZE
 	var py := floor_baseline_px - ph
 	draw_area.draw_rect(Rect2(px, py, pw, ph), col)
-	draw_area.draw_rect(Rect2(px, py, pw, ph), Color(0, 0, 0, 0.30), false, 1.0)
+	draw_area.draw_rect(Rect2(px, py, pw, ph),
+		Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, outline_a), false, 1.5)
 	if not is_dragged:
 		_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
 
@@ -804,7 +808,7 @@ func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: 
 	var leg_top_px  := rh - LEG_TOP * TILE_SIZE
 	var plat_top_px := leg_top_px - PLATFORM_H * TILE_SIZE
 	var leg_w   := minf(TILE_SIZE, pw * 0.18)
-	var outline := Color(0, 0, 0, 0.30)
+	var outline := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.75)
 
 	# Legs
 	draw_area.draw_rect(Rect2(px + 1,               leg_top_px, leg_w, rh - leg_top_px), col)
@@ -825,7 +829,7 @@ func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: 
 	draw_area.draw_rect(Rect2(px, plat_top_px, pw, PLATFORM_H * TILE_SIZE), outline, false, 1.0)
 	# Guard-rail line along the top edge
 	draw_area.draw_line(Vector2(px + 2, plat_top_px + 2), Vector2(px + pw - 2, plat_top_px + 2),
-		Color(0, 0, 0, 0.45), 1.5)
+		outline, 1.5)
 
 	if not is_dragged:
 		_draw_label(px + 3, plat_top_px + 10, float(pw - 6), f.furniture_name)
@@ -833,7 +837,7 @@ func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: 
 
 func _draw_label(x: float, y: float, max_w: float, text: String) -> void:
 	draw_area.draw_string(ThemeDB.fallback_font, Vector2(x, y), text,
-		HORIZONTAL_ALIGNMENT_LEFT, int(max_w), 9, Color(0.16, 0.13, 0.10, 0.90))
+		HORIZONTAL_ALIGNMENT_LEFT, int(max_w), 9, GridDraw.BP_INK)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
