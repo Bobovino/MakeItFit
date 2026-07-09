@@ -125,13 +125,15 @@ func _apply_ui_theme() -> void:
 	inventory.theme     = t
 	wall_inspector.theme = t
 
-	if $UI/TopBar is PanelContainer:
-		var ts := StyleBoxFlat.new()
-		ts.bg_color     = Color(0.09, 0.11, 0.15, 0.97)
-		ts.border_color = Color(0.20, 0.26, 0.34)
-		ts.set_border_width(SIDE_BOTTOM, 1)
-		ts.set_content_margin_all(6)
-		($UI/TopBar as PanelContainer).add_theme_stylebox_override("panel", ts)
+	var ts := StyleBoxFlat.new()
+	ts.bg_color     = Color(0.10, 0.12, 0.17, 0.98)
+	ts.border_color = GameTheme.C_BORDER
+	ts.set_border_width(SIDE_BOTTOM, 2)
+	ts.set_content_margin_all(6)
+	ts.shadow_color = Color(0, 0, 0, 0.35)
+	ts.shadow_size = 6
+	ts.shadow_offset = Vector2(0, 3)
+	($UI/TopBarBg as Panel).add_theme_stylebox_override("panel", ts)
 
 	budget_label.add_theme_font_size_override("font_size", 15)
 	budget_label.add_theme_color_override("font_color", GameTheme.C_AMBER)

@@ -84,13 +84,13 @@ static func _panel(bg: Color, border: Color, margin: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
 	s.border_color = border
-	s.set_border_width_all(1)
+	s.set_border_width_all(2)
 	s.set_content_margin_all(margin)
-	s.set_corner_radius_all(8)
+	s.set_corner_radius_all(14)
 	s.anti_aliasing = true
-	s.shadow_color = Color(0, 0, 0, 0.35)
-	s.shadow_size = 6
-	s.shadow_offset = Vector2(0, 3)
+	s.shadow_color = Color(0, 0, 0, 0.4)
+	s.shadow_size = 10
+	s.shadow_offset = Vector2(0, 4)
 	return s
 
 
@@ -103,9 +103,24 @@ static func _btn(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
 	s.set_content_margin(SIDE_RIGHT, 12)
 	s.set_content_margin(SIDE_TOP, 6)
 	s.set_content_margin(SIDE_BOTTOM, 6)
-	s.set_corner_radius_all(5)
+	s.set_corner_radius_all(8)
 	s.anti_aliasing = true
 	s.shadow_color = Color(0, 0, 0, 0.25)
 	s.shadow_size = 3
 	s.shadow_offset = Vector2(0, 2)
+	return s
+
+
+# Small rounded "chip" stylebox — used for item-row cards, category tags, etc.
+static func make_card_stylebox(bg: Color, border: Color, radius: int = 10) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(radius)
+	s.anti_aliasing = true
+	s.set_content_margin(SIDE_LEFT, 8)
+	s.set_content_margin(SIDE_RIGHT, 8)
+	s.set_content_margin(SIDE_TOP, 6)
+	s.set_content_margin(SIDE_BOTTOM, 6)
 	return s

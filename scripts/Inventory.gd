@@ -29,6 +29,7 @@ func setup(game_manager: GameManager) -> void:
 	_gm = game_manager
 	_gm.budget_changed.connect(_refresh_affordability)
 	_ensure_filter_box()
+	item_list.add_theme_constant_override("separation", 5)
 
 
 func _ensure_filter_box() -> void:
@@ -165,22 +166,39 @@ func _build_builder_tool_row() -> VBoxContainer:
 	return wrap
 
 
-func _build_shop_row(f: Dictionary) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+func _build_shop_row(f: Dictionary) -> PanelContainer:
+	var card := PanelContainer.new()
+	var item_col := Color("#" + (f.get("color", "888888") as String))
+	var card_style := GameTheme.make_card_stylebox(Color(0.16, 0.19, 0.24), Color(0.24, 0.29, 0.36))
+	card.add_theme_stylebox_override("panel", card_style)
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	card.mouse_entered.connect(func():
+		card_style.bg_color = Color(0.20, 0.24, 0.30)
+		card_style.border_color = item_col.lightened(0.2))
+	card.mouse_exited.connect(func():
+		card_style.bg_color = Color(0.16, 0.19, 0.24)
+		card_style.border_color = Color(0.24, 0.29, 0.36))
 
-	# Color swatch
-	var swatch := ColorRect.new()
-	swatch.color = Color("#" + (f.get("color", "888888") as String))
-	swatch.custom_minimum_size = Vector2(8, 0)
-	swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+
+	# Rounded color-coded icon swatch
+	var swatch := PanelContainer.new()
+	swatch.custom_minimum_size = Vector2(28, 28)
+	var swatch_style := StyleBoxFlat.new()
+	swatch_style.bg_color = item_col
+	swatch_style.set_corner_radius_all(7)
+	swatch_style.anti_aliasing = true
+	swatch.add_theme_stylebox_override("panel", swatch_style)
 	row.add_child(swatch)
 
 	var name_lbl := Label.new()
 	name_lbl.text = f["name"]
 	name_lbl.custom_minimum_size.x = 108
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 	row.add_child(name_lbl)
 
 	var func_lbl := Label.new()
@@ -193,15 +211,15 @@ func _build_shop_row(f: Dictionary) -> HBoxContainer:
 	var price_lbl := Label.new()
 	price_lbl.text = "%d€" % f["buy_price"]
 	price_lbl.custom_minimum_size.x = 46
-	price_lbl.add_theme_font_size_override("font_size", 11)
-	price_lbl.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
+	price_lbl.add_theme_font_size_override("font_size", 12)
+	price_lbl.add_theme_color_override("font_color", Color(0.55, 0.82, 0.58))
 	row.add_child(price_lbl)
 
 	var view3d_btn := Button.new()
 	view3d_btn.text = "3D"
 	view3d_btn.tooltip_text = "Preview in 3D"
 	view3d_btn.add_theme_font_size_override("font_size", 11)
-	view3d_btn.custom_minimum_size.x = 30
+	view3d_btn.custom_minimum_size.x = 32
 	view3d_btn.pressed.connect(func(): view3d_requested.emit(f["id"] as String))
 	row.add_child(view3d_btn)
 
@@ -213,7 +231,7 @@ func _build_shop_row(f: Dictionary) -> HBoxContainer:
 	buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
 	row.add_child(buy_btn)
 
-	return row
+	return card
 
 
 # Shows pre-owned items (from starting_inventory). Each entry is {id, count}.
@@ -246,19 +264,29 @@ func _render_owned_section() -> void:
 			continue
 
 		for _i in range(count):
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 6)
+			var card := PanelContainer.new()
+			var item_col := Color("#" + (fdata.get("color", "888888") as String))
+			card.add_theme_stylebox_override("panel",
+				GameTheme.make_card_stylebox(Color(0.16, 0.19, 0.24), Color(0.24, 0.29, 0.36)))
 
-			var swatch := ColorRect.new()
-			swatch.color = Color("#" + (fdata.get("color", "888888") as String))
-			swatch.custom_minimum_size = Vector2(8, 0)
-			swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			card.add_child(row)
+
+			var swatch := PanelContainer.new()
+			swatch.custom_minimum_size = Vector2(24, 24)
+			var swatch_style := StyleBoxFlat.new()
+			swatch_style.bg_color = item_col
+			swatch_style.set_corner_radius_all(6)
+			swatch_style.anti_aliasing = true
+			swatch.add_theme_stylebox_override("panel", swatch_style)
 			row.add_child(swatch)
 
 			var name_lbl := Label.new()
 			name_lbl.text = fdata["name"] as String
 			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			name_lbl.add_theme_font_size_override("font_size", 11)
+			name_lbl.add_theme_font_size_override("font_size", 12)
+			name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 			row.add_child(name_lbl)
 
 			var sell_price := fdata.get("sell_price", fdata.get("buy_price", 0)) as int
@@ -268,7 +296,7 @@ func _render_owned_section() -> void:
 			sell_btn.add_theme_color_override("font_color", Color(0.76, 0.52, 0.28))
 			sell_btn.pressed.connect(func():
 				if _gm and _gm.sell_starting_item(fid):
-					row.queue_free())
+					card.queue_free())
 			row.add_child(sell_btn)
 
 			var place_btn := Button.new()
@@ -278,10 +306,10 @@ func _render_owned_section() -> void:
 				if _gm:
 					_gm.consume_starting_item(fid)
 				buy_requested.emit(fid)
-				row.queue_free())
+				card.queue_free())
 			row.add_child(place_btn)
 
-			item_list.add_child(row)
+			item_list.add_child(card)
 
 
 func _fmt_funcs(funcs: Array) -> String:
