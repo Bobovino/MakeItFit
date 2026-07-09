@@ -42,6 +42,7 @@ var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (sepa
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside SPLIT mode
+var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -407,6 +408,8 @@ func _show_mechanic_intro_if_needed() -> void:
 	var cl := CanvasLayer.new()
 	cl.layer = 20
 	add_child(cl)
+	_intro_modal_open = true
+	cl.tree_exited.connect(func(): _intro_modal_open = false)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.09, 0.88)
@@ -471,9 +474,12 @@ func _show_mechanic_intro_if_needed() -> void:
 	btn.pressed.connect(func(): cl.queue_free())
 	vb.add_child(btn)
 
-	# Also dismiss on click outside card
+	# Also dismiss on click outside card (a real click, not a wheel tick —
+	# InputEventMouseButton covers both, and wheel scroll must never dismiss
+	# or otherwise affect anything behind this modal)
 	bg.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
+				and (e as InputEventMouseButton).button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			cl.queue_free())
 
 
@@ -846,18 +852,26 @@ func _floor_pane_right_x() -> float:
 	return _split_x if _view_mode == ViewMode.SPLIT else SCREEN_W
 
 
+# Any full-screen modal that should freeze zoom/pan everywhere while it's up:
+# the "NEW MECHANIC" intro card, the Wall Inspector's modal backdrop (Top-Down
+# mode), and the win/fail result screen.
+func _blocking_modal_open() -> bool:
+	return _intro_modal_open \
+		or (is_instance_valid(_modal_backdrop) and _modal_backdrop.visible) \
+		or result_screen.visible
+
+
 func _handle_view_input(event: InputEvent) -> void:
 	# The 3D view and the Top-Down modal's Wall Inspector each own independent
 	# zoom/camera state (Room3DView._dist, WallInspector._zoom) — never let the
 	# floor-plan zoom (_manual_zoom) react to scroll/pan meant for those views.
 	if _view_mode == ViewMode.VIEW3D:
 		return
+	if _blocking_modal_open():
+		return
 	if event is InputEventMouseButton:
 		var mbe := event as InputEventMouseButton
 		var in_bounds := mbe.position.x < _floor_pane_right_x() and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
-		if _view_mode == ViewMode.TOPDOWN_MODAL and wall_inspector.visible \
-				and wall_inspector.get_global_rect().has_point(mbe.position):
-			in_bounds = false
 		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed and in_bounds:
 			_zoom_floor(0.15, mbe.position)
 		elif mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed and in_bounds:
