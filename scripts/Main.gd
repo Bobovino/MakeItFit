@@ -204,6 +204,16 @@ func _apply_ui_theme() -> void:
 		top.add_child(box)
 		top.move_child(box, top.get_child_count() - 2)
 
+	if not top.has_node("SettingsBtn"):
+		var settings_btn := Button.new()
+		settings_btn.name = "SettingsBtn"
+		settings_btn.text = "⚙"
+		settings_btn.add_theme_font_size_override("font_size", 13)
+		settings_btn.custom_minimum_size = Vector2(32, 0)
+		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
+		top.add_child(settings_btn)
+		top.move_child(settings_btn, top.get_child_count() - 1)
+
 
 func _go_back() -> void:
 	if GameState.testing_from_editor:

@@ -252,12 +252,12 @@ func _build_ui() -> void:
 	sep3.add_theme_color_override("color", Color(0.16, 0.20, 0.26))
 	vb.add_child(sep3)
 
-	var quit_btn := Button.new()
-	quit_btn.text = "Quit to Desktop"
-	quit_btn.add_theme_font_size_override("font_size", 12)
-	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	quit_btn.pressed.connect(func(): get_tree().quit())
-	vb.add_child(quit_btn)
+	var settings_btn := Button.new()
+	settings_btn.text = "⚙ Settings"
+	settings_btn.add_theme_font_size_override("font_size", 12)
+	settings_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
+	vb.add_child(settings_btn)
 
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:

@@ -3,6 +3,7 @@ extends Node
 signal company_funds_changed(amount: int)
 
 const RETIRE_GOAL := 10000   # total portfolio rent to retire
+const SAVE_PATH   := "user://save.json"
 
 var company_funds: int = 0
 var portfolio_rent: int = 0
@@ -14,14 +15,64 @@ var custom_level_data: Dictionary = {}
 var testing_from_editor: bool = false  # set by LevelEditor._test_level(); back btn returns to editor
 var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor reloads custom_level_data
 
+# Levels owned unconditionally on every launch — tutorials, debug/test content,
+# and anything else that should never be gated behind a purchase. Kept
+# separate from persisted `owned` so a save file never has to list them.
+const DEFAULT_OWNED := ["tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony",
+		"debug:_sloped_ceiling","debug:_demolition","tut_builder_basics","tut_verticality",
+		"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
+		"muchos_electrodomésticos",
+		"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]
+
 
 func _ready() -> void:
-	for _lid in ["tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony",
-			"debug:_sloped_ceiling","debug:_demolition","tut_builder_basics","tut_verticality",
-			"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
-			"muchos_electrodomésticos",
-			"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]:
+	load_game()
+	for _lid in DEFAULT_OWNED:
 		own_level(_lid)
+
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+# Saves player profile progress (funds, rent, completed levels, purchased
+# levels) plus audio settings. Transient/session-only state (pending level,
+# custom level editor data, editor-test flags) is intentionally not persisted.
+func save_game() -> void:
+	var data := {
+		"company_funds":   company_funds,
+		"portfolio_rent":  portfolio_rent,
+		"completed":       completed,
+		"owned":           owned,
+		"dev_bonus_stars": dev_bonus_stars,
+	}
+	var audio := get_node_or_null("/root/Audio")
+	if audio:
+		data["sfx_volume"]   = audio.sfx_volume
+		data["music_volume"] = audio.music_volume
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data))
+
+
+func load_game() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not f:
+		return
+	var parsed = JSON.parse_string(f.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var data := parsed as Dictionary
+	company_funds   = data.get("company_funds", company_funds) as int
+	portfolio_rent  = data.get("portfolio_rent", portfolio_rent) as int
+	completed       = data.get("completed", completed) as Dictionary
+	owned           = (data.get("owned", owned) as Array).duplicate()
+	dev_bonus_stars = data.get("dev_bonus_stars", dev_bonus_stars) as int
+	var audio := get_node_or_null("/root/Audio")
+	if audio:
+		if data.has("sfx_volume"):
+			audio.set_sfx_volume(data["sfx_volume"] as float)
+		if data.has("music_volume"):
+			audio.set_music_volume(data["music_volume"] as float)
 
 
 func own_level(level_id: String) -> void:
@@ -39,6 +90,7 @@ func buy_level(level_id: String, cost: int) -> bool:
 	company_funds -= cost
 	own_level(level_id)
 	company_funds_changed.emit(company_funds)
+	save_game()
 	return true
 
 
@@ -50,6 +102,7 @@ func complete_level(level_id: String, stars: int, funds_earned: int, monthly_ren
 		portfolio_rent += monthly_rent
 	company_funds += funds_earned
 	company_funds_changed.emit(company_funds)
+	save_game()
 
 
 func get_stars(level_id: String) -> int:
