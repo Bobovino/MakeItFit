@@ -847,9 +847,17 @@ func _floor_pane_right_x() -> float:
 
 
 func _handle_view_input(event: InputEvent) -> void:
+	# The 3D view and the Top-Down modal's Wall Inspector each own independent
+	# zoom/camera state (Room3DView._dist, WallInspector._zoom) — never let the
+	# floor-plan zoom (_manual_zoom) react to scroll/pan meant for those views.
+	if _view_mode == ViewMode.VIEW3D:
+		return
 	if event is InputEventMouseButton:
 		var mbe := event as InputEventMouseButton
 		var in_bounds := mbe.position.x < _floor_pane_right_x() and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
+		if _view_mode == ViewMode.TOPDOWN_MODAL and wall_inspector.visible \
+				and wall_inspector.get_global_rect().has_point(mbe.position):
+			in_bounds = false
 		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed and in_bounds:
 			_zoom_floor(0.15, mbe.position)
 		elif mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed and in_bounds:
