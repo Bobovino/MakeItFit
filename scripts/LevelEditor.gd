@@ -45,7 +45,6 @@ var _sc_max_h:     float  = 2.4
 var _mezz_painting:    bool = false
 var _mezz_erase:       bool = false
 var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
-var _stair_erase:      bool   = false  # unused
 var _stair_dir:        String = "north"  # current stamp direction
 var _stair_target:     String = "loft"   # "loft" → mezzanine; "floor" → floor above
 var _window_painting:  bool = false
@@ -111,11 +110,6 @@ var _ov:     Node2D   = null
 
 # ── UI refs ───────────────────────────────────────────────────────────────────
 var _sw: SpinBox = null;  var _sh: SpinBox = null  # unused — grid fixed at 300×300
-var _en: LineEdit = null; var _ed: LineEdit = null
-var _etn: LineEdit = null; var _sage: SpinBox = null; var _ef: LineEdit = null
-var _sbud: SpinBox = null; var _srent: SpinBox = null
-var _srew: SpinBox = null; var _scost: SpinBox = null
-var _fncbs: Dictionary = {}
 var _status: Label = null
 var _size_lbl: Label = null  # unused — grid fixed at 300×300
 var _clear_dlg: ConfirmationDialog = null
@@ -136,7 +130,6 @@ var _placing_furn_col:       Color    = Color.WHITE
 
 # Right-panel summary labels
 var _cat_filter_lbl:   Label  = null
-var _inv_count_lbl:    Label  = null
 var _level_summary_lbl: Label = null
 
 # Starting inventory modal (kept alive so it can be hidden/shown during placement)
@@ -820,9 +813,9 @@ func _make_floor_trio(fid: String, lbl: String) -> Array:
 	var sub  := _make_efloor(fid + "_sub",  lbl + " Subfloor", "floor_sub")
 	sub["parent_id"] = fid
 	var fl   := _make_efloor(fid, lbl, "floor")
-	var ceil := _make_efloor(fid + "_ceil", lbl + " Ceiling",  "ceiling")
-	ceil["parent_id"] = fid
-	return [sub, fl, ceil]
+	var ceiling_fl := _make_efloor(fid + "_ceil", lbl + " Ceiling",  "ceiling")
+	ceiling_fl["parent_id"] = fid
+	return [sub, fl, ceiling_fl]
 
 func _init_editor_floors() -> void:
 	var trio := _make_floor_trio("fl_0", "Ground Floor")
@@ -1384,11 +1377,11 @@ func _input(event: InputEvent) -> void:
 					_cancel_placement()
 					get_viewport().set_input_as_handled()
 				elif mb.button_index == MOUSE_BUTTON_LEFT:
-					var sp := (event as InputEventMouse).position
-					if not _is_ui(sp):
-						var fl := _to_floor(sp)
-						var tx := int(fl.x / TILE_SIZE)
-						var ty := int(fl.y / TILE_SIZE)
+					var place_sp := (event as InputEventMouse).position
+					if not _is_ui(place_sp):
+						var place_fl := _to_floor(place_sp)
+						var tx := int(place_fl.x / TILE_SIZE)
+						var ty := int(place_fl.y / TILE_SIZE)
 						var _pfsize := (_furn_data_by_id(_placing_furniture_id).get("size", {}) as Dictionary)
 						var _pfw: int = _pfsize.get("w", 1) as int
 						var _pfh: int = _pfsize.get("h", 1) as int
@@ -1436,10 +1429,10 @@ func _input(event: InputEvent) -> void:
 						_fill_placed_list()
 						get_viewport().set_input_as_handled()
 		elif event is InputEventMouseMotion:
-			var sp := (event as InputEventMouse).position
-			var fl := _to_floor(sp)
-			var tx := int(fl.x / TILE_SIZE)
-			var ty := int(fl.y / TILE_SIZE)
+			var move_sp := (event as InputEventMouse).position
+			var move_fl := _to_floor(move_sp)
+			var tx := int(move_fl.x / TILE_SIZE)
+			var ty := int(move_fl.y / TILE_SIZE)
 			if is_instance_valid(_ov):
 				_ov.set("placing_x", tx)
 				_ov.set("placing_y", ty)
@@ -1554,7 +1547,7 @@ func _input(event: InputEvent) -> void:
 			var is_wall := _tool == Tool.PRIMARY_WALL or _tool == Tool.SECONDARY_WALL
 			var is_rail := _tool == Tool.RAIL
 			var is_reveal := _tool == Tool.REVEAL
-			var snapped := _snap_tile(tile)
+			var snapped_tile := _snap_tile(tile)
 			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE
 			_ov.set("floor_hover",  tile if is_floor_like else Vector2i(-1, -1))
 			_ov.set("mezz_hover",   _tool == Tool.MEZZANINE)
@@ -1564,7 +1557,7 @@ func _input(event: InputEvent) -> void:
 				_ov.set("stair_hover_rect",   _sr)
 				_ov.set("stair_hover_dir",    _stair_dir)
 				_ov.set("stair_hover_target", _stair_target)
-			_ov.set("wall_hover",   snapped if ((is_wall or is_rail or is_reveal) and not _pdrawing) else Vector2i(-1, -1))
+			_ov.set("wall_hover",   snapped_tile if ((is_wall or is_rail or is_reveal) and not _pdrawing) else Vector2i(-1, -1))
 			_ov.set("wall_primary", _tool == Tool.PRIMARY_WALL)
 			_ov.set("rail_mode",    is_rail)
 			_ov.set("reveal_mode",  is_reveal)
@@ -3114,8 +3107,8 @@ func _build_dict() -> Dictionary:
 
 func _save_level() -> void:
 	if _lname.strip_edges().is_empty() or _lname == "Untitled Apartment":
-		_prompt_level_name(func(name: String):
-			_lname = name
+		_prompt_level_name(func(new_name: String):
+			_lname = new_name
 			_save_level())
 		return
 
@@ -3234,11 +3227,11 @@ func _prompt_level_name(on_confirm: Callable) -> void:
 	hb.add_child(cancel)
 
 	var _do_confirm := func():
-		var name := line.text.strip_edges()
-		if name.is_empty():
+		var entered_name := line.text.strip_edges()
+		if entered_name.is_empty():
 			return
 		cl.queue_free()
-		on_confirm.call(name)
+		on_confirm.call(entered_name)
 
 	ok.pressed.connect(_do_confirm)
 	line.text_submitted.connect(func(_t: String): _do_confirm.call())
@@ -3262,7 +3255,7 @@ func _load_dialog() -> void:
 	_show_load_popup(items)
 
 
-func _show_load_popup(items: Array) -> void:
+func _show_load_popup(_items: Array) -> void:
 	_popup_open += 1
 	var cl := CanvasLayer.new()
 	cl.layer = 30

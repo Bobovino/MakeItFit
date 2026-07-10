@@ -144,9 +144,9 @@ func _draw() -> void:
 
 	# Wall/rail hover rect — shows where segment would start before LMB pressed
 	if not active and wall_hover.x >= 0:
-		var r := Rect2(wall_hover.x * TS, wall_hover.y * TS, TS * rail_thick, TS * rail_thick)
-		draw_rect(r, fill_col)
-		draw_rect(r, border_col, false, 1.0)
+		var hover_r := Rect2(wall_hover.x * TS, wall_hover.y * TS, TS * rail_thick, TS * rail_thick)
+		draw_rect(hover_r, fill_col)
+		draw_rect(hover_r, border_col, false, 1.0)
 		return
 
 	# Wall/rail segment preview rect while dragging
