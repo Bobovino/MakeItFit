@@ -984,7 +984,21 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	_dist   = maxf(w, d) * 1.4 + 2.0
 
 	_add_floor(w, d)
+
+	# Subfloor/ceiling/roof layers only exist to carry the 2D-only pipe/duct
+	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
+	# columns of their own, so building the normal room here would just be an
+	# empty box with nothing in it. A label is a more honest placeholder than
+	# silently rendering "nothing."
+	if apt_floor.floor_type != "floor":
+		_add_special_layer_label(apt_floor.floor_type, w, d)
+		_update_camera()
+		return
+
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
+	_add_columns(bounds)
+	_add_window_door_overlays(bounds)
+	_add_reveal_zone_markers(bounds)
 	_add_balcony_extras(bounds)
 	_update_camera()   # also applies initial wall visibility now that _wall_data exists
 
@@ -1370,6 +1384,115 @@ func _set_wall_grid_overlays_visible(v: bool) -> void:
 
 const RAIL_H_M     := 0.9
 const RAIL_THICK_M := 0.03
+
+# Structural columns: floor-to-ceiling posts. can_place() already treats
+# their tile as blocked (Wall.gd), so this is purely visual — without it a
+# column you can't place furniture on is invisible, which reads as a bug
+# rather than "there's a pillar here."
+func _add_columns(bounds: Rect2i) -> void:
+	if not _apt_floor:
+		return
+	const COL_COLOR := Color(0.86, 0.94, 1.00)
+	for c in _apt_floor.columns:
+		var cd := c as Dictionary
+		var cx: int = cd.get("x", 0) as int
+		var cy: int = cd.get("y", 0) as int
+		var local_x := (cx - bounds.position.x) * TILE_M
+		var local_z := (cy - bounds.position.y) * TILE_M
+		_box(Vector3(TILE_M, WALL_H_M, TILE_M),
+			Vector3(local_x + TILE_M * 0.5, WALL_H_M * 0.5, local_z + TILE_M * 0.5), COL_COLOR)
+
+
+# Windows/doors are only used for restricted-zone math (blocking wall-item
+# placement near them) — there's no actual cutout in the wall mesh. A flat
+# decal at roughly the right band reads as "there's an opening here" without
+# needing to rebuild the wall geometry with a real hole in it.
+func _add_window_door_overlays(_bounds: Rect2i) -> void:
+	if not _apt_floor:
+		return
+	for wd in _apt_floor.wall_definitions:
+		var d := wd as Dictionary
+		var edge: String = d.get("edge", "") as String
+		if edge == "":
+			continue
+		if d.get("has_window", false):
+			_add_wall_opening_overlay(edge, d.get("window_x", 0) as int, d.get("window_len", 15) as int,
+				0.9, 1.9, Color(0.55, 0.78, 0.92, 0.55))
+		if d.get("has_door", false):
+			_add_wall_opening_overlay(edge, d.get("door_x", 0) as int, 10,
+				0.0, 2.0, Color(0.08, 0.09, 0.11, 0.85))
+
+
+func _add_wall_opening_overlay(edge: String, x_tile: int, len_tiles: int, y0_m: float, y1_m: float, color: Color) -> void:
+	var w_m := len_tiles * TILE_M
+	var h_m := y1_m - y0_m
+	var along := x_tile * TILE_M + w_m * 0.5
+	var center_y := y0_m + h_m * 0.5
+	var depth_m := 0.02
+	var sz: Vector3
+	var pos: Vector3
+	match edge:
+		"north":
+			sz  = Vector3(w_m, h_m, depth_m)
+			pos = Vector3(along, center_y, depth_m * 0.5 + 0.001)
+		"south":
+			sz  = Vector3(w_m, h_m, depth_m)
+			pos = Vector3(along, center_y, _room_d_m - depth_m * 0.5 - 0.001)
+		"west":
+			sz  = Vector3(depth_m, h_m, w_m)
+			pos = Vector3(depth_m * 0.5 + 0.001, center_y, along)
+		_:   # "east"
+			sz  = Vector3(depth_m, h_m, w_m)
+			pos = Vector3(_room_w_m - depth_m * 0.5 - 0.001, center_y, along)
+	var mi := _box(sz, pos, color)
+	var mat := mi.material_override as StandardMaterial3D
+	if mat:
+		mat.transparency  = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.cull_mode     = BaseMaterial3D.CULL_DISABLED
+
+
+# Reveal zones (the sub-range of a rail a piece must sit in to count as
+# "revealed" for a moment's needs) get a glowing floor outline — otherwise
+# the only way to know where one is is to check the 2D view.
+func _add_reveal_zone_markers(bounds: Rect2i) -> void:
+	if not _apt_floor:
+		return
+	const REVEAL_COLOR := Color(0.95, 0.85, 0.25, 0.9)
+	for rz in _apt_floor.reveal_zones:
+		var d := rz as Dictionary
+		var x1: int = d.get("x1", 0) as int
+		var y1: int = d.get("y1", 0) as int
+		var x2: int = d.get("x2", 0) as int
+		var y2: int = d.get("y2", 0) as int
+		var local_x := (mini(x1, x2) - bounds.position.x) * TILE_M
+		var local_z := (mini(y1, y2) - bounds.position.y) * TILE_M
+		var w_m := (absi(x2 - x1) + 1) * TILE_M
+		var dd_m := (absi(y2 - y1) + 1) * TILE_M
+		var group := _build_outline_group(Vector2(w_m, dd_m), REVEAL_COLOR, 0.008)
+		group.position.x = local_x
+		group.position.z = local_z
+		build_root.add_child(group)
+
+
+# Placeholder for the subfloor/ceiling/roof layers, which only exist to carry
+# 2D-only pipe/duct overlays and have no walls or columns of their own.
+func _add_special_layer_label(floor_type: String, w: float, d: float) -> void:
+	var names := {
+		"ceiling":   "Ceiling / Ducts",
+		"subfloor":  "Building Subfloor",
+		"floor_sub": "Floor Subfloor / Pipes",
+		"roof":      "Roof",
+	}
+	var lbl := Label3D.new()
+	lbl.text = (names.get(floor_type, floor_type.capitalize()) as String) + "\n(view in 2D for detail)"
+	lbl.font_size = 48
+	lbl.modulate = Color(0.35, 0.40, 0.48)
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.pixel_size = 0.005
+	lbl.position = Vector3(w * 0.5, WALL_H_M * 0.5, d * 0.5)
+	build_root.add_child(lbl)
+
 
 # Balconies/bathroom nooks are floor_kind-tagged tiles that sit OUTSIDE the
 # wall-bounds rectangle _add_floor already covers (see Wall.gd's
