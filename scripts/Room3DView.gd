@@ -52,6 +52,7 @@ var _drag_target:   Dictionary = {}
 var _drag_offset:   Vector2    = Vector2.ZERO   # tile-space grab offset
 var _drag_orig_pos: Vector3    = Vector3.ZERO
 var _drag_last_tile: Vector2   = Vector2.ZERO   # continuous — 3D drag is no longer grid-snapped
+var _drag_rail_lock: float     = -1.0   # locked cross-axis tile coord for a rail_axis item; -1 = not on a rail
 
 # Wall-mounted items: rendered by _add_wall_item_box, but (unlike floor
 # furniture) they have no live Furniture node — Floor just tracks them as
@@ -271,6 +272,16 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	var tile             := _room_local_to_tile(_ground_hit(vp_pos))
 	_drag_offset         = Vector2(f.grid_pos.x, f.grid_pos.y) - tile
 	_drag_last_tile      = f.grid_pos
+	# Capture the locked cross-axis coordinate the same way Furniture._drag()
+	# does for the 2D view (grid_pos.y for a horizontal rail, .x for a
+	# vertical one) — without this a rail item (e.g. a wardrobe on its
+	# dress-up track) could be dragged clean off its rail in 3D even though
+	# the 2D view never lets that happen.
+	_drag_rail_lock = -1.0
+	if f.rail_axis == "h":
+		_drag_rail_lock = f.grid_pos.y
+	elif f.rail_axis == "v":
+		_drag_rail_lock = f.grid_pos.x
 	_set_grid_overlay_visible(true)
 	_set_hitbox_highlights_visible(true)
 	var item_size: Vector3 = hit["size"]
@@ -288,6 +299,17 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# 2D/wall views and makes it obvious where a piece will actually land
 	# relative to everything else's hitbox.
 	var tile := (_room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset).round()
+	var f: Furniture = _drag_target["furniture"]
+	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
+		tile.y = _drag_rail_lock
+		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)
+		var mx_x := float(_apt_floor.grid_w - f.grid_w) if f.rail_end < 0 else float(f.rail_end)
+		tile.x = clampf(tile.x, mn_x, mx_x)
+	elif f.rail_axis == "v" and _drag_rail_lock >= 0.0:
+		tile.x = _drag_rail_lock
+		var mn_y := 0.0 if f.rail_start < 0 else float(f.rail_start)
+		var mx_y := float(_apt_floor.grid_h - f.grid_h) if f.rail_end < 0 else float(f.rail_end)
+		tile.y = clampf(tile.y, mn_y, mx_y)
 	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]

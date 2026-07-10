@@ -1240,6 +1240,13 @@ func _on_moment_selected(moment_id: String) -> void:
 			if fur.foldable:
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
+	# queue_redraw() above only repaints the 2D Node2D furniture — the 3D
+	# diorama is a separate set of MeshInstance3D nodes built once from a
+	# snapshot of the floor, so switching moments while looking at the 3D
+	# view left it showing the pre-switch fold/rail state until you left
+	# and came back. Rebuilding here keeps it in sync immediately.
+	if _view_mode == ViewMode.VIEW3D:
+		_ensure_mode3d_view()
 	_refresh_functions()
 
 
@@ -1255,6 +1262,8 @@ func _on_test_toggled(pressed: bool) -> void:
 					fur.toggle_fold()
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
+	if _view_mode == ViewMode.VIEW3D:
+		_ensure_mode3d_view()
 	if not pressed:
 		_refresh_functions()
 
