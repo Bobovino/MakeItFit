@@ -87,11 +87,11 @@ func _card_xy(col: int, row: int) -> Vector2:
 
 
 func _map_total_h() -> float:
-	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2 + _debug_section_reserved_h()
+	return _real_section_reserved_h() + _debug_section_reserved_h()
 
 
 func _custom_section_y() -> float:
-	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
+	return _real_section_reserved_h() + _debug_section_reserved_h()
 
 
 # ── Debug section (dev-only sandbox levels, kept visually separate from the
@@ -116,6 +116,24 @@ func _debug_level_count() -> int:
 	return count
 
 
+func _real_level_count() -> int:
+	return (_levels_data.get("levels", []) as Array).size() - _debug_level_count()
+
+
+# Real (non-debug) levels are packed sequentially — index 0, 1, 2... in COLS
+# columns — instead of using each level's own authored map_row/map_col.
+# Those hand-picked positions were meant for a much larger, district-grouped
+# city map; with only a handful of real levels defined so far they left
+# empty cells in the middle of the row and a large blank gap before the
+# debug section (which used to start at a fixed row far below whatever
+# content actually existed). Packing removes both problems at once — the
+# debug section now starts right where the real levels end.
+func _real_section_reserved_h() -> float:
+	var count := _real_level_count()
+	var rows := maxi(1, ceili(float(count) / float(COLS)))
+	return rows * (CARD_H + V_PAD * 2) + V_PAD * 2
+
+
 func _debug_section_reserved_h() -> float:
 	var count := _debug_level_count()
 	if count == 0:
@@ -125,7 +143,7 @@ func _debug_section_reserved_h() -> float:
 
 
 func _debug_section_y() -> float:
-	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
+	return _real_section_reserved_h()
 
 
 func _debug_card_xy(index: int) -> Vector2:
@@ -258,12 +276,14 @@ func _build_ui() -> void:
 	# collide with real levels' cells (a debug sandbox and a tutorial level
 	# both claiming row 0 / col 0, say), which only stayed invisible-by-luck
 	# because debug levels used to be hidden outright.
+	var real_index := 0
 	for ld in _levels_data.get("levels", []):
 		var d := ld as Dictionary
 		if _is_debug_level(d):
 			continue
-		var card := _create_card(d)
+		var card := _create_card(d, real_index)
 		_cards[d["id"]] = card
+		real_index += 1
 	_build_debug_section()
 
 	# Vertical divider before info panel
@@ -353,10 +373,8 @@ func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowra
 
 
 # ── Card creation ────────────────────────────────────────────────────────────
-func _create_card(ld: Dictionary) -> Button:
-	var col := ld.get("map_col", 0) as int
-	var row := ld.get("map_row", 0) as int
-	var pos := _card_xy(col, row)
+func _create_card(ld: Dictionary, index: int = 0) -> Button:
+	var pos := _card_xy(index % COLS, index / COLS)
 
 	var card := Button.new()
 	card.position = pos
