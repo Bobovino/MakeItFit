@@ -5,7 +5,7 @@ const TILE_SIZE  := 8
 const WIN_LEN    := 15
 const DOOR_LEN   := 10
 const LEFT_W     := 170.0
-const RIGHT_W    := 214.0
+const RIGHT_W    := 236.0
 const TOP_H      := 36.0
 const BOTTOM_H   := 160.0
 const DEFAULT_GW := 300
@@ -400,6 +400,7 @@ func _build_right(ui: Node) -> void:
 	vb.add_child(_moment_dropdown)
 	var mgmt_btn := Button.new()
 	mgmt_btn.text  = "Manage Moments…"
+	mgmt_btn.clip_text = true
 	mgmt_btn.add_theme_font_size_override("font_size", 10)
 	mgmt_btn.pressed.connect(_open_moments_modal)
 	vb.add_child(mgmt_btn)
@@ -414,11 +415,13 @@ func _build_right(ui: Node) -> void:
 	_refresh_level_summary()
 	var det_btn := Button.new()
 	det_btn.text = "Level Details…"
+	det_btn.clip_text = true
 	det_btn.add_theme_font_size_override("font_size", 10)
 	det_btn.pressed.connect(_open_level_details_modal)
 	vb.add_child(det_btn)
 	var sc_btn := Button.new()
 	sc_btn.text = "Sloped Ceiling…"
+	sc_btn.clip_text = true
 	sc_btn.add_theme_font_size_override("font_size", 10)
 	sc_btn.pressed.connect(_open_sloped_ceiling_modal)
 	vb.add_child(sc_btn)
@@ -427,6 +430,7 @@ func _build_right(ui: Node) -> void:
 	_sect(vb, "FURNITURE")
 	var cat_btn := Button.new()
 	cat_btn.text = "Catalog Filter…"
+	cat_btn.clip_text = true
 	cat_btn.add_theme_font_size_override("font_size", 10)
 	cat_btn.pressed.connect(_open_catalog_filter_modal)
 	vb.add_child(cat_btn)
@@ -1066,6 +1070,11 @@ func _refresh_fl_switcher() -> void:
 
 		var btn := Button.new()
 		btn.text = fd.get("label", "Floor") as String
+		btn.tooltip_text = btn.text
+		btn.clip_text = true   # long labels ("Ground Floor Subfloor") truncate with an
+		                       # ellipsis instead of overflowing past the row into the
+		                       # neighboring rename/delete/visibility buttons — this
+		                       # narrow right panel doesn't have room to spare.
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.add_theme_font_size_override("font_size", 10)
 		var col := Color(0.20, 0.75, 0.95) if is_active else GameTheme.C_TEXT
@@ -1167,6 +1176,7 @@ func _spinbox(p: Control, label: String, val: int, mn: int, mx: int, step: int) 
 func _actbtn(p: Control, label: String, col: Color, cb: Callable) -> void:
 	var btn := Button.new()
 	btn.text = label
+	btn.clip_text = true
 	btn.add_theme_font_size_override("font_size", 11)
 	btn.add_theme_color_override("font_color", col)
 	btn.pressed.connect(cb)
