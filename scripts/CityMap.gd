@@ -38,7 +38,6 @@ var _selected_custom_data: Dictionary = {}
 
 var _debug_section_line: ColorRect = null
 var _debug_section_hdr:  Label     = null
-var _debug_toggle_btn:   Button    = null
 
 # Info panel widgets
 var _info_title:    Label
@@ -238,23 +237,6 @@ func _build_ui() -> void:
 
 	_update_top_bar_counters()
 
-	# Visible, clickable twin of the Ctrl+Shift+Alt+D shortcut — global hotkeys
-	# can silently get eaten by other running software (confirmed happening
-	# on at least one dev machine), leaving no way to tell whether the combo
-	# actually did anything. A button always gives a definite answer. Placed
-	# as its own absolutely-positioned control (not inside top_row) so it
-	# doesn't depend on that HBoxContainer's sizing behaving.
-	_debug_toggle_btn = Button.new()
-	_debug_toggle_btn.add_theme_font_size_override("font_size", 11)
-	_debug_toggle_btn.tooltip_text = "Ctrl+Shift+Alt+D"
-	_debug_toggle_btn.position = Vector2(1280 - 195, 12)
-	_debug_toggle_btn.size     = Vector2(180, 30)
-	_debug_toggle_btn.pressed.connect(_on_toggle_debug_mode)
-	_update_debug_toggle_btn()
-	# add_child happens at the very end of _build_ui (search "front-most") so
-	# it draws on top of the info panel, which otherwise fully covers this
-	# corner and swallows the button's clicks.
-
 	# Clipped map viewport — cards scroll within this
 	var map_clip := Control.new()
 	map_clip.position = Vector2(0, TOP_H)
@@ -356,10 +338,6 @@ func _build_ui() -> void:
 	settings_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	vb.add_child(settings_btn)
-
-	# Front-most: added last so it draws above the info panel it would
-	# otherwise sit underneath (see where _debug_toggle_btn was constructed).
-	add_child(_debug_toggle_btn)
 
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
@@ -709,18 +687,6 @@ func _on_toggle_debug_mode() -> void:
 func _on_debug_mode_changed(_enabled: bool) -> void:
 	_refresh_all_cards()
 	_update_debug_section_visibility()
-	_update_debug_toggle_btn()
-
-
-func _update_debug_toggle_btn() -> void:
-	if not is_instance_valid(_debug_toggle_btn):
-		return
-	if GameState.debug_mode:
-		_debug_toggle_btn.text = "🐞 Debug Mode: ON"
-		_debug_toggle_btn.add_theme_color_override("font_color", Color(0.95, 0.65, 0.35))
-	else:
-		_debug_toggle_btn.text = "🐞 Debug Mode: Off"
-		_debug_toggle_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
 
 
 func _on_dev_unlock() -> void:
