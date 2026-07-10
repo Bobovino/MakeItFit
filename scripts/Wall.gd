@@ -774,7 +774,7 @@ func _input(event: InputEvent) -> void:
 	wall_edge_clicked.emit(edge)
 
 
-const WALL_SNAP := 3.0   # tiles — placing within this distance of a wall snaps flush against it
+const WALL_SNAP := 1.0   # tiles — placing within this distance of a wall snaps flush against it
 
 # Nudges a placement position flush against any wall it's within WALL_SNAP
 # tiles of, so "close to the wall" in the top-down actually means "touching"

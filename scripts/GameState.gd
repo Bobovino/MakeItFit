@@ -15,6 +15,20 @@ var custom_level_data: Dictionary = {}
 var testing_from_editor: bool = false  # set by LevelEditor._test_level(); back btn returns to editor
 var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor reloads custom_level_data
 
+# Player/debug mode toggle (Ctrl+Shift+Alt+D in CityMap) — deliberately not
+# persisted to the save file, resets to off on every launch. In debug mode
+# the "Debug" district's levels show up in CityMap (hidden otherwise) and
+# every level gets unlocked, so a level can be opened directly for testing
+# instead of playing through the whole progression to reach it.
+signal debug_mode_changed(enabled: bool)
+var debug_mode: bool = false
+
+func set_debug_mode(v: bool) -> void:
+	if v == debug_mode:
+		return
+	debug_mode = v
+	debug_mode_changed.emit(v)
+
 # Levels owned unconditionally on every launch — tutorials, debug/test content,
 # and anything else that should never be gated behind a purchase. Kept
 # separate from persisted `owned` so a save file never has to list them.

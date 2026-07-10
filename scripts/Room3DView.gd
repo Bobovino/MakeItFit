@@ -76,6 +76,10 @@ var _buying_on_wall: bool = false   # last hover: floor ghost or wall ghost?
 # Walls between the camera and the room center are hidden so the view isn't
 # blocked — each entry is {mesh: MeshInstance3D, mat: StandardMaterial3D, normal: Vector3, base: Color}.
 var _wall_data: Array = []
+var _grid_overlay: MeshInstance3D = null   # tile grid shown only while placing/dragging furniture
+var _wall_grid_overlays: Array = []         # one grid quad per wall, same show-only-while-placing behavior
+var _hitbox_highlights: Array = []          # one outline per placed floor item, shown alongside the grid
+var _drag_highlight: Node3D = null          # follows the item currently being dragged (floor moves + buy-ghost)
 var _cam_flat_dir: Vector3 = Vector3.ZERO   # XZ camera direction from center, set by _update_wall_visibility
 
 # ── Foldable-item demo (single-item preview only) ──────────────────────────
@@ -267,19 +271,30 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	var tile             := _room_local_to_tile(_ground_hit(vp_pos))
 	_drag_offset         = Vector2(f.grid_pos.x, f.grid_pos.y) - tile
 	_drag_last_tile      = f.grid_pos
+	_set_grid_overlay_visible(true)
+	_set_hitbox_highlights_visible(true)
+	var item_size: Vector3 = hit["size"]
+	_show_drag_highlight(Vector2(item_size.x, item_size.z))
+	# _build_outline_group() leaves the group at the room's (0,0) corner until
+	# positioned — without this, the highlight would flash there for one frame
+	# (or stay there entirely if the mouse never moves before the drop),
+	# looking like it belongs to some other item instead of the one in hand.
+	_update_drag_highlight_pos(_drag_orig_pos.x, _drag_orig_pos.z, Vector2(item_size.x, item_size.z))
 
 
 func _update_furniture_drag(vp_pos: Vector2) -> void:
-	# Continuous — no rounding to a tile grid. 3D is the source of truth now,
-	# so the piece follows the cursor at whatever fractional position it's at;
-	# snap_to_wall() below (on release) is the only thing that pulls it flush.
-	var tile := _room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset
+	# Snapped to the tile grid (1 tile = TILE_M = 0.1m) as it's dragged, so
+	# placement reads as grid-locked rather than free-floating — matches the
+	# 2D/wall views and makes it obvious where a piece will actually land
+	# relative to everything else's hitbox.
+	var tile := (_room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset).round()
 	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	_drag_target["pos"] = mesh.position
+	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
 
 
 # Mirrors Furniture.begin_placement(): Main.gd creates and setup()s the
@@ -304,6 +319,8 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	var box_size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
 	_buying_mesh = _box(box_size, Vector3(box_size.x * 0.5, box_size.y * 0.5, box_size.z * 0.5), col)
 	_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
+	_set_grid_overlay_visible(true)
+	_set_hitbox_highlights_visible(true)
 
 
 func _update_buy_ghost(vp_pos: Vector2) -> void:
@@ -314,6 +331,10 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 	var box := _buying_mesh.mesh as BoxMesh
 	if hit["mode"] == "wall":
 		_buying_on_wall = true
+		_set_grid_overlay_visible(false)
+		_set_hitbox_highlights_visible(false)
+		_hide_drag_highlight()
+		_set_wall_grid_overlays_visible(true)
 		var edge: String = hit["edge"]
 		var wall_h: int = _buying_fdata.get("wall_h", 8) as int
 		var depth: int  = _buying_fdata.get("floor_depth", 1) as int
@@ -326,18 +347,23 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		_refit_item_model(_buying_mesh, box.size)
 	else:
 		_buying_on_wall = false
+		_set_grid_overlay_visible(true)
+		_set_hitbox_highlights_visible(true)
+		_set_wall_grid_overlays_visible(false)
 		# Centre the item's footprint on the cursor (matching the wall path's
 		# "along_m - iw*0.5" convention below) rather than gluing its corner
 		# to the raw ground-hit tile — otherwise the ghost visibly sits off
 		# to one side of the cursor, worse the bigger the item is.
 		var cursor_tile := _room_local_to_tile(hit["pos"] as Vector3)
-		var tile := cursor_tile - Vector2(iw, _buying_furniture.grid_h) * 0.5
+		var tile := (cursor_tile - Vector2(iw, _buying_furniture.grid_h) * 0.5).round()
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
 		_buying_mesh.position.y = box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
 		_refit_item_model(_buying_mesh, box.size)
+		_show_drag_highlight(Vector2(box.size.x, box.size.z))
+		_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
@@ -363,13 +389,15 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		_buying_furniture = null
 		_buying_fdata     = {}
 		_buying_mesh      = null
+		_set_grid_overlay_visible(false)
+		_set_wall_grid_overlays_visible(false)
 		buy_confirmed_wall.emit(fid, edge, origin)
 		return
 
 	if not _apt_floor:
 		return
 	var cursor_tile := _room_local_to_tile(_ground_hit(vp_pos))
-	var tile := cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5
+	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
 		return
@@ -381,9 +409,13 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
 	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, item_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
+	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
+	_hide_drag_highlight()
 	buy_confirmed.emit(f)
 
 
@@ -394,6 +426,10 @@ func _cancel_buy() -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
+	_hide_drag_highlight()
+	_set_wall_grid_overlays_visible(false)
 	buy_cancelled.emit(f)
 
 
@@ -440,6 +476,7 @@ func _begin_wall_item_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	_drag_wall_target["offset_along_m"] = origin.x * TILE_M - (wh.get("along_m", 0.0) as float)
 	_drag_wall_target["offset_ceil_m"]  = origin.y * TILE_M - (WALL_H_M - (wh.get("height_m", WALL_H_M) as float))
 	_drag_wall_target["preview_origin"] = origin
+	_set_wall_grid_overlays_visible(true)
 
 
 func _update_wall_item_drag(vp_pos: Vector2) -> void:
@@ -493,6 +530,7 @@ func _finish_wall_item_drag() -> void:
 			_wall_item_entries[i]["origin"] = final_origin
 			_wall_item_entries[i]["size"]   = xf["size"]
 	_drag_wall_target = {}
+	_set_wall_grid_overlays_visible(false)
 
 
 func _sell_wall_item(hit: Dictionary) -> void:
@@ -771,11 +809,18 @@ func _finish_furniture_drag() -> void:
 		_apt_floor.place_furniture(f, snap_pos)
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+		for h in _hitbox_highlights:
+			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+				h.position.x = mesh.position.x - item_size.x * 0.5
+				h.position.z = mesh.position.z - item_size.z * 0.5
 		furniture_moved.emit(f)
 	else:
 		mesh.position = _drag_orig_pos
 	_drag_target["pos"] = mesh.position
 	_drag_target = {}
+	_hide_drag_highlight()
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
 
 
 # A real click (not a camera-drag) on the preview toggles a foldable item
@@ -894,6 +939,9 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	for c in build_root.get_children():
 		c.queue_free()
 	_wall_data.clear()
+	_wall_grid_overlays.clear()
+	_hitbox_highlights.clear()
+	_drag_highlight = null
 	_furniture_entries.clear()
 	_wall_item_entries.clear()
 	_dragging_furniture = false
@@ -1065,43 +1113,237 @@ func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
 	if not inst or not is_instance_valid(inst):
 		return
 	var native: AABB = mi.get_meta("model_native")
-	var fit_scale := minf(minf(box_size.x / native.size.x, box_size.y / native.size.y), box_size.z / native.size.z)
-	inst.scale = Vector3.ONE * fit_scale
+	# Non-uniform: scale each axis independently so the rendered model's
+	# silhouette exactly fills box_size — the same box the hitbox highlight
+	# draws and can_place() collides against. A uniform fit (scaling by
+	# whichever axis was tightest) trusted the model's native proportions to
+	# roughly match the catalog's tile footprint, but they routinely don't
+	# (a "Bed" model sized nothing like 19x9 tiles), leaving it rattling
+	# around inside a hitbox 2-3x its visible size — which is what's actually
+	# confusing, not a slightly-off aspect ratio. Exact fit wins here.
+	#
+	# Some models are authored with their long axis along local Z instead of
+	# X (bedSingle.glb's real body is ~1.1m along Z, ~0.56m along X, while
+	# the catalog's box is 1.9m along X, 0.9m along Z) — fitting X-to-X and
+	# Z-to-Z directly then stretches the short axis into the long one,
+	# rendering a bed 3x too wide. Detect that mismatch by comparing which
+	# axis is "long" on each side and, if they disagree, swap which box
+	# dimension each native axis targets and yaw the model 90° to match.
+	var box_x_is_long    := box_size.x    >= box_size.z
+	var native_x_is_long := native.size.x >= native.size.z
+	var swapped := box_x_is_long != native_x_is_long
+	var scale_v: Vector3
+	var rot_y: float
+	if swapped:
+		scale_v = Vector3(box_size.z / native.size.x, box_size.y / native.size.y, box_size.x / native.size.z)
+		rot_y = PI * 0.5
+	else:
+		scale_v = Vector3(box_size.x / native.size.x, box_size.y / native.size.y, box_size.z / native.size.z)
+		rot_y = 0.0
+	inst.scale = scale_v
+	inst.rotation.y = rot_y
+	var local_center := Vector3(
+		(native.position.x + native.size.x * 0.5) * scale_v.x, 0.0,
+		(native.position.z + native.size.z * 0.5) * scale_v.z)
+	var world_center := Basis(Vector3.UP, rot_y) * local_center
 	inst.position = Vector3(
-		-(native.position.x + native.size.x * 0.5) * fit_scale,
-		-box_size.y * 0.5 - native.position.y * fit_scale,
-		-(native.position.z + native.size.z * 0.5) * fit_scale)
+		-world_center.x,
+		-box_size.y * 0.5 - native.position.y * scale_v.y,
+		-world_center.z)
+
+
+# Depth-first, first-match only — deliberately NOT a merge of every mesh in
+# the scene. These Kenney kit files bundle small accessory sub-meshes (a
+# toilet lid "cover", a bed "cover"/"pillow") that carry bizarre baked
+# scale/rotation values (seen: 2.1x and 0.5x with swapped axes, presumably
+# left over from whatever rig/bone they were authored against) — merging
+# them in inflated the AABB to 2-3x the object's real size, which is why
+# fitting to that box made the actual body render tiny inside it. The first
+# MeshInstance3D found (always the primary body in every model checked:
+# "toilet(Clone)", "bedSingle(Clone)", etc.) is a much more honest measure
+# of the object's true footprint; the accessory pieces still render, they
+# just don't get a vote on how big the whole instance is scaled.
+func _first_mesh_aabb(node: Node3D, accumulated: Transform3D) -> Dictionary:
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh:
+		return {"aabb": (node as MeshInstance3D).mesh.get_aabb(), "xform": accumulated}
+	for child in node.get_children():
+		if child is Node3D:
+			var result := _first_mesh_aabb(child as Node3D, accumulated * (child as Node3D).transform)
+			if not result.is_empty():
+				return result
+	return {}
 
 
 func _node_aabb(node: Node3D) -> AABB:
-	var result := AABB()
-	var first := true
-	# Most Kenney models put their mesh directly on the root node passed in
-	# here, with no children at all — must be checked explicitly, since the
-	# loop below only walks node.get_children().
-	if node is MeshInstance3D:
-		var own_mesh: Mesh = (node as MeshInstance3D).mesh
-		if own_mesh:
-			result = node.transform * own_mesh.get_aabb()
-			first = false
-	for child in node.get_children():
-		if child is MeshInstance3D:
-			var mesh: Mesh = (child as MeshInstance3D).mesh
-			if mesh:
-				var aabb: AABB = (child as MeshInstance3D).transform * mesh.get_aabb()
-				result = aabb if first else result.merge(aabb)
-				first = false
-		if child is Node3D:
-			var sub := _node_aabb(child as Node3D)
-			if sub.size != Vector3.ZERO:
-				sub = (child as Node3D).transform * sub
-				result = sub if first else result.merge(sub)
-				first = false
-	return result
+	var found := _first_mesh_aabb(node, Transform3D.IDENTITY)
+	if found.is_empty():
+		return AABB()
+	return (found["xform"] as Transform3D) * (found["aabb"] as AABB)
 
 
 func _add_floor(w: float, d: float) -> void:
 	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83))
+	_add_grid_overlay(w, d)
+
+
+# A tile-aligned grid, hidden by default and only shown while a piece is
+# being bought or dragged on the floor — mirrors GridDraw.gd's 2D show_grid
+# behavior so the player gets the same placement guide in 3D. One tileable
+# texture (1 game tile per texture repeat) stretched over the whole floor via
+# uv1_scale, so the lines land exactly on tile boundaries regardless of room
+# size.
+func _add_grid_overlay(w: float, d: float) -> void:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(w, d)
+	quad.orientation = PlaneMesh.FACE_Y
+	_grid_overlay = MeshInstance3D.new()
+	_grid_overlay.mesh = quad
+	_grid_overlay.position = Vector3(w * 0.5, 0.002, d * 0.5)
+	_grid_overlay.visible = false
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _grid_texture()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.uv1_scale = Vector3(w / TILE_M, d / TILE_M, 1.0)
+	_grid_overlay.material_override = mat
+	build_root.add_child(_grid_overlay)
+
+
+var _grid_tex_cache: ImageTexture = null
+
+func _grid_texture() -> ImageTexture:
+	if _grid_tex_cache:
+		return _grid_tex_cache
+	const N := 32
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var line_col := Color(0.15, 0.35, 0.55, 0.55)
+	for x in range(N):
+		img.set_pixel(x, 0, line_col)
+	for y in range(N):
+		img.set_pixel(0, y, line_col)
+	_grid_tex_cache = ImageTexture.create_from_image(img)
+	return _grid_tex_cache
+
+
+func _set_grid_overlay_visible(v: bool) -> void:
+	if is_instance_valid(_grid_overlay):
+		_grid_overlay.visible = v
+
+
+# Same tile grid, applied flat against a wall face — a child of the wall's own
+# MeshInstance3D so it inherits that wall's position/rotation for free, offset
+# outward along local Z (the wall's thickness axis) just enough to clear
+# z-fighting. Uses the taller of the wall's two slope-corner heights when the
+# ceiling is sloped, which slightly overhangs the low corner — an acceptable
+# guide, not a precise fit.
+func _add_wall_grid(parent_mi: MeshInstance3D, length: float, height: float) -> void:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(length, height)
+	quad.orientation = PlaneMesh.FACE_Z
+	var overlay := MeshInstance3D.new()
+	overlay.mesh = quad
+	overlay.position = Vector3(length * 0.5, height * 0.5, WALL_THICK + 0.005)
+	overlay.visible = false
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _grid_texture()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.uv1_scale = Vector3(length / TILE_M, height / TILE_M, 1.0)
+	overlay.material_override = mat
+	parent_mi.add_child(overlay)
+	_wall_grid_overlays.append(overlay)
+
+
+# Builds a free-standing outline (4 thin boxes rather than a filled quad, so
+# it reads as "this item's tile boundary" without obscuring the grid lines or
+# the model itself) for the given footprint, in room-local floor space
+# (origin at the footprint's near corner, not its center). Shared by the
+# static per-item highlights and the single "currently dragging" outline
+# that follows the ghost.
+func _build_outline_group(footprint: Vector2, col: Color, y: float) -> Node3D:
+	const T := 0.015   # line thickness, m
+	var group := Node3D.new()
+	group.position.y = y
+	var edges := [
+		{"size": Vector3(footprint.x + T, 0.001, T), "pos": Vector3(footprint.x * 0.5, 0.0, 0.0)},
+		{"size": Vector3(footprint.x + T, 0.001, T), "pos": Vector3(footprint.x * 0.5, 0.0, footprint.y)},
+		{"size": Vector3(T, 0.001, footprint.y + T), "pos": Vector3(0.0, 0.0, footprint.y * 0.5)},
+		{"size": Vector3(T, 0.001, footprint.y + T), "pos": Vector3(footprint.x, 0.0, footprint.y * 0.5)},
+	]
+	for e in edges:
+		var mesh := BoxMesh.new()
+		mesh.size = e["size"]
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.position = e["pos"]
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = mat
+		group.add_child(mi)
+	return group
+
+
+const HITBOX_Y := 0.006   # just above the grid overlay's own 0.002 offset
+const HITBOX_COLOR := Color(0.95, 0.25, 0.2, 0.85)     # red — where an item currently sits
+const DRAG_HITBOX_COLOR := Color(0.3, 0.9, 0.35, 0.9)  # green — where the dragged item would land
+
+# Traced around an existing floor item's footprint — shown alongside the grid
+# overlay so a piece being placed can be checked against every other item's
+# hitbox at a glance, not just guessed at. Stays put while that item is being
+# dragged elsewhere (see _drag_highlight) so the player can compare the old
+# and new spots side by side.
+func _add_hitbox_highlight(local_pos: Vector3, footprint: Vector2, owner_furniture: Furniture = null) -> void:
+	var group := _build_outline_group(footprint, HITBOX_COLOR, HITBOX_Y)
+	group.position.x = local_pos.x - footprint.x * 0.5
+	group.position.z = local_pos.z - footprint.y * 0.5
+	group.visible = false
+	group.set_meta("footprint", footprint)
+	if owner_furniture:
+		group.set_meta("furniture", owner_furniture)
+	build_root.add_child(group)
+	_hitbox_highlights.append(group)
+
+
+func _set_hitbox_highlights_visible(v: bool) -> void:
+	for h in _hitbox_highlights:
+		if is_instance_valid(h):
+			h.visible = v
+
+
+# The single "where this would land" outline for whatever's currently being
+# bought or dragged on the floor — separate from the static per-item
+# highlights above so the player can see both the old spot (still red) and
+# the new one (green) at the same time while dragging an existing piece.
+func _show_drag_highlight(footprint: Vector2) -> void:
+	if is_instance_valid(_drag_highlight) and _drag_highlight.get_meta("footprint", Vector2.ZERO) == footprint:
+		_drag_highlight.visible = true
+		return
+	_hide_drag_highlight()
+	_drag_highlight = _build_outline_group(footprint, DRAG_HITBOX_COLOR, HITBOX_Y + 0.001)
+	_drag_highlight.set_meta("footprint", footprint)
+	build_root.add_child(_drag_highlight)
+
+
+func _update_drag_highlight_pos(center_x: float, center_z: float, footprint: Vector2) -> void:
+	if not is_instance_valid(_drag_highlight):
+		return
+	_drag_highlight.position.x = center_x - footprint.x * 0.5
+	_drag_highlight.position.z = center_z - footprint.y * 0.5
+
+
+func _hide_drag_highlight() -> void:
+	if is_instance_valid(_drag_highlight):
+		_drag_highlight.queue_free()
+	_drag_highlight = null
+
+
+func _set_wall_grid_overlays_visible(v: bool) -> void:
+	for ov in _wall_grid_overlays:
+		if is_instance_valid(ov):
+			ov.visible = v
 
 
 const RAIL_H_M     := 0.9
@@ -1249,15 +1491,19 @@ func _add_walls(w: float, d: float, sc: Dictionary, bounds: Rect2i) -> void:
 
 	var mi_n := _add_sloped_wall(w, WALL_THICK, h_n0, h_n1, Vector3(0.0, 0.0, 0.0), 0.0, col)
 	_wall_data.append({"mesh": mi_n, "mat": mi_n.material_override, "normal": Vector3(0, 0, -1), "base": col})
+	_add_wall_grid(mi_n, w, maxf(h_n0, h_n1))
 
 	var mi_s := _add_sloped_wall(w, WALL_THICK, h_s0, h_s1, Vector3(0.0, 0.0, d - WALL_THICK), 0.0, col)
 	_wall_data.append({"mesh": mi_s, "mat": mi_s.material_override, "normal": Vector3(0, 0, 1), "base": col})
+	_add_wall_grid(mi_s, w, maxf(h_s0, h_s1))
 
 	var mi_w := _add_sloped_wall(d, WALL_THICK, h_w0, h_w1, Vector3(WALL_THICK, 0.0, 0.0), -90.0, col)
 	_wall_data.append({"mesh": mi_w, "mat": mi_w.material_override, "normal": Vector3(-1, 0, 0), "base": col})
+	_add_wall_grid(mi_w, d, maxf(h_w0, h_w1))
 
 	var mi_e := _add_sloped_wall(d, WALL_THICK, h_e0, h_e1, Vector3(w, 0.0, 0.0), -90.0, col)
 	_wall_data.append({"mesh": mi_e, "mat": mi_e.material_override, "normal": Vector3(1, 0, 0), "base": col})
+	_add_wall_grid(mi_e, d, maxf(h_e0, h_e1))
 
 
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
@@ -1273,6 +1519,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var mi   := _box(box_size, pos, col)
 	_apply_item_model(mi, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
+	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 
 
 # `origin` is wall-local: origin.x along the wall, origin.y from the TOP of

@@ -36,6 +36,9 @@ var _custom_levels:       Array      = []
 var _selected_is_custom:  bool       = false
 var _selected_custom_data: Dictionary = {}
 
+var _debug_section_line: ColorRect = null
+var _debug_section_hdr:  Label     = null
+
 # Info panel widgets
 var _info_title:    Label
 var _info_district: Label
@@ -54,6 +57,8 @@ func _ready() -> void:
 	_build_ui()
 	_map_content.size.y = _map_total_h()
 	GameState.company_funds_changed.connect(_on_funds_changed)
+	if not GameState.debug_mode_changed.is_connected(_on_debug_mode_changed):
+		GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	_refresh_all_cards()
 	if _levels_data.get("levels", []).size() > 0:
 		_select_level(_levels_data["levels"][0] as Dictionary)
@@ -81,11 +86,45 @@ func _card_xy(col: int, row: int) -> Vector2:
 
 
 func _map_total_h() -> float:
-	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
+	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2 + _debug_section_reserved_h()
 
 
 func _custom_section_y() -> float:
 	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
+
+
+# ── Debug section (dev-only sandbox levels, kept visually separate from the
+# real progression instead of interleaved into it — see _build_debug_section)
+func _debug_level_count() -> int:
+	var count := 0
+	for ld in _levels_data.get("levels", []):
+		if (ld as Dictionary).get("district", "") == "Debug":
+			count += 1
+	return count
+
+
+func _debug_section_reserved_h() -> float:
+	var count := _debug_level_count()
+	if count == 0:
+		return 0.0
+	var rows := ceili(float(count) / float(COLS))
+	return 30.0 + rows * (CARD_H + V_PAD * 2)
+
+
+func _debug_section_y() -> float:
+	return ROWS * (CARD_H + V_PAD * 2) + V_PAD * 2
+
+
+func _debug_card_xy(index: int) -> Vector2:
+	var col    := index % COLS
+	var row    := index / COLS
+	var cell_w := (MAP_W - H_PAD * 2) / float(COLS)
+	var cell_h := float(CARD_H + V_PAD * 2)
+	var sy     := _debug_section_y() + 30.0
+	return Vector2(
+		H_PAD + col * cell_w + (cell_w - CARD_W) * 0.5,
+		sy + V_PAD + row * cell_h + (cell_h - CARD_H) * 0.5
+	)
 
 
 func _custom_card_xy(index: int) -> Vector2:
@@ -183,10 +222,19 @@ func _build_ui() -> void:
 	# Block header labels — one per block transition (blocks 2-5 have tutorial rows)
 	_build_block_headers()
 
-	# Property cards — children of _map_content, positioned relative to it
+	# Property cards — children of _map_content, positioned relative to it.
+	# Debug-district levels are laid out separately below (_build_debug_section)
+	# instead of at their own map_row/map_col — those coordinates routinely
+	# collide with real levels' cells (a debug sandbox and a tutorial level
+	# both claiming row 0 / col 0, say), which only stayed invisible-by-luck
+	# because debug levels used to be hidden outright.
 	for ld in _levels_data.get("levels", []):
-		var card := _create_card(ld as Dictionary)
-		_cards[(ld as Dictionary)["id"]] = card
+		var d := ld as Dictionary
+		if d.get("district", "") == "Debug":
+			continue
+		var card := _create_card(d)
+		_cards[d["id"]] = card
+	_build_debug_section()
 
 	# Vertical divider before info panel
 	var div := ColorRect.new()
@@ -317,6 +365,14 @@ func _refresh_all_cards() -> void:
 
 
 func _fill_card(card: Button, ld: Dictionary) -> void:
+	var district  := ld.get("district", "Wedding") as String
+	# "Debug" district levels are dev-only sandboxes (loft mechanics, sloped
+	# ceilings, balcony rendering, etc.) — clutter for a real player, so they
+	# stay hidden until Ctrl+Shift+Alt+D flips debug mode on.
+	card.visible = district != "Debug" or GameState.debug_mode
+	if not card.visible:
+		return
+
 	# Remove previous content
 	for ch in card.get_children():
 		ch.queue_free()
@@ -328,7 +384,6 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 	var level_visible := GameState.total_stars() >= min_stars
 	var can_buy   := GameState.company_funds >= cost
 	var stars     := GameState.get_stars(lid)
-	var district  := ld.get("district", "Wedding") as String
 	var dist_col  := DISTRICT_COLORS.get(district, Color(0.4, 0.4, 0.4, 1.0)) as Color
 
 	# Update card background tint via normal StyleBoxFlat
@@ -576,11 +631,32 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
 		return
+	if ke.keycode == KEY_D and ke.ctrl_pressed and ke.shift_pressed and ke.alt_pressed:
+		get_viewport().set_input_as_handled()
+		_on_toggle_debug_mode()
+		return
+	if ke.keycode == KEY_D and ke.ctrl_pressed and ke.alt_pressed:
+		get_viewport().set_input_as_handled()
+		_on_toggle_debug_mode()
+		return
 	if not OS.is_debug_build():
 		return
 	if ke.keycode == KEY_D and ke.ctrl_pressed:
 		get_viewport().set_input_as_handled()
 		_on_dev_unlock()
+
+
+func _on_toggle_debug_mode() -> void:
+	GameState.set_debug_mode(not GameState.debug_mode)
+	if GameState.debug_mode:
+		_on_dev_unlock()   # every level open and playable while poking around in debug mode
+	else:
+		_refresh_all_cards()
+
+
+func _on_debug_mode_changed(_enabled: bool) -> void:
+	_refresh_all_cards()
+	_update_debug_section_visibility()
 
 
 func _on_dev_unlock() -> void:
@@ -686,6 +762,50 @@ func _draw() -> void:
 			district.to_upper(),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
 			Color(bc.r * 1.6, bc.g * 1.6, bc.b * 1.6, 0.75))
+
+
+# ── Debug section (dev-only sandbox levels) ─────────────────────────────────
+
+func _build_debug_section() -> void:
+	var debug_levels: Array = []
+	for ld in _levels_data.get("levels", []):
+		if (ld as Dictionary).get("district", "") == "Debug":
+			debug_levels.append(ld)
+	if debug_levels.is_empty():
+		return
+	var sy := _debug_section_y()
+
+	_debug_section_line = ColorRect.new()
+	_debug_section_line.color         = Color(0.55, 0.32, 0.20, 0.35)
+	_debug_section_line.position      = Vector2(H_PAD, sy + 6.0)
+	_debug_section_line.size          = Vector2(MAP_W - H_PAD * 2, 1)
+	_debug_section_line.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(_debug_section_line)
+
+	_debug_section_hdr = Label.new()
+	_debug_section_hdr.text          = "DEBUG LEVELS  (Ctrl+Shift+Alt+D)"
+	_debug_section_hdr.position      = Vector2(H_PAD, sy + 10.0)
+	_debug_section_hdr.size          = Vector2(MAP_W - H_PAD * 2, 16)
+	_debug_section_hdr.add_theme_font_size_override("font_size", 9)
+	_debug_section_hdr.add_theme_color_override("font_color", Color(0.85, 0.58, 0.38, 0.85))
+	_debug_section_hdr.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(_debug_section_hdr)
+
+	for i in range(debug_levels.size()):
+		var ld := debug_levels[i] as Dictionary
+		var card := _create_card(ld)
+		card.position = _debug_card_xy(i)
+		_cards[ld["id"]] = card
+
+	_update_debug_section_visibility()
+
+
+func _update_debug_section_visibility() -> void:
+	var v := GameState.debug_mode
+	if is_instance_valid(_debug_section_line):
+		_debug_section_line.visible = v
+	if is_instance_valid(_debug_section_hdr):
+		_debug_section_hdr.visible = v
 
 
 # ── My Levels (custom / player-created) ──────────────────────────────────────

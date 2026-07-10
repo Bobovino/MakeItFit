@@ -35,7 +35,7 @@
       "buy_price": 420,
       "sell_price": 180,
       "color": "5888b0",
-      "model": "res://assets/models/furniture/cabinetBedDrawer.glb"
+      "model": "res://assets/models/furniture/bedSingle.glb"
     },
     {
       "id": "high_bed",
@@ -298,10 +298,10 @@
       "placement": "floor",
       "size": {
         "w": 8,
-        "h": 5
+        "h": 8
       },
       "wall_h": 6,
-      "floor_depth": 5,
+      "floor_depth": 8,
       "ghost_radius": 3,
       "functions": [
         "work"
