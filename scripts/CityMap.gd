@@ -38,6 +38,7 @@ var _selected_custom_data: Dictionary = {}
 
 var _debug_section_line: ColorRect = null
 var _debug_section_hdr:  Label     = null
+var _debug_toggle_btn:   Button    = null
 
 # Info panel widgets
 var _info_title:    Label
@@ -95,10 +96,22 @@ func _custom_section_y() -> float:
 
 # ── Debug section (dev-only sandbox levels, kept visually separate from the
 # real progression instead of interleaved into it — see _build_debug_section)
+#
+# A level counts as "debug" if its district is literally "Debug" OR its name
+# is "Debug: ..." — a few mechanic-test levels (Balcony, Sloped Ceiling) were
+# authored with a real district (Mitte) so they'd count toward normal
+# progression, but they're still named like dev levels and read as one
+# category to anyone looking at the map, so group them together too.
+func _is_debug_level(ld: Dictionary) -> bool:
+	if ld.get("district", "") == "Debug":
+		return true
+	return (ld.get("name", "") as String).begins_with("Debug:")
+
+
 func _debug_level_count() -> int:
 	var count := 0
 	for ld in _levels_data.get("levels", []):
-		if (ld as Dictionary).get("district", "") == "Debug":
+		if _is_debug_level(ld as Dictionary):
 			count += 1
 	return count
 
@@ -207,6 +220,23 @@ func _build_ui() -> void:
 
 	_update_top_bar_counters()
 
+	# Visible, clickable twin of the Ctrl+Shift+Alt+D shortcut — global hotkeys
+	# can silently get eaten by other running software (confirmed happening
+	# on at least one dev machine), leaving no way to tell whether the combo
+	# actually did anything. A button always gives a definite answer. Placed
+	# as its own absolutely-positioned control (not inside top_row) so it
+	# doesn't depend on that HBoxContainer's sizing behaving.
+	_debug_toggle_btn = Button.new()
+	_debug_toggle_btn.add_theme_font_size_override("font_size", 11)
+	_debug_toggle_btn.tooltip_text = "Ctrl+Shift+Alt+D"
+	_debug_toggle_btn.position = Vector2(1280 - 195, 12)
+	_debug_toggle_btn.size     = Vector2(180, 30)
+	_debug_toggle_btn.pressed.connect(_on_toggle_debug_mode)
+	_update_debug_toggle_btn()
+	# add_child happens at the very end of _build_ui (search "front-most") so
+	# it draws on top of the info panel, which otherwise fully covers this
+	# corner and swallows the button's clicks.
+
 	# Clipped map viewport — cards scroll within this
 	var map_clip := Control.new()
 	map_clip.position = Vector2(0, TOP_H)
@@ -230,7 +260,7 @@ func _build_ui() -> void:
 	# because debug levels used to be hidden outright.
 	for ld in _levels_data.get("levels", []):
 		var d := ld as Dictionary
-		if d.get("district", "") == "Debug":
+		if _is_debug_level(d):
 			continue
 		var card := _create_card(d)
 		_cards[d["id"]] = card
@@ -307,6 +337,10 @@ func _build_ui() -> void:
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	vb.add_child(settings_btn)
 
+	# Front-most: added last so it draws above the info panel it would
+	# otherwise sit underneath (see where _debug_toggle_btn was constructed).
+	add_child(_debug_toggle_btn)
+
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
 	var lbl := Label.new()
@@ -366,10 +400,10 @@ func _refresh_all_cards() -> void:
 
 func _fill_card(card: Button, ld: Dictionary) -> void:
 	var district  := ld.get("district", "Wedding") as String
-	# "Debug" district levels are dev-only sandboxes (loft mechanics, sloped
-	# ceilings, balcony rendering, etc.) — clutter for a real player, so they
-	# stay hidden until Ctrl+Shift+Alt+D flips debug mode on.
-	card.visible = district != "Debug" or GameState.debug_mode
+	# Debug/dev-only sandbox levels (loft mechanics, sloped ceilings, balcony
+	# rendering, etc.) are clutter for a real player, so they stay hidden
+	# until debug mode is on.
+	card.visible = not _is_debug_level(ld) or GameState.debug_mode
 	if not card.visible:
 		return
 
@@ -657,6 +691,18 @@ func _on_toggle_debug_mode() -> void:
 func _on_debug_mode_changed(_enabled: bool) -> void:
 	_refresh_all_cards()
 	_update_debug_section_visibility()
+	_update_debug_toggle_btn()
+
+
+func _update_debug_toggle_btn() -> void:
+	if not is_instance_valid(_debug_toggle_btn):
+		return
+	if GameState.debug_mode:
+		_debug_toggle_btn.text = "🐞 Debug Mode: ON"
+		_debug_toggle_btn.add_theme_color_override("font_color", Color(0.95, 0.65, 0.35))
+	else:
+		_debug_toggle_btn.text = "🐞 Debug Mode: Off"
+		_debug_toggle_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
 
 
 func _on_dev_unlock() -> void:
@@ -769,7 +815,7 @@ func _draw() -> void:
 func _build_debug_section() -> void:
 	var debug_levels: Array = []
 	for ld in _levels_data.get("levels", []):
-		if (ld as Dictionary).get("district", "") == "Debug":
+		if _is_debug_level(ld as Dictionary):
 			debug_levels.append(ld)
 	if debug_levels.is_empty():
 		return
