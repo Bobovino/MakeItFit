@@ -73,8 +73,8 @@ var _buying_fdata: Dictionary = {}
 var _buying_mesh: MeshInstance3D = null
 var _buying_on_wall: bool = false   # last hover: floor ghost or wall ghost?
 
-# Walls between the camera and the room center fade out so the view isn't
-# blocked — each entry is {mat: StandardMaterial3D, normal: Vector3, base: Color}.
+# Walls between the camera and the room center are hidden so the view isn't
+# blocked — each entry is {mesh: MeshInstance3D, mat: StandardMaterial3D, normal: Vector3, base: Color}.
 var _wall_data: Array = []
 var _cam_flat_dir: Vector3 = Vector3.ZERO   # XZ camera direction from center, set by _update_wall_visibility
 
@@ -531,7 +531,7 @@ func _wall_plane_hit(edge: String, from: Vector3, dir: Vector3) -> Dictionary:
 
 # Ray test against the wall planes at once — used for the buy ghost, where we
 # don't know which wall (if any) the cursor is over yet. The two "near" walls
-# (the ones _update_wall_visibility fades out so the dollhouse cutaway doesn't
+# (the ones _update_wall_visibility hides so the dollhouse cutaway doesn't
 # block the view) are excluded: a ray toward the middle of the floor passes
 # straight through that invisible near plane on its way from the camera, which
 # would otherwise register as a (wrong) wall hit before ever reaching the
@@ -864,8 +864,10 @@ func _update_camera() -> void:
 	_update_wall_visibility(offset)
 
 
-# Fades out whichever wall(s) sit between the camera and the room so the
+# Hides whichever wall(s) sit between the camera and the room so the
 # interior is never blocked — a "dollhouse cutaway" rather than a sealed box.
+# Previously this faded the wall's alpha down instead of hiding it outright;
+# fully hiding reads much more clearly than a translucent wall hovering there.
 func _update_wall_visibility(cam_offset: Vector3) -> void:
 	var flat := Vector3(cam_offset.x, 0.0, cam_offset.z)
 	if flat.length() < 0.001:
@@ -874,13 +876,14 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	_cam_flat_dir = flat
 	for wd in _wall_data:
 		var normal: Vector3 = wd["normal"]
+		var mesh: MeshInstance3D = wd["mesh"]
 		var wall_mat: StandardMaterial3D = wd["mat"]
 		var base: Color = wd["base"]
 		# Positive dot = camera is on the outside of this wall, looking in —
-		# that's the wall we need to hide.
-		var facing := clampf(normal.dot(flat), 0.0, 1.0)
-		var alpha := lerpf(1.0, 0.08, facing)
-		wall_mat.albedo_color = Color(base.r, base.g, base.b, alpha)
+		# that's the wall we need out of the way.
+		var facing := normal.dot(flat)
+		mesh.visible = facing <= 0.0
+		wall_mat.albedo_color = base   # no longer faded — always full opacity when visible
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
@@ -913,7 +916,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	_add_floor(w, d)
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
 	_add_balcony_extras(bounds)
-	_update_camera()   # also applies initial wall-fade now that _wall_data exists
+	_update_camera()   # also applies initial wall visibility now that _wall_data exists
 
 	for item in apt_floor.get_all_furniture():
 		_add_furniture_box(item as Furniture, bounds, catalog)
@@ -1245,16 +1248,16 @@ func _add_walls(w: float, d: float, sc: Dictionary, bounds: Rect2i) -> void:
 		h_e1 = h_e0
 
 	var mi_n := _add_sloped_wall(w, WALL_THICK, h_n0, h_n1, Vector3(0.0, 0.0, 0.0), 0.0, col)
-	_wall_data.append({"mat": mi_n.material_override, "normal": Vector3(0, 0, -1), "base": col})
+	_wall_data.append({"mesh": mi_n, "mat": mi_n.material_override, "normal": Vector3(0, 0, -1), "base": col})
 
 	var mi_s := _add_sloped_wall(w, WALL_THICK, h_s0, h_s1, Vector3(0.0, 0.0, d - WALL_THICK), 0.0, col)
-	_wall_data.append({"mat": mi_s.material_override, "normal": Vector3(0, 0, 1), "base": col})
+	_wall_data.append({"mesh": mi_s, "mat": mi_s.material_override, "normal": Vector3(0, 0, 1), "base": col})
 
 	var mi_w := _add_sloped_wall(d, WALL_THICK, h_w0, h_w1, Vector3(WALL_THICK, 0.0, 0.0), -90.0, col)
-	_wall_data.append({"mat": mi_w.material_override, "normal": Vector3(-1, 0, 0), "base": col})
+	_wall_data.append({"mesh": mi_w, "mat": mi_w.material_override, "normal": Vector3(-1, 0, 0), "base": col})
 
 	var mi_e := _add_sloped_wall(d, WALL_THICK, h_e0, h_e1, Vector3(w, 0.0, 0.0), -90.0, col)
-	_wall_data.append({"mat": mi_e.material_override, "normal": Vector3(1, 0, 0), "base": col})
+	_wall_data.append({"mesh": mi_e, "mat": mi_e.material_override, "normal": Vector3(1, 0, 0), "base": col})
 
 
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
