@@ -15,6 +15,7 @@ signal buy_confirmed(furniture: Furniture)    # a piece bought via start_buying(
 signal buy_confirmed_wall(furniture_id: String, edge: String, origin: Vector2i)  # ...or on a wall instead
 signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was backed out (Esc)
 signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a wall piece
+signal furniture_moved(furniture: Furniture)   # an existing piece was dragged to a new spot and committed
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -134,11 +135,19 @@ func _on_container_input(event: InputEvent) -> void:
 						_dragging = true
 			else:
 				if _dragging_furniture:
-					_finish_furniture_drag()
+					# Mousedown always starts a "drag" the instant it lands on a
+					# furniture piece (see the pressed branch above), so a plain
+					# click never reaches the `elif ... _on_item_clicked()` case
+					# below — it has to be handled here instead, before falling
+					# through to the real drag-finish logic.
+					if mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
+						_click_furniture_no_drag()
+					else:
+						_finish_furniture_drag()
 				elif _dragging_wall_item:
 					_finish_wall_item_drag()
 				elif mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
-					_on_item_clicked()
+					_on_item_clicked(_to_vp(mb.position))
 				_dragging = false
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _buying_furniture:
@@ -280,6 +289,12 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 # mouse position. The ghost can land on the floor or on a wall — whichever
 # the cursor ray is actually pointing at each frame (see _scene_hit).
 func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
+	# Pressing Buy again before confirming/cancelling the previous ghost used
+	# to just overwrite _buying_mesh, leaking the old ghost (and its pending
+	# Furniture node) on screen forever. Cancel it first — this also emits
+	# buy_cancelled so Main.gd's pending Furniture node gets freed too.
+	if _buying_furniture:
+		_cancel_buy()
 	_buying_furniture = furniture
 	_buying_fdata     = fdata
 	_buying_on_wall   = false
@@ -288,6 +303,7 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	col.a = 0.55
 	var box_size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
 	_buying_mesh = _box(box_size, Vector3(box_size.x * 0.5, box_size.y * 0.5, box_size.z * 0.5), col)
+	_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
 
 
 func _update_buy_ghost(vp_pos: Vector2) -> void:
@@ -307,14 +323,21 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		_buying_mesh.position = xf["pos"]
 		_buying_mesh.set_meta("wall_edge", edge)
 		_buying_mesh.set_meta("wall_origin", origin)
+		_refit_item_model(_buying_mesh, box.size)
 	else:
 		_buying_on_wall = false
-		var tile := _room_local_to_tile(hit["pos"] as Vector3)
+		# Centre the item's footprint on the cursor (matching the wall path's
+		# "along_m - iw*0.5" convention below) rather than gluing its corner
+		# to the raw ground-hit tile — otherwise the ghost visibly sits off
+		# to one side of the cursor, worse the bigger the item is.
+		var cursor_tile := _room_local_to_tile(hit["pos"] as Vector3)
+		var tile := cursor_tile - Vector2(iw, _buying_furniture.grid_h) * 0.5
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
 		_buying_mesh.position.y = box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
+		_refit_item_model(_buying_mesh, box.size)
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
@@ -335,7 +358,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 			wall_ghost_mat.albedo_color.a = 1.0
 		(_buying_mesh.mesh as BoxMesh).size = xf["size"]
 		_buying_mesh.position = xf["pos"]
-		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, xf["size"])
+		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, xf["size"], _buying_fdata.get("hide_nodes", []) as Array)
 		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": xf["size"]})
 		_buying_furniture = null
 		_buying_fdata     = {}
@@ -345,7 +368,8 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 
 	if not _apt_floor:
 		return
-	var tile := _room_local_to_tile(_ground_hit(vp_pos))
+	var cursor_tile := _room_local_to_tile(_ground_hit(vp_pos))
+	var tile := cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
 		return
@@ -355,7 +379,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	var ghost_mat := _buying_mesh.material_override as StandardMaterial3D
 	if ghost_mat:
 		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
-	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, item_size)
+	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, item_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_buying_furniture = null
 	_buying_fdata     = {}
@@ -747,6 +771,7 @@ func _finish_furniture_drag() -> void:
 		_apt_floor.place_furniture(f, snap_pos)
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+		furniture_moved.emit(f)
 	else:
 		mesh.position = _drag_orig_pos
 	_drag_target["pos"] = mesh.position
@@ -760,13 +785,66 @@ func _finish_furniture_drag() -> void:
 # nothing to toggle, so the same "click on empty space" instead acts as a
 # click-outside-the-modal dismiss, since this view has no separate
 # backdrop/frame to click outside of.
-func _on_item_clicked() -> void:
+func _on_item_clicked(_vp_pos: Vector2 = Vector2.ZERO) -> void:
 	if not _foldable:
 		if close_btn.visible:
 			closed.emit()
 		return
 	_fold_auto   = false
 	_fold_target = 0.0 if _fold_target > 0.5 else 1.0
+
+
+# A plain click (no real drag) that landed on a placed foldable furniture
+# piece — mousedown already armed a drag the instant it hit the piece (see
+# _on_container_input), so this is where a "click" actually gets recognized
+# for furniture, matching the 2D top-down view's click-to-fold interaction.
+func _click_furniture_no_drag() -> void:
+	var entry := _drag_target
+	_drag_target = {}
+	_dragging_furniture = false
+	if entry.is_empty():
+		return
+	var f: Furniture = entry["furniture"]
+	if Furniture.test_mode_active and f.foldable and f.toggle_fold():
+		_resize_furniture_entry(entry)
+
+
+# Re-derives box size/position from a placed Furniture's current grid_w/h
+# (which toggle_fold() just changed) using the exact same anchoring formula
+# _add_furniture_box used at placement time, then refits its model.
+func _resize_furniture_entry(entry: Dictionary) -> void:
+	var f: Furniture = entry["furniture"]
+	var mesh: MeshInstance3D = entry["mesh"]
+	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
+	var fw := f.grid_w * TILE_M
+	var fd := f.grid_h * TILE_M
+	var box_size := Vector3(fw, height_m, fd)
+	var pos := Vector3(
+		(f.grid_pos.x - _room_bounds.position.x) * TILE_M + fw * 0.5,
+		height_m * 0.5,
+		(f.grid_pos.y - _room_bounds.position.y) * TILE_M + fd * 0.5)
+	(mesh.mesh as BoxMesh).size = box_size
+	mesh.position = pos
+	# A piece with a distinct "model_extended" (e.g. a sofa bed that should
+	# actually become a bed, not just a stretched sofa) needs the whole model
+	# swapped for the new fold state, not just rescaled — _refit_item_model
+	# alone would keep showing the folded model at the extended size.
+	_apply_item_model(mesh, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
+	entry["size"] = box_size
+	entry["pos"]  = pos
+
+
+# Picks which .glb represents a piece for its current fold state — most
+# foldable items just rescale their one model between sizes, but a piece can
+# opt into a second, distinct model for its extended state via "model_extended"
+# (e.g. a sofa bed that should become an actual bed shape, not a bigger sofa).
+func _active_model_path(fdata: Dictionary, is_extended: bool) -> String:
+	if is_extended:
+		var ext := fdata.get("model_extended", "") as String
+		if not ext.is_empty():
+			return ext
+	return fdata.get("model", "") as String
 
 
 func _update_fold_visual() -> void:
@@ -902,7 +980,7 @@ func build_single_item(fdata: Dictionary) -> void:
 		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83))
 		var item_size := Vector3(fw, height_m, fd)
 		var item_mi := _box(item_size, Vector3(0.0, height_m * 0.5, 0.0), col)
-		_apply_item_model(item_mi, fdata.get("model", "") as String, item_size)
+		_apply_item_model(item_mi, fdata.get("model", "") as String, item_size, fdata.get("hide_nodes", []) as Array)
 
 	_update_camera()
 
@@ -934,7 +1012,15 @@ func _box(box_size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 # this script already relies on — only its own mesh surface is removed, the
 # model renders as a child instead. No-op (box stays visible) if the item has
 # no "model" entry or the file can't be loaded.
-func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3) -> void:
+func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3, hide_nodes: Array = []) -> void:
+	# Clear a previously-applied model (re-fit case, e.g. re-running this on
+	# an already-modeled drag ghost) before possibly adding a fresh one.
+	if mi.has_meta("model_inst"):
+		var old_inst: Node = mi.get_meta("model_inst")
+		if old_inst and is_instance_valid(old_inst):
+			old_inst.queue_free()
+		mi.set_meta("model_inst", null)
+
 	if model_path.is_empty() or not ResourceLoader.exists(model_path):
 		return
 	var packed := load(model_path) as PackedScene
@@ -947,8 +1033,35 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 	if native.size.x <= 0.0001 or native.size.y <= 0.0001 or native.size.z <= 0.0001:
 		inst.queue_free()
 		return
-	mi.mesh = null
+	# Keep the placeholder box as the mesh (some callers keep resizing it every
+	# frame while dragging) but make it invisible — the model renders instead.
+	var mat := mi.material_override as StandardMaterial3D
+	if mat:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color.a = 0.0
 	mi.add_child(inst)
+	# Some shared models cover more than one item (e.g. the bunk-bed model
+	# doubles as the Loft Bed) — a piece can list child node names to hide so
+	# it reads as a distinct silhouette without needing its own separate file.
+	for node_name in hide_nodes:
+		var n := inst.find_child(node_name as String, true, false)
+		if n is Node3D:
+			(n as Node3D).visible = false
+	mi.set_meta("model_inst", inst)
+	mi.set_meta("model_native", native)
+	_refit_item_model(mi, box_size)
+
+
+# Cheap per-frame rescale of an already-instantiated model (used while a drag
+# ghost is resizing, e.g. swapping between floor and wall placement) — avoids
+# reloading/reinstantiating the whole .glb every frame.
+func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
+	if not mi.has_meta("model_inst"):
+		return
+	var inst: Node3D = mi.get_meta("model_inst")
+	if not inst or not is_instance_valid(inst):
+		return
+	var native: AABB = mi.get_meta("model_native")
 	var fit_scale := minf(minf(box_size.x / native.size.x, box_size.y / native.size.y), box_size.z / native.size.z)
 	inst.scale = Vector3.ONE * fit_scale
 	inst.position = Vector3(
@@ -960,6 +1073,14 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 func _node_aabb(node: Node3D) -> AABB:
 	var result := AABB()
 	var first := true
+	# Most Kenney models put their mesh directly on the root node passed in
+	# here, with no children at all — must be checked explicitly, since the
+	# loop below only walks node.get_children().
+	if node is MeshInstance3D:
+		var own_mesh: Mesh = (node as MeshInstance3D).mesh
+		if own_mesh:
+			result = node.transform * own_mesh.get_aabb()
+			first = false
 	for child in node.get_children():
 		if child is MeshInstance3D:
 			var mesh: Mesh = (child as MeshInstance3D).mesh
@@ -1147,7 +1268,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var box_size := Vector3(fw, height_m, fd)
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
 	var mi   := _box(box_size, pos, col)
-	_apply_item_model(mi, fdata.get("model", "") as String, box_size)
+	_apply_item_model(mi, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 
 
@@ -1163,5 +1284,5 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
 	var mi := _box(xf["size"], xf["pos"], col)
-	_apply_item_model(mi, fdata.get("model", "") as String, xf["size"])
+	_apply_item_model(mi, fdata.get("model", "") as String, xf["size"], fdata.get("hide_nodes", []) as Array)
 	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": xf["size"]})

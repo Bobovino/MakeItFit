@@ -219,13 +219,13 @@ func _apply_fold_state(want_extended: bool) -> bool:
 func _draw() -> void:
 	var w := grid_w * TILE_SIZE
 	var h := grid_h * TILE_SIZE
-	# Blueprint line-work: bright white-cyan ink, no colour fill. A faint white
-	# glaze keeps the footprint readable (it's a packing puzzle — occupied cells
-	# must read at a glance) while the piece stays part of the drawing.
+	# Per-item colour fill (from furniture.json's "color") with a crisp white
+	# blueprint outline — pieces need to read apart at a glance since this is
+	# a packing puzzle, and a uniform white silhouette made everything blur
+	# together.
 	var ink := Color(0.88, 0.95, 1.00, 1.0)
 
-	# Faint glaze + crisp white outline
-	draw_rect(Rect2(0, 0, w, h), Color(0.86, 0.94, 1.00, 0.10))
+	draw_rect(Rect2(0, 0, w, h), Color(_color.r, _color.g, _color.b, 0.45))
 	draw_rect(Rect2(0, 0, w, h), ink, false, 1.5)
 
 	# Architectural symbol

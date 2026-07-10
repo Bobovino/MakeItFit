@@ -29,6 +29,7 @@ const MIN_SPLIT_X := 450.0
 const MAX_SPLIT_X := 1050.0
 var _split_x:         float = 860.0
 var _dragging_divider: bool = false
+var _undo_btn: Button = null   # floating corner button over the floor plan, kept flush with Wall Inspector's left edge
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
 # ── View mode: split (default) / top-down with a modal wall panel (mobile-
@@ -69,11 +70,17 @@ var _builder_ghost:       Line2D    = null
 var _builder_press_consumed: bool   = false  # only consume the matching release
 var _builder_pipe_tiles:  Array     = []  # Vector2i path being drawn for pipe_water/pipe_power
 var _builder_pipe_ghost:  Line2D    = null
-# Snapshot-based undo: each entry is {floor_id, data} where data is a deep
-# copy of the Floor's Builder-mutable fields, captured BEFORE the action that
-# entry undoes. One shared stack across tools/floors keeps ordering simple.
+# Snapshot-based undo: shared by Builder-tool actions (walls/columns/etc.) and
+# furniture actions (buy/sell/move/fold) so one Undo button/shortcut reverts
+# whichever kind of change happened most recently. Builder entries are
+# {"type":"builder", "floor_id", "data"} (deep copy of the Floor's
+# Builder-mutable fields); furniture entries are
+# {"type":"furniture", "snapshot"} (see _snapshot_all_furniture). Each is
+# captured BEFORE the action it undoes.
 const BUILDER_UNDO_MAX := 50
 var _builder_undo_stack: Array = []
+var _last_furniture_state: Dictionary = {}   # cache of furniture state as of the last change
+var _restoring_furniture: bool = false       # guards the restore's own mutations from re-triggering a push
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
 var _active_paint_type: String     = ""
 var _painting:          bool       = false
@@ -101,8 +108,6 @@ func _ready() -> void:
 		inventory.view3d_requested.connect(_on_view3d_item_requested)
 	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
 		inventory.builder_tool_selected.connect(_on_builder_tool_selected)
-	if not inventory.undo_requested.is_connected(_undo_builder_action):
-		inventory.undo_requested.connect(_undo_builder_action)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
 	view3d_btn.visible = false   # superseded by the persistent 3D view mode
@@ -211,6 +216,18 @@ func _apply_ui_theme() -> void:
 		top.add_child(box)
 		top.move_child(box, top.get_child_count() - 2)
 
+	# Undo lives in the TopBar rather than buried in the Furniture/Builder
+	# shop panel — it reverts whatever kind of action happened most recently
+	# (buy/sell/move/fold furniture, or a Builder-tool edit), so it belongs
+	# with the other global, always-available controls, not tucked inside
+	# one specific tab.
+	if not top.has_node("ViewModeSpacer"):
+		var spacer := Control.new()
+		spacer.name = "ViewModeSpacer"
+		spacer.custom_minimum_size = Vector2(24, 0)
+		top.add_child(spacer)
+		top.move_child(spacer, top.get_children().find(rent_btn))
+
 	if not top.has_node("SettingsBtn"):
 		var settings_btn := Button.new()
 		settings_btn.name = "SettingsBtn"
@@ -219,7 +236,19 @@ func _apply_ui_theme() -> void:
 		settings_btn.custom_minimum_size = Vector2(32, 0)
 		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 		top.add_child(settings_btn)
-		top.move_child(settings_btn, top.get_child_count() - 1)
+		top.move_child(settings_btn, top.get_children().find(rent_btn))
+
+	if not is_instance_valid(_undo_btn):
+		_undo_btn = Button.new()
+		_undo_btn.name = "UndoBtn"
+		_undo_btn.text = "↶ Undo"
+		_undo_btn.tooltip_text = "Undo last action (Ctrl+Z)"
+		_undo_btn.add_theme_font_size_override("font_size", 12)
+		_undo_btn.custom_minimum_size = Vector2(90, 0)
+		_undo_btn.offset_top = TOP_Y + 8.0
+		_undo_btn.pressed.connect(_undo_builder_action)
+		ui_layer.add_child(_undo_btn)
+	_position_undo_btn()
 
 
 func _go_back() -> void:
@@ -235,6 +264,8 @@ func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)
 	_builder_undo_stack.clear()
+	_last_furniture_state = {}
+	_restoring_furniture  = true   # level-load spawning shouldn't itself become undoable
 
 	_active_paint_type = ""
 	_painting          = false
@@ -404,6 +435,9 @@ func _load_level(level_id: String) -> void:
 	if top_bar.has_node("TestBtn"):
 		top_bar.get_node("TestBtn").visible = _has_foldable_furniture() and gm.moments.is_empty()
 
+	_restoring_furniture  = false
+	_last_furniture_state = _snapshot_all_furniture()
+
 	var paintable := gm.current_level.get("paintable_furniture", []) as Array
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
@@ -523,6 +557,8 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
+	f.fold_toggled.connect(_on_furniture_action_changed)
+	f.placed.connect(func(_n): _on_furniture_action_changed())
 	if f.rail_axis != "":
 		f.placed.connect(func(_n): _refresh_functions())
 	if fdata.get("creates_loft", false):
@@ -655,6 +691,13 @@ func _switch_floor(floor_id: String) -> void:
 		apt_floor.visible = true
 		_fit_floor(apt_floor, true)
 	minimap.highlight(floor_id)
+	# The 2D `room` node's per-floor visibility toggle above does nothing for
+	# the 3D view — it only ever shows whatever floor it was last built from,
+	# so switching floor tabs (e.g. base <-> the loft a bunk/loft bed creates)
+	# while already in 3D mode silently kept showing the stale floor. Rebuild
+	# it for the newly-selected floor.
+	if _view_mode == ViewMode.VIEW3D:
+		_ensure_mode3d_view()
 
 
 # Recomputes the "fit to view" baseline (scale/position) for the given floor.
@@ -719,6 +762,21 @@ func _update_split(x: float) -> void:
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl:
 		_fit_floor(fl, false)
+	_position_undo_btn()
+
+
+# Keeps the floating Undo button pinned to the top-right corner of the floor
+# plan / room view, flush against whatever currently bounds it on the right
+# (the Split-mode divider, or the full screen width in the other view modes).
+func _position_undo_btn() -> void:
+	if not is_instance_valid(_undo_btn):
+		return
+	var right_edge := (_split_x if _view_mode == ViewMode.SPLIT else SCREEN_W)
+	_undo_btn.offset_right = right_edge - 8.0
+	_undo_btn.offset_left  = right_edge - 8.0 - (_undo_btn.custom_minimum_size.x as float)
+	# The 3D view (and other full-width overlays) get added to ui_layer after
+	# this button, which would otherwise draw over it and block its clicks.
+	ui_layer.move_child(_undo_btn, ui_layer.get_child_count() - 1)
 
 
 # ── View mode switcher ──────────────────────────────────────────────────────
@@ -767,6 +825,7 @@ func _set_view_mode(mode: int) -> void:
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:
 		_fit_floor(fl, false)
+	_position_undo_btn()
 
 
 # Persistent 3D view used by VIEW3D mode — distinct from the quick full-screen
@@ -788,6 +847,7 @@ func _ensure_mode3d_view() -> void:
 			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
 		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
+		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
 	_mode3d_view.offset_left   = 0.0
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = SCREEN_W
@@ -963,6 +1023,8 @@ func _on_buy_requested(furniture_id: String) -> void:
 	f.setup(fdata, apt_floor)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
+	f.fold_toggled.connect(_on_furniture_action_changed)
+	f.placed.connect(func(_n): _on_furniture_action_changed())   # repositioning-drag commits
 	if f.rail_axis != "":
 		f.placed.connect(func(_n): _refresh_functions())
 
@@ -987,12 +1049,14 @@ func _on_buy_requested(furniture_id: String) -> void:
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
 			_refresh_functions()
+			_on_furniture_action_changed()
 		h["wall_confirmed"] = func(_fid: String, _edge: String, _origin: Vector2i):
 			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
 			f.queue_free()   # the floor ghost was never used — it landed on a wall instead
 			gm.buy_furniture(furniture_id)
 			_refresh_functions()
+			_on_furniture_action_changed()
 		h["cancelled"] = func(_f: Furniture):
 			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
 			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
@@ -1009,7 +1073,8 @@ func _on_buy_requested(furniture_id: String) -> void:
 			wall_inspector.cancel_selection()
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
-			_refresh_functions())
+			_refresh_functions()
+			_on_furniture_action_changed())
 		f.placement_cancelled.connect(func():
 			_pending_floor_ghost = null
 			_refresh_functions())
@@ -1026,12 +1091,20 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 	gm.sell_furniture(furniture.furniture_id)
 	apt_floor.remove_furniture(furniture)
 	_refresh_functions()
+	_on_furniture_action_changed()   # push pre-sell state, cache the new post-sell state
 
 
 func _on_furniture_changed() -> void:
 	_refresh_functions()
 	_update_floor_locks()
 	_update_accessibility()
+	# NOTE: deliberately NOT hooking undo-tracking here — this signal also
+	# fires during an uncommitted 2D buy ghost-preview (set_floor_drag_ghost),
+	# once per mouse-move, which flooded the undo stack with intermediate
+	# states and could even crash (a snapshot taken mid-drag over some other
+	# not-yet-settled furniture). Undo tracking hooks the precise, one-shot
+	# signals instead: placement_confirmed, placed, fold_toggled, plus
+	# explicit calls around sell and the 3D buy/move paths.
 
 
 func _refresh_functions() -> void:
@@ -1723,6 +1796,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 # and restoring them wholesale on undo covers every tool with one mechanism.
 func _push_builder_undo(fl: Floor) -> void:
 	_builder_undo_stack.append({
+		"type": "builder",
 		"floor_id": fl.name,
 		"data": {
 			"segments":         fl.segments.duplicate(true),
@@ -1741,6 +1815,9 @@ func _undo_builder_action() -> void:
 	if _builder_undo_stack.is_empty():
 		return
 	var entry := _builder_undo_stack.pop_back() as Dictionary
+	if (entry.get("type", "builder") as String) == "furniture":
+		_restore_furniture_snapshot(entry["snapshot"] as Dictionary)
+		return
 	var fl := _floors.get(entry["floor_id"] as String) as Floor
 	if not fl:
 		return
@@ -1757,6 +1834,100 @@ func _undo_builder_action() -> void:
 		fl.grid_draw.queue_redraw()
 	_refresh_functions()
 	Audio.play("click")
+
+
+# ── Furniture undo (buy/sell/move/fold) ──────────────────────────────────
+# Called once, right after each real commit (never from Wall.gd's own
+# furniture_changed — that also fires during an uncommitted buy-ghost preview,
+# once per mouse-move, which would flood the stack and can even snapshot a
+# not-yet-settled piece). The state cached from the PREVIOUS call is exactly
+# "how things were right before this change", so: push that, then re-cache
+# the new current state for next time. Hooked from precise one-shot signals
+# (placement_confirmed, placed, fold_toggled, furniture_moved) plus explicit
+# calls around sell and the 3D buy paths.
+func _on_furniture_action_changed() -> void:
+	if _restoring_furniture:
+		return
+	if not _last_furniture_state.is_empty():
+		_builder_undo_stack.append({"type": "furniture", "snapshot": _last_furniture_state})
+		if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
+			_builder_undo_stack.pop_front()
+	_last_furniture_state = _snapshot_all_furniture()
+
+
+func _snapshot_all_furniture() -> Dictionary:
+	var floors_data := {}
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var furn := []
+		for item in fl.get_all_furniture():
+			var f := item as Furniture
+			furn.append({
+				"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y,
+				"extended": f.is_extended,
+			})
+		floors_data[fid] = {
+			"furniture":   furn,
+			"wall_items": (fl.wall_items as Dictionary).duplicate(true),
+		}
+	return {"funds": gm.budget, "floors": floors_data}
+
+
+func _restore_furniture_snapshot(snap: Dictionary) -> void:
+	_restoring_furniture = true
+	gm.budget = snap["funds"] as int
+	gm.budget_changed.emit(gm.budget)
+	var floors_data := snap["floors"] as Dictionary
+	for fid in floors_data:
+		var fl := _floors.get(fid) as Floor
+		if not fl:
+			continue   # a loft floor removed in between — rare edge case, skipped
+		for item in fl.get_all_furniture().duplicate():
+			# remove_furniture() (not a raw queue_free) so the Floor's own grid
+			# bookkeeping is cleaned up too — otherwise later code that iterates
+			# placed furniture (zone/light-map recompute, moment checks, ...)
+			# can still trip over the stale reference before its deferred free
+			# actually runs.
+			fl.remove_furniture(item as Furniture)
+		fl.wall_items.clear()
+		var fd := floors_data[fid] as Dictionary
+		for e in (fd["furniture"] as Array):
+			var ed := e as Dictionary
+			var f := _restore_spawn_furniture(ed["id"] as String, fl, int(ed["x"]), int(ed["y"]))
+			if f and (ed.get("extended", false) as bool) and f.foldable:
+				f._apply_fold_state(true)
+		var wall_items := fd["wall_items"] as Dictionary
+		for edge in wall_items:
+			var items := wall_items[edge] as Dictionary
+			for origin in items:
+				fl.place_wall_item(edge, origin as Vector2i, items[origin] as String)
+	_restoring_furniture = false
+	_last_furniture_state = _snapshot_all_furniture()
+	_refresh_functions()
+	if _view_mode == ViewMode.VIEW3D:
+		_ensure_mode3d_view()
+	Audio.play("click")
+
+
+# Same as _spawn_furniture but never auto-promotes onto a loft floor — used
+# during undo restore, where the snapshot already records each piece on
+# whichever floor (base or loft) it actually ended up on, so re-triggering
+# the auto-promotion would try to move it a second time.
+func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int) -> Furniture:
+	var fdata := gm.get_furniture_by_id(furniture_id)
+	if fdata.is_empty():
+		return null
+	var f: Furniture = FurnitureScene.instantiate() as Furniture
+	apt_floor.add_child(f)
+	f.setup(fdata, apt_floor)
+	apt_floor.place_furniture(f, Vector2i(gx, gy))
+	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
+	f.fold_toggled.connect(_refresh_functions)
+	f.fold_toggled.connect(_on_furniture_action_changed)
+	f.placed.connect(func(_n): _on_furniture_action_changed())
+	if f.rail_axis != "":
+		f.placed.connect(func(_n): _refresh_functions())
+	return f
 
 
 func _paint_floor_tile(fl: Floor, tile: Vector2i, kind: String) -> void:

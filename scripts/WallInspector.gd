@@ -644,7 +644,8 @@ func _draw_elevation() -> void:
 			continue
 		var iw: int = fdata["size"]["w"] as int
 		var ih: int = fdata.get("wall_h", 3) as int
-		var col     := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10)
+		var col     := Color("#" + (fdata.get("color", "888888") as String))
+		col.a = 0.55
 		var px := o.x * TILE_SIZE
 		var py := o.y * TILE_SIZE
 		var pw := iw * TILE_SIZE
@@ -654,7 +655,7 @@ func _draw_elevation() -> void:
 		_draw_label(px + 3, py + 11, float(pw - 6), fdata["name"] as String)
 		var depth_px: int = (fdata.get("floor_depth", 1) as int) * TILE_SIZE
 		draw_area.draw_rect(Rect2(px, rh - depth_px, pw, depth_px),
-			Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10))
+			Color(col.r, col.g, col.b, 0.25))
 
 	# ── Wall item drag ghost ──────────────────────────────────────────────────
 	if _is_dragging and not _drag_is_floor and (_drag_origin in placed):
@@ -772,9 +773,8 @@ func _draw_floor_piece(f: Furniture, wx: float, floor_baseline_px: float, is_dra
 	if fdata.is_empty():
 		return
 	var item_w: int = (f.grid_w if _edge in ["north", "south"] else f.grid_h)
-	# Blueprint line-symbol, matching the top-down view: white ink + faint
-	# glaze rather than a per-item colour fill (kept only in the 3D view).
-	var col := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.10)
+	var col := Color("#" + (fdata.get("color", "888888") as String))
+	col.a = 0.55
 	var outline_a := 1.0
 	if is_dragged:
 		outline_a = 0.35
@@ -809,6 +809,15 @@ func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: 
 	var plat_top_px := leg_top_px - PLATFORM_H * TILE_SIZE
 	var leg_w   := minf(TILE_SIZE, pw * 0.18)
 	var outline := Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, 0.75)
+
+	# Bunk beds (litera) keep a fixed lower mattress under the elevated top
+	# bunk, unlike a true loft bed which leaves that space open to furnish —
+	# draw it first so the corner-post legs still read on top of it.
+	if f.furniture_id == "bunk_bed":
+		const LOWER_H := 7   # tiles — lower mattress + frame
+		var lower_top_px := rh - LOWER_H * TILE_SIZE
+		draw_area.draw_rect(Rect2(px, lower_top_px, pw, LOWER_H * TILE_SIZE), col)
+		draw_area.draw_rect(Rect2(px, lower_top_px, pw, LOWER_H * TILE_SIZE), outline, false, 1.0)
 
 	# Legs
 	draw_area.draw_rect(Rect2(px + 1,               leg_top_px, leg_w, rh - leg_top_px), col)

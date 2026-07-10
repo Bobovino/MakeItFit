@@ -57,7 +57,8 @@
       "buy_price": 500,
       "sell_price": 250,
       "color": "6a8eb0",
-      "model": "res://assets/models/furniture/bedBunk.glb"
+      "model": "res://assets/models/furniture/bedBunk.glb",
+      "hide_nodes": ["coverBottom", "pillowBottom"]
     },
     {
       "id": "bunk_bed",
@@ -72,7 +73,6 @@
       "height_category": "tall",
       "z_bottom": 14,
       "z_top": 24,
-      "creates_loft": true,
       "functions": [
         "sleep"
       ],
@@ -177,7 +177,8 @@
       "buy_price": 450,
       "sell_price": 200,
       "color": "b86838",
-      "model": "res://assets/models/furniture/loungeSofaLong.glb"
+      "model": "res://assets/models/furniture/loungeSofaLong.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
     },
     {
       "id": "lounge_chair",

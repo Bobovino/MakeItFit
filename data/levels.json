@@ -37057,13 +37057,13 @@
                 "y2": 123
               },
               {
+                "demolish_cost": 400,
                 "demolished": false,
                 "primary": false,
                 "x1": 120,
                 "x2": 120,
                 "y1": 123,
-                "y2": 145,
-                "demolish_cost": 400
+                "y2": 145
               }
             ],
             "sloped_ceiling": {},
@@ -48777,19 +48777,127 @@
       }
     },
     {
-      "id": "tut_builder_basics",
-      "name": "Shape The Space",
-      "district": "Tutorial",
-      "block": 0,
-      "map_row": 1,
-      "map_col": 1,
-      "is_tutorial": true,
       "acquisition_cost": 0,
-      "starting_budget": 500,
-      "funds_base_reward": 0,
-      "min_stars": 0,
       "allowed_furniture": [],
-      "starting_inventory": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor_sub"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 26,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 26,
+                "x2": 26,
+                "y1": 1,
+                "y2": 16
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 26,
+                "x2": 1,
+                "y1": 16,
+                "y2": 16
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 16,
+                "y2": 1
+              }
+            ],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 0,
+      "district": "Tutorial",
+      "funds_base_reward": 0,
+      "id": "tut_builder_basics",
+      "is_tutorial": true,
+      "map_col": 1,
+      "map_row": 1,
+      "mechanic_intro": {
+        "body": "Furniture isn't the only thing you can place — the Builder tab (next to Furniture, bottom right) lets you reshape the room itself.\n\n• Wall / Column: drag or click on the floor plan to add structure.\n• Window / Door: click near a wall to cut an opening into it.\n• Balcony / Bathroom: paint a floor tile's kind.\n• Erase: the one tool that undoes anything the others just added.\n\nTry drawing a wall to section off a sleeping corner, then furnish it.",
+        "title": "The Builder Tab"
+      },
+      "min_stars": 0,
+      "name": "Shape The Space",
+      "starting_budget": 500,
       "starting_furniture": [
         {
           "id": "toilet",
@@ -48802,140 +48910,140 @@
           "y": 2
         }
       ],
+      "starting_inventory": [],
       "tenant": {
-        "name": "Mara",
         "age": "24",
+        "flavor": "Tutorial: the Builder tab. Switch to Builder (next to Furniture) to reshape the room itself, not just furnish it — draw walls and columns, cut a window or door into a wall, paint balcony/bathroom floor, and erase anything you added. Try splitting off a bedroom corner with the Wall tool, then buy a bed to finish the job.",
         "monthly_rent": 350,
+        "name": "Mara",
         "required_functions": [
           "hygiene",
           "sleep"
-        ],
-        "flavor": "Tutorial: the Builder tab. Switch to Builder (next to Furniture) to reshape the room itself, not just furnish it — draw walls and columns, cut a window or door into a wall, paint balcony/bathroom floor, and erase anything you added. Try splitting off a bedroom corner with the Wall tool, then buy a bed to finish the job."
-      },
-      "mechanic_intro": {
-        "title": "The Builder Tab",
-        "body": "Furniture isn't the only thing you can place — the Builder tab (next to Furniture, bottom right) lets you reshape the room itself.\n\n• Wall / Column: drag or click on the floor plan to add structure.\n• Window / Door: click near a wall to cut an opening into it.\n• Balcony / Bathroom: paint a floor tile's kind.\n• Erase: the one tool that undoes anything the others just added.\n\nTry drawing a wall to section off a sleeping corner, then furnish it."
-      },
-      "apartment": {
-        "hidden_floors": [
-          "subfloor",
-          "fl_0_sub",
-          "fl_0_ceil",
-          "roof"
-        ],
-        "floors": [
-          {
-            "id": "subfloor",
-            "label": "Building Subfloor",
-            "type": "subfloor",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0_sub",
-            "label": "Ground Floor Subfloor",
-            "type": "floor_sub",
-            "parent_id": "fl_0",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0",
-            "label": "Ground Floor",
-            "type": "floor",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [
-              {
-                "x1": 1,
-                "y1": 1,
-                "x2": 26,
-                "y2": 1,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 26,
-                "y1": 1,
-                "x2": 26,
-                "y2": 16,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 26,
-                "y1": 16,
-                "x2": 1,
-                "y2": 16,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 1,
-                "y1": 16,
-                "x2": 1,
-                "y2": 1,
-                "primary": true,
-                "demolished": false
-              }
-            ],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0_ceil",
-            "label": "Ground Floor Ceiling",
-            "type": "ceiling",
-            "parent_id": "fl_0",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "roof",
-            "label": "Roof",
-            "type": "roof",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          }
         ]
       }
     },
     {
-      "id": "tut_verticality",
-      "name": "Going Vertical",
-      "district": "Tutorial",
-      "block": 0,
-      "map_row": 1,
-      "map_col": 2,
-      "is_tutorial": true,
       "acquisition_cost": 0,
-      "starting_budget": 1200,
-      "funds_base_reward": 0,
-      "min_stars": 0,
       "allowed_furniture": [],
-      "starting_inventory": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor_sub"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 26,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 26,
+                "x2": 26,
+                "y1": 1,
+                "y2": 16
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 26,
+                "x2": 1,
+                "y1": 16,
+                "y2": 16
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 16,
+                "y2": 1
+              }
+            ],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 0,
+      "district": "Tutorial",
+      "funds_base_reward": 0,
+      "id": "tut_verticality",
+      "is_tutorial": true,
+      "map_col": 2,
+      "map_row": 1,
+      "mechanic_intro": {
+        "body": "Rooms don't have to stay single-storey. Buy any Staircase (Builder tab, under STAIRCASES) and place it like furniture — it carves a stairwell into this floor and builds a whole new floor directly above it.\n\nUse the mini-map at the bottom to switch between floors, and furnish the new one just like this one. This tenant needs loft access, so you'll need to actually go up there.",
+        "title": "Going Vertical"
+      },
+      "min_stars": 0,
+      "name": "Going Vertical",
+      "starting_budget": 1200,
       "starting_furniture": [
         {
           "id": "toilet",
@@ -48948,124 +49056,16 @@
           "y": 2
         }
       ],
+      "starting_inventory": [],
       "tenant": {
-        "name": "Theo",
         "age": "31",
+        "flavor": "Tutorial: going vertical. This tenant specifically wants loft access — buy any Staircase from the Builder tab's staircase list and place it on the floor plan. It instantly builds a brand new floor above this one. Switch floors with the mini-map at the bottom of the screen, then furnish a bed up there.",
         "monthly_rent": 600,
+        "name": "Theo",
         "required_functions": [
           "hygiene",
           "sleep",
           "loft_access"
-        ],
-        "flavor": "Tutorial: going vertical. This tenant specifically wants loft access — buy any Staircase from the Builder tab's staircase list and place it on the floor plan. It instantly builds a brand new floor above this one. Switch floors with the mini-map at the bottom of the screen, then furnish a bed up there."
-      },
-      "mechanic_intro": {
-        "title": "Going Vertical",
-        "body": "Rooms don't have to stay single-storey. Buy any Staircase (Builder tab, under STAIRCASES) and place it like furniture — it carves a stairwell into this floor and builds a whole new floor directly above it.\n\nUse the mini-map at the bottom to switch between floors, and furnish the new one just like this one. This tenant needs loft access, so you'll need to actually go up there."
-      },
-      "apartment": {
-        "hidden_floors": [
-          "subfloor",
-          "fl_0_sub",
-          "fl_0_ceil",
-          "roof"
-        ],
-        "floors": [
-          {
-            "id": "subfloor",
-            "label": "Building Subfloor",
-            "type": "subfloor",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0_sub",
-            "label": "Ground Floor Subfloor",
-            "type": "floor_sub",
-            "parent_id": "fl_0",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0",
-            "label": "Ground Floor",
-            "type": "floor",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [
-              {
-                "x1": 1,
-                "y1": 1,
-                "x2": 26,
-                "y2": 1,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 26,
-                "y1": 1,
-                "x2": 26,
-                "y2": 16,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 26,
-                "y1": 16,
-                "x2": 1,
-                "y2": 16,
-                "primary": true,
-                "demolished": false
-              },
-              {
-                "x1": 1,
-                "y1": 16,
-                "x2": 1,
-                "y2": 1,
-                "primary": true,
-                "demolished": false
-              }
-            ],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "fl_0_ceil",
-            "label": "Ground Floor Ceiling",
-            "type": "ceiling",
-            "parent_id": "fl_0",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          },
-          {
-            "id": "roof",
-            "label": "Roof",
-            "type": "roof",
-            "columns": [],
-            "floor_tiles": [],
-            "mezzanine_tiles": [],
-            "rails": [],
-            "segments": [],
-            "stair_tiles": [],
-            "stairs": []
-          }
         ]
       }
     }
