@@ -540,11 +540,18 @@ func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
 	# Horizontal dim: prefer the side (above/below the room) with more free space
 	var gap_above := top
 	var gap_below := hh - bottom
-	var dy := bottom + 6.0 if gap_below >= gap_above else top - 6.0
-	if maxf(gap_above, gap_below) >= 6.0:
-		draw_line(Vector2(left, dy), Vector2(right, dy), DIM_COL, 1.0)
-		draw_line(Vector2(left, dy - 2), Vector2(left, dy + 2), DIM_COL, 1.0)
-		draw_line(Vector2(right, dy - 2), Vector2(right, dy + 2), DIM_COL, 1.0)
+	var below := gap_below >= gap_above
+	var dy := bottom + 8.0 if below else top - 8.0
+	if maxf(gap_above, gap_below) >= 8.0:
+		# Extension lines from the wall face out just past the dimension line
+		var wall_y := bottom if below else top
+		var ext_end := dy + 3.0 if below else dy - 3.0
+		draw_line(Vector2(left, wall_y + (2.0 if below else -2.0)), Vector2(left, ext_end), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
+		draw_line(Vector2(right, wall_y + (2.0 if below else -2.0)), Vector2(right, ext_end), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
+		draw_line(Vector2(left, dy), Vector2(right, dy), DIM_COL, 1.0, true)
+		# Architect 45° slash ticks at each end
+		draw_line(Vector2(left - 3, dy + 3), Vector2(left + 3, dy - 3), DIM_COL, 1.2, true)
+		draw_line(Vector2(right - 3, dy + 3), Vector2(right + 3, dy - 3), DIM_COL, 1.2, true)
 		var wtxt := "%.1f m" % w_m
 		var wsz := font.get_string_size(wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7)
 		draw_string(font, Vector2((left + right) * 0.5 - wsz.x * 0.5, dy - 2), wtxt,
@@ -553,13 +560,18 @@ func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
 	# Vertical dim: prefer the side (left/right of the room) with more space
 	var gap_left  := left
 	var gap_right := ww - right
-	var dx := right + 6.0 if gap_right >= gap_left else left - 6.0
-	if maxf(gap_left, gap_right) >= 6.0:
-		draw_line(Vector2(dx, top), Vector2(dx, bottom), DIM_COL, 1.0)
-		draw_line(Vector2(dx - 2, top), Vector2(dx + 2, top), DIM_COL, 1.0)
-		draw_line(Vector2(dx - 2, bottom), Vector2(dx + 2, bottom), DIM_COL, 1.0)
+	var on_right := gap_right >= gap_left
+	var dx := right + 8.0 if on_right else left - 8.0
+	if maxf(gap_left, gap_right) >= 8.0:
+		var wall_x := right if on_right else left
+		var ext_end2 := dx + 3.0 if on_right else dx - 3.0
+		draw_line(Vector2(wall_x + (2.0 if on_right else -2.0), top), Vector2(ext_end2, top), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
+		draw_line(Vector2(wall_x + (2.0 if on_right else -2.0), bottom), Vector2(ext_end2, bottom), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
+		draw_line(Vector2(dx, top), Vector2(dx, bottom), DIM_COL, 1.0, true)
+		draw_line(Vector2(dx - 3, top + 3), Vector2(dx + 3, top - 3), DIM_COL, 1.2, true)
+		draw_line(Vector2(dx - 3, bottom + 3), Vector2(dx + 3, bottom - 3), DIM_COL, 1.2, true)
 		var htxt := "%.1f m" % h_m
-		draw_string(font, Vector2(dx + 2, (top + bottom) * 0.5 + 3), htxt,
+		draw_string(font, Vector2(dx + 3, (top + bottom) * 0.5 + 3), htxt,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
 
 
@@ -576,30 +588,39 @@ func _draw_title_block(parent: Floor, ww: int, hh: int) -> void:
 	var title := (lvl.get("name", "APARTMENT") as String).to_upper()
 
 	# Block geometry — bottom-right corner, inside the sheet frame
-	var bw := 116.0
-	var bh := 40.0
-	var pad := 8.0
+	var bw := 124.0
+	var bh := 48.0
+	var pad := 10.0
 	var bx := ww - bw - pad
 	var by := hh - bh - pad
 
-	const BG   := Color(0.055, 0.145, 0.255, 0.92)
+	const BG   := Color(0.070, 0.150, 0.260, 0.94)
 	const LINE := Color(0.62, 0.82, 0.98, 0.85)
-	const INK  := Color(0.86, 0.94, 1.00, 1.0)
+	const INK  := BP_INK
 	const MUT  := Color(0.60, 0.76, 0.94, 0.80)
 	draw_rect(Rect2(bx, by, bw, bh), BG)
 	draw_rect(Rect2(bx, by, bw, bh), LINE, false, 1.2)
 	# Title bar
 	draw_rect(Rect2(bx, by, bw, 12), Color(0.10, 0.24, 0.40, 0.90))
 	draw_line(Vector2(bx, by + 12), Vector2(bx + bw, by + 12), LINE, 1.0)
-	draw_string(font, Vector2(bx + 4, by + 9), title, HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 7, INK)
-	# Rows
+	draw_string(font, Vector2(bx + 4, by + 9), title, HORIZONTAL_ALIGNMENT_LEFT, bw - 26, 7, INK)
+	# North arrow — small circle + up-arrow in the title bar's right corner
+	var nc := Vector2(bx + bw - 9, by + 6)
+	draw_arc(nc, 4.5, 0, TAU, 20, LINE, 1.0, true)
+	draw_line(nc + Vector2(0, 3), nc + Vector2(0, -3), INK, 1.0, true)
+	draw_line(nc + Vector2(0, -3), nc + Vector2(-1.6, -0.6), INK, 1.0, true)
+	draw_line(nc + Vector2(0, -3), nc + Vector2(1.6, -0.6), INK, 1.0, true)
+	# Rows (label column ruled off from value column)
+	draw_line(Vector2(bx + 41, by + 12), Vector2(bx + 41, by + 34), Color(LINE.r, LINE.g, LINE.b, 0.35), 0.7)
 	draw_string(font, Vector2(bx + 4, by + 22), "TENANT", HORIZONTAL_ALIGNMENT_LEFT, 60, 6, MUT)
-	draw_string(font, Vector2(bx + 44, by + 22), tenant, HORIZONTAL_ALIGNMENT_LEFT, bw - 48, 7, INK)
+	draw_string(font, Vector2(bx + 45, by + 22), tenant, HORIZONTAL_ALIGNMENT_LEFT, bw - 49, 7, INK)
 	draw_string(font, Vector2(bx + 4, by + 31), "AREA", HORIZONTAL_ALIGNMENT_LEFT, 40, 6, MUT)
-	draw_string(font, Vector2(bx + 44, by + 31), "%.1f m2" % area_m2, HORIZONTAL_ALIGNMENT_LEFT, 50, 7, INK)
-	# Scale marker, bottom divider
+	draw_string(font, Vector2(bx + 45, by + 31), "%.1f m2" % area_m2, HORIZONTAL_ALIGNMENT_LEFT, 50, 7, INK)
+	# Footer: scale + sheet number + date
 	draw_line(Vector2(bx, by + 34), Vector2(bx + bw, by + 34), Color(LINE.r, LINE.g, LINE.b, 0.4), 0.7)
-	draw_string(font, Vector2(bx + 4, by + 39), "SCALE 1:50", HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 6, MUT)
+	draw_string(font, Vector2(bx + 4, by + 40), "SCALE 1:50", HORIZONTAL_ALIGNMENT_LEFT, 60, 6, MUT)
+	draw_string(font, Vector2(bx + bw - 40, by + 40), "SHT A-101", HORIZONTAL_ALIGNMENT_LEFT, 38, 6, MUT)
+	draw_string(font, Vector2(bx + 4, by + 46), Time.get_date_string_from_system(), HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 6, Color(MUT.r, MUT.g, MUT.b, 0.55))
 
 
 func _draw_edge_overlays(parent: Floor) -> void:

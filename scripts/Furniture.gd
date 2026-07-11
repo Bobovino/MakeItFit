@@ -226,6 +226,14 @@ func _draw() -> void:
 	var ink := Color(0.88, 0.95, 1.00, 1.0)
 
 	draw_rect(Rect2(0, 0, w, h), Color(_color.r, _color.g, _color.b, 0.45))
+	# Subtle 45° drafting hatch over the fill — keeps the per-item colour
+	# legible while making pieces read as drawn linework, not paint blocks.
+	var hatch := Color(ink.r, ink.g, ink.b, 0.07)
+	var hd := 6.0
+	while hd < w + h:
+		draw_line(Vector2(maxf(0.0, hd - h), minf(hd, h)),
+			Vector2(minf(hd, w), maxf(0.0, hd - w)), hatch, 1.0, true)
+		hd += 6.0
 	draw_rect(Rect2(0, 0, w, h), ink, false, 1.5)
 
 	# Architectural symbol
@@ -1097,10 +1105,26 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 		if rail_axis != "" and Furniture.test_mode_active:
 			moment_rail_pos[Furniture.active_moment_id] = grid_pos
 		_play("place")
+		_pop_on_place()
 		placed.emit(self)
 	else:
 		_play("error")
 		position = _original_pos
+
+
+# Placement "thunk": quick squash-and-settle around the piece's own centre —
+# the classic tactile beat that makes dropping a piece feel like it landed.
+func _pop_on_place() -> void:
+	var center := Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE) * 0.5
+	var base_pos := position
+	scale = Vector2(1.12, 1.12)
+	position = base_pos - center * 0.12
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(self, "scale", Vector2.ONE, 0.16) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "position", base_pos, 0.16) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func cancel_placement() -> void:

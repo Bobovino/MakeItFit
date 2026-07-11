@@ -18,16 +18,35 @@ var _moments: Array = []
 var _moment_check_rows: Dictionary = {}  # moment_id -> { need -> Label }
 
 
+# The card is deliberately the one LIGHT element in the dark UI — a cream
+# paper "client brief" clipped to the desk, so the eye lands on the goal.
+const INK       := Color(0.25, 0.21, 0.16)   # warm dark ink on cream
+const INK_MUTED := Color(0.52, 0.46, 0.38)
+const INK_GREEN := Color(0.23, 0.47, 0.25)
+
+
 func _ready() -> void:
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = GameTheme.C_PAPER
+	paper.border_color = Color(0.82, 0.77, 0.68)
+	paper.set_border_width_all(1)
+	paper.set_corner_radius_all(6)
+	paper.set_content_margin_all(12)
+	paper.anti_aliasing = true
+	paper.shadow_color = Color(0, 0, 0, 0.35)
+	paper.shadow_size = 8
+	paper.shadow_offset = Vector2(0, 4)
+	add_theme_stylebox_override("panel", paper)
+
 	tenant_name_label.add_theme_font_size_override("font_size", 14)
-	tenant_name_label.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	tenant_name_label.add_theme_color_override("font_color", INK)
 
 	flavor_label.add_theme_font_size_override("font_size", 10)
-	flavor_label.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	flavor_label.add_theme_color_override("font_color", INK_MUTED)
 	flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	rent_label.add_theme_font_size_override("font_size", 12)
-	rent_label.add_theme_color_override("font_color", Color(0.50, 0.76, 0.52))
+	rent_label.add_theme_color_override("font_color", INK_GREEN)
 
 	checklist_container.add_theme_constant_override("separation", 5)
 
@@ -88,7 +107,7 @@ func _make_section_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 9)
-	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	lbl.add_theme_color_override("font_color", INK_MUTED)
 	return lbl
 
 
@@ -105,11 +124,13 @@ func _make_need_row(func_name: String, satisfied: bool) -> Label:
 static func _chip_style(satisfied: bool) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	if satisfied:
-		s.bg_color     = Color(0.12, 0.30, 0.17)
-		s.border_color = Color(0.34, 0.68, 0.40)
+		# Sage fill on cream paper — a highlighted, done line item
+		s.bg_color     = Color(0.780, 0.880, 0.720)
+		s.border_color = Color(0.420, 0.620, 0.380)
 	else:
-		s.bg_color     = Color(0.24, 0.11, 0.12)
-		s.border_color = Color(0.55, 0.25, 0.26)
+		# Blank cream chip with a terracotta pen outline — still to do
+		s.bg_color     = Color(0.930, 0.895, 0.820)
+		s.border_color = Color(0.800, 0.470, 0.390)
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(9)
 	s.anti_aliasing = true
@@ -126,12 +147,12 @@ func _set_need_row(row: Label, func_name: String, satisfied: bool) -> void:
 	row.add_theme_stylebox_override("normal", _chip_style(satisfied))
 	if satisfied:
 		row.text = "✓  " + func_name.capitalize()
-		row.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
+		row.add_theme_color_override("font_color", Color(0.200, 0.380, 0.180))
 		if not was_satisfied and Time.get_ticks_msec() - _setup_ticks > 800:
 			_pop_chip(row)
 	else:
 		row.text = "✗  " + func_name.capitalize()
-		row.add_theme_color_override("font_color", Color(0.90, 0.52, 0.50))
+		row.add_theme_color_override("font_color", Color(0.620, 0.300, 0.250))
 
 
 # Little scale-pop when an objective flips to solved — the classic bit of

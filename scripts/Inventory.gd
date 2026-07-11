@@ -184,6 +184,49 @@ func _build_builder_tool_row() -> VBoxContainer:
 	return tool_panel
 
 
+# Mini blueprint chip showing the item's actual footprint shape at its true
+# aspect ratio — the shop reads as a parts catalog for the drawing, and the
+# player learns each piece's relative size before buying.
+class FootprintIcon extends Control:
+	var _fw: int
+	var _fh: int
+	var _col: Color
+	static var _chip_style: StyleBoxFlat = null
+
+	func _init(fw: int, fh: int, col: Color, px: float = 28.0) -> void:
+		_fw = maxi(fw, 1)
+		_fh = maxi(fh, 1)
+		_col = col
+		custom_minimum_size = Vector2(px, px)
+		if _chip_style == null:
+			_chip_style = StyleBoxFlat.new()
+			_chip_style.bg_color = GridDraw.BP_FLOOR
+			_chip_style.set_corner_radius_all(6)
+			_chip_style.anti_aliasing = true
+
+	func _draw() -> void:
+		_chip_style.draw(get_canvas_item(), Rect2(Vector2.ZERO, size))
+		var inner := Rect2(Vector2(4, 4), size - Vector2(8, 8))
+		var s := minf(inner.size.x / _fw, inner.size.y / _fh)
+		var rs := Vector2(_fw * s, _fh * s)
+		var org := inner.position + (inner.size - rs) * 0.5
+		draw_rect(Rect2(org, rs), Color(_col.r, _col.g, _col.b, 0.55))
+		var step := 4.0
+		var d := step
+		while d < rs.x + rs.y:
+			draw_line(org + Vector2(maxf(0.0, d - rs.y), minf(d, rs.y)),
+				org + Vector2(minf(d, rs.x), maxf(0.0, d - rs.x)),
+				Color(_col.r, _col.g, _col.b, 0.45), 1.0, true)
+			d += step
+		draw_rect(Rect2(org, rs), GridDraw.BP_INK, false, 1.2)
+
+
+static func _make_item_icon(f: Dictionary, px: float) -> Control:
+	var col := Color("#" + (f.get("color", "888888") as String))
+	var sz := f.get("size", {}) as Dictionary
+	return FootprintIcon.new(sz.get("w", 4) as int, sz.get("h", 4) as int, col, px)
+
+
 func _build_shop_row(f: Dictionary) -> PanelContainer:
 	var card := PanelContainer.new()
 	var item_col := Color("#" + (f.get("color", "888888") as String))
@@ -191,7 +234,7 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 	card.add_theme_stylebox_override("panel", card_style)
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.mouse_entered.connect(func():
-		card_style.bg_color = Color(0.20, 0.24, 0.30)
+		card_style.bg_color = Color(0.245, 0.215, 0.175)
 		card_style.border_color = item_col.lightened(0.2))
 	card.mouse_exited.connect(func():
 		card_style.bg_color = Color(0.210, 0.185, 0.150)
@@ -201,15 +244,8 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 	row.add_theme_constant_override("separation", 8)
 	card.add_child(row)
 
-	# Rounded color-coded icon swatch
-	var swatch := PanelContainer.new()
-	swatch.custom_minimum_size = Vector2(28, 28)
-	var swatch_style := StyleBoxFlat.new()
-	swatch_style.bg_color = item_col
-	swatch_style.set_corner_radius_all(7)
-	swatch_style.anti_aliasing = true
-	swatch.add_theme_stylebox_override("panel", swatch_style)
-	row.add_child(swatch)
+	# Mini blueprint footprint icon (true shape, color-coded)
+	row.add_child(_make_item_icon(f, 28.0))
 
 	var name_lbl := Label.new()
 	name_lbl.text = f["name"]
@@ -295,7 +331,6 @@ func _render_owned_section() -> void:
 
 		for _i in range(count):
 			var card := PanelContainer.new()
-			var item_col := Color("#" + (fdata.get("color", "888888") as String))
 			card.add_theme_stylebox_override("panel",
 				GameTheme.make_card_stylebox(Color(0.210, 0.185, 0.150), Color(0.320, 0.270, 0.205)))
 
@@ -303,14 +338,7 @@ func _render_owned_section() -> void:
 			row.add_theme_constant_override("separation", 8)
 			card.add_child(row)
 
-			var swatch := PanelContainer.new()
-			swatch.custom_minimum_size = Vector2(24, 24)
-			var swatch_style := StyleBoxFlat.new()
-			swatch_style.bg_color = item_col
-			swatch_style.set_corner_radius_all(6)
-			swatch_style.anti_aliasing = true
-			swatch.add_theme_stylebox_override("panel", swatch_style)
-			row.add_child(swatch)
+			row.add_child(_make_item_icon(fdata, 24.0))
 
 			var name_lbl := Label.new()
 			name_lbl.text = fdata["name"] as String

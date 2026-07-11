@@ -11,6 +11,7 @@ signal retry_requested
 @onready var retry_btn:   Button = $Panel/VBox/RetryButton
 
 var _stars_label: Label = null
+var _stamp: Label = null
 
 
 func _ready() -> void:
@@ -48,6 +49,43 @@ func _ready() -> void:
 	retry_btn.custom_minimum_size = Vector2(220, 44)
 	retry_btn.add_theme_font_size_override("font_size", 13)
 
+	# "APPROVED" rubber stamp — slams down tilted over the panel's top-right
+	# corner on success, like a permit office signing off on the drawing.
+	_stamp = Label.new()
+	_stamp.text = "APPROVED"
+	_stamp.add_theme_font_size_override("font_size", 26)
+	_stamp.add_theme_color_override("font_color", Color(0.780, 0.320, 0.260, 0.90))
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0, 0, 0, 0)
+	st.border_color = Color(0.780, 0.320, 0.260, 0.85)
+	st.set_border_width_all(3)
+	st.set_corner_radius_all(6)
+	st.set_content_margin(SIDE_LEFT, 12)
+	st.set_content_margin(SIDE_RIGHT, 12)
+	st.set_content_margin(SIDE_TOP, 2)
+	st.set_content_margin(SIDE_BOTTOM, 2)
+	st.anti_aliasing = true
+	_stamp.add_theme_stylebox_override("normal", st)
+	_stamp.rotation_degrees = -9.0
+	_stamp.visible = false
+	_stamp.z_index = 10
+	($Panel as Control).add_child(_stamp)
+
+
+func _slam_stamp() -> void:
+	var panel := $Panel as Control
+	_stamp.visible = true
+	_stamp.pivot_offset = _stamp.size * 0.5
+	_stamp.position = Vector2(panel.size.x - _stamp.size.x - 26, 14)
+	_stamp.scale = Vector2(2.4, 2.4)
+	_stamp.modulate = Color(1, 1, 1, 0)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_stamp, "scale", Vector2.ONE, 0.22) \
+		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)
+	tw.tween_property(_stamp, "modulate", Color(1, 1, 1, 1), 0.18)
+	tw.chain().tween_callback(func(): Audio.play("demolish"))
+
 
 func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 		tenant_name: String, _level_rent: int) -> void:
@@ -67,6 +105,7 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 		next_btn.text = "Back to City"
 
 	_animate_stars(stars)
+	call_deferred("_slam_stamp")
 
 	rent_bar.text = (
 		"+%d€ CompanyFunds   |   Portfolio: %d€/mo → %d€/mo" % [
@@ -96,6 +135,8 @@ func _animate_stars(stars: int) -> void:
 
 func show_failure(reason: String) -> void:
 	visible = true
+	if _stamp:
+		_stamp.visible = false
 	title_label.text   = "NOT RENTED"
 	body_label.text    = reason
 	if _stars_label:
