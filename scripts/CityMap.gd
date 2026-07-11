@@ -387,14 +387,21 @@ func _create_card(ld: Dictionary, index: int = 0) -> Button:
 	card.add_theme_stylebox_override("hover", sh)
 	card.add_theme_stylebox_override("pressed", sh)
 
-	# Hover lift: the card floats up a touch, like picking a folder off a desk
+	# Hover lift: the card floats up a touch, like picking a folder off a desk.
+	# The rest position is read lazily on first hover ("base_y" meta) because
+	# some cards (debug section) are repositioned AFTER _create_card returns —
+	# capturing `pos` here would tween them back to the wrong row.
 	card.mouse_entered.connect(func():
+		if not card.has_meta("base_y"):
+			card.set_meta("base_y", card.position.y)
 		var tw := card.create_tween()
-		tw.tween_property(card, "position:y", pos.y - 3.0, 0.10) \
+		tw.tween_property(card, "position:y", (card.get_meta("base_y") as float) - 3.0, 0.10) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
 	card.mouse_exited.connect(func():
+		if not card.has_meta("base_y"):
+			return
 		var tw := card.create_tween()
-		tw.tween_property(card, "position:y", pos.y, 0.14) \
+		tw.tween_property(card, "position:y", card.get_meta("base_y") as float, 0.14) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
 
 	card.pressed.connect(_select_level.bind(ld))

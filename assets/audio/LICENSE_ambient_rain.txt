@@ -1,0 +1,6 @@
+ambient_rain.wav
+
+Procedurally generated for this project (filtered noise + synthesized
+droplet ticks, seamless 30 s loop). Original work, no third-party samples.
+Released under Creative Commons Zero (CC0) — free for commercial use.
+http://creativecommons.org/publicdomain/zero/1.0/

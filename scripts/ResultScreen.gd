@@ -78,8 +78,13 @@ func _ready() -> void:
 func _slam_stamp() -> void:
 	var panel := $Panel as Control
 	_stamp.visible = true
+	# The label reports size 0 until it has been laid out once — force it to
+	# shrink-wrap its text NOW so pivot/position math uses the real box.
+	_stamp.reset_size()
+	await get_tree().process_frame
+	_stamp.reset_size()
 	_stamp.pivot_offset = _stamp.size * 0.5
-	_stamp.position = Vector2(panel.size.x - _stamp.size.x - 26, 14)
+	_stamp.position = Vector2(panel.size.x - _stamp.size.x - 30, 16)
 	_stamp.scale = Vector2(2.4, 2.4)
 	_stamp.modulate = Color(1, 1, 1, 0)
 	var tw := create_tween()
