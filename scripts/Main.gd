@@ -1041,14 +1041,14 @@ func _zoom_floor(delta: float, cursor_pos: Vector2) -> void:
 	_manual_pan    = room.position - _base_position
 
 
-func _on_wall_edge_clicked(edge: String, apt_floor: Floor) -> void:
+func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: Floor) -> void:
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		fl.set_active_wall_edge("" if fl != apt_floor else edge)
 	var sibling_id := (apt_floor.parent_id if apt_floor.floor_type == "loft"
 		else apt_floor.floor_id + "_loft")
 	var sibling := _floors.get(sibling_id) as Floor
-	wall_inspector.show_wall(apt_floor, edge, sibling)
+	wall_inspector.show_wall(apt_floor, edge, sibling, span_lo, span_hi)
 	if _view_mode != ViewMode.SPLIT:
 		_position_wall_inspector_modal()
 		_set_mode_hint("")

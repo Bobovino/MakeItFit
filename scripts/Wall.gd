@@ -2,7 +2,11 @@ extends Node2D
 class_name Floor
 
 signal furniture_changed
-signal wall_edge_clicked(edge: String)
+# span_lo/span_hi (absolute tile coords, -1/-1 = no split) identify which
+# sub-span of a multi-room floor's edge was actually clicked — see
+# get_wall_span(). Every existing connection ignoring the extra args keeps
+# working; only Main.gd's handler needs to read them.
+signal wall_edge_clicked(edge: String, span_lo: int, span_hi: int)
 
 const TILE_SIZE := 8
 const EDGE_MARGIN := 10
@@ -193,6 +197,98 @@ func get_room_bounds() -> Rect2i:
 			miny = min(miny, tv.y); maxy = max(maxy, tv.y)
 		return Rect2i(int(minx), int(miny), int(maxx - minx) + 1, int(maxy - miny) + 1)
 	return Rect2i(0, 0, grid_w, grid_h)
+
+
+# ── Multi-room wall splitting ────────────────────────────────────────────────
+# A nominal cardinal edge (e.g. "south") can be crossed by an interior
+# (non-primary) partition wall on a multi-room floor — the partition's own
+# endpoint touches the perimeter edge's line at some coordinate. Without this,
+# the Wall Inspector treated the WHOLE perimeter edge as one wall regardless
+# of interior partitions, showing one room's furniture mixed with another's.
+#
+# Returns [lo, hi) in ABSOLUTE tile coordinates for the specific sub-span of
+# `edge` that contains `coord` (the clicked tile's coordinate along the wall's
+# own axis). A floor with no interior wall crossing this edge returns the
+# whole edge unchanged, so every single-room level behaves exactly as before.
+func get_wall_span(edge: String, coord: int) -> Vector2i:
+	var bounds := get_room_bounds()
+	var fixed_coord: int
+	var full_lo: int; var full_hi: int
+	match edge:
+		"north":
+			fixed_coord = bounds.position.y
+			full_lo = bounds.position.x; full_hi = bounds.position.x + bounds.size.x
+		"south":
+			fixed_coord = bounds.position.y + bounds.size.y
+			full_lo = bounds.position.x; full_hi = bounds.position.x + bounds.size.x
+		"west":
+			fixed_coord = bounds.position.x
+			full_lo = bounds.position.y; full_hi = bounds.position.y + bounds.size.y
+		"east":
+			fixed_coord = bounds.position.x + bounds.size.x
+			full_lo = bounds.position.y; full_hi = bounds.position.y + bounds.size.y
+		_:
+			return Vector2i(-1, -1)
+	var splits: Array = []
+	for s in segments:
+		var sd := s as Dictionary
+		if sd.get("primary", false) or sd.get("demolished", false):
+			continue   # only interior (non-primary) walls can split a perimeter edge
+		var x1: int = sd["x1"]; var y1: int = sd["y1"]
+		var x2: int = sd["x2"]; var y2: int = sd["y2"]
+		if edge in ["north", "south"] and x1 == x2:
+			var ylo := mini(y1, y2); var yhi := maxi(y1, y2)
+			if fixed_coord == ylo or fixed_coord == yhi:
+				if x1 > full_lo and x1 < full_hi:
+					splits.append(x1)
+		elif edge in ["east", "west"] and y1 == y2:
+			var xlo := mini(x1, x2); var xhi := maxi(x1, x2)
+			if fixed_coord == xlo or fixed_coord == xhi:
+				if y1 > full_lo and y1 < full_hi:
+					splits.append(y1)
+	if splits.is_empty():
+		return Vector2i(-1, -1)
+	splits.sort()
+	var lo := full_lo
+	var hi := full_hi
+	for sp in splits:
+		if coord < sp:
+			hi = sp
+			break
+		lo = sp
+	return Vector2i(lo, hi)
+
+
+# Returns the actual perimeter segment for `edge` that contains `coord` — the
+# source of truth for that specific wall's window/door flags in the new
+# segments format (replaces the legacy `wall_definitions` lookup, which is
+# always empty once a floor uses segments).
+func get_wall_segment(edge: String, coord: int) -> Dictionary:
+	var bounds := get_room_bounds()
+	var fixed_coord: int
+	match edge:
+		"north": fixed_coord = bounds.position.y
+		"south": fixed_coord = bounds.position.y + bounds.size.y
+		"west":  fixed_coord = bounds.position.x
+		"east":  fixed_coord = bounds.position.x + bounds.size.x
+		_: return {}
+	for s in segments:
+		var sd := s as Dictionary
+		if sd.get("demolished", false):
+			continue
+		var x1: int = sd["x1"]; var y1: int = sd["y1"]
+		var x2: int = sd["x2"]; var y2: int = sd["y2"]
+		if edge in ["north", "south"]:
+			if y1 != y2 or y1 != fixed_coord:
+				continue
+			if coord >= mini(x1, x2) and coord <= maxi(x1, x2):
+				return sd
+		else:
+			if x1 != x2 or x1 != fixed_coord:
+				continue
+			if coord >= mini(y1, y2) and coord <= maxi(y1, y2):
+				return sd
+	return {}
 
 
 # Wall segments are the source of truth for the main room's footprint. A
@@ -770,8 +866,13 @@ func _input(event: InputEvent) -> void:
 			edge = "south" if dy > 0.0 else "north"
 	if edge == "":
 		return
+	# Which sub-span of this edge was actually clicked (multi-room floors only
+	# — see get_wall_span; a floor with no interior wall crossing this edge
+	# just gets the whole edge back, unchanged from before spans existed).
+	var click_coord := int((local.x if edge in ["north", "south"] else local.y) / float(TILE_SIZE))
+	var span := get_wall_span(edge, click_coord)
 	# Emit signal — do NOT set_input_as_handled so editor painting still gets the event
-	wall_edge_clicked.emit(edge)
+	wall_edge_clicked.emit(edge, span.x, span.y)
 
 
 const WALL_SNAP := 1.0   # tiles — placing within this distance of a wall snaps flush against it
@@ -835,21 +936,29 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		if new_rect.intersects(other_rect):
 			return false
 
-	# Sloped ceiling: tall furniture blocked in low zones
-	if furniture.height_category == "tall" and not sloped_ceiling.is_empty():
-		var sc     := sloped_ceiling
-		var axis   := sc.get("axis", "x") as String
-		var low_s  := sc.get("low_start", 0) as int
-		var high_e := sc.get("high_end",  0) as int
-		var min_h  := sc.get("min_h", 1.8) as float
-		var max_h  := sc.get("max_h", 2.4) as float
-		var span   := float(high_e - low_s)
+	# Sloped ceiling: any furniture taller than the local ceiling height is blocked
+	if not sloped_ceiling.is_empty():
+		var sc       := sloped_ceiling
+		var axis     := sc.get("axis", "x") as String
+		var low_s    := sc.get("low_start", 0) as int
+		var high_e   := sc.get("high_end",  0) as int
+		var min_h    := sc.get("min_h", 1.8) as float
+		var max_h    := sc.get("max_h", 2.4) as float
+		var span     := float(high_e - low_s)
+		var furn_h_m := furniture.z_top / 10.0   # 10 tiles per meter (see FLOOR_HEIGHT_TILES)
 		if span > 0:
 			for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
 				var coord := tile.x if axis == "x" else tile.y
-				var frac  := clampf(float(coord - low_s) / span, 0.0, 1.0)
-				var ceil_h := min_h + frac * (max_h - min_h)
-				if ceil_h < 2.0:
+				# Outside the slope's own [low_start, high_end] run — e.g. a
+				# separate room on a multi-room floor that just happens to
+				# share this floor's sloped_ceiling record — isn't part of
+				# the raked ceiling at all, so it must read as full height,
+				# not get clamped to the slope's lowest point.
+				var ceil_h := max_h
+				if coord >= low_s and coord <= high_e:
+					var frac := (coord - low_s) / span
+					ceil_h = min_h + frac * (max_h - min_h)
+				if ceil_h < furn_h_m:
 					return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
@@ -1041,10 +1150,20 @@ func get_all_wall_item_ids() -> Array:
 	return ids
 
 
-func get_adjacent_furniture(edge: String) -> Array:
+func get_adjacent_furniture(edge: String, span: Vector2i = Vector2i(-1, -1)) -> Array:
 	# Returns [{furniture, wall_x}] for pieces whose footprint touches this wall
 	# edge. `wall_x` is LOCAL to the wall (0 at the wall's start), matching the
 	# coordinate space WallInspector draws in.
+	#
+	# `span` (absolute tile coords, from get_wall_span) restricts results to
+	# one sub-span of a multi-room floor's edge — e.g. a partition wall splits
+	# the south perimeter edge into a bedroom half and a kitchen half; without
+	# this, inspecting either half showed BOTH rooms' furniture mixed together,
+	# since a piece's proximity to the wall's straight line was checked without
+	# any awareness of which room it's actually in. Filtering by the piece's
+	# own along-the-wall coordinate (not wall_x, which stays in the full
+	# edge's coordinate space so existing wall-item storage is untouched)
+	# keeps this a pure read-time filter, not a data-model change.
 	var result: Array = []
 	var bounds := get_room_bounds()
 	var ghost_raw: Object = _floor_drag_ghost.get("furniture")
@@ -1058,6 +1177,8 @@ func get_adjacent_furniture(edge: String) -> Array:
 			gy = _floor_drag_ghost["gy"] as float
 		var adjacent := false
 		var wall_x := 0.0
+		var along := 0.0
+		var along_w := 0.0
 		match edge:
 			"north":
 				if gy < bounds.position.y + WALL_DEPTH:
@@ -1068,10 +1189,12 @@ func get_adjacent_furniture(edge: String) -> Array:
 					# against the west wall reports wall_x = 1, not 0, and the
 					# Wall Inspector draws it a tile short of that wall's face.
 					wall_x = gx - bounds.position.x - 1
+					along = gx; along_w = f.grid_w
 			"south":
 				if gy + f.grid_h > bounds.position.y + bounds.size.y - WALL_DEPTH:
 					adjacent = true
 					wall_x = gx - bounds.position.x - 1
+					along = gx; along_w = f.grid_w
 			"west":
 				if gx < bounds.position.x + WALL_DEPTH:
 					adjacent = true
@@ -1081,10 +1204,14 @@ func get_adjacent_furniture(edge: String) -> Array:
 					# south-flush piece and (bounds.size.y - 1 - f.grid_h) for a
 					# north-flush one, matching the corrected range below.
 					wall_x = bounds.size.y - (gy - bounds.position.y) - f.grid_h
+					along = gy; along_w = f.grid_h
 			"east":
 				if gx + f.grid_w > bounds.position.x + bounds.size.x - WALL_DEPTH:
 					adjacent = true
 					wall_x = gy - bounds.position.y - 1
+					along = gy; along_w = f.grid_h
+		if adjacent and span.x >= 0 and (along + along_w <= span.x or along >= span.y):
+			adjacent = false
 		if adjacent:
 			result.append({"furniture": f, "wall_x": wall_x})
 	return result

@@ -20,6 +20,20 @@ var _edge: String     = ""
 var _apt_floor: Floor = null
 var _other_floor: Floor = null  # sibling base/loft floor — shown as read-only context
 
+# Multi-room support: when the clicked cardinal edge is crossed by an interior
+# partition wall, Main passes the specific sub-span (absolute tile coords) for
+# just the room that was actually clicked. `_span_lo`/`_span_hi` (-1 = no
+# split, whole edge) are that span; `_span_offset_local` is where the span's
+# own local-0 falls in the FULL edge's local coordinate space (the space
+# get_adjacent_furniture()/wall_items storage already use) and `_span_width`
+# is the span's width in that same space — every existing _wall_w()-based
+# calculation stays untouched, this inspector's whole coordinate frame just
+# shifts to start at the span instead of the full edge.
+var _span_lo: int = -1
+var _span_hi: int = -1
+var _span_offset_local: int = 0
+var _span_width: int = -1
+
 # Drag shared
 var _is_dragging:   bool     = false
 var _drag_is_floor: bool     = false
@@ -87,7 +101,8 @@ func is_showing_wall() -> bool:
 	return _apt_floor != null
 
 
-func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> void:
+func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null,
+		span_lo: int = -1, span_hi: int = -1) -> void:
 	show()
 	if _apt_floor and _apt_floor.furniture_changed.is_connected(_on_floor_changed):
 		_apt_floor.furniture_changed.disconnect(_on_floor_changed)
@@ -102,6 +117,16 @@ func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> voi
 	_drag_floor_furniture = null
 	_panning = false
 
+	_span_lo = span_lo
+	_span_hi = span_hi
+	_span_offset_local = 0
+	_span_width = -1
+	if span_lo >= 0 and _apt_floor:
+		var a := _abs_to_local(span_lo)
+		var b := _abs_to_local(span_hi)
+		_span_offset_local = mini(a, b)
+		_span_width = maxi(a, b) - mini(a, b)
+
 	_apt_floor.furniture_changed.connect(_on_floor_changed)
 	if _other_floor:
 		_other_floor.furniture_changed.connect(_on_floor_changed)
@@ -111,6 +136,65 @@ func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null) -> voi
 	draw_area.visible = true
 	call_deferred("refit")
 	draw_area.queue_redraw()
+
+
+# Converts an ABSOLUTE tile coordinate along this wall's own axis into the
+# same "local wall_x" coordinate space get_adjacent_furniture()/wall_items
+# storage already use (0 at the FULL edge's own start, not this inspector's
+# possibly-narrower span) — the one shared reference frame every span
+# calculation below is expressed in.
+func _abs_to_local(along_abs: int) -> int:
+	if not _apt_floor:
+		return along_abs
+	var bounds := _apt_floor.get_room_bounds()
+	match _edge:
+		"north", "south":
+			return along_abs - bounds.position.x - 1
+		"east":
+			return along_abs - bounds.position.y - 1
+		"west":
+			return bounds.size.y - (along_abs - bounds.position.y)
+	return along_abs
+
+
+# Inverse of _abs_to_local — used to turn a span-local drag/placement back
+# into a true absolute tile coordinate for Floor.gd's own APIs (floor-piece
+# drag ghosts, sloped-ceiling column lookups) that don't know about spans.
+func _local_to_abs(local_x: int) -> int:
+	if not _apt_floor:
+		return local_x
+	var bounds := _apt_floor.get_room_bounds()
+	match _edge:
+		"north", "south":
+			return local_x + bounds.position.x + 1
+		"east":
+			return local_x + bounds.position.y + 1
+		"west":
+			return bounds.position.y + bounds.size.y - local_x
+	return local_x
+
+
+# Wall-hung items are stored keyed only by edge, with origins in the FULL
+# edge's local space (0 at the whole perimeter wall's start) — untouched by
+# spans, so two rooms sharing one cardinal wall can never collide on the same
+# origin. This filters that raw dict down to just the items whose footprint
+# falls inside THIS span, re-expressed in span-local coordinates (0 at this
+# span's own start) so every existing render/hit-test call site below keeps
+# working exactly as it did before spans existed.
+func _visible_wall_items() -> Dictionary:
+	var raw := _apt_floor.get_wall_items(_edge)
+	if _span_width < 0:
+		return raw
+	var out := {}
+	for origin in raw:
+		var o := origin as Vector2i
+		var fid: String = raw[origin] as String
+		var fdata := _find(fid)
+		var iw: int = (fdata["size"]["w"] as int) if not fdata.is_empty() else 1
+		if o.x + iw <= _span_offset_local or o.x >= _span_offset_local + _wall_w():
+			continue
+		out[Vector2i(o.x - _span_offset_local, o.y)] = fid
+	return out
 
 
 # Called by Main when the player clicks "Buy" on a wall item in the inventory panel.
@@ -253,13 +337,19 @@ func _push_floor_drag_ghost() -> void:
 	var bounds := _apt_floor.get_room_bounds()
 	var gx := f.grid_pos.x
 	var gy := f.grid_pos.y
+	# When this inspector is showing a sub-span (multi-room floor), _drag_pos
+	# is span-local — anchor the conversion back to absolute coords on the
+	# span's own bounds instead of the whole edge's, same as everywhere else.
+	var lo_x := _span_lo if _span_lo >= 0 else bounds.position.x
+	var lo_y := _span_lo if _span_lo >= 0 else bounds.position.y
+	var hi_y := _span_hi if _span_hi >= 0 else bounds.position.y + bounds.size.y
 	match _edge:
 		"north", "south":
-			gx = _drag_pos.x + bounds.position.x
+			gx = _drag_pos.x + lo_x
 		"west":
-			gy = bounds.size.y - _drag_pos.x - f.grid_h + bounds.position.y
+			gy = hi_y - _drag_pos.x - f.grid_h
 		"east":
-			gy = _drag_pos.x + bounds.position.y
+			gy = _drag_pos.x + lo_y
 	_apt_floor.set_floor_drag_ghost(f, gx, gy)
 
 
@@ -280,7 +370,7 @@ func _set_zoom(new_zoom: float) -> void:
 # ── Placement helpers ─────────────────────────────────────────────────────────
 
 func _wall_item_at(tile: Vector2i) -> Variant:
-	var placed := _apt_floor.get_wall_items(_edge)
+	var placed := _visible_wall_items()
 	for origin in placed:
 		var o  := origin as Vector2i
 		var pf := _find(placed[origin] as String)
@@ -296,9 +386,9 @@ func _wall_item_at(tile: Vector2i) -> Variant:
 
 func _floor_item_at(tile: Vector2i) -> Variant:
 	var rh: int = WALL_HEIGHT * TILE_SIZE
-	for entry in _apt_floor.get_adjacent_furniture(_edge):
+	for entry in _apt_floor.get_adjacent_furniture(_edge, Vector2i(_span_lo, _span_hi)):
 		var f: Furniture = entry["furniture"]
-		var wx: int      = entry["wall_x"] as int
+		var wx: int      = (entry["wall_x"] as int) - _span_offset_local
 		var fdata        := _find_by_id(f.furniture_id)
 		if fdata.is_empty():
 			continue
@@ -336,17 +426,17 @@ func _try_place(fid: String, at: Vector2i) -> void:
 		at.x = wall_w - iw
 	var pinned_y := _pinned_wall_y(f, ih)
 	at.y = pinned_y if pinned_y >= 0 else clampi(at.y, 0, WALL_HEIGHT - ih)
-	var placed := _apt_floor.get_wall_items(_edge)
+	var placed := _visible_wall_items()
 	if _wall_fits(at, iw, ih, placed):
 		Audio.play("place")
-		_apt_floor.place_wall_item(_edge, at, fid)
+		_apt_floor.place_wall_item(_edge, Vector2i(at.x + _span_offset_local, at.y), fid)
 		_selected_id = ""
 		wall_item_placed.emit(fid)
 
 
 func _drop_wall_drag() -> void:
 	_is_dragging = false
-	var placed := _apt_floor.get_wall_items(_edge)
+	var placed := _visible_wall_items()
 	if not (_drag_origin in placed):
 		return
 	var fid: String = placed[_drag_origin] as String
@@ -361,12 +451,13 @@ func _drop_wall_drag() -> void:
 		clampi(_drag_pos.x, 0, wall_w - iw),
 		pinned_y if pinned_y >= 0 else clampi(_drag_pos.y, 0, WALL_HEIGHT - ih)
 	)
-	_apt_floor.remove_wall_item(_edge, _drag_origin)
-	# placed is the same dict reference — origin is already erased
+	var orig_full := Vector2i(_drag_origin.x + _span_offset_local, _drag_origin.y)
+	_apt_floor.remove_wall_item(_edge, orig_full)
+	placed.erase(_drag_origin)   # local copy, not a live reference — keep it in sync with the removal above
 	if _wall_fits(at, iw, ih, placed):
-		_apt_floor.place_wall_item(_edge, at, fid)
+		_apt_floor.place_wall_item(_edge, Vector2i(at.x + _span_offset_local, at.y), fid)
 	else:
-		_apt_floor.place_wall_item(_edge, _drag_origin, fid)
+		_apt_floor.place_wall_item(_edge, orig_full, fid)
 
 
 func _drop_floor_drag() -> void:
@@ -402,23 +493,30 @@ func _drop_floor_drag() -> void:
 	# tile short of their true target — each needs its own +1. "west" is
 	# built from bounds.size instead, which already absorbs the shrink
 	# correctly at both ends, so it needs no per-extreme patching.
+	# A sub-span's along-wall coordinate anchors on the span's own absolute
+	# bounds instead of the whole edge's, same as everywhere else this
+	# inspector converts a span-local coordinate back to an absolute one.
+	var lo_x := _span_lo if _span_lo >= 0 else bounds.position.x
+	var lo_y := _span_lo if _span_lo >= 0 else bounds.position.y
+	var hi_y := _span_hi if _span_hi >= 0 else bounds.position.y + bounds.size.y
+
 	var flush := f.grid_pos
 	match _edge:
 		"north":
-			flush.x = new_wall_x + bounds.position.x
+			flush.x = new_wall_x + lo_x
 			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.x += 1
 			flush.y = bounds.position.y + 1
 		"south":
-			flush.x = new_wall_x + bounds.position.x
+			flush.x = new_wall_x + lo_x
 			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.x += 1
 			flush.y = bounds.position.y + bounds.size.y - f.grid_h
 		"west":
-			flush.y = bounds.size.y - new_wall_x - item_w + bounds.position.y
+			flush.y = hi_y - new_wall_x - item_w
 			flush.x = bounds.position.x + 1
 		"east":
-			flush.y = new_wall_x + bounds.position.y
+			flush.y = new_wall_x + lo_y
 			if new_wall_x == 0 or new_wall_x == wall_w - item_w:
 				flush.y += 1
 			flush.x = bounds.position.x + bounds.size.x - f.grid_w
@@ -432,7 +530,7 @@ func _drop_floor_drag() -> void:
 	var slide := f.grid_pos
 	match _edge:
 		"north", "south":
-			slide.x = new_wall_x + bounds.position.x
+			slide.x = new_wall_x + lo_x
 		"west", "east":
 			slide.y = flush.y
 	if _apt_floor.can_place(f, slide):
@@ -491,9 +589,9 @@ func _get_restricted_zones() -> Array:
 
 func _floor_occludes(at: Vector2i, iw: int, ih: int) -> bool:
 	var item_rect := Rect2i(at.x, at.y, iw, ih)
-	for entry in _apt_floor.get_adjacent_furniture(_edge):
+	for entry in _apt_floor.get_adjacent_furniture(_edge, Vector2i(_span_lo, _span_hi)):
 		var f: Furniture    = entry["furniture"]
-		var wx: int         = entry["wall_x"] as int
+		var wx: int         = (entry["wall_x"] as int) - _span_offset_local
 		var fdata           := _find_by_id(f.furniture_id)
 		if fdata.is_empty():
 			continue
@@ -507,7 +605,7 @@ func _floor_occludes(at: Vector2i, iw: int, ih: int) -> bool:
 
 
 func _remove_wall_at(tile: Vector2i) -> void:
-	var placed := _apt_floor.get_wall_items(_edge)
+	var placed := _visible_wall_items()
 	for origin in placed.keys():
 		var o  := origin as Vector2i
 		var pf := _find(placed[origin] as String)
@@ -517,7 +615,7 @@ func _remove_wall_at(tile: Vector2i) -> void:
 		var ph: int = pf.get("wall_h", 1) as int
 		if tile.x >= o.x and tile.x < o.x + pw \
 		and tile.y >= o.y and tile.y < o.y + ph:
-			_apt_floor.remove_wall_item(_edge, origin)
+			_apt_floor.remove_wall_item(_edge, Vector2i(o.x + _span_offset_local, o.y))
 			return
 
 
@@ -580,15 +678,16 @@ func _draw_elevation() -> void:
 	var mezz_y := MEZZ_LEVEL * TILE_SIZE
 
 	# ── Floor-adjacent pieces (this floor, interactive) ───────────────────────
-	for entry in _apt_floor.get_adjacent_furniture(_edge):
-		_draw_floor_piece(entry["furniture"], entry["wall_x"] as float, rh,
+	for entry in _apt_floor.get_adjacent_furniture(_edge, Vector2i(_span_lo, _span_hi)):
+		_draw_floor_piece(entry["furniture"], (entry["wall_x"] as float) - _span_offset_local, rh,
 			_is_dragging and _drag_is_floor and _drag_floor_furniture == entry["furniture"])
 
 	# ── Sibling floor pieces (base ↔ loft, read-only context) ─────────────────
 	if _other_floor:
 		var other_baseline := mezz_y if _other_floor.floor_type == "loft" else rh
-		for entry in _other_floor.get_adjacent_furniture(_edge):
-			_draw_floor_piece(entry["furniture"], entry["wall_x"] as float, other_baseline, false, true)
+		for entry in _other_floor.get_adjacent_furniture(_edge, Vector2i(_span_lo, _span_hi)):
+			_draw_floor_piece(entry["furniture"], (entry["wall_x"] as float) - _span_offset_local,
+				other_baseline, false, true)
 
 	# ── Mezzanine slab ───────────────────────────────────────────────────────
 	# Show mezzanine tiles adjacent to this wall as an amber platform slab.
@@ -605,7 +704,10 @@ func _draw_elevation() -> void:
 			"south": if t.y >= bounds.position.y + bounds.size.y - Floor.WALL_DEPTH:           wc = t.x
 			"west":  if t.x < bounds.position.x + Floor.WALL_DEPTH:                           wc = t.y
 			"east":  if t.x >= bounds.position.x + bounds.size.x - Floor.WALL_DEPTH:           wc = t.y
+		if wc >= 0 and _span_lo >= 0 and (wc < _span_lo or wc >= _span_hi):
+			wc = -1   # outside this room's own span of the shared edge
 		if wc >= 0:
+			wc = _abs_to_local(wc) - _span_offset_local
 			wall_coords_set[wc] = true
 	var wall_coords: Array = wall_coords_set.keys()
 	# Draw slab for each contiguous run of mezzanine tiles along this wall
@@ -633,7 +735,7 @@ func _draw_elevation() -> void:
 			"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, last_sw - 4, 7, mezz_fg)
 
 	# ── Hung wall items ───────────────────────────────────────────────────────
-	var placed := _apt_floor.get_wall_items(_edge)
+	var placed := _visible_wall_items()
 	for origin in placed:
 		var o   := origin as Vector2i
 		if not _drag_is_floor and _is_dragging and o == _drag_origin:
@@ -762,6 +864,36 @@ func _draw_openings(_rw: int, rh: int) -> void:
 func _get_wall_def() -> Dictionary:
 	if not _apt_floor:
 		return {}
+	# New (segments) format: wall_definitions is always empty (has_window/
+	# has_door live on the segment itself instead), so the legacy lookup below
+	# silently found nothing and no level built with the Builder tab ever
+	# rendered its window/door in this elevation view. Look the segment up
+	# directly and translate its fields into the same shape the legacy dict
+	# used, so every draw call below stays unchanged.
+	if not _apt_floor.segments.is_empty():
+		var seg := _apt_floor.get_wall_segment(_edge, _local_to_abs(int(_wall_w() / 2)))
+		if seg.is_empty():
+			return {}
+		var seg_start: int = mini(seg["x1"] as int, seg["x2"] as int) if _edge in ["north", "south"] \
+			else mini(seg["y1"] as int, seg["y2"] as int)
+		var out := {}
+		if seg.get("has_window", false):
+			var w_lo := seg_start + (seg.get("window_pos", 0) as int)
+			var w_hi := w_lo + (seg.get("window_len", 15) as int)
+			var a := _abs_to_local(w_lo) - _span_offset_local
+			var b := _abs_to_local(w_hi) - _span_offset_local
+			out["has_window"]  = true
+			out["window_x"]    = mini(a, b)
+			out["window_len"]  = absi(b - a)
+		if seg.get("has_door", false):
+			const DOOR_LEN := 10   # matches Wall.gd's own _partition_tile_set constant
+			var d_lo := seg_start + (seg.get("door_pos", 0) as int)
+			var d_hi := d_lo + DOOR_LEN
+			var a := _abs_to_local(d_lo) - _span_offset_local
+			var b := _abs_to_local(d_hi) - _span_offset_local
+			out["has_door"] = true
+			out["door_x"]   = mini(a, b)
+		return out
 	for wd in _apt_floor.wall_definitions:
 		if wd.get("edge", "") == _edge:
 			return wd
@@ -854,6 +986,8 @@ func _draw_label(x: float, y: float, max_w: float, text: String) -> void:
 func _wall_w() -> int:
 	if not _apt_floor:
 		return 8
+	if _span_width >= 0:
+		return _span_width
 	var bounds := _apt_floor.get_room_bounds()
 	# -1: bounds.size spans corner-tile to corner-tile (e.g. west wall's own
 	# tile to east wall's own tile), but a floor piece can never actually
@@ -889,7 +1023,10 @@ func _ceiling_height_m(col: int) -> float:
 		or (axis == "y" and _edge in ["east", "west"])
 	var coord: int
 	if progressive:
-		coord = (bounds.position.x if _edge in ["north", "south"] else bounds.position.y) + col
+		# _local_to_abs already accounts for a sub-span's own offset, so a
+		# split multi-room floor reads the slope at the true absolute
+		# position instead of the whole edge's.
+		coord = _local_to_abs(col)
 	else:
 		match _edge:
 			"north": coord = bounds.position.y
@@ -897,7 +1034,14 @@ func _ceiling_height_m(col: int) -> float:
 			"west":  coord = bounds.position.x
 			"east":  coord = bounds.position.x + bounds.size.x - 1
 			_:       coord = low_s
-	var frac := clampf(float(coord - low_s) / float(span), 0.0, 1.0)
+	# Outside the slope's own [low_start, high_end] run, this wall (or this
+	# column of it) isn't under the raked ceiling at all — e.g. a separate
+	# room on a multi-room floor that just shares the sloped_ceiling record —
+	# so it reads as full height instead of being clamped to the slope's
+	# lowest point.
+	if coord < low_s or coord > high_e:
+		return max_h
+	var frac := float(coord - low_s) / float(span)
 	return min_h + frac * (max_h - min_h)
 
 
@@ -923,6 +1067,9 @@ func _edge_label(edge: String) -> String:
 func _has_feature(edge: String, feature: String) -> bool:
 	if not _apt_floor:
 		return false
+	if not _apt_floor.segments.is_empty():
+		var seg := _apt_floor.get_wall_segment(edge, _local_to_abs(int(_wall_w() / 2)))
+		return not seg.is_empty() and (seg.get(feature, false) as bool)
 	for wd in _apt_floor.wall_definitions:
 		if wd.get("edge", "") == edge and wd.get(feature, false):
 			return true

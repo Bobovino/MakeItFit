@@ -595,8 +595,31 @@ func _draw_edge_overlays(parent: Floor) -> void:
 		var sd := parent.segments[_hovered_seg_idx] as Dictionary
 		if sd.get("demolished", false):
 			return
-		var p0 := Vector2(float(sd["x1"] as int * TILE_SIZE), float(sd["y1"] as int * TILE_SIZE))
-		var p1 := Vector2(float(sd["x2"] as int * TILE_SIZE), float(sd["y2"] as int * TILE_SIZE))
+		var seg_x1: int = sd["x1"]; var seg_y1: int = sd["y1"]
+		var seg_x2: int = sd["x2"]; var seg_y2: int = sd["y2"]
+		# A primary (perimeter) segment can be cut by an interior wall meeting
+		# it partway along — clip the highlight to just the sub-span under the
+		# mouse so a multi-room floor doesn't read as "one giant wall".
+		if sd.get("primary", false):
+			var bounds := parent.get_room_bounds()
+			var edge := ""
+			if seg_y1 == seg_y2:
+				if seg_y1 == bounds.position.y: edge = "north"
+				elif seg_y1 == bounds.position.y + bounds.size.y: edge = "south"
+			elif seg_x1 == seg_x2:
+				if seg_x1 == bounds.position.x: edge = "west"
+				elif seg_x1 == bounds.position.x + bounds.size.x: edge = "east"
+			if edge != "":
+				var mouse := get_local_mouse_position()
+				var coord := int((mouse.x if edge in ["north", "south"] else mouse.y) / float(TILE_SIZE))
+				var span := parent.get_wall_span(edge, coord)
+				if span.x >= 0:
+					if edge in ["north", "south"]:
+						seg_x1 = span.x; seg_x2 = span.y
+					else:
+						seg_y1 = span.x; seg_y2 = span.y
+		var p0 := Vector2(float(seg_x1 * TILE_SIZE), float(seg_y1 * TILE_SIZE))
+		var p1 := Vector2(float(seg_x2 * TILE_SIZE), float(seg_y2 * TILE_SIZE))
 		var seg_glow := Color(EDGE_HOVER.r, EDGE_HOVER.g, EDGE_HOVER.b, 0.25)
 		draw_line(p0, p1, seg_glow, WALL_THICK + 8.0)
 		draw_line(p0, p1, EDGE_HOVER, WALL_THICK + 2.0)
