@@ -66,13 +66,32 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 		)
 		next_btn.text = "Back to City"
 
-	_stars_label.text = "★".repeat(stars) + "☆".repeat(3 - stars)
+	_animate_stars(stars)
 
 	rent_bar.text = (
 		"+%d€ CompanyFunds   |   Portfolio: %d€/mo → %d€/mo" % [
 			funds_earned, portfolio_rent, GameState.RETIRE_GOAL
 		]
 	)
+
+
+# Stars fill in one at a time with a pop — the standard puzzle-game results
+# beat, instead of the rating just sitting there fully formed.
+func _animate_stars(stars: int) -> void:
+	_stars_label.text = "☆☆☆"
+	_stars_label.pivot_offset = _stars_label.size * 0.5
+	var tw := create_tween()
+	for i in range(1, stars + 1):
+		var filled := i
+		tw.tween_interval(0.35)
+		tw.tween_callback(func():
+			_stars_label.text = "★".repeat(filled) + "☆".repeat(3 - filled)
+			_stars_label.pivot_offset = _stars_label.size * 0.5
+			Audio.play("place"))
+		tw.tween_property(_stars_label, "scale", Vector2(1.35, 1.35), 0.08) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_stars_label, "scale", Vector2.ONE, 0.15) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func show_failure(reason: String) -> void:

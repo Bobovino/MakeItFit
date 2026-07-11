@@ -48964,32 +48964,32 @@
                 "demolished": false,
                 "primary": true,
                 "x1": 1,
-                "x2": 26,
+                "x2": 32,
                 "y1": 1,
                 "y2": 1
               },
               {
                 "demolished": false,
                 "primary": true,
-                "x1": 26,
-                "x2": 26,
+                "x1": 32,
+                "x2": 32,
                 "y1": 1,
-                "y2": 16
+                "y2": 22
               },
               {
                 "demolished": false,
                 "primary": true,
-                "x1": 26,
+                "x1": 32,
                 "x2": 1,
-                "y1": 16,
-                "y2": 16
+                "y1": 22,
+                "y2": 22
               },
               {
                 "demolished": false,
                 "primary": true,
                 "x1": 1,
                 "x2": 1,
-                "y1": 16,
+                "y1": 22,
                 "y2": 1
               }
             ],
@@ -49023,6 +49023,8 @@
             "type": "roof"
           }
         ],
+        "grid_h": 28,
+        "grid_w": 38,
         "hidden_floors": [
           "subfloor",
           "fl_0_sub",
@@ -49065,6 +49067,6796 @@
         "required_functions": [
           "hygiene",
           "sleep",
+          "loft_access"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 0,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 0,
+      "district": "Tutorial",
+      "funds_base_reward": 50,
+      "id": "tut_views",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Picture This",
+      "starting_budget": 430,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "23",
+        "flavor": "Just moved in. Take a look around in 2D, on the wall panels, and in 3D before you start furnishing.",
+        "monthly_rent": 400,
+        "name": "Nico",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 0,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 0,
+      "district": "Tutorial",
+      "funds_base_reward": 60,
+      "id": "tut_economy",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Buy Low, Sell High",
+      "starting_budget": 470,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "36",
+        "flavor": "A tight budget. Buy what you need, and don't be afraid to sell a piece and rebuy something that fits better.",
+        "monthly_rent": 450,
+        "name": "Greta",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 110,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 140,
+      "id": "apr_01",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Studio Basics",
+      "starting_budget": 400,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "34",
+        "flavor": "A simple studio. Fit a bed, a bathroom, and enough room to move.",
+        "monthly_rent": 500,
+        "name": "Jonas",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 140,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 160,
+      "id": "apr_02",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "The Home Office",
+      "starting_budget": 385,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "22",
+        "flavor": "Works from home and needs a real desk setup, not just a laptop on the bed.",
+        "monthly_rent": 540,
+        "name": "Lea",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 170,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 180,
+      "id": "apr_03",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Second Bedroom",
+      "starting_budget": 370,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "41",
+        "flavor": "Wants a proper wardrobe and shelving - clothes everywhere is not an option.",
+        "monthly_rent": 580,
+        "name": "Marcus",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 200,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 3,
+                "x2": 20,
+                "y1": 10,
+                "y2": 10
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 200,
+      "id": "apr_04",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Slide It In",
+      "starting_budget": 355,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 20,
+          "rail_start": 3,
+          "x": 5,
+          "y": 10
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "27",
+        "flavor": "A wardrobe on a rail track along the back wall - it has to slide, not float free.",
+        "monthly_rent": 620,
+        "name": "Yuki",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 230,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 220,
+      "id": "apr_05",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Morning and Night",
+      "starting_budget": 340,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "31",
+        "flavor": "During the day the room is a lounge. At night, a bed needs to appear.",
+        "monthly_rent": 660,
+        "name": "Elena",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 260,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "has_window": true,
+                "primary": true,
+                "window_len": 10,
+                "window_pos": 8,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 240,
+      "id": "apr_06",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Let the Light In",
+      "starting_budget": 325,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "38",
+        "flavor": "A big window along the front wall. Nothing tall can block it.",
+        "monthly_rent": 700,
+        "name": "Tom",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 290,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "door_pos": 12,
+                "has_door": true,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 260,
+      "id": "apr_07",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Mind the Door",
+      "starting_budget": 470,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "25",
+        "flavor": "Keep the doorway clear - furniture crowding the door is a fire hazard, and the landlord will notice.",
+        "monthly_rent": 740,
+        "name": "Nadia",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 320,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 35,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 35,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 42,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 280,
+      "id": "apr_08",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Roommates",
+      "starting_budget": 710,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 23,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 29,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "45",
+        "flavor": "Two people, one apartment. Each needs their own sleeping corner.",
+        "monthly_rent": 780,
+        "name": "Bruno",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 350,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 4,
+                "y1": 6,
+                "y2": 20
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 300,
+      "id": "apr_09",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Rail and Routine",
+      "starting_budget": 280,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        },
+        {
+          "id": "bookshelf",
+          "rail_axis": "v",
+          "rail_end": 20,
+          "rail_start": 6,
+          "x": 4,
+          "y": 6
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "30",
+        "flavor": "A sliding bookshelf along the side wall, plus the usual essentials.",
+        "monthly_rent": 820,
+        "name": "Ines",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 380,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 24,
+                "y1": 22,
+                "y2": 22
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "has_window": true,
+                "primary": true,
+                "window_len": 10,
+                "window_pos": 6,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "door_pos": 14,
+                "has_door": true,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 1,
+      "district": "Wedding",
+      "funds_base_reward": 320,
+      "id": "apr_10",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "dress"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Aprendizaje Final",
+      "starting_budget": 430,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 24,
+          "rail_start": 4,
+          "reveal_end": 14,
+          "reveal_functions": [
+            "dress"
+          ],
+          "reveal_start": 4,
+          "x": 6,
+          "y": 22
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "26",
+        "flavor": "Everything you've learned so far, in one apartment: a window, a door, a rail, and a day/night switch.",
+        "monthly_rent": 860,
+        "name": "Kwame",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "dress"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 410,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 340,
+      "id": "loft_01",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Up and Away",
+      "starting_budget": 1080,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "33",
+        "flavor": "A loft bed frees up the whole floor below it for living space.",
+        "monthly_rent": 550,
+        "name": "Sofia",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 440,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 360,
+      "id": "loft_02",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Small Footprint",
+      "starting_budget": 1120,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 11,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 17,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "37",
+        "flavor": "A tiny apartment. The only way to fit everything is to go up.",
+        "monthly_rent": 590,
+        "name": "Erik",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 470,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 380,
+      "id": "loft_03",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Loft and Desk",
+      "starting_budget": 1120,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "28",
+        "flavor": "Works long hours from home. Needs the desk on the ground floor once the bed moves up.",
+        "monthly_rent": 630,
+        "name": "Amara",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 500,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 400,
+      "id": "loft_04",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Double Loft",
+      "starting_budget": 1360,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "40",
+        "flavor": "Two loft beds, two tenants, one shared ground floor.",
+        "monthly_rent": 670,
+        "name": "Felix",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "sleep",
+          "loft_access"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 530,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "has_window": true,
+                "primary": true,
+                "window_len": 10,
+                "window_pos": 6,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 420,
+      "id": "loft_05",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Loft with a View",
+      "starting_budget": 1080,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "23",
+        "flavor": "Keep the window clear even with a loft bed taking up airspace above.",
+        "monthly_rent": 710,
+        "name": "Rosa",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 560,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 3,
+                "x2": 18,
+                "y1": 8,
+                "y2": 8
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 31,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 31,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 38,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 440,
+      "id": "loft_06",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Rail Under the Loft",
+      "starting_budget": 1080,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 18,
+          "rail_start": 3,
+          "x": 5,
+          "y": 8
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "35",
+        "flavor": "A sliding wardrobe fits neatly under the loft platform.",
+        "monthly_rent": 750,
+        "name": "Dmitri",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 590,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 460,
+      "id": "loft_07",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Loft Studio",
+      "starting_budget": 330,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "29",
+        "flavor": "By day it's a workspace below the loft. By night, climb up to sleep.",
+        "monthly_rent": 790,
+        "name": "Zara",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 620,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "door_pos": 10,
+                "has_door": true,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 38,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 480,
+      "id": "loft_08",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Tight Stairs",
+      "starting_budget": 1120,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 13,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 19,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "32",
+        "flavor": "Every tile counts here - the loft access and the door both need clearance.",
+        "monthly_rent": 830,
+        "name": "Hugo",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 650,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "has_window": true,
+                "primary": true,
+                "window_len": 10,
+                "window_pos": 8,
+                "x1": 1,
+                "x2": 35,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 35,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "door_pos": 16,
+                "has_door": true,
+                "primary": true,
+                "x1": 35,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 42,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 500,
+      "id": "loft_09",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Loft for Two",
+      "starting_budget": 1400,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 23,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 29,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "27",
+        "flavor": "Roommates sharing a lofted apartment. Fit both sleeping arrangements and daily needs.",
+        "monthly_rent": 870,
+        "name": "Mila",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "sleep",
+          "loft_access",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 680,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 22,
+                "y1": 20,
+                "y2": 20
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 2,
+      "district": "Neukölln",
+      "funds_base_reward": 520,
+      "id": "loft_10",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "dress"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Lofts Capstone",
+      "starting_budget": 285,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 22,
+          "rail_start": 4,
+          "reveal_end": 13,
+          "reveal_functions": [
+            "dress"
+          ],
+          "reveal_start": 4,
+          "x": 6,
+          "y": 20
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "36",
+        "flavor": "A full lofted apartment: rail, window, and a day/night switch under the loft bed.",
+        "monthly_rent": 910,
+        "name": "Ravi",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access",
+          "storage",
+          "dress"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 710,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 26,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 540,
+      "id": "alt_01",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Under the Eaves",
+      "starting_budget": 440,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "24",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 600,
+        "name": "Clara",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 740,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [
+              {
+                "x": 14,
+                "y": 12
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 560,
+      "id": "alt_02",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "One Column",
+      "starting_budget": 425,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "39",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 640,
+        "name": "Ben",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 770,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 28,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 580,
+      "id": "alt_03",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Attic Studio",
+      "starting_budget": 410,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "30",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 680,
+        "name": "Anouk",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 800,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [
+              {
+                "x": 10,
+                "y": 10
+              },
+              {
+                "x": 22,
+                "y": 16
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 38,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 600,
+      "id": "alt_04",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Two Columns",
+      "starting_budget": 395,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "43",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 720,
+        "name": "Otto",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 830,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 3,
+                "x2": 3,
+                "y1": 6,
+                "y2": 18
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "y",
+              "high_end": 22,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 620,
+      "id": "alt_05",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Slope and Rail",
+      "starting_budget": 380,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "v",
+          "rail_end": 18,
+          "rail_start": 6,
+          "x": 3,
+          "y": 6
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "26",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 760,
+        "name": "Lina",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 860,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [
+              {
+                "x": 10,
+                "y": 10
+              },
+              {
+                "x": 24,
+                "y": 10
+              },
+              {
+                "x": 17,
+                "y": 20
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 640,
+      "id": "alt_06",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Industrial Loft",
+      "starting_budget": 365,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "34",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 800,
+        "name": "Sven",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 890,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 35,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 35,
+                "y1": 1,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 1,
+                "y1": 31,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 31,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 28,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 38,
+        "grid_w": 42,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 660,
+      "id": "alt_07",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Corner Slope",
+      "starting_budget": 1080,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "31",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 840,
+        "name": "Petra",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "loft_access"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 920,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [
+              {
+                "x": 12,
+                "y": 12
+              },
+              {
+                "x": 20,
+                "y": 18
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 24,
+                "y1": 22,
+                "y2": 22
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 680,
+      "id": "alt_08",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Structural Puzzle",
+      "starting_budget": 335,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 24,
+          "rail_start": 4,
+          "x": 6,
+          "y": 20
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "38",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 880,
+        "name": "Igor",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 950,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "has_window": true,
+                "primary": true,
+                "window_len": 8,
+                "window_pos": 6,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 26,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 34,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 700,
+      "id": "alt_09",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Steep Attic",
+      "starting_budget": 320,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "25",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 920,
+        "name": "Nora",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 980,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [
+              {
+                "x": 10,
+                "y": 10
+              },
+              {
+                "x": 24,
+                "y": 18
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 26,
+                "y1": 24,
+                "y2": 24
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 32,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 3,
+      "district": "Schöneberg",
+      "funds_base_reward": 720,
+      "id": "alt_10",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Altura Capstone",
+      "starting_budget": 305,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 26,
+          "rail_start": 4,
+          "x": 6,
+          "y": 22
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "29",
+        "flavor": "A structurally awkward apartment - work around what can't be moved.",
+        "monthly_rent": 960,
+        "name": "Karim",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1010,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 740,
+      "id": "ins_01",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Pipes First",
+      "starting_budget": 460,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "33",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 650,
+        "name": "Freya",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1040,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 760,
+      "id": "ins_02",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Rewire",
+      "starting_budget": 445,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "40",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 690,
+        "name": "Tobias",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1070,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 780,
+      "id": "ins_03",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Full Retrofit",
+      "starting_budget": 430,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "27",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 730,
+        "name": "Yara",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1100,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 800,
+      "id": "ins_04",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Ducts and Doubts",
+      "starting_budget": 415,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "22",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 770,
+        "name": "Milo",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1130,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 27,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 27,
+                "y1": 1,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 27,
+                "x2": 1,
+                "y1": 23,
+                "y2": 23
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 23,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 26,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 30,
+        "grid_w": 34,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 820,
+      "id": "ins_05",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Slope and Pipes",
+      "starting_budget": 400,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "36",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 810,
+        "name": "Greta",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1160,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 16,
+                "y": 14
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 38,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 840,
+      "id": "ins_06",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Column and Conduit",
+      "starting_budget": 385,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "30",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 850,
+        "name": "Wei",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1190,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 3,
+                "x2": 20,
+                "y1": 8,
+                "y2": 8
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 860,
+      "id": "ins_07",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Rail Above the Route",
+      "starting_budget": 370,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 15,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 20,
+          "rail_start": 3,
+          "x": 5,
+          "y": 8
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "28",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 890,
+        "name": "Alma",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1220,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 29,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 29,
+                "y1": 1,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 29,
+                "x2": 1,
+                "y1": 25,
+                "y2": 25
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 25,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 32,
+        "grid_w": 36,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 880,
+      "id": "ins_08",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Seasonal Utilities",
+      "starting_budget": 355,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 17,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 23,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "35",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 930,
+        "name": "Pavel",
+        "required_functions": [
+          "hygiene",
+          "sleep"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1250,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 12,
+                "y": 12
+              },
+              {
+                "x": 22,
+                "y": 18
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 900,
+      "id": "ins_09",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Old Building",
+      "starting_budget": 340,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "26",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 970,
+        "name": "Suri",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1280,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 12,
+                "y": 12
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 24,
+                "y1": 22,
+                "y2": 22
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 32,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 40,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 4,
+      "district": "Kreuzberg",
+      "funds_base_reward": 920,
+      "id": "ins_10",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Instalaciones Capstone",
+      "starting_budget": 325,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 24,
+          "rail_start": 4,
+          "x": 6,
+          "y": 22
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "32",
+        "flavor": "The old plumbing and wiring need to be rerouted before anything else can go in.",
+        "monthly_rent": 1010,
+        "name": "Renata",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1310,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 16,
+                "y": 14
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 5,
+      "district": "Friedrichshain",
+      "funds_base_reward": 300,
+      "id": "final_01",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "sport"
+          ],
+          "space_needs": {
+            "sport": 500
+          }
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "Two Lives, One Room",
+      "starting_budget": 500,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "37",
+        "flavor": "The final challenge: every mechanic you've learned, combined, on a brutal budget.",
+        "monthly_rent": 800,
+        "name": "Jasper",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "sport"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1340,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 24,
+                "y1": 20,
+                "y2": 20
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 33,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 33,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 33,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 32,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 40,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 5,
+      "district": "Friedrichshain",
+      "funds_base_reward": 400,
+      "id": "final_02",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "dress"
+          ]
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "The Retrofit",
+      "starting_budget": 480,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 21,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 27,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 24,
+          "rail_start": 4,
+          "reveal_end": 14,
+          "reveal_functions": [
+            "dress"
+          ],
+          "reveal_start": 4,
+          "x": 6,
+          "y": 20
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "24",
+        "flavor": "The final challenge: every mechanic you've learned, combined, on a brutal budget.",
+        "monthly_rent": 860,
+        "name": "Cleo",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "dress"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1370,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 10,
+                "y": 10
+              },
+              {
+                "x": 22,
+                "y": 18
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 31,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 31,
+                "y1": 1,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 31,
+                "x2": 1,
+                "y1": 27,
+                "y2": 27
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 27,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {},
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 34,
+        "grid_w": 38,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 5,
+      "district": "Friedrichshain",
+      "funds_base_reward": 500,
+      "id": "final_03",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [],
+      "name": "Demolition Day",
+      "starting_budget": 460,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 19,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 25,
+          "y": 2
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "44",
+        "flavor": "The final challenge: every mechanic you've learned, combined, on a brutal budget.",
+        "monthly_rent": 920,
+        "name": "Duncan",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1400,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 12,
+                "y": 12
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 26,
+                "y1": 22,
+                "y2": 22
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 35,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 35,
+                "y1": 1,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 35,
+                "x2": 1,
+                "y1": 29,
+                "y2": 29
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 29,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 34,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 36,
+        "grid_w": 42,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 5,
+      "district": "Friedrichshain",
+      "funds_base_reward": 600,
+      "id": "final_04",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "dress",
+            "sport"
+          ],
+          "space_needs": {
+            "sport": 500
+          }
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "The Gauntlet",
+      "starting_budget": 440,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 23,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 29,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 26,
+          "rail_start": 4,
+          "reveal_end": 15,
+          "reveal_functions": [
+            "dress"
+          ],
+          "reveal_start": 4,
+          "x": 6,
+          "y": 22
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "29",
+        "flavor": "The final challenge: every mechanic you've learned, combined, on a brutal budget.",
+        "monthly_rent": 980,
+        "name": "Ines2",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "dress",
+          "sport"
+        ]
+      }
+    },
+    {
+      "acquisition_cost": 1430,
+      "allowed_furniture": [],
+      "apartment": {
+        "floors": [
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "subfloor",
+            "label": "Building Subfloor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_sub",
+            "label": "Ground Floor Subfloor",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "subfloor"
+          },
+          {
+            "columns": [
+              {
+                "x": 12,
+                "y": 12
+              },
+              {
+                "x": 26,
+                "y": 20
+              }
+            ],
+            "floor_tiles": [],
+            "id": "fl_0",
+            "label": "Ground Floor",
+            "mezzanine_tiles": [],
+            "rails": [
+              {
+                "x1": 4,
+                "x2": 28,
+                "y1": 24,
+                "y2": 24
+              }
+            ],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 37,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 37,
+                "x2": 37,
+                "y1": 1,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 37,
+                "x2": 1,
+                "y1": 31,
+                "y2": 31
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 31,
+                "y2": 1
+              }
+            ],
+            "sloped_ceiling": {
+              "axis": "x",
+              "high_end": 36,
+              "low_start": 2,
+              "max_h": 2.4,
+              "min_h": 1.6
+            },
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_ceil",
+            "label": "Ground Floor Ceiling",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "roof",
+            "label": "Roof / Techo",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "roof"
+          }
+        ],
+        "grid_h": 38,
+        "grid_w": 44,
+        "hidden_floors": [
+          "subfloor",
+          "fl_0_sub",
+          "fl_0_ceil",
+          "roof"
+        ]
+      },
+      "block": 5,
+      "district": "Friedrichshain",
+      "funds_base_reward": 700,
+      "id": "final_05",
+      "is_tutorial": false,
+      "map_col": 0,
+      "map_row": 0,
+      "min_stars": 0,
+      "moments": [
+        {
+          "id": "day",
+          "label": "Day",
+          "needs": [
+            "hygiene",
+            "dress",
+            "sport"
+          ],
+          "space_needs": {
+            "sport": 500
+          }
+        },
+        {
+          "id": "night",
+          "label": "Night",
+          "needs": [
+            "hygiene",
+            "sleep"
+          ]
+        }
+      ],
+      "name": "The Impossible Apartment",
+      "starting_budget": 420,
+      "starting_furniture": [
+        {
+          "id": "toilet",
+          "x": 25,
+          "y": 2
+        },
+        {
+          "id": "sink",
+          "x": 31,
+          "y": 2
+        },
+        {
+          "id": "wardrobe",
+          "rail_axis": "h",
+          "rail_end": 28,
+          "rail_start": 4,
+          "reveal_end": 16,
+          "reveal_functions": [
+            "dress"
+          ],
+          "reveal_start": 4,
+          "x": 6,
+          "y": 24
+        }
+      ],
+      "starting_inventory": [],
+      "tenant": {
+        "age": "31",
+        "flavor": "The final challenge: every mechanic you've learned, combined, on a brutal budget.",
+        "monthly_rent": 1040,
+        "name": "Marta",
+        "required_functions": [
+          "hygiene",
+          "sleep",
+          "storage",
+          "dress",
+          "sport",
           "loft_access"
         ]
       }

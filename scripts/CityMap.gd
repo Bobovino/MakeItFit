@@ -339,6 +339,13 @@ func _build_ui() -> void:
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	vb.add_child(settings_btn)
 
+	var quit_btn := Button.new()
+	quit_btn.text = "⏻ Quit to Desktop"
+	quit_btn.add_theme_font_size_override("font_size", 12)
+	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	quit_btn.pressed.connect(func(): get_tree().quit())
+	vb.add_child(quit_btn)
+
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
 	var lbl := Label.new()
@@ -499,14 +506,25 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 		sl.add_theme_color_override("font_color", GameTheme.C_AMBER)
 		vb.add_child(sl)
 	elif is_owned:
+		# Empty star slots next to READY — the map reads as a level-select
+		# screen where every card visibly has three stars up for grabs.
+		var hb := HBoxContainer.new()
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_theme_constant_override("separation", 6)
 		var rl := Label.new()
 		rl.text = "READY"
 		rl.add_theme_font_size_override("font_size", 10)
 		rl.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60))
-		vb.add_child(rl)
+		hb.add_child(rl)
+		var es := Label.new()
+		es.text = "☆☆☆"
+		es.add_theme_font_size_override("font_size", 12)
+		es.add_theme_color_override("font_color", Color(0.36, 0.42, 0.50))
+		hb.add_child(es)
+		vb.add_child(hb)
 	else:
 		var cl := Label.new()
-		cl.text = "%d€" % cost
+		cl.text = ("%d€" if can_buy else "🔒 %d€") % cost
 		cl.add_theme_font_size_override("font_size", 11)
 		cl.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60) if can_buy else GameTheme.C_MUTED)
 		vb.add_child(cl)
@@ -642,7 +660,7 @@ func _gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.position.x < MAP_W:
 			var scroll_step := 60.0
-			var max_scroll  := -((_map_total_h()) - MAP_VISIBLE_H)
+			var max_scroll  := minf(-(_map_total_h() - MAP_VISIBLE_H), 0.0)
 			if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_map_content.position.y = maxf(_map_content.position.y - scroll_step, max_scroll)
 				queue_redraw()

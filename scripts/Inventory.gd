@@ -50,8 +50,20 @@ func _ensure_filter_box() -> void:
 		btn.toggle_mode    = true
 		btn.button_group   = group
 		btn.button_pressed = (cat == _category)
-		btn.add_theme_font_size_override("font_size", 11)
+		btn.add_theme_font_size_override("font_size", 12)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Active tab fills amber like a proper tab selector, instead of relying
+		# on the barely-visible default toggle border.
+		var tp := StyleBoxFlat.new()
+		tp.bg_color = Color(0.42, 0.36, 0.13)
+		tp.border_color = GameTheme.C_AMBER
+		tp.set_border_width_all(1)
+		tp.set_corner_radius_all(9)
+		tp.anti_aliasing = true
+		tp.set_content_margin(SIDE_TOP, 6)
+		tp.set_content_margin(SIDE_BOTTOM, 6)
+		btn.add_theme_stylebox_override("pressed", tp)
+		btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
 		btn.pressed.connect(_set_category.bind(cat))
 		_filter_box.add_child(btn)
 
@@ -216,9 +228,21 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 
 	var price_lbl := Label.new()
 	price_lbl.text = "%d€" % f["buy_price"]
-	price_lbl.custom_minimum_size.x = 46
+	price_lbl.custom_minimum_size.x = 52
+	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	price_lbl.add_theme_font_size_override("font_size", 12)
-	price_lbl.add_theme_color_override("font_color", Color(0.55, 0.82, 0.58))
+	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
+	var pp := StyleBoxFlat.new()
+	pp.bg_color = Color(0.10, 0.22, 0.13)
+	pp.border_color = Color(0.26, 0.48, 0.30)
+	pp.set_border_width_all(1)
+	pp.set_corner_radius_all(8)
+	pp.anti_aliasing = true
+	pp.set_content_margin(SIDE_LEFT, 7)
+	pp.set_content_margin(SIDE_RIGHT, 7)
+	pp.set_content_margin(SIDE_TOP, 2)
+	pp.set_content_margin(SIDE_BOTTOM, 2)
+	price_lbl.add_theme_stylebox_override("normal", pp)
 	row.add_child(price_lbl)
 
 	var view3d_btn := Button.new()
@@ -325,12 +349,12 @@ func _fmt_funcs(funcs: Array) -> String:
 
 
 func _refresh_affordability(new_budget: int) -> void:
-	for row in item_list.get_children():
-		if not (row is HBoxContainer):
-			continue
-		for ctrl in (row as HBoxContainer).get_children():
-			if ctrl is Button and (ctrl as Button).has_meta("price"):
-				(ctrl as Button).disabled = new_budget < (ctrl as Button).get_meta("price") as int
+	# Rows are PanelContainer cards wrapping an HBox, so search the whole
+	# subtree — iterating only direct HBox children silently skipped every Buy
+	# button, leaving them stuck in their level-load disabled state.
+	for ctrl in item_list.find_children("*", "Button", true, false):
+		if (ctrl as Button).has_meta("price"):
+			(ctrl as Button).disabled = new_budget < (ctrl as Button).get_meta("price") as int
 
 
 func _on_buy_pressed(furniture_id: String) -> void:

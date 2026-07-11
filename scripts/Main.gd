@@ -150,6 +150,29 @@ func _apply_ui_theme() -> void:
 
 	budget_label.add_theme_font_size_override("font_size", 15)
 	budget_label.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	# Budget reads as the puzzle's primary resource — give it a HUD pill of its
+	# own instead of floating bare text in the bar.
+	var bp := StyleBoxFlat.new()
+	bp.bg_color     = Color(0.22, 0.19, 0.08)
+	bp.border_color = Color(0.62, 0.54, 0.24)
+	bp.set_border_width_all(1)
+	bp.set_corner_radius_all(10)
+	bp.anti_aliasing = true
+	bp.set_content_margin(SIDE_LEFT, 12)
+	bp.set_content_margin(SIDE_RIGHT, 12)
+	bp.set_content_margin(SIDE_TOP, 3)
+	bp.set_content_margin(SIDE_BOTTOM, 3)
+	budget_label.add_theme_stylebox_override("normal", bp)
+	# The label doubled as the bar's flexible spacer — a stretched pill looks
+	# wrong, so shrink it and hand the flex duty to a dedicated spacer.
+	budget_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var tb := $UI/TopBar as HBoxContainer
+	if not tb.has_node("BudgetSpacer"):
+		var bsp := Control.new()
+		bsp.name = "BudgetSpacer"
+		bsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tb.add_child(bsp)
+		tb.move_child(bsp, budget_label.get_index() + 1)
 
 	var rs := GameTheme.make_rent_btn_style()
 	rent_btn.add_theme_stylebox_override("normal",   rs[0])
@@ -195,13 +218,15 @@ func _apply_ui_theme() -> void:
 	if not top.has_node("ViewModeBox"):
 		var box := HBoxContainer.new()
 		box.name = "ViewModeBox"
+		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
 		var specs := [
 			[ViewMode.SPLIT,         "Split"],
 			[ViewMode.TOPDOWN_MODAL, "Top-Down"],
 			[ViewMode.VIEW3D,        "3D"],
 		]
-		for spec in specs:
+		for i in specs.size():
+			var spec: Array = specs[i]
 			var mode: int = spec[0]
 			var btn := Button.new()
 			btn.name          = "ViewMode%d" % mode
@@ -210,6 +235,16 @@ func _apply_ui_theme() -> void:
 			btn.button_group  = group
 			btn.button_pressed = (mode == ViewMode.SPLIT)
 			btn.add_theme_font_size_override("font_size", 11)
+			# Segmented-control look: one connected pill, only the outer ends
+			# rounded, with the active segment filled amber.
+			var seg_n := _segment_style(Color(0.13, 0.16, 0.21), GameTheme.C_BORDER, i, specs.size())
+			var seg_h := _segment_style(Color(0.19, 0.24, 0.31), GameTheme.C_BORDER, i, specs.size())
+			var seg_p := _segment_style(Color(0.42, 0.36, 0.13), GameTheme.C_AMBER, i, specs.size())
+			btn.add_theme_stylebox_override("normal",  seg_n)
+			btn.add_theme_stylebox_override("hover",   seg_h)
+			btn.add_theme_stylebox_override("pressed", seg_p)
+			btn.add_theme_stylebox_override("focus",   StyleBoxEmpty.new())
+			btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
 			btn.pressed.connect(_set_view_mode.bind(mode))
 			box.add_child(btn)
 			_mode_buttons[mode] = btn
@@ -249,6 +284,25 @@ func _apply_ui_theme() -> void:
 		_undo_btn.pressed.connect(_undo_builder_action)
 		ui_layer.add_child(_undo_btn)
 	_position_undo_btn()
+
+
+static func _segment_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(1)
+	s.anti_aliasing = true
+	s.set_content_margin(SIDE_LEFT, 12)
+	s.set_content_margin(SIDE_RIGHT, 12)
+	s.set_content_margin(SIDE_TOP, 5)
+	s.set_content_margin(SIDE_BOTTOM, 5)
+	var r_left := 9 if index == 0 else 0
+	var r_right := 9 if index == count - 1 else 0
+	s.corner_radius_top_left     = r_left
+	s.corner_radius_bottom_left  = r_left
+	s.corner_radius_top_right    = r_right
+	s.corner_radius_bottom_right = r_right
+	return s
 
 
 func _go_back() -> void:
@@ -881,8 +935,21 @@ func _position_wall_inspector_modal() -> void:
 	_modal_backdrop.offset_bottom = BOT_Y + 214.0   # covers BottomBar too
 	_modal_backdrop.visible = true
 
-	const MW := 760.0
-	const MH := 480.0
+	# Size the modal to the wall's actual aspect ratio instead of a fixed
+	# 760x480 box — a fixed box left tall, empty letterboxing on whichever
+	# side didn't match the wall's proportions, and dominated the screen even
+	# for a small wall, hiding the top-down plan behind it for no reason.
+	const MAX_MW := 720.0
+	const MAX_MH := 420.0
+	const MIN_MW := 380.0
+	const MIN_MH := 220.0
+	const PAD := 40.0   # room for title bar + panel margins
+	var content_w: float = wall_inspector._wall_w() * WallInspector.TILE_SIZE
+	var content_h: float = WallInspector.WALL_HEIGHT * WallInspector.TILE_SIZE
+	var fit := minf((MAX_MW - PAD) / content_w, (MAX_MH - PAD) / content_h)
+	fit = minf(fit, 2.0)   # never blow up a tiny wall to fill the whole box either
+	var MW := clampf(content_w * fit + PAD, MIN_MW, MAX_MW)
+	var MH := clampf(content_h * fit + PAD, MIN_MH, MAX_MH)
 	wall_inspector.offset_left   = (SCREEN_W - MW) * 0.5
 	wall_inspector.offset_top    = TOP_Y + 20.0
 	wall_inspector.offset_right  = (SCREEN_W + MW) * 0.5
@@ -1148,12 +1215,30 @@ func _on_budget_changed(new_budget: int) -> void:
 
 func _on_functions_updated(fulfilled: Array, required: Array) -> void:
 	tenant_card.update_checks(fulfilled, required)
-	rent_btn.disabled = not gm.check_win() or not _all_furniture_accessible()
+	_update_rent_btn()
 
 
 func _on_moments_updated(results: Dictionary) -> void:
 	tenant_card.update_moments(results)
+	_update_rent_btn()
+
+
+# Celebrate the moment the puzzle becomes solvable: the instant every
+# requirement flips green, RENT OUT wakes up with a pulse so the player's eye
+# is drawn to the "finish" button without a tutorial pointing at it.
+func _update_rent_btn() -> void:
+	var was_disabled := rent_btn.disabled
 	rent_btn.disabled = not gm.check_win() or not _all_furniture_accessible()
+	if was_disabled and not rent_btn.disabled:
+		Audio.play("success")
+		rent_btn.pivot_offset = rent_btn.size * 0.5
+		rent_btn.scale = Vector2.ONE
+		var tw := create_tween()
+		for i in 3:
+			tw.tween_property(rent_btn, "scale", Vector2(1.08, 1.08), 0.12) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(rent_btn, "scale", Vector2.ONE, 0.12) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 
 func _update_accessibility() -> void:

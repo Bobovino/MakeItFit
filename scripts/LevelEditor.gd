@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 
 # ─────────────────────────────────────────────────────────────────────────────
 const TILE_SIZE  := 8
@@ -1074,7 +1074,7 @@ func _refresh_fl_switcher() -> void:
 		btn.clip_text = true   # long labels ("Ground Floor Subfloor") truncate with an
 		                       # ellipsis instead of overflowing past the row into the
 		                       # neighboring rename/delete/visibility buttons — this
-		                       # narrow right panel doesn't have room to spare.
+							   # narrow right panel doesn't have room to spare.
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.add_theme_font_size_override("font_size", 10)
 		var col := Color(0.20, 0.75, 0.95) if is_active else GameTheme.C_TEXT
