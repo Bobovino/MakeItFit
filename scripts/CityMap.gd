@@ -3,6 +3,7 @@ class_name CityMap
 
 # ── Layout constants ────────────────────────────────────────────────────────
 const MAP_W    := 860
+const INFO_W   := 419   # info sidebar width (design px); anchored to the window's right edge
 const TOP_H    := 54
 const H_PAD    := 20.0
 const V_PAD    := 12.0
@@ -31,6 +32,7 @@ var _cards: Dictionary = {}      # level_id → Button
 var _filter_progress: bool = false
 var _filter_stars:    bool = false
 var _map_content: Control = null
+var _map_clip:    Control = null
 
 var _custom_levels:       Array      = []
 var _selected_is_custom:  bool       = false
@@ -57,6 +59,7 @@ func _ready() -> void:
 	_build_ui()
 	_map_content.size.y = _map_total_h()
 	GameState.company_funds_changed.connect(_on_funds_changed)
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	if not GameState.debug_mode_changed.is_connected(_on_debug_mode_changed):
 		GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	_refresh_all_cards()
@@ -86,7 +89,31 @@ func _card_xy(col: int, row: int) -> Vector2:
 
 
 func _map_total_h() -> float:
-	return _real_section_reserved_h() + _debug_section_reserved_h()
+	return _real_section_reserved_h() + _debug_section_reserved_h() \
+		+ _custom_section_reserved_h()
+
+
+func _custom_section_reserved_h() -> float:
+	if _custom_levels.is_empty():
+		return 0.0
+	var rows := ceili((_custom_levels.size() + 1) / float(COLS))  # +1: "new level" card
+	return 30.0 + rows * (CARD_H + V_PAD * 2)
+
+
+# Scroll floor in runtime clip coordinates — recomputed from the clip's actual
+# height so it stays correct at any window size (the const MAP_VISIBLE_H only
+# held at the 720-design layout).
+func _max_scroll() -> float:
+	var clip_h := _map_clip.size.y if _map_clip else MAP_VISIBLE_H
+	return minf(-(_map_total_h() - clip_h), 0.0)
+
+
+# Re-clamp the scroll when the window changes size, so shrinking never leaves
+# the content stranded past the new bottom.
+func _on_viewport_resized() -> void:
+	if _map_content:
+		_map_content.position.y = clampf(_map_content.position.y, _max_scroll(), 0.0)
+		queue_redraw()
 
 
 func _custom_section_y() -> float:
@@ -135,8 +162,8 @@ func _real_section_reserved_h() -> float:
 
 func _debug_section_reserved_h() -> float:
 	var count := _debug_level_count()
-	if count == 0:
-		return 0.0
+	if count == 0 or not GameState.debug_mode:
+		return 0.0   # hidden section shouldn't leave a blank scroll tail
 	var rows := ceili(float(count) / float(COLS))
 	return 30.0 + rows * (CARD_H + V_PAD * 2)
 
@@ -177,9 +204,11 @@ func _build_ui() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	# Top bar
+	# Top bar — spans the map area only; the info sidebar owns the right edge,
+	# so the filter buttons never slide underneath it on wide windows.
 	var top_pc := PanelContainer.new()
 	top_pc.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	top_pc.offset_right = -(INFO_W + 1)
 	top_pc.custom_minimum_size = Vector2(0, TOP_H)
 	var ts := StyleBoxFlat.new()
 	ts.bg_color     = Color(0.115, 0.100, 0.085, 0.98)
@@ -237,12 +266,16 @@ func _build_ui() -> void:
 
 	_update_top_bar_counters()
 
-	# Clipped map viewport — cards scroll within this
-	var map_clip := Control.new()
-	map_clip.position = Vector2(0, TOP_H)
-	map_clip.size     = Vector2(MAP_W, 720.0 - TOP_H)
-	map_clip.clip_contents = true
-	add_child(map_clip)
+	# Clipped map viewport — cards scroll within this. Anchored to fill all
+	# space left of the info sidebar so wider windows show more map, not a
+	# dead strip.
+	_map_clip = Control.new()
+	_map_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_map_clip.offset_top    = TOP_H
+	_map_clip.offset_right  = -(INFO_W + 1)
+	_map_clip.clip_contents = true
+	add_child(_map_clip)
+	var map_clip := _map_clip
 
 	_map_content = Control.new()
 	_map_content.position = Vector2.ZERO
@@ -268,17 +301,18 @@ func _build_ui() -> void:
 		real_index += 1
 	_build_debug_section()
 
-	# Vertical divider before info panel
+	# Vertical divider before info panel — hugs the sidebar's left edge
 	var div := ColorRect.new()
 	div.color = Color(0.290, 0.245, 0.190)
-	div.position = Vector2(MAP_W, 0)
-	div.size     = Vector2(1, 720)
+	div.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	div.offset_left  = -(INFO_W + 1)
+	div.offset_right = -INFO_W
 	add_child(div)
 
-	# Info panel
+	# Info panel — anchored to the window's right edge at a fixed width
 	var ip := PanelContainer.new()
-	ip.position = Vector2(MAP_W + 1, 0)
-	ip.size     = Vector2(1280 - MAP_W - 1, 720)
+	ip.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	ip.offset_left = -INFO_W
 	var ip_s := StyleBoxFlat.new()
 	ip_s.bg_color = Color(0.115, 0.100, 0.085)
 	ip_s.set_content_margin(SIDE_LEFT,   22)
@@ -675,9 +709,9 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.position.x < MAP_W:
+		if mb.pressed and mb.position.x < _map_clip.size.x:
 			var scroll_step := 60.0
-			var max_scroll  := minf(-(_map_total_h() - MAP_VISIBLE_H), 0.0)
+			var max_scroll  := _max_scroll()
 			if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_map_content.position.y = maxf(_map_content.position.y - scroll_step, max_scroll)
 				queue_redraw()
@@ -722,6 +756,11 @@ func _on_toggle_debug_mode() -> void:
 func _on_debug_mode_changed(_enabled: bool) -> void:
 	_refresh_all_cards()
 	_update_debug_section_visibility()
+	# The scrollable height just changed — keep the view inside the new range
+	if _map_content:
+		_map_content.size.y = _map_total_h()
+		_map_content.position.y = clampf(_map_content.position.y, _max_scroll(), 0.0)
+		queue_redraw()
 
 
 func _on_dev_unlock() -> void:
@@ -791,10 +830,12 @@ func _build_block_headers() -> void:
 func _draw() -> void:
 	var minor := Color(0.15, 0.20, 0.30, 0.18)
 	var major := Color(0.20, 0.28, 0.42, 0.35)
-	for x in range(0, 1281, 20):
-		draw_line(Vector2(x, 0), Vector2(x, 720), major if x % 100 == 0 else minor, 1.0)
-	for y in range(0, 721, 20):
-		draw_line(Vector2(0, y), Vector2(1280, y), major if y % 100 == 0 else minor, 1.0)
+	var vw := int(size.x) + 1
+	var vh := int(size.y) + 1
+	for x in range(0, vw, 20):
+		draw_line(Vector2(x, 0), Vector2(x, vh), major if x % 100 == 0 else minor, 1.0)
+	for y in range(0, vh, 20):
+		draw_line(Vector2(0, y), Vector2(vw, y), major if y % 100 == 0 else minor, 1.0)
 
 	# District region outlines — account for scroll offset
 	var scroll_y := _map_content.position.y if _map_content else 0.0
