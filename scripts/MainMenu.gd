@@ -60,7 +60,7 @@ func _ready() -> void:
 	editor_btn.custom_minimum_size = Vector2(240, 36)
 	editor_btn.add_theme_font_size_override("font_size", 12)
 	editor_btn.add_theme_color_override("font_color", Color(0.52, 0.74, 0.62))
-	editor_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn"))
+	editor_btn.pressed.connect(func(): Transition.change_scene("res://scenes/LevelEditor.tscn"))
 	vbox.add_child(editor_btn)
 
 	var quit_btn := Button.new()
@@ -73,7 +73,7 @@ func _ready() -> void:
 
 
 func _on_start() -> void:
-	get_tree().change_scene_to_file("res://scenes/CityMap.tscn")
+	Transition.change_scene("res://scenes/CityMap.tscn")
 
 
 func _on_quit() -> void:

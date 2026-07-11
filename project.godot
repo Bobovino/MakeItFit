@@ -24,6 +24,7 @@ config/icon="res://icon.svg"
 
 Audio="*res://scripts/AudioManager.gd"
 GameState="*res://scripts/GameState.gd"
+Transition="*res://scripts/Transitions.gd"
 
 [debug]
 

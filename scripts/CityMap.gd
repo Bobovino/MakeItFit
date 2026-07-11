@@ -387,6 +387,16 @@ func _create_card(ld: Dictionary, index: int = 0) -> Button:
 	card.add_theme_stylebox_override("hover", sh)
 	card.add_theme_stylebox_override("pressed", sh)
 
+	# Hover lift: the card floats up a touch, like picking a folder off a desk
+	card.mouse_entered.connect(func():
+		var tw := card.create_tween()
+		tw.tween_property(card, "position:y", pos.y - 3.0, 0.10) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
+	card.mouse_exited.connect(func():
+		var tw := card.create_tween()
+		tw.tween_property(card, "position:y", pos.y, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
+
 	card.pressed.connect(_select_level.bind(ld))
 	_map_content.add_child(card)
 	return card
@@ -632,7 +642,7 @@ func _on_action_pressed() -> void:
 		GameState.custom_level_data = _selected_custom_data
 		GameState.pending_level_id  = "_custom"
 		GameState.own_level("_custom")
-		get_tree().change_scene_to_file("res://scenes/Main.tscn")
+		Transition.change_scene("res://scenes/Main.tscn")
 		return
 	if _selected.is_empty():
 		return
@@ -642,7 +652,7 @@ func _on_action_pressed() -> void:
 	if is_owned:
 		Audio.play("click")
 		GameState.pending_level_id = lid
-		get_tree().change_scene_to_file("res://scenes/Main.tscn")
+		Transition.change_scene("res://scenes/Main.tscn")
 	else:
 		var cost := _selected.get("acquisition_cost", 0) as int
 		if GameState.buy_level(lid, cost):
@@ -677,7 +687,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var ke := event as InputEventKey
 	if ke.keycode == KEY_E and ke.ctrl_pressed and ke.shift_pressed and ke.alt_pressed:
 		get_viewport().set_input_as_handled()
-		get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
+		Transition.change_scene("res://scenes/LevelEditor.tscn")
 		return
 	if ke.keycode == KEY_D and ke.ctrl_pressed and ke.shift_pressed and ke.alt_pressed:
 		get_viewport().set_input_as_handled()
@@ -1004,7 +1014,7 @@ func _create_new_level_card(index: int) -> void:
 	card.add_child(lbl)
 
 	card.pressed.connect(func():
-		get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn"))
+		Transition.change_scene("res://scenes/LevelEditor.tscn"))
 	_map_content.add_child(card)
 
 

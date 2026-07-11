@@ -53,7 +53,10 @@ func _ready() -> void:
 	# corner on success, like a permit office signing off on the drawing.
 	_stamp = Label.new()
 	_stamp.text = "APPROVED"
-	_stamp.add_theme_font_size_override("font_size", 26)
+	var hand := GameTheme.handwriting()
+	if hand:
+		_stamp.add_theme_font_override("font", hand)
+	_stamp.add_theme_font_size_override("font_size", 30)
 	_stamp.add_theme_color_override("font_color", Color(0.780, 0.320, 0.260, 0.90))
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(0, 0, 0, 0)

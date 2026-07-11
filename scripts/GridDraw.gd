@@ -24,6 +24,24 @@ const WALL_THICK   := 6.0
 const EDGE_W       := 10.0   # clickable strip width — must match Wall.gd EDGE_MARGIN
 const METER_TILES  := 10
 
+# Shared paper-grain texture — generated once, tiled over every sheet
+static var _grain_tex: ImageTexture = null
+
+static func _get_grain() -> ImageTexture:
+	if _grain_tex == null:
+		var n := FastNoiseLite.new()
+		n.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		n.frequency = 0.55
+		n.seed = 7
+		var img := Image.create(128, 128, false, Image.FORMAT_RGBA8)
+		for y in range(128):
+			for x in range(128):
+				var v := clampf(n.get_noise_2d(x, y) * 0.5 + 0.5, 0.0, 1.0)
+				img.set_pixel(x, y, Color(1, 1, 1, v))
+		_grain_tex = ImageTexture.create_from_image(img)
+	return _grain_tex
+
+
 var _hovered_edge:    String = ""
 var _active_edge:     String = ""
 var _hovered_seg_idx: int   = -1   # new-format hover: nearest segment index
@@ -40,6 +58,7 @@ func set_active_edge(edge: String) -> void:
 
 
 func _ready() -> void:
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED   # lets the grain tile
 	_gm = get_tree().get_first_node_in_group("game_manager") as GameManager
 	var parent := get_parent() as Floor
 	if parent:
@@ -152,6 +171,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	draw_rect(Rect2(4, 5, ww, hh), Color(0, 0, 0, 0.14))
 	draw_rect(Rect2(2, 3, ww, hh), Color(0, 0, 0, 0.18))
 	draw_rect(Rect2(0, 0, ww, hh), CANVAS_BG)
+	# Faint paper grain — one shared noise texture tiled across the sheet
+	draw_texture_rect(_get_grain(), Rect2(0, 0, ww, hh), true, Color(1, 1, 1, 0.05))
 	# Cream cut edge — the white rim of the actual paper stock
 	draw_rect(Rect2(0, 0, ww, hh), Color(0.955, 0.930, 0.870, 0.85), false, 1.5)
 

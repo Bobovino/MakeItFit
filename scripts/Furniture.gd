@@ -216,6 +216,12 @@ func _apply_fold_state(want_extended: bool) -> bool:
 	return true
 
 
+func _process(_delta: float) -> void:
+	# Keep the drag validity tint pulsing while a piece is held
+	if _dragging:
+		queue_redraw()
+
+
 func _draw() -> void:
 	var w := grid_w * TILE_SIZE
 	var h := grid_h * TILE_SIZE
@@ -322,6 +328,16 @@ func _draw() -> void:
 		draw_rect(Rect2(0, 0, w, h), Color(0.88, 0.08, 0.08, 0.32))
 		draw_line(Vector2(3, 3),     Vector2(w - 3, h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
 		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
+
+	# Drag validity tint — soft pulsing sage when the spot is free, terracotta
+	# when blocked, so validity reads before the piece is even dropped.
+	if _dragging and _wall_ref:
+		var at := Vector2(position.x / TILE_SIZE, position.y / TILE_SIZE)
+		var ok := _wall_ref.can_place(self, at)
+		var pulse := 0.14 + 0.06 * sin(Time.get_ticks_msec() * 0.008)
+		var vc := Color(0.35, 0.80, 0.38, pulse) if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
+		draw_rect(Rect2(0, 0, w, h), vc)
+		draw_rect(Rect2(0, 0, w, h), Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
 
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:

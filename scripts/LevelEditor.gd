@@ -230,7 +230,7 @@ func _build_topbar(ui: Node) -> void:
 	back_btn.text = "← Back"
 	back_btn.add_theme_font_size_override("font_size", 11)
 	back_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/CityMap.tscn"))
+	back_btn.pressed.connect(func(): Transition.change_scene("res://scenes/CityMap.tscn"))
 	hb.add_child(back_btn)
 
 	var title := Label.new()
@@ -3536,4 +3536,4 @@ func _test_level() -> void:
 	gs.set("pending_level_id",  "_custom")
 	gs.set("testing_from_editor", true)
 	gs.call("own_level", "_custom")
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	Transition.change_scene("res://scenes/Main.tscn")

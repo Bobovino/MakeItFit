@@ -309,9 +309,9 @@ func _go_back() -> void:
 	if GameState.testing_from_editor:
 		GameState.testing_from_editor = false
 		GameState.resume_editor       = true
-		get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
+		Transition.change_scene("res://scenes/LevelEditor.tscn")
 	else:
-		get_tree().change_scene_to_file("res://scenes/CityMap.tscn")
+		Transition.change_scene("res://scenes/CityMap.tscn")
 
 
 func _load_level(level_id: String) -> void:
@@ -1539,7 +1539,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_next_level() -> void:
-	get_tree().change_scene_to_file("res://scenes/CityMap.tscn")
+	Transition.change_scene("res://scenes/CityMap.tscn")
 
 
 func _on_retry() -> void:

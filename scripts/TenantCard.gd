@@ -41,7 +41,13 @@ func _ready() -> void:
 	tenant_name_label.add_theme_font_size_override("font_size", 14)
 	tenant_name_label.add_theme_color_override("font_color", INK)
 
-	flavor_label.add_theme_font_size_override("font_size", 10)
+	# The client's own words in handwriting — a note scribbled on the brief
+	var hand := GameTheme.handwriting()
+	if hand:
+		flavor_label.add_theme_font_override("font", hand)
+		flavor_label.add_theme_font_size_override("font_size", 15)
+	else:
+		flavor_label.add_theme_font_size_override("font_size", 10)
 	flavor_label.add_theme_color_override("font_color", INK_MUTED)
 	flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 

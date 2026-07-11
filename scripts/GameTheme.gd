@@ -14,6 +14,17 @@ const C_GOOD    := Color(0.560, 0.780, 0.470)   # sage green — valid / success
 const C_BAD     := Color(0.900, 0.475, 0.400)   # terracotta — invalid / error
 
 
+# Handwritten accent font (Caveat, OFL) — used sparingly: the APPROVED stamp,
+# tenant brief notes, pencil-style annotations. Everything else stays Space
+# Grotesk via the global fallback font.
+static var _hand_font: Font = null
+
+static func handwriting() -> Font:
+	if _hand_font == null and ResourceLoader.exists("res://assets/fonts/Caveat.ttf"):
+		_hand_font = load("res://assets/fonts/Caveat.ttf")
+	return _hand_font
+
+
 static func make() -> Theme:
 	var t := Theme.new()
 
