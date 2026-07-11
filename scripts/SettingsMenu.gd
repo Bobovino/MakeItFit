@@ -30,7 +30,7 @@ func _build() -> void:
 
 	var card := PanelContainer.new()
 	var cs := StyleBoxFlat.new()
-	cs.bg_color     = Color(0.09, 0.12, 0.17)
+	cs.bg_color     = Color(0.115, 0.100, 0.085)
 	cs.border_color = GameTheme.C_BORDER
 	cs.set_border_width_all(2)
 	cs.set_corner_radius_all(10)

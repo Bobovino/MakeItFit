@@ -187,15 +187,15 @@ func _build_builder_tool_row() -> VBoxContainer:
 func _build_shop_row(f: Dictionary) -> PanelContainer:
 	var card := PanelContainer.new()
 	var item_col := Color("#" + (f.get("color", "888888") as String))
-	var card_style := GameTheme.make_card_stylebox(Color(0.16, 0.19, 0.24), Color(0.24, 0.29, 0.36))
+	var card_style := GameTheme.make_card_stylebox(Color(0.210, 0.185, 0.150), Color(0.320, 0.270, 0.205))
 	card.add_theme_stylebox_override("panel", card_style)
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.mouse_entered.connect(func():
 		card_style.bg_color = Color(0.20, 0.24, 0.30)
 		card_style.border_color = item_col.lightened(0.2))
 	card.mouse_exited.connect(func():
-		card_style.bg_color = Color(0.16, 0.19, 0.24)
-		card_style.border_color = Color(0.24, 0.29, 0.36))
+		card_style.bg_color = Color(0.210, 0.185, 0.150)
+		card_style.border_color = Color(0.320, 0.270, 0.205))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
@@ -297,7 +297,7 @@ func _render_owned_section() -> void:
 			var card := PanelContainer.new()
 			var item_col := Color("#" + (fdata.get("color", "888888") as String))
 			card.add_theme_stylebox_override("panel",
-				GameTheme.make_card_stylebox(Color(0.16, 0.19, 0.24), Color(0.24, 0.29, 0.36)))
+				GameTheme.make_card_stylebox(Color(0.210, 0.185, 0.150), Color(0.320, 0.270, 0.205)))
 
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 8)

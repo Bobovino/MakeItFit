@@ -5,12 +5,12 @@ const TILE_SIZE    := 8
 # ── Cyanotype blueprint palette ───────────────────────────────────────────────
 # Everything reads as a classic architectural blueprint: white/cyan ink on
 # deep blue. Room interior is a slightly lighter blue so it reads as "inside".
-const BP_PAPER     := Color(0.055, 0.145, 0.255, 1.0)  # deep blueprint blue (outside)
-const BP_FLOOR     := Color(0.098, 0.235, 0.380, 1.0)  # room interior (lighter blue)
-const BP_INK       := Color(0.86, 0.94, 1.00, 1.0)     # bright white-cyan drafting ink
-const BP_INK_SOFT  := Color(0.66, 0.82, 0.96, 1.0)     # secondary lines
-const BP_GRID_FINE := Color(0.42, 0.64, 0.86, 0.16)    # 10 cm subcell grid
-const BP_GRID_MAJ  := Color(0.56, 0.78, 0.98, 0.38)    # 1 m grid lines
+const BP_PAPER     := Color(0.070, 0.150, 0.260, 1.0)  # deep blueprint blue (outside)
+const BP_FLOOR     := Color(0.110, 0.245, 0.385, 1.0)  # room interior (lighter blue)
+const BP_INK       := Color(0.91, 0.945, 0.965, 1.0)   # aged white drafting ink
+const BP_INK_SOFT  := Color(0.64, 0.79, 0.92, 1.0)     # secondary lines
+const BP_GRID_FINE := Color(0.42, 0.64, 0.86, 0.10)    # 10 cm subcell grid (quiet)
+const BP_GRID_MAJ  := Color(0.56, 0.78, 0.98, 0.26)    # 1 m grid lines (quiet)
 
 const FLOOR_COLOR  := BP_FLOOR
 const WALL_COLOR   := BP_INK
@@ -18,8 +18,8 @@ const GRID_MINOR   := BP_GRID_FINE
 const GRID_MAJOR   := BP_GRID_MAJ
 const DOOR_COLOR   := Color(0.55, 0.82, 0.98, 1.0)   # cyan swing
 const WINDOW_COLOR := Color(0.60, 0.86, 1.00, 0.95)  # bright glazing
-const EDGE_HOVER   := Color(1.0, 0.88, 0.2, 0.55)
-const EDGE_ACTIVE  := Color(1.0, 0.60, 0.0, 1.0)
+const EDGE_HOVER   := Color(0.96, 0.80, 0.45, 0.55)   # honey amber (matches UI accent)
+const EDGE_ACTIVE  := Color(1.0, 0.66, 0.20, 1.0)
 const WALL_THICK   := 6.0
 const EDGE_W       := 10.0   # clickable strip width — must match Wall.gd EDGE_MARGIN
 const METER_TILES  := 10
@@ -145,8 +145,15 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	var px_per_tile := ct_scale * float(TILE_SIZE)
 	var show_fine   := px_per_tile >= 5.0   # draw 10 cm subcell lines when ≥ 5 px/tile
 
-	# ── 1. Canvas background ──────────────────────────────────────────────────
+	# ── 1. Canvas background — a paper sheet lying on the desk ───────────────
+	# Stacked soft drop shadows first, so the blueprint reads as a physical
+	# document resting on the warm desk surface behind it.
+	draw_rect(Rect2(6, 8, ww, hh), Color(0, 0, 0, 0.10))
+	draw_rect(Rect2(4, 5, ww, hh), Color(0, 0, 0, 0.14))
+	draw_rect(Rect2(2, 3, ww, hh), Color(0, 0, 0, 0.18))
 	draw_rect(Rect2(0, 0, ww, hh), CANVAS_BG)
+	# Cream cut edge — the white rim of the actual paper stock
+	draw_rect(Rect2(0, 0, ww, hh), Color(0.955, 0.930, 0.870, 0.85), false, 1.5)
 
 	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
 	if not parent.shadow_mask.is_empty():
@@ -469,6 +476,14 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	var m2 := 7.0
 	draw_rect(Rect2(m1, m1, ww - m1 * 2, hh - m1 * 2), FRAME_COL, false, 1.5)
 	draw_rect(Rect2(m2, m2, ww - m2 * 2, hh - m2 * 2), Color(FRAME_COL.r, FRAME_COL.g, FRAME_COL.b, 0.35), false, 1.0)
+	# Corner registration ticks — small drafting L-marks just inside the frame
+	var tk := 6.0
+	var tm := m2 + 4.0
+	for corner in [Vector2(tm, tm), Vector2(ww - tm, tm), Vector2(tm, hh - tm), Vector2(ww - tm, hh - tm)]:
+		var dx := tk if corner.x < ww * 0.5 else -tk
+		var dy := tk if corner.y < hh * 0.5 else -tk
+		draw_line(corner, corner + Vector2(dx, 0), BP_INK_SOFT, 1.0, true)
+		draw_line(corner, corner + Vector2(0, dy), BP_INK_SOFT, 1.0, true)
 
 	# ── 4. Natural light hatching (only over painted tiles) ───────────────────
 	_draw_natural_light(parent)

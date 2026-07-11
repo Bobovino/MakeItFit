@@ -15,8 +15,8 @@ var _stars_label: Label = null
 
 func _ready() -> void:
 	var s := StyleBoxFlat.new()
-	s.bg_color     = Color(0.09, 0.11, 0.16, 0.97)
-	s.border_color = Color(0.22, 0.28, 0.36)
+	s.bg_color     = Color(0.115, 0.100, 0.085, 0.97)
+	s.border_color = Color(0.320, 0.270, 0.205)
 	s.set_border_width_all(1)
 	s.set_content_margin_all(40)
 	($Panel as Control).add_theme_stylebox_override("panel", s)

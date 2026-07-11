@@ -18,7 +18,7 @@ func _ready() -> void:
 	# Background
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.08, 0.10, 0.15)   # deep navy
+	bg.color = Color(0.105, 0.090, 0.075)   # deep navy
 	add_child(bg)
 
 	# Centered column
@@ -31,7 +31,7 @@ func _ready() -> void:
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(vbox)
 
-	_add_label(vbox, "MAKE IT FIT", 52, Color(0.95, 0.88, 0.55))
+	_add_label(vbox, "MAKE IT FIT", 52, Color(0.960, 0.800, 0.450))
 	_add_label(vbox, "Furnish. Satisfy. Retire.", 14, Color(0.52, 0.64, 0.74))
 
 	_spacer(vbox, 16)

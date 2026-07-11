@@ -182,8 +182,8 @@ func _build_ui() -> void:
 	top_pc.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	top_pc.custom_minimum_size = Vector2(0, TOP_H)
 	var ts := StyleBoxFlat.new()
-	ts.bg_color     = Color(0.09, 0.11, 0.15, 0.98)
-	ts.border_color = Color(0.22, 0.28, 0.36)
+	ts.bg_color     = Color(0.115, 0.100, 0.085, 0.98)
+	ts.border_color = Color(0.320, 0.270, 0.205)
 	ts.set_border_width(SIDE_BOTTOM, 1)
 	ts.set_content_margin_all(8)
 	top_pc.add_theme_stylebox_override("panel", ts)
@@ -270,7 +270,7 @@ func _build_ui() -> void:
 
 	# Vertical divider before info panel
 	var div := ColorRect.new()
-	div.color = Color(0.20, 0.26, 0.34)
+	div.color = Color(0.290, 0.245, 0.190)
 	div.position = Vector2(MAP_W, 0)
 	div.size     = Vector2(1, 720)
 	add_child(div)
@@ -280,7 +280,7 @@ func _build_ui() -> void:
 	ip.position = Vector2(MAP_W + 1, 0)
 	ip.size     = Vector2(1280 - MAP_W - 1, 720)
 	var ip_s := StyleBoxFlat.new()
-	ip_s.bg_color = Color(0.09, 0.11, 0.15)
+	ip_s.bg_color = Color(0.115, 0.100, 0.085)
 	ip_s.set_content_margin(SIDE_LEFT,   22)
 	ip_s.set_content_margin(SIDE_RIGHT,  22)
 	ip_s.set_content_margin(SIDE_TOP,    60)
@@ -296,7 +296,7 @@ func _build_ui() -> void:
 	_info_district = _make_info_label(vb, 11, GameTheme.C_MUTED)
 
 	var sep1 := HSeparator.new()
-	sep1.add_theme_color_override("color", Color(0.20, 0.26, 0.34))
+	sep1.add_theme_color_override("color", Color(0.290, 0.245, 0.190))
 	vb.add_child(sep1)
 
 	_info_tenant = _make_info_label(vb, 11, GameTheme.C_TEXT, true)
@@ -305,7 +305,7 @@ func _build_ui() -> void:
 	_info_rent   = _make_info_label(vb, 15, Color(0.50, 0.78, 0.60))
 
 	var sep2 := HSeparator.new()
-	sep2.add_theme_color_override("color", Color(0.20, 0.26, 0.34))
+	sep2.add_theme_color_override("color", Color(0.290, 0.245, 0.190))
 	vb.add_child(sep2)
 
 	_info_cost = _make_info_label(vb, 13, GameTheme.C_AMBER, true)
@@ -368,8 +368,8 @@ func _create_card(ld: Dictionary, index: int = 0) -> Button:
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var sn := StyleBoxFlat.new()
-	sn.bg_color     = Color(0.12, 0.15, 0.20)
-	sn.border_color = Color(0.22, 0.28, 0.36)
+	sn.bg_color     = Color(0.165, 0.145, 0.120)
+	sn.border_color = Color(0.320, 0.270, 0.205)
 	sn.set_border_width_all(1)
 	sn.set_corner_radius_all(7)
 	sn.set_content_margin_all(0)
@@ -382,7 +382,7 @@ func _create_card(ld: Dictionary, index: int = 0) -> Button:
 	var sh := sn.duplicate() as StyleBoxFlat
 	sh.border_color = GameTheme.C_AMBER
 	sh.set_border_width_all(2)
-	sh.shadow_color = Color(0.95, 0.88, 0.55, 0.30)
+	sh.shadow_color = Color(0.960, 0.800, 0.450, 0.30)
 	sh.shadow_size = 8
 	card.add_theme_stylebox_override("hover", sh)
 	card.add_theme_stylebox_override("pressed", sh)
@@ -428,15 +428,15 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 	if sn:
 		if not level_visible:
 			sn.bg_color = Color(0.08, 0.09, 0.11)
-			sn.border_color = Color(0.14, 0.16, 0.19)
+			sn.border_color = Color(0.200, 0.175, 0.145)
 		elif is_owned:
 			sn.bg_color     = Color(dist_col.r * 0.28 + 0.07, dist_col.g * 0.28 + 0.09, dist_col.b * 0.28 + 0.11)
 			sn.border_color = Color(dist_col.r * 0.70 + 0.10, dist_col.g * 0.70 + 0.10, dist_col.b * 0.70 + 0.10, 0.80)
 		elif can_buy:
-			sn.bg_color     = Color(0.12, 0.15, 0.20)
-			sn.border_color = Color(0.22, 0.28, 0.36)
+			sn.bg_color     = Color(0.165, 0.145, 0.120)
+			sn.border_color = Color(0.320, 0.270, 0.205)
 		else:
-			sn.bg_color     = Color(0.09, 0.11, 0.14)
+			sn.bg_color     = Color(0.110, 0.098, 0.085)
 			sn.border_color = Color(0.16, 0.20, 0.25)
 
 	var vb := VBoxContainer.new()

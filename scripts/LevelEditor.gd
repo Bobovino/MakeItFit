@@ -213,8 +213,8 @@ func _build_scene() -> void:
 func _build_topbar(ui: Node) -> void:
 	var bar := PanelContainer.new()
 	var bs := StyleBoxFlat.new()
-	bs.bg_color = Color(0.09, 0.11, 0.16)
-	bs.border_color = Color(0.22, 0.28, 0.36)
+	bs.bg_color = Color(0.115, 0.100, 0.085)
+	bs.border_color = Color(0.320, 0.270, 0.205)
 	bs.set_border_width(SIDE_BOTTOM, 1)
 	bs.set_content_margin_all(6)
 	bar.add_theme_stylebox_override("panel", bs)
@@ -251,7 +251,7 @@ func _build_topbar(ui: Node) -> void:
 func _build_left(ui: Node) -> void:
 	var panel := PanelContainer.new()
 	var ps := StyleBoxFlat.new()
-	ps.bg_color = Color(0.09, 0.11, 0.16)
+	ps.bg_color = Color(0.115, 0.100, 0.085)
 	ps.border_color = Color(0.18, 0.24, 0.34, 0.70)
 	ps.set_border_width(SIDE_RIGHT, 1)
 	ps.set_content_margin_all(10)
@@ -363,7 +363,7 @@ func _build_left(ui: Node) -> void:
 func _build_right(ui: Node) -> void:
 	var panel := PanelContainer.new()
 	var ps := StyleBoxFlat.new()
-	ps.bg_color = Color(0.09, 0.11, 0.16)
+	ps.bg_color = Color(0.115, 0.100, 0.085)
 	ps.border_color = Color(0.18, 0.24, 0.34, 0.70)
 	ps.set_border_width(SIDE_LEFT, 1)
 	ps.set_content_margin_all(10)
@@ -2148,7 +2148,7 @@ func _update_inv_count_lbl() -> void:
 func _build_bottom(ui: Node) -> void:
 	var panel := PanelContainer.new()
 	var ps := StyleBoxFlat.new()
-	ps.bg_color    = Color(0.09, 0.11, 0.16)
+	ps.bg_color    = Color(0.115, 0.100, 0.085)
 	ps.border_color = Color(0.18, 0.24, 0.34, 0.70)
 	ps.set_border_width(SIDE_TOP, 1)
 	ps.set_content_margin_all(8)
@@ -3191,7 +3191,7 @@ func _prompt_level_name(on_confirm: Callable) -> void:
 
 	var card := PanelContainer.new()
 	var cs := StyleBoxFlat.new()
-	cs.bg_color     = Color(0.09, 0.12, 0.17)
+	cs.bg_color     = Color(0.115, 0.100, 0.085)
 	cs.border_color = Color(0.24, 0.34, 0.48)
 	cs.set_border_width_all(1)
 	cs.set_content_margin_all(20)
@@ -3280,7 +3280,7 @@ func _show_load_popup(_items: Array) -> void:
 
 	var card := PanelContainer.new()
 	var cs := StyleBoxFlat.new()
-	cs.bg_color = Color(0.09, 0.12, 0.17)
+	cs.bg_color = Color(0.115, 0.100, 0.085)
 	cs.border_color = Color(0.24, 0.34, 0.48)
 	cs.set_border_width_all(1)
 	cs.set_content_margin_all(16)

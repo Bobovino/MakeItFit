@@ -139,7 +139,7 @@ func _apply_ui_theme() -> void:
 	wall_inspector.theme = t
 
 	var ts := StyleBoxFlat.new()
-	ts.bg_color     = Color(0.10, 0.12, 0.17, 0.98)
+	ts.bg_color     = Color(0.130, 0.113, 0.095, 0.98)
 	ts.border_color = GameTheme.C_BORDER
 	ts.set_border_width(SIDE_BOTTOM, 2)
 	ts.set_content_margin_all(6)
@@ -237,7 +237,7 @@ func _apply_ui_theme() -> void:
 			btn.add_theme_font_size_override("font_size", 11)
 			# Segmented-control look: one connected pill, only the outer ends
 			# rounded, with the active segment filled amber.
-			var seg_n := _segment_style(Color(0.13, 0.16, 0.21), GameTheme.C_BORDER, i, specs.size())
+			var seg_n := _segment_style(Color(0.175, 0.155, 0.125), GameTheme.C_BORDER, i, specs.size())
 			var seg_h := _segment_style(Color(0.19, 0.24, 0.31), GameTheme.C_BORDER, i, specs.size())
 			var seg_p := _segment_style(Color(0.42, 0.36, 0.13), GameTheme.C_AMBER, i, specs.size())
 			btn.add_theme_stylebox_override("normal",  seg_n)
@@ -526,7 +526,7 @@ func _show_mechanic_intro_if_needed() -> void:
 	# Card panel (480×300, centred)
 	var card := PanelContainer.new()
 	var cs := StyleBoxFlat.new()
-	cs.bg_color     = Color(0.09, 0.12, 0.17)
+	cs.bg_color     = Color(0.115, 0.100, 0.085)
 	cs.border_color = Color(0.30, 0.80, 0.60, 0.80)
 	cs.set_border_width_all(2)
 	cs.set_corner_radius_all(6)
@@ -544,7 +544,7 @@ func _show_mechanic_intro_if_needed() -> void:
 	var chip := Label.new()
 	chip.text = "  NEW MECHANIC  "
 	chip.add_theme_font_size_override("font_size", 9)
-	chip.add_theme_color_override("font_color", Color(0.10, 0.10, 0.14))
+	chip.add_theme_color_override("font_color", Color(0.120, 0.100, 0.080))
 	var chip_s := StyleBoxFlat.new()
 	chip_s.bg_color = Color(0.30, 0.80, 0.60)
 	chip_s.set_corner_radius_all(3)
@@ -1393,7 +1393,7 @@ func _enter_demolition_phase() -> void:
 	# Dark side-panel info card
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color     = Color(0.09, 0.11, 0.15, 0.95)
+	sb.bg_color     = Color(0.115, 0.100, 0.085, 0.95)
 	sb.border_color = Color(0.78, 0.40, 0.16, 0.80)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(12)
@@ -1572,8 +1572,8 @@ func _any_floor_has(furniture_id: String) -> bool:
 func _build_paint_panel(types: Array) -> void:
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color     = Color(0.09, 0.11, 0.15, 0.97)
-	sb.border_color = Color(0.20, 0.26, 0.34)
+	sb.bg_color     = Color(0.115, 0.100, 0.085, 0.97)
+	sb.border_color = Color(0.290, 0.245, 0.190)
 	sb.set_border_width(SIDE_BOTTOM, 1)
 	sb.set_content_margin_all(8)
 	panel.add_theme_stylebox_override("panel", sb)
