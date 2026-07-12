@@ -1015,8 +1015,8 @@ func _set_mode_hint(text: String) -> void:
 	_mode_hint_lbl.text = text
 	_mode_hint_lbl.offset_left   = LEFT_X
 	_mode_hint_lbl.offset_right  = RIGHT_X
-	_mode_hint_lbl.offset_top    = TOP_Y + 6.0
-	_mode_hint_lbl.offset_bottom = TOP_Y + 26.0
+	_mode_hint_lbl.offset_top    = TOP_Y + 14.0
+	_mode_hint_lbl.offset_bottom = TOP_Y + 34.0
 	_mode_hint_lbl.visible = true
 	ui_layer.move_child(_mode_hint_lbl, ui_layer.get_child_count() - 1)
 

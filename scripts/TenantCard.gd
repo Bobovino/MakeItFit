@@ -267,11 +267,11 @@ func _make_section_label(text: String) -> Label:
 	return lbl
 
 
-# A flat, borderless toggle styled to still read as a plain section label at
-# rest — only the active moment picks up the amber accent (same as every
-# other active-mode indicator in the game), so this doubles as both the
-# "DAY"/"NIGHT" heading and the moment switcher without adding a separate
-# control.
+# Styled as a small pill/tab, same visual language as the segmented Floor
+# Plan/3D and floor-tab switchers elsewhere in the TopBar — a bare label with
+# just a color change on click doesn't read as a button at all, so this needs
+# a real chip background (border + fill) to signal "click me" at rest, not
+# only once the player happens to hover it.
 func _make_moment_header_btn(text: String, mid: String) -> Button:
 	var btn := Button.new()
 	btn.text = text
@@ -280,13 +280,19 @@ func _make_moment_header_btn(text: String, mid: String) -> Button:
 	btn.focus_mode   = Control.FOCUS_NONE
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.add_theme_font_size_override("font_size", 9)
-	btn.add_theme_stylebox_override("normal",   StyleBoxEmpty.new())
-	btn.add_theme_stylebox_override("hover",    StyleBoxEmpty.new())
-	btn.add_theme_stylebox_override("pressed",  StyleBoxEmpty.new())
+	var n := GameTheme.make_card_stylebox(Color(0.16, 0.14, 0.11, 0.7), Color(0.45, 0.40, 0.32), 8)
+	var h := GameTheme.make_card_stylebox(Color(0.22, 0.19, 0.14, 0.85), Color(0.70, 0.58, 0.32), 8)
+	var p := GameTheme.make_card_stylebox(Color(0.42, 0.34, 0.14), GameTheme.C_AMBER, 8)
+	n.set_content_margin(SIDE_TOP, 3); n.set_content_margin(SIDE_BOTTOM, 3)
+	h.set_content_margin(SIDE_TOP, 3); h.set_content_margin(SIDE_BOTTOM, 3)
+	p.set_content_margin(SIDE_TOP, 3); p.set_content_margin(SIDE_BOTTOM, 3)
+	btn.add_theme_stylebox_override("normal",   n)
+	btn.add_theme_stylebox_override("hover",    h)
+	btn.add_theme_stylebox_override("pressed",  p)
 	btn.add_theme_stylebox_override("focus",    StyleBoxEmpty.new())
 	btn.add_theme_color_override("font_color",         INK_MUTED)
 	btn.add_theme_color_override("font_hover_color",   INK)
-	btn.add_theme_color_override("font_pressed_color", GameTheme.C_AMBER)
+	btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
 	btn.pressed.connect(func(): moment_selected.emit(mid))
 	return btn
 
