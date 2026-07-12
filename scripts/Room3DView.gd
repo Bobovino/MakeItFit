@@ -1613,57 +1613,76 @@ func _add_sloped_wall(length: float, thick: float, h0: float, h1: float,
 	return mi
 
 
-# `sc` is Floor.sloped_ceiling ({} if the room has a flat ceiling). Walls
-# running along the slope axis get a slanted top edge; the other two get a
-# constant height matching the ceiling at their fixed position — mirrors the
-# 2D GridDraw/WallInspector cut logic exactly, just in 3D.
-func _add_walls(w: float, d: float, sc: Dictionary, bounds: Rect2i) -> void:
-	var col := Color(0.86, 0.83, 0.76)
+# `sc` is Floor.sloped_ceiling ({} if the room has a flat ceiling). One
+# MeshInstance3D per actual wall segment (perimeter AND interior partitions)
+# instead of a fixed north/south/west/east box around the room's bounding
+# rect — a multi-room floor (an L-shape, an interior partition with a door,
+# etc.) used to render as if it were a plain rectangle, silently dropping
+# every wall that wasn't one of the outer four. Segments running along the
+# slope axis get a slanted top edge; the other orientation gets a constant
+# height matching the ceiling at that segment's fixed position — mirrors the
+# 2D GridDraw/WallInspector cut logic, just per-segment instead of per-side.
+func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
+	var col          := Color(0.86, 0.83, 0.76)
+	var interior_col := Color(0.90, 0.87, 0.80)   # faint warm tint hints "removable partition"
 	var has_slope := not sc.is_empty()
 	var axis: String = sc.get("axis", "x") as String
+	var bx0 := bounds.position.x; var bx1 := bounds.position.x + bounds.size.x
+	var by0 := bounds.position.y; var by1 := bounds.position.y + bounds.size.y
 
-	var slope_ns := has_slope and axis == "x"   # north/south run along world X
-	var slope_we := has_slope and axis == "y"   # west/east run along world Y (our Z)
+	for sd in _apt_floor.segments:
+		var seg := sd as Dictionary
+		if seg.get("demolished", false):
+			continue
+		var x1: int = seg["x1"]; var y1: int = seg["y1"]
+		var x2: int = seg["x2"]; var y2: int = seg["y2"]
+		var wall_col := col if (seg.get("primary", false) as bool) else interior_col
 
-	var h_n0 := WALL_H_M; var h_n1 := WALL_H_M
-	var h_s0 := WALL_H_M; var h_s1 := WALL_H_M
-	if slope_ns:
-		h_n0 = _sloped_height_m(sc, bounds.position.x)
-		h_n1 = _sloped_height_m(sc, bounds.position.x + bounds.size.x)
-		h_s0 = h_n0; h_s1 = h_n1
-	elif has_slope:
-		h_n0 = _sloped_height_m(sc, bounds.position.y)
-		h_n1 = h_n0
-		h_s0 = _sloped_height_m(sc, bounds.position.y + bounds.size.y)
-		h_s1 = h_s0
+		if y1 == y2 and x1 != x2:
+			# Horizontal run along world X, fixed at world Z = line_z.
+			var xs := mini(x1, x2); var xe := maxi(x1, x2)
+			var length := (xe - xs) * TILE_M
+			var h0 := WALL_H_M; var h1 := WALL_H_M
+			if has_slope:
+				if axis == "x":
+					h0 = _sloped_height_m(sc, xs); h1 = _sloped_height_m(sc, xe)
+				else:
+					h0 = _sloped_height_m(sc, y1); h1 = h0
+			var local_x := (xs - bounds.position.x) * TILE_M
+			var line_z  := (y1 - bounds.position.y) * TILE_M
+			var pos_z: float; var normal: Vector3
+			if y1 == by0:
+				pos_z = 0.0; normal = Vector3(0, 0, -1)                       # north perimeter
+			elif y1 == by1:
+				pos_z = line_z - WALL_THICK; normal = Vector3(0, 0, 1)        # south perimeter
+			else:
+				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col)
+			_wall_data.append({"mesh": mi, "mat": mi.material_override, "normal": normal, "base": wall_col})
+			_add_wall_grid(mi, length, maxf(h0, h1))
 
-	var h_w0 := WALL_H_M; var h_w1 := WALL_H_M
-	var h_e0 := WALL_H_M; var h_e1 := WALL_H_M
-	if slope_we:
-		h_w0 = _sloped_height_m(sc, bounds.position.y)
-		h_w1 = _sloped_height_m(sc, bounds.position.y + bounds.size.y)
-		h_e0 = h_w0; h_e1 = h_w1
-	elif has_slope:
-		h_w0 = _sloped_height_m(sc, bounds.position.x)
-		h_w1 = h_w0
-		h_e0 = _sloped_height_m(sc, bounds.position.x + bounds.size.x)
-		h_e1 = h_e0
-
-	var mi_n := _add_sloped_wall(w, WALL_THICK, h_n0, h_n1, Vector3(0.0, 0.0, 0.0), 0.0, col)
-	_wall_data.append({"mesh": mi_n, "mat": mi_n.material_override, "normal": Vector3(0, 0, -1), "base": col})
-	_add_wall_grid(mi_n, w, maxf(h_n0, h_n1))
-
-	var mi_s := _add_sloped_wall(w, WALL_THICK, h_s0, h_s1, Vector3(0.0, 0.0, d - WALL_THICK), 0.0, col)
-	_wall_data.append({"mesh": mi_s, "mat": mi_s.material_override, "normal": Vector3(0, 0, 1), "base": col})
-	_add_wall_grid(mi_s, w, maxf(h_s0, h_s1))
-
-	var mi_w := _add_sloped_wall(d, WALL_THICK, h_w0, h_w1, Vector3(WALL_THICK, 0.0, 0.0), -90.0, col)
-	_wall_data.append({"mesh": mi_w, "mat": mi_w.material_override, "normal": Vector3(-1, 0, 0), "base": col})
-	_add_wall_grid(mi_w, d, maxf(h_w0, h_w1))
-
-	var mi_e := _add_sloped_wall(d, WALL_THICK, h_e0, h_e1, Vector3(w, 0.0, 0.0), -90.0, col)
-	_wall_data.append({"mesh": mi_e, "mat": mi_e.material_override, "normal": Vector3(1, 0, 0), "base": col})
-	_add_wall_grid(mi_e, d, maxf(h_e0, h_e1))
+		elif x1 == x2 and y1 != y2:
+			# Vertical run along world Z, fixed at world X = line_x.
+			var ys := mini(y1, y2); var ye := maxi(y1, y2)
+			var length := (ye - ys) * TILE_M
+			var h0 := WALL_H_M; var h1 := WALL_H_M
+			if has_slope:
+				if axis == "y":
+					h0 = _sloped_height_m(sc, ys); h1 = _sloped_height_m(sc, ye)
+				else:
+					h0 = _sloped_height_m(sc, x1); h1 = h0
+			var local_z := (ys - bounds.position.y) * TILE_M
+			var line_x  := (x1 - bounds.position.x) * TILE_M
+			var pos_x: float; var normal: Vector3
+			if x1 == bx0:
+				pos_x = WALL_THICK; normal = Vector3(-1, 0, 0)                # west perimeter
+			elif x1 == bx1:
+				pos_x = line_x; normal = Vector3(1, 0, 0)                     # east perimeter
+			else:
+				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col)
+			_wall_data.append({"mesh": mi, "mat": mi.material_override, "normal": normal, "base": wall_col})
+			_add_wall_grid(mi, length, maxf(h0, h1))
 
 
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
