@@ -61,13 +61,21 @@ var _hover_tile: Vector2i = Vector2i(-999, -999)   # live cursor tile, for the s
 func setup(all_furniture: Array) -> void:
 	_all_furniture  = all_furniture
 	_wall_furniture = all_furniture   # any item can now be hung on a wall
-	close_btn.pressed.connect(_on_close)
-	draw_area.draw.connect(_draw_elevation)
-	draw_area.gui_input.connect(_on_draw_input)
+	# setup() can now run more than once on the same live instance (Main's
+	# Restart Level re-calls _load_level() without recreating the scene), so
+	# every connection here has to be guarded the same way the rest of the
+	# codebase already guards its one-time signal hookups.
+	if not close_btn.pressed.is_connected(_on_close):
+		close_btn.pressed.connect(_on_close)
+	if not draw_area.draw.is_connected(_draw_elevation):
+		draw_area.draw.connect(_draw_elevation)
+	if not draw_area.gui_input.is_connected(_on_draw_input):
+		draw_area.gui_input.connect(_on_draw_input)
 	draw_area.mouse_filter = Control.MOUSE_FILTER_STOP
 	scroll_area.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll_area.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	scroll_area.resized.connect(_on_scroll_area_resized)
+	if not scroll_area.resized.is_connected(_on_scroll_area_resized):
+		scroll_area.resized.connect(_on_scroll_area_resized)
 	_show_placeholder()
 
 

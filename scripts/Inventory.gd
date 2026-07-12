@@ -53,7 +53,8 @@ var _tooltip_fdata_id: String = ""   # which item the currently-open tooltip bel
 
 func setup(game_manager: GameManager) -> void:
 	_gm = game_manager
-	_gm.budget_changed.connect(_refresh_affordability)
+	if not _gm.budget_changed.is_connected(_refresh_affordability):
+		_gm.budget_changed.connect(_refresh_affordability)
 	_ensure_filter_box()
 	item_list.add_theme_constant_override("separation", 5)
 

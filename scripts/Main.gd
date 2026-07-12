@@ -339,6 +339,15 @@ func _go_back() -> void:
 		Transition.change_scene("res://scenes/CityMap.tscn")
 
 
+# Discoverable escape hatch for a bad layout (spent the budget on the wrong
+# things, boxed furniture in unreachably, etc.) — an incomplete level never
+# persists its furniture (GameState only saves a layout on a level a player
+# has already won at least once), so this is just _load_level() again, same
+# as leaving to Projects and re-entering would already do, minus the detour.
+func _restart_level() -> void:
+	_load_level(_current_level_id)
+
+
 func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)

@@ -50,11 +50,19 @@ func _build() -> void:
 	vb.add_theme_constant_override("separation", 14)
 	card.add_child(vb)
 
+	var title_row := HBoxContainer.new()
+	vb.add_child(title_row)
 	var title := Label.new()
 	title.text = "SETTINGS"
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	vb.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title)
+	var help_btn := Button.new()
+	help_btn.text = "❓ How to Play"
+	help_btn.add_theme_font_size_override("font_size", 12)
+	help_btn.pressed.connect(func(): HowToPlay.open(self))
+	title_row.add_child(help_btn)
 
 	# Only Main (an in-level session) has anywhere to go "back" to — CityMap
 	# opening this same menu has no equivalent, so the button only appears
@@ -69,6 +77,55 @@ func _build() -> void:
 			_close()
 			host.call("_go_back"))
 		vb.add_child(back_btn)
+
+	# Discoverable "start over" escape hatch for a bad layout (spent the
+	# budget on the wrong things, boxed something in unreachably, etc.) —
+	# same click-to-arm/click-to-confirm pattern as Quit below, since it
+	# throws away everything placed so far.
+	if host and host.has_method("_restart_level"):
+		var restart_row := VBoxContainer.new()
+		restart_row.add_theme_constant_override("separation", 6)
+		vb.add_child(restart_row)
+
+		var restart_btn := Button.new()
+		restart_btn.text = "↻ Restart Level"
+		restart_btn.add_theme_font_size_override("font_size", 13)
+		restart_row.add_child(restart_btn)
+
+		var r_confirm_row := HBoxContainer.new()
+		r_confirm_row.visible = false
+		r_confirm_row.add_theme_constant_override("separation", 8)
+		restart_row.add_child(r_confirm_row)
+
+		var r_confirm_lbl := Label.new()
+		r_confirm_lbl.text = "Discard this layout and start over?"
+		r_confirm_lbl.add_theme_font_size_override("font_size", 12)
+		r_confirm_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		r_confirm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r_confirm_row.add_child(r_confirm_lbl)
+
+		var r_yes_btn := Button.new()
+		r_yes_btn.text = "Yes, restart"
+		r_yes_btn.add_theme_font_size_override("font_size", 12)
+		r_yes_btn.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
+		r_yes_btn.pressed.connect(func():
+			_close()
+			host.call("_restart_level"))
+		r_confirm_row.add_child(r_yes_btn)
+
+		var r_cancel_btn := Button.new()
+		r_cancel_btn.text = "Cancel"
+		r_cancel_btn.add_theme_font_size_override("font_size", 12)
+		r_cancel_btn.pressed.connect(func():
+			r_confirm_row.visible = false
+			restart_btn.visible = true)
+		r_confirm_row.add_child(r_cancel_btn)
+
+		restart_btn.pressed.connect(func():
+			restart_btn.visible = false
+			r_confirm_row.visible = true)
+
+	if (host and host.has_method("_go_back")) or (host and host.has_method("_restart_level")):
 		vb.add_child(HSeparator.new())
 
 	var audio := get_node_or_null("/root/Audio")
