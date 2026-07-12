@@ -110,6 +110,7 @@ func _process(delta: float) -> void:
 	if _auto_spin and not _dragging:
 		_yaw += delta * 18.0
 		_update_camera()
+	_update_wall_fade(delta)
 	if _foldable:
 		if _fold_auto:
 			_fold_phase += delta * FOLD_LOOP_SPEED
@@ -933,8 +934,11 @@ func _update_camera() -> void:
 
 # Hides whichever wall(s) sit between the camera and the room so the
 # interior is never blocked — a "dollhouse cutaway" rather than a sealed box.
-# Previously this faded the wall's alpha down instead of hiding it outright;
-# fully hiding reads much more clearly than a translucent wall hovering there.
+# This only sets each wall's *target* alpha; _update_wall_fade eases toward it
+# every frame so a wall crossing the threshold fades out instead of popping
+# instantly, which read as a jarring flicker when orbiting near a corner.
+const WALL_FADE_SPEED := 6.0   # alpha units/sec
+
 func _update_wall_visibility(cam_offset: Vector3) -> void:
 	var flat := Vector3(cam_offset.x, 0.0, cam_offset.z)
 	if flat.length() < 0.001:
@@ -943,14 +947,25 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	_cam_flat_dir = flat
 	for wd in _wall_data:
 		var normal: Vector3 = wd["normal"]
-		var mesh: MeshInstance3D = wd["mesh"]
-		var wall_mat: StandardMaterial3D = wd["mat"]
-		var base: Color = wd["base"]
 		# Positive dot = camera is on the outside of this wall, looking in —
 		# that's the wall we need out of the way.
 		var facing := normal.dot(flat)
-		mesh.visible = facing <= 0.0
-		wall_mat.albedo_color = base   # no longer faded — always full opacity when visible
+		wd["target_alpha"] = 0.0 if facing > 0.0 else 1.0
+
+
+func _update_wall_fade(delta: float) -> void:
+	for wd in _wall_data:
+		var target: float = wd.get("target_alpha", 1.0)
+		var alpha: float = wd.get("alpha", 1.0)
+		if alpha == target:
+			continue
+		alpha = move_toward(alpha, target, delta * WALL_FADE_SPEED)
+		wd["alpha"] = alpha
+		var mesh: MeshInstance3D = wd["mesh"]
+		var wall_mat: StandardMaterial3D = wd["mat"]
+		var base: Color = wd["base"]
+		mesh.visible = alpha > 0.001
+		wall_mat.albedo_color = Color(base.r, base.g, base.b, alpha)
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
