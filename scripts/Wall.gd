@@ -43,6 +43,7 @@ var stairs_data:    Array      = []   # [{rect:Rect2i, direction:String}] one en
 var stair_openings: Array      = []   # same format, but stair footprints from parent floor (for loft rendering)
 var _use_new_format: bool      = false
 
+var _block_reason: String = ""    # why the most recent can_place() call returned false, for UI feedback
 var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z) — rasterized cache,
 								   # derived from the continuous positions below, used by
 								   # lighting/zones/needs/adjacency (all inherently tile-discrete).
@@ -913,13 +914,17 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 
 
 func can_place(furniture: Furniture, at: Vector2) -> bool:
+	_block_reason = ""
 	var blocked := _partition_tile_set()
 	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
 		if not is_floor_tile(tile):
+			_block_reason = "Outside the room"
 			return false
 		if not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
+			_block_reason = "Needs %s flooring" % furniture.floor_category
 			return false
 		if tile in blocked:
+			_block_reason = "Blocked by a wall"
 			return false
 
 	# Furniture-vs-furniture overlap: precise continuous rects + Z-range test,
@@ -934,6 +939,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			continue   # different Z layers (e.g. loft above, ground below) never collide
 		var other_rect := Rect2(entry["pos"] as Vector2, Vector2(f.grid_w, f.grid_h))
 		if new_rect.intersects(other_rect):
+			_block_reason = "Overlaps " + f.furniture_name
 			return false
 
 	# Sloped ceiling: any furniture taller than the local ceiling height is blocked
@@ -959,6 +965,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 					var frac := (coord - low_s) / span
 					ceil_h = min_h + frac * (max_h - min_h)
 				if ceil_h < furn_h_m:
+					_block_reason = "Ceiling too low here"
 					return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
@@ -972,9 +979,17 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			Vector2(f.grid_w + f.ghost_radius * 2, f.grid_h + f.ghost_radius * 2)
 		)
 		if ghost.intersects(new_rect):
+			_block_reason = "Needs clearance around " + f.furniture_name
 			return false
 
 	return true
+
+
+# The reason the most recent can_place() call returned false ("" if it
+# returned true, or if nothing has called it yet) — read right after
+# can_place() by whatever's showing the player feedback.
+func get_block_reason() -> String:
+	return _block_reason
 
 
 func place_furniture(furniture: Furniture, at: Vector2) -> void:

@@ -76,6 +76,14 @@ var _wall_ref: Floor = null
 var _color: Color = Color.WHITE
 var _accessible: bool = true
 
+# Brief "why did that fail" bubble shown after a rejected drop, once the ✗
+# glyph and its live reason (drawn only while _dragging) are both gone —
+# without this, a failed drop just silently snapped back with an error beep
+# and no lasting explanation.
+var _error_reason: String = ""
+var _error_flash_t: float = 0.0
+const ERROR_FLASH_DURATION := 1.4
+
 # Keep rect reference for mouse-over size lookup; hidden visually.
 @onready var rect: ColorRect = $ColorRect
 @onready var label: Label = $ColorRect/Label
@@ -216,9 +224,15 @@ func _apply_fold_state(want_extended: bool) -> bool:
 	return true
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Keep the drag validity tint pulsing while a piece is held
 	if _dragging:
+		queue_redraw()
+	if _error_flash_t > 0.0:
+		_error_flash_t -= delta
+		if _error_flash_t <= 0.0:
+			_error_flash_t = 0.0
+			_error_reason = ""
 		queue_redraw()
 
 
@@ -349,6 +363,31 @@ func _draw() -> void:
 		var glyph_col := Color(0.16, 0.42, 0.18, 0.9) if ok else Color(0.55, 0.10, 0.08, 0.9)
 		draw_string(ThemeDB.fallback_font, Vector2(4, 12),
 			"✓" if ok else "✗", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
+
+		# Say *why* it's blocked, not just that it is — a bare red ✗ never told
+		# the player whether it was overlap, wrong floor type, a low ceiling,
+		# or another item's clearance zone, so every miss looked identical.
+		if not ok and _wall_ref.has_method("get_block_reason"):
+			var reason := _wall_ref.get_block_reason() as String
+			if reason != "":
+				var rfont := ThemeDB.fallback_font
+				const RSIZE := 10
+				var tw := rfont.get_string_size(reason, HORIZONTAL_ALIGNMENT_LEFT, -1, RSIZE).x
+				draw_rect(Rect2(0, h + 3, tw + 8, RSIZE + 6), Color(0.08, 0.04, 0.03, 0.88))
+				draw_string(rfont, Vector2(4, h + 3 + RSIZE + 1), reason,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, RSIZE, Color(1.0, 0.85, 0.80, 0.95))
+
+	# Same reason bubble, but after the fact — a rejected drop snaps back and
+	# stops dragging immediately, so without this the player only ever saw an
+	# error beep with no lasting explanation of what actually blocked it.
+	elif _error_flash_t > 0.0 and _error_reason != "":
+		var efont := ThemeDB.fallback_font
+		const ERSIZE := 10
+		var fade := clampf(_error_flash_t / 0.4, 0.0, 1.0)   # fade out over the last 0.4s
+		var etw := efont.get_string_size(_error_reason, HORIZONTAL_ALIGNMENT_LEFT, -1, ERSIZE).x
+		draw_rect(Rect2(0, h + 3, etw + 8, ERSIZE + 6), Color(0.08, 0.04, 0.03, 0.88 * fade))
+		draw_string(efont, Vector2(4, h + 3 + ERSIZE + 1), _error_reason,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, ERSIZE, Color(1.0, 0.85, 0.80, 0.95 * fade))
 
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:
@@ -1143,6 +1182,12 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	else:
 		_play("error")
 		position = _original_pos
+		if _wall_ref and _wall_ref.has_method("get_block_reason"):
+			var reason := _wall_ref.get_block_reason() as String
+			if reason != "":
+				_error_reason = reason
+				_error_flash_t = ERROR_FLASH_DURATION
+				queue_redraw()
 
 
 # Placement "thunk": quick squash-and-settle around the piece's own centre —
