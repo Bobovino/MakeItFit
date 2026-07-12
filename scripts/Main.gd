@@ -942,7 +942,10 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = BOT_Y
-	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"])
+	var below_floor: Floor = null
+	if fl.floor_type == "loft" and fl.parent_id != "":
+		below_floor = _floors.get(fl.parent_id) as Floor
+	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
 	# The 3D view's rect fully contains TenantCard's corner (both are direct
 	# UI children), so appending it here — same CanvasLayer, later sibling —
 	# would otherwise draw over the card and hide it completely. Re-assert

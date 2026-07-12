@@ -1155,7 +1155,10 @@ func _flash_reason(text: String) -> void:
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
-func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
+# `below_floor`: when viewing a loft, its own base floor — rendered as a
+# dim, non-interactive "ghost" layer at the correct height beneath it, so
+# the player doesn't lose their bearings on what's directly underneath.
+func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = null) -> void:
 	_auto_spin = false
 	_foldable  = false
 	_fold_mesh = null
@@ -1192,8 +1195,12 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
 	# columns of their own, so building the normal room here would just be an
 	# empty box with nothing in it. A label is a more honest placeholder than
-	# silently rendering "nothing."
-	if apt_floor.floor_type != "floor":
+	# silently rendering "nothing." A loft is NOT one of these — it has real
+	# segments/columns/furniture exactly like a ground floor (2D already
+	# renders it fully), so it belongs on the "build the room" side, not
+	# lumped in with the label-only layers just because its type isn't
+	# literally "floor".
+	if apt_floor.floor_type in ["subfloor", "floor_sub", "ceiling", "roof"]:
 		_add_special_layer_label(apt_floor.floor_type, w, d)
 		_update_camera()
 		return
@@ -1213,7 +1220,62 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 		for origin in items:
 			_add_wall_item_box(edge, origin as Vector2i, items[origin] as String, catalog)
 
+	if below_floor:
+		_add_ghost_floor(below_floor, bounds)
+
 	_apply_moment_lighting()
+
+
+# ── Ghost reference layer (floor directly below a loft) ────────────────────
+# Flat grey, translucent, no models/textures and never added to any of the
+# pick/drag lists — purely a "here's what's underneath" cue, not a second
+# interactive floor. Positioned using the LOFT's own bounds (not the below
+# floor's bounds) so tile coordinates line up: a mezzanine and its base
+# floor share the same absolute apartment grid, they just each report a
+# different sub-rectangle of it via get_room_bounds().
+const GHOST_COLOR := Color(0.55, 0.56, 0.58)
+const GHOST_ALPHA := 0.22
+
+func _add_ghost_floor(below_floor: Floor, bounds: Rect2i) -> void:
+	var y_off := -Floor.FLOOR_HEIGHT_TILES * TILE_M
+	var w := bounds.size.x * TILE_M
+	var d := bounds.size.y * TILE_M
+
+	_make_ghost(_box(Vector3(w, 0.05, d), Vector3(w * 0.5, y_off - 0.025, d * 0.5), GHOST_COLOR))
+
+	for seg in below_floor.segments:
+		if (seg as Dictionary).get("demolished", false):
+			continue
+		var x1: int = seg["x1"]; var y1: int = seg["y1"]
+		var x2: int = seg["x2"]; var y2: int = seg["y2"]
+		var lx1 := (x1 - bounds.position.x) * TILE_M
+		var lz1 := (y1 - bounds.position.y) * TILE_M
+		var lx2 := (x2 - bounds.position.x) * TILE_M
+		var lz2 := (y2 - bounds.position.y) * TILE_M
+		var length := Vector2(lx2 - lx1, lz2 - lz1).length()
+		if length < 0.001:
+			continue
+		var horizontal := absf(lz2 - lz1) < 0.001
+		var seg_size := Vector3(length, WALL_H_M, WALL_THICK) if horizontal else Vector3(WALL_THICK, WALL_H_M, length)
+		var mid := Vector3((lx1 + lx2) * 0.5, y_off + WALL_H_M * 0.5, (lz1 + lz2) * 0.5)
+		_make_ghost(_box(seg_size, mid, GHOST_COLOR))
+
+	for item in below_floor.get_all_furniture():
+		var f := item as Furniture
+		var fw := f.grid_w * TILE_M
+		var fd := f.grid_h * TILE_M
+		var height_m := maxf(f.z_top / 10.0, 0.2)   # 10 tiles/m, see FLOOR_HEIGHT_TILES
+		var lx := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
+		var lz := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
+		_make_ghost(_box(Vector3(fw, height_m, fd), Vector3(lx, y_off + height_m * 0.5, lz), GHOST_COLOR))
+
+
+func _make_ghost(mi: MeshInstance3D) -> void:
+	var mat := mi.material_override as StandardMaterial3D
+	if mat:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color.a = GHOST_ALPHA
+	mi.set_meta("is_ghost", true)
 
 
 # ── Day/Night lighting ──────────────────────────────────────────────────────
