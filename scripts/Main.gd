@@ -206,14 +206,14 @@ func _apply_ui_theme() -> void:
 	if not top.has_node("BackMapBtn"):
 		var back_btn := Button.new()
 		back_btn.name = "BackMapBtn"
-		back_btn.text = "← City Map"
+		back_btn.text = "← Projects"
 		back_btn.add_theme_font_size_override("font_size", 12)
 		back_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
 		back_btn.pressed.connect(_go_back)
 		top.add_child(back_btn)
 		top.move_child(back_btn, 0)
 	var _bbtn := top.get_node("BackMapBtn") as Button
-	_bbtn.text = "← Editor" if GameState.testing_from_editor else "← City Map"
+	_bbtn.text = "← Editor" if GameState.testing_from_editor else "← Projects"
 
 	# Test mode button — only visible if level has foldable furniture
 	if not top.has_node("TestBtn"):

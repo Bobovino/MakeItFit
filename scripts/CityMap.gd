@@ -182,7 +182,7 @@ func _build_ui() -> void:
 	top_pc.add_child(top_row)
 
 	var title_lbl := Label.new()
-	title_lbl.text = "CITY MAP"
+	title_lbl.text = "PROJECTS"
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_lbl.add_theme_font_size_override("font_size", 16)
 	title_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
@@ -602,9 +602,11 @@ func _select_level(ld: Dictionary) -> void:
 	var star_suffix := ""
 	if stars > 0:
 		star_suffix = "\n" + "★".repeat(stars) + "☆".repeat(3 - stars)
-	_info_tenant.text = "%s, %d\n\"%s\"%s" % [
+	var flavor := tenant.get("flavor", "") as String
+	var flavor_line := "\n\"%s\"" % flavor if flavor != "" else ""
+	_info_tenant.text = "%s, %d%s%s" % [
 		tenant.get("name", "?"), int(str(tenant.get("age", 0))),
-		tenant.get("bio", ""),
+		flavor_line,
 		star_suffix
 	]
 
@@ -627,7 +629,7 @@ func _select_level(ld: Dictionary) -> void:
 		_redesign_btn.visible = false
 	elif is_owned:
 		var reward := ld.get("funds_base_reward", 0) as int
-		_info_cost.text    = "Reward: ~%d€ CompanyFunds" % reward
+		_info_cost.text    = "Reward: ~%d€ Studio Funds" % reward
 		if stars > 0 and GameState.has_level_layout(lid):
 			# Already won at least once — default to reopening it exactly as
 			# left, with "start over" as an explicit secondary choice rather
@@ -641,7 +643,7 @@ func _select_level(ld: Dictionary) -> void:
 			_action_btn.disabled = false
 			_redesign_btn.visible = false
 	else:
-		_info_cost.text    = "Acquisition: %d€ CompanyFunds" % cost
+		_info_cost.text    = "Acquisition: %d€ Studio Funds" % cost
 		_action_btn.text   = "BUY — %d€" % cost
 		_action_btn.disabled = not can_buy
 		_redesign_btn.visible = false
@@ -659,7 +661,7 @@ func _update_top_bar_counters() -> void:
 	if _stars_label:
 		_stars_label.text = "★ %d  |  " % GameState.total_stars()
 	if _funds_label:
-		_funds_label.text = "CompanyFunds: %d€" % GameState.company_funds
+		_funds_label.text = "Studio Funds: %d€" % GameState.company_funds
 
 
 # ── Signals ──────────────────────────────────────────────────────────────────
@@ -996,9 +998,11 @@ func _select_custom_level(ld: Dictionary) -> void:
 	if tenant.is_empty():
 		_info_tenant.text = "No tenant defined"
 	else:
-		_info_tenant.text = "%s, %d\n\"%s\"" % [
+		var flavor := tenant.get("flavor", "") as String
+		var flavor_line := "\n\"%s\"" % flavor if flavor != "" else ""
+		_info_tenant.text = "%s, %d%s" % [
 			tenant.get("name", "?"), tenant.get("age", 0),
-			tenant.get("bio", "")
+			flavor_line
 		]
 
 	var funcs := tenant.get("required_functions", []) as Array

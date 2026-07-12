@@ -116,7 +116,7 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 	call_deferred("_slam_stamp")
 
 	rent_bar.text = (
-		"+%d€ CompanyFunds   |   Portfolio: %d€/mo → %d€/mo" % [
+		"+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo" % [
 			funds_earned, portfolio_rent, GameState.RETIRE_GOAL
 		]
 	)
