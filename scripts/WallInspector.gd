@@ -632,14 +632,20 @@ func _draw_elevation() -> void:
 	# transform scales the whole render to match draw_area's zoomed size.
 	draw_area.draw_set_transform(Vector2.ZERO, 0.0, Vector2(_zoom, _zoom))
 
-	# Wall surface + grid — same cyanotype blueprint palette as the floor plan
+	# Wall surface + grid — same cyanotype blueprint palette as the floor plan.
+	# The fine 10 cm grid only earns its keep once each tile is a few pixels
+	# wide on screen — at the fitted zoom of a wide wall it just muddies into
+	# near-invisible noise (same adaptive threshold GridDraw's 2D plan uses),
+	# so skip it below that point instead of drawing lines nobody can read.
 	draw_area.draw_rect(Rect2(0, 0, rw, rh), GridDraw.BP_FLOOR)
-	for x in range(wall_w + 1):
-		draw_area.draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh),
-			GridDraw.BP_GRID_FINE, 0.5)
-	for y in range(WALL_HEIGHT + 1):
-		draw_area.draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE),
-			GridDraw.BP_GRID_FINE, 0.5)
+	var px_per_tile := TILE_SIZE * _zoom
+	if px_per_tile >= 5.0:
+		for x in range(wall_w + 1):
+			draw_area.draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh),
+				GridDraw.BP_GRID_FINE, 0.5)
+		for y in range(WALL_HEIGHT + 1):
+			draw_area.draw_line(Vector2(0, y * TILE_SIZE), Vector2(rw, y * TILE_SIZE),
+				GridDraw.BP_GRID_FINE, 0.5)
 	for x in range(0, wall_w + 1, 10):
 		draw_area.draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, rh),
 			GridDraw.BP_GRID_MAJ, 1.0)
