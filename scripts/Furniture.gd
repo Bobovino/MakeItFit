@@ -330,7 +330,10 @@ func _draw() -> void:
 		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
 
 	# Drag validity tint — soft pulsing sage when the spot is free, terracotta
-	# when blocked, so validity reads before the piece is even dropped.
+	# when blocked, so validity reads before the piece is even dropped. The
+	# ✓/✗ glyph is a colorblind-safe redundant cue — same shape language the
+	# tenant-needs chips already use elsewhere, so it doesn't need its own
+	# legend.
 	if _dragging and _wall_ref:
 		var at := Vector2(position.x / TILE_SIZE, position.y / TILE_SIZE)
 		var ok := _wall_ref.can_place(self, at)
@@ -338,6 +341,9 @@ func _draw() -> void:
 		var vc := Color(0.35, 0.80, 0.38, pulse) if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
 		draw_rect(Rect2(0, 0, w, h), vc)
 		draw_rect(Rect2(0, 0, w, h), Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
+		var glyph_col := Color(0.16, 0.42, 0.18, 0.9) if ok else Color(0.55, 0.10, 0.08, 0.9)
+		draw_string(ThemeDB.fallback_font, Vector2(4, 12),
+			"✓" if ok else "✗", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
 
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:
@@ -1131,6 +1137,8 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 # Placement "thunk": quick squash-and-settle around the piece's own centre —
 # the classic tactile beat that makes dropping a piece feel like it landed.
 func _pop_on_place() -> void:
+	if GameState.reduce_motion:
+		return
 	var center := Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE) * 0.5
 	var base_pos := position
 	scale = Vector2(1.12, 1.12)

@@ -7,6 +7,9 @@ class_name SettingsMenu
 
 signal closed
 
+var _rebind_btn: Button = null
+var _capturing_rebind: bool = false
+
 
 static func open(host: Node) -> SettingsMenu:
 	var m := SettingsMenu.new()
@@ -39,8 +42,8 @@ func _build() -> void:
 	cs.shadow_color = Color(0, 0, 0, 0.4)
 	cs.shadow_size  = 10
 	card.add_theme_stylebox_override("panel", cs)
-	card.position            = Vector2(440, 220)
-	card.custom_minimum_size = Vector2(400, 260)
+	card.position            = Vector2(390, 130)
+	card.custom_minimum_size = Vector2(500, 440)
 	add_child(card)
 
 	var vb := VBoxContainer.new()
@@ -68,6 +71,47 @@ func _build() -> void:
 			if audio:
 				audio.set_music_volume(v)
 			GameState.save_game()))
+
+	var sep0 := HSeparator.new()
+	vb.add_child(sep0)
+
+	var acc_title := Label.new()
+	acc_title.text = "ACCESSIBILITY"
+	acc_title.add_theme_font_size_override("font_size", 13)
+	acc_title.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(acc_title)
+
+	# UI scale — a blunt global zoom (see GameState._apply_ui_scale) rather
+	# than a per-label font setting, since font sizes are hardcoded ad-hoc
+	# throughout the codebase and there's no single themed size to scale.
+	vb.add_child(_build_pct_slider_row("UI Scale", GameState.ui_scale,
+		GameState.UI_SCALE_MIN, GameState.UI_SCALE_MAX,
+		func(v: float): GameState.set_ui_scale(v)))
+
+	var motion_row := HBoxContainer.new()
+	motion_row.add_theme_constant_override("separation", 10)
+	vb.add_child(motion_row)
+	var motion_chk := CheckBox.new()
+	motion_chk.text = "Reduce motion (skip pop/pulse animations)"
+	motion_chk.add_theme_font_size_override("font_size", 12)
+	motion_chk.button_pressed = GameState.reduce_motion
+	motion_chk.toggled.connect(func(on: bool): GameState.set_reduce_motion(on))
+	motion_row.add_child(motion_chk)
+
+	var rebind_row := HBoxContainer.new()
+	rebind_row.add_theme_constant_override("separation", 10)
+	vb.add_child(rebind_row)
+	var rebind_lbl := Label.new()
+	rebind_lbl.text = "Undo key"
+	rebind_lbl.add_theme_font_size_override("font_size", 13)
+	rebind_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	rebind_lbl.custom_minimum_size.x = 120
+	rebind_row.add_child(rebind_lbl)
+	_rebind_btn = Button.new()
+	_rebind_btn.text = "Ctrl+%s  (Shift+ = Redo)" % OS.get_keycode_string(GameState.undo_keycode)
+	_rebind_btn.add_theme_font_size_override("font_size", 12)
+	_rebind_btn.pressed.connect(_start_rebind_capture)
+	rebind_row.add_child(_rebind_btn)
 
 	var sep := HSeparator.new()
 	vb.add_child(sep)
@@ -161,6 +205,63 @@ func _build_slider_row(label_text: String, initial: float, on_change: Callable) 
 		on_change.call(v))
 
 	return row
+
+
+# Same shape as _build_slider_row but for an arbitrary [min, max] range shown
+# as a percentage of that range (e.g. UI Scale 0.85–1.35 reads as 0%–100%
+# rather than a confusing "135%" for the max).
+func _build_pct_slider_row(label_text: String, initial: float, min_v: float, max_v: float, on_change: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	lbl.custom_minimum_size.x = 120
+	row.add_child(lbl)
+
+	var slider := HSlider.new()
+	slider.min_value = min_v
+	slider.max_value = max_v
+	slider.step       = 0.01
+	slider.value      = initial
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(slider)
+
+	var pct := Label.new()
+	pct.text = "%d%%" % int(round((initial - min_v) / (max_v - min_v) * 100.0))
+	pct.add_theme_font_size_override("font_size", 12)
+	pct.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	pct.custom_minimum_size.x = 40
+	row.add_child(pct)
+
+	slider.value_changed.connect(func(v: float):
+		pct.text = "%d%%" % int(round((v - min_v) / (max_v - min_v) * 100.0))
+		on_change.call(v))
+
+	return row
+
+
+# ── Undo key rebinding ───────────────────────────────────────────────────────
+func _start_rebind_capture() -> void:
+	_capturing_rebind = true
+	_rebind_btn.text = "Press any key…"
+
+
+func _input(event: InputEvent) -> void:
+	if not _capturing_rebind:
+		return
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
+		var kc := (event as InputEventKey).keycode
+		# Modifier keys alone aren't a usable base key (Ctrl/Shift/Alt are
+		# already the required chord prefix) — wait for a real key.
+		if kc in [KEY_CTRL, KEY_SHIFT, KEY_ALT, KEY_META]:
+			return
+		GameState.set_undo_keycode(kc)
+		_rebind_btn.text = "Ctrl+%s  (Shift+ = Redo)" % OS.get_keycode_string(kc)
+		_capturing_rebind = false
+		get_viewport().set_input_as_handled()
 
 
 func _close() -> void:

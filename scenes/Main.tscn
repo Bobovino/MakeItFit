@@ -15,7 +15,7 @@ script = ExtResource("1")
 script = ExtResource("2")
 
 [node name="Room" type="Node2D" parent="."]
-position = Vector2(10, 52)
+position = Vector2(220, 52)
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -37,6 +37,24 @@ text = "Budget: 3000€"
 theme_override_font_sizes/font_size = 18
 size_flags_horizontal = 3
 
+[node name="Minimap" type="PanelContainer" parent="UI/TopBar"]
+script = ExtResource("3")
+
+[node name="HBox" type="BoxContainer" parent="UI/TopBar/Minimap"]
+offset_left = 4.0
+offset_top = 2.0
+offset_right = 300.0
+offset_bottom = 44.0
+
+[node name="MomentSelector" type="PanelContainer" parent="UI/TopBar"]
+script = ExtResource("3")
+
+[node name="HBox" type="BoxContainer" parent="UI/TopBar/MomentSelector"]
+offset_left = 4.0
+offset_top = 2.0
+offset_right = 200.0
+offset_bottom = 44.0
+
 [node name="View3DButton" type="Button" parent="UI/TopBar"]
 text = "3D View"
 theme_override_font_sizes/font_size = 14
@@ -49,17 +67,17 @@ theme_override_font_sizes/font_size = 16
 custom_minimum_size = Vector2(180, 0)
 
 [node name="Divider" type="ColorRect" parent="UI"]
-offset_left = 857.0
-offset_top = 46.0
-offset_right = 863.0
-offset_bottom = 506.0
+offset_left = 210.0
+offset_top = 457.0
+offset_right = 1150.0
+offset_bottom = 463.0
 color = Color(0.20, 0.26, 0.34, 1)
 
 [node name="WallInspector" type="PanelContainer" parent="UI"]
-offset_left = 860.0
-offset_top = 46.0
-offset_right = 1280.0
-offset_bottom = 506.0
+offset_left = 210.0
+offset_top = 463.0
+offset_right = 1150.0
+offset_bottom = 720.0
 script = ExtResource("7")
 
 [node name="VBox" type="VBoxContainer" parent="UI/WallInspector"]
@@ -96,71 +114,52 @@ custom_minimum_size = Vector2(512, 192)
 [node name="WallItems" type="HBoxContainer" parent="UI/WallInspector/VBox"]
 visible = false
 
-[node name="BottomBar" type="HBoxContainer" parent="UI"]
+[node name="Inventory" type="PanelContainer" parent="UI"]
 offset_left = 0.0
-offset_top = 506.0
-offset_right = 1280.0
-offset_bottom = 718.0
-
-[node name="Minimap" type="PanelContainer" parent="UI/BottomBar"]
-size_flags_vertical = 3
-script = ExtResource("3")
-
-[node name="HBox" type="VBoxContainer" parent="UI/BottomBar/Minimap"]
-offset_left = 4.0
-offset_top = 4.0
-offset_right = 172.0
-offset_bottom = 204.0
-
-[node name="MomentSelector" type="PanelContainer" parent="UI/BottomBar"]
-size_flags_vertical = 3
-script = ExtResource("3")
-
-[node name="HBox" type="VBoxContainer" parent="UI/BottomBar/MomentSelector"]
-offset_left = 4.0
-offset_top = 4.0
-offset_right = 172.0
-offset_bottom = 204.0
-
-[node name="TenantCard" type="PanelContainer" parent="UI/BottomBar"]
-size_flags_horizontal = 3
-size_flags_vertical = 3
-script = ExtResource("4")
-
-[node name="VBox" type="VBoxContainer" parent="UI/BottomBar/TenantCard"]
-offset_left = 6.0
-offset_top = 6.0
-offset_right = 380.0
-offset_bottom = 204.0
-
-[node name="TenantName" type="Label" parent="UI/BottomBar/TenantCard/VBox"]
-text = "Tenant"
-theme_override_font_sizes/font_size = 14
-
-[node name="Flavor" type="Label" parent="UI/BottomBar/TenantCard/VBox"]
-text = "..."
-autowrap_mode = 3
-theme_override_font_sizes/font_size = 11
-
-[node name="Rent" type="Label" parent="UI/BottomBar/TenantCard/VBox"]
-text = "0€/month"
-theme_override_font_sizes/font_size = 12
-
-[node name="Checklist" type="VBoxContainer" parent="UI/BottomBar/TenantCard/VBox"]
-
-[node name="Inventory" type="PanelContainer" parent="UI/BottomBar"]
-size_flags_horizontal = 3
-size_flags_vertical = 3
+offset_top = 46.0
+offset_right = 170.0
+offset_bottom = 720.0
 script = ExtResource("5")
 
-[node name="ScrollContainer" type="ScrollContainer" parent="UI/BottomBar/Inventory"]
-offset_left = 4.0
-offset_top = 4.0
-offset_right = 640.0
-offset_bottom = 204.0
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/Inventory"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_scroll_mode = 0
 
-[node name="ItemList" type="VBoxContainer" parent="UI/BottomBar/Inventory/ScrollContainer"]
+[node name="ItemList" type="VBoxContainer" parent="UI/Inventory/ScrollContainer"]
 size_flags_horizontal = 3
+
+[node name="TenantCard" type="PanelContainer" parent="UI"]
+offset_left = 1146.0
+offset_top = 54.0
+offset_right = 1272.0
+offset_bottom = 720.0
+script = ExtResource("4")
+
+[node name="VBox" type="VBoxContainer" parent="UI/TenantCard"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+
+[node name="TenantName" type="Label" parent="UI/TenantCard/VBox"]
+text = "Tenant"
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 13
+
+[node name="Flavor" type="Label" parent="UI/TenantCard/VBox"]
+text = "..."
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 10
+
+[node name="Rent" type="Label" parent="UI/TenantCard/VBox"]
+text = "0€/month"
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 10
+
+[node name="Checklist" type="VBoxContainer" parent="UI/TenantCard/VBox"]
 
 [node name="ResultScreen" type="CanvasLayer" parent="."]
 script = ExtResource("6")

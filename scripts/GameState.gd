@@ -10,7 +10,32 @@ var portfolio_rent: int = 0
 var completed: Dictionary = {}   # level_id -> { stars, first_time }
 var owned: Array = []
 var pending_level_id: String = "level_01"
+# Furniture-layout snapshot as of the last successful win of each level (same
+# shape as Main._snapshot_all_furniture()) — lets "Revisar Plano Actual" reopen
+# a completed level exactly as the player left it, instead of always starting
+# from the level's original starting_furniture.
+var level_layouts: Dictionary = {}
+# One-shot flag set by CityMap right before switching to Main.tscn: consumed
+# and cleared by Main._load_level(), never persisted (it only makes sense for
+# the level about to load).
+var pending_use_saved_layout: bool = false
 var dev_bonus_stars: int = 0
+
+# ── Accessibility ────────────────────────────────────────────────────────────
+# Skips the decorative bounce/pulse tweens (furniture placement squash, RENT
+# OUT pulse, tenant-need chip pop) for players sensitive to motion — the
+# underlying state change still happens instantly, only the animation is cut.
+var reduce_motion: bool = false
+# Multiplies Window.content_scale_factor — a blunt but genuinely global text/
+# UI size control, since font sizes are set ad-hoc per-Label throughout the
+# codebase rather than through one themed size that could be scaled centrally.
+var ui_scale: float = 1.0
+const UI_SCALE_MIN := 0.85
+const UI_SCALE_MAX := 1.35
+# The only player-facing keyboard shortcut outside mouse interaction — Redo
+# reuses the same key with Shift, Ctrl+Y stays as a fixed secondary alias.
+var undo_keycode: int = KEY_Z
+
 var custom_level_data: Dictionary = {}
 var testing_from_editor: bool = false  # set by LevelEditor._test_level(); back btn returns to editor
 var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor reloads custom_level_data
@@ -42,8 +67,29 @@ const DEFAULT_OWNED := ["tut_basics","debug_moments","debug_rails","debug:_rail_
 func _ready() -> void:
 	_apply_global_font()
 	load_game()
+	_apply_ui_scale()
 	for _lid in DEFAULT_OWNED:
 		own_level(_lid)
+
+
+func _apply_ui_scale() -> void:
+	get_tree().root.content_scale_factor = ui_scale
+
+
+func set_ui_scale(v: float) -> void:
+	ui_scale = clampf(v, UI_SCALE_MIN, UI_SCALE_MAX)
+	_apply_ui_scale()
+	save_game()
+
+
+func set_reduce_motion(v: bool) -> void:
+	reduce_motion = v
+	save_game()
+
+
+func set_undo_keycode(kc: int) -> void:
+	undo_keycode = kc
+	save_game()
 
 
 # Sets the engine-wide fallback font once at boot. Every themed Control (none
@@ -68,6 +114,10 @@ func save_game() -> void:
 		"completed":       completed,
 		"owned":           owned,
 		"dev_bonus_stars": dev_bonus_stars,
+		"level_layouts":   level_layouts,
+		"reduce_motion":   reduce_motion,
+		"ui_scale":        ui_scale,
+		"undo_keycode":    undo_keycode,
 	}
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -93,6 +143,10 @@ func load_game() -> void:
 	completed       = data.get("completed", completed) as Dictionary
 	owned           = (data.get("owned", owned) as Array).duplicate()
 	dev_bonus_stars = data.get("dev_bonus_stars", dev_bonus_stars) as int
+	level_layouts   = data.get("level_layouts", level_layouts) as Dictionary
+	reduce_motion   = data.get("reduce_motion", reduce_motion) as bool
+	ui_scale        = data.get("ui_scale", ui_scale) as float
+	undo_keycode    = data.get("undo_keycode", undo_keycode) as int
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
 		if data.has("sfx_volume"):
@@ -133,6 +187,19 @@ func complete_level(level_id: String, stars: int, funds_earned: int, monthly_ren
 
 func get_stars(level_id: String) -> int:
 	return completed.get(level_id, {}).get("stars", 0) as int
+
+
+func save_level_layout(level_id: String, snapshot: Dictionary) -> void:
+	level_layouts[level_id] = snapshot
+	save_game()
+
+
+func has_level_layout(level_id: String) -> bool:
+	return level_id in level_layouts
+
+
+func get_level_layout(level_id: String) -> Dictionary:
+	return level_layouts.get(level_id, {}) as Dictionary
 
 
 func total_stars() -> int:

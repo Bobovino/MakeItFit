@@ -7,9 +7,22 @@ var _buttons: Dictionary = {}
 var _labels:  Dictionary = {}   # floor_id -> base label text
 var _button_group := ButtonGroup.new()
 
+# Compact mode: this same script drives both the old tall vertical stack (a
+# BottomBar sidebar) and a horizontal strip that fits in the 46px TopBar. Set
+# before setup()/add_floor() so buttons are built with the right sizing.
+var _compact: bool = false
+
+
+# Call before setup() to lay buttons out left-to-right at TopBar height
+# instead of stacked vertically.
+func set_compact(compact: bool) -> void:
+	_compact = compact
+	var container := $HBox as BoxContainer
+	container.vertical = not compact
+
 
 func setup(floors: Array, hidden_ids: Array = []) -> void:
-	var container: VBoxContainer = $HBox
+	var container: BoxContainer = $HBox
 	for child in container.get_children():
 		child.queue_free()
 	_buttons.clear()
@@ -27,8 +40,10 @@ func setup(floors: Array, hidden_ids: Array = []) -> void:
 
 		var btn := Button.new()
 		btn.text = fd["label"] as String
-		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_font_size_override("font_size", 9 if _compact else 10)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		if _compact:
+			btn.custom_minimum_size.y = 30
 		btn.toggle_mode  = true
 		btn.button_group = _button_group
 		btn.pressed.connect(_on_floor_pressed.bind(fid))
@@ -52,11 +67,13 @@ func add_floor(fd: Dictionary, anchor_floor_id: String = "") -> void:
 	var fid := fd["id"] as String
 	if fid in _buttons:
 		return
-	var container: VBoxContainer = $HBox
+	var container: BoxContainer = $HBox
 	var btn := Button.new()
 	btn.text = fd["label"] as String
-	btn.add_theme_font_size_override("font_size", 10)
+	btn.add_theme_font_size_override("font_size", 9 if _compact else 10)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	if _compact:
+		btn.custom_minimum_size.y = 30
 	btn.toggle_mode  = true
 	btn.button_group = _button_group
 	btn.pressed.connect(_on_floor_pressed.bind(fid))

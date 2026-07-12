@@ -5,13 +5,22 @@ class_name CityMap
 const MAP_W    := 860
 const INFO_W   := 419   # info sidebar width (design px); anchored to the window's right edge
 const TOP_H    := 54
-const H_PAD    := 20.0
-const V_PAD    := 12.0
+const H_PAD    := 24.0
+const V_PAD    := 16.0
 const COLS     := 5
 const ROWS     := 9   # total rows in the grid (row 0 = tutorials, rows 1+ = regular levels)
 const CARD_W   := 142
 const CARD_H   := 108
 const MAP_VISIBLE_H := 666.0   # 720 - TOP_H
+const SCROLLBAR_W := 14.0
+
+# ── Archivador (vertical list) layout ───────────────────────────────────────
+# Each level is a single full-width row now instead of a grid card — reads as
+# a folder of expedientes, one line per project, grouped under a block header.
+const ROW_H       := 40.0
+const ROW_GAP     := 6.0
+const HEADER_H    := 28.0
+const SECTION_GAP := 16.0   # extra breathing room after each block's last row
 
 # District accent colors (bg tint for cards)
 const DISTRICT_COLORS := {
@@ -29,17 +38,15 @@ var _levels_data: Dictionary = {}
 var _selected: Dictionary = {}
 var _cards: Dictionary = {}      # level_id → Button
 
-var _filter_progress: bool = false
-var _filter_stars:    bool = false
 var _map_content: Control = null
 var _map_clip:    Control = null
+var _scrollbar:   VScrollBar = null
+var _content_h:   float = 0.0   # total height of the currently-built list (debug + real, in whatever order is active)
+var _list_w:      float = MAP_W # actual list width in px — the clip's real width, not the MAP_W design constant, so rows/headers fill whatever room the window actually gives them instead of leaving a gap before the scrollbar on wider windows
 
 var _custom_levels:       Array      = []
 var _selected_is_custom:  bool       = false
 var _selected_custom_data: Dictionary = {}
-
-var _debug_section_line: ColorRect = null
-var _debug_section_hdr:  Label     = null
 
 # Info panel widgets
 var _info_title:    Label
@@ -50,6 +57,7 @@ var _info_budget:   Label
 var _info_rent:     Label
 var _info_cost:     Label
 var _action_btn:    Button
+var _redesign_btn:  Button   # only shown alongside _action_btn when the selected level has a saved layout to fall back to
 var _funds_label:   Label
 var _stars_label:   Label
 
@@ -57,7 +65,7 @@ var _stars_label:   Label
 func _ready() -> void:
 	_levels_data = _load_json("res://data/levels.json")
 	_build_ui()
-	_map_content.size.y = _map_total_h()
+	_rebuild_levels_ui()
 	GameState.company_funds_changed.connect(_on_funds_changed)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	if not GameState.debug_mode_changed.is_connected(_on_debug_mode_changed):
@@ -77,27 +85,9 @@ func _load_json(path: String) -> Dictionary:
 	return json.get_data()
 
 
-# ── Card position in screen coordinates ─────────────────────────────────────
-func _card_xy(col: int, row: int) -> Vector2:
-	# Positions are relative to _map_content (no TOP_H offset)
-	var cell_w := (MAP_W - H_PAD * 2) / float(COLS)
-	var cell_h := CARD_H + V_PAD * 2
-	return Vector2(
-		H_PAD + col * cell_w + (cell_w - CARD_W) * 0.5,
-		V_PAD + row * cell_h + (cell_h - CARD_H) * 0.5
-	)
-
-
+# ── Total scroll height ──────────────────────────────────────────────────────
 func _map_total_h() -> float:
-	return _real_section_reserved_h() + _debug_section_reserved_h() \
-		+ _custom_section_reserved_h()
-
-
-func _custom_section_reserved_h() -> float:
-	if _custom_levels.is_empty():
-		return 0.0
-	var rows := ceili((_custom_levels.size() + 1) / float(COLS))  # +1: "new level" card
-	return 30.0 + rows * (CARD_H + V_PAD * 2)
+	return _content_h
 
 
 # Scroll floor in runtime clip coordinates — recomputed from the clip's actual
@@ -111,13 +101,25 @@ func _max_scroll() -> float:
 # Re-clamp the scroll when the window changes size, so shrinking never leaves
 # the content stranded past the new bottom.
 func _on_viewport_resized() -> void:
+	# Full rebuild (not just re-clamping scroll) since row/header widths are
+	# derived from the clip's actual size — a resize can genuinely change
+	# _list_w, and a stale width is exactly what left a gap before the
+	# scrollbar on windows wider than the original 1280 design width.
 	if _map_content:
-		_map_content.position.y = clampf(_map_content.position.y, _max_scroll(), 0.0)
-		queue_redraw()
+		_rebuild_levels_ui()
 
 
-func _custom_section_y() -> float:
-	return _real_section_reserved_h() + _debug_section_reserved_h()
+# Keeps the visual scrollbar in lockstep with _map_content's actual scroll
+# offset/range — called after anything that can change either (rebuilds,
+# window resize, mouse-wheel scroll).
+func _update_scrollbar() -> void:
+	if not _scrollbar or not _map_clip:
+		return
+	var clip_h := _map_clip.size.y
+	_scrollbar.max_value = maxf(_content_h, clip_h)
+	_scrollbar.page       = clip_h
+	_scrollbar.visible    = _content_h > clip_h
+	_scrollbar.set_value_no_signal(-_map_content.position.y)
 
 
 # ── Debug section (dev-only sandbox levels, kept visually separate from the
@@ -134,54 +136,11 @@ func _is_debug_level(ld: Dictionary) -> bool:
 	return (ld.get("name", "") as String).begins_with("Debug:")
 
 
-func _debug_level_count() -> int:
-	var count := 0
-	for ld in _levels_data.get("levels", []):
-		if _is_debug_level(ld as Dictionary):
-			count += 1
-	return count
-
-
-func _real_level_count() -> int:
-	return (_levels_data.get("levels", []) as Array).size() - _debug_level_count()
-
-
-# Real (non-debug) levels are packed sequentially — index 0, 1, 2... in COLS
-# columns — instead of using each level's own authored map_row/map_col.
-# Those hand-picked positions were meant for a much larger, district-grouped
-# city map; with only a handful of real levels defined so far they left
-# empty cells in the middle of the row and a large blank gap before the
-# debug section (which used to start at a fixed row far below whatever
-# content actually existed). Packing removes both problems at once — the
-# debug section now starts right where the real levels end.
-func _real_section_reserved_h() -> float:
-	var count := _real_level_count()
-	var rows := maxi(1, ceili(float(count) / float(COLS)))
-	return rows * (CARD_H + V_PAD * 2) + V_PAD * 2
-
-
-func _debug_section_reserved_h() -> float:
-	var count := _debug_level_count()
-	if count == 0 or not GameState.debug_mode:
-		return 0.0   # hidden section shouldn't leave a blank scroll tail
-	var rows := ceili(float(count) / float(COLS))
-	return 30.0 + rows * (CARD_H + V_PAD * 2)
-
-
-func _debug_section_y() -> float:
-	return _real_section_reserved_h()
-
-
-func _debug_card_xy(index: int) -> Vector2:
-	var col    := index % COLS
-	var row    := index / COLS
-	var cell_w := (MAP_W - H_PAD * 2) / float(COLS)
-	var cell_h := float(CARD_H + V_PAD * 2)
-	var sy     := _debug_section_y() + 30.0
-	return Vector2(
-		H_PAD + col * cell_w + (cell_w - CARD_W) * 0.5,
-		sy + V_PAD + row * cell_h + (cell_h - CARD_H) * 0.5
-	)
+# Kept only for the dead-but-not-deleted "My Levels" custom-level section
+# below (_build_custom_section is never called from _ready(), so this whole
+# section is presently inert) — still needs to resolve at parse time.
+func _custom_section_y() -> float:
+	return _map_total_h()
 
 
 func _custom_card_xy(index: int) -> Vector2:
@@ -239,67 +198,37 @@ func _build_ui() -> void:
 	_funds_label.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60))
 	top_row.add_child(_funds_label)
 
-	var filter_sep := Label.new()
-	filter_sep.text = "|"
-	filter_sep.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	top_row.add_child(filter_sep)
-
-	var progress_btn := Button.new()
-	progress_btn.text        = "Progress"
-	progress_btn.toggle_mode = true
-	progress_btn.add_theme_font_size_override("font_size", 11)
-	progress_btn.toggled.connect(func(on: bool):
-		_filter_progress = on
-		if on: _filter_stars = false
-		_refresh_all_cards())
-	top_row.add_child(progress_btn)
-
-	var stars_btn := Button.new()
-	stars_btn.text        = "★ Replay"
-	stars_btn.toggle_mode = true
-	stars_btn.add_theme_font_size_override("font_size", 11)
-	stars_btn.toggled.connect(func(on: bool):
-		_filter_stars = on
-		if on: _filter_progress = false
-		_refresh_all_cards())
-	top_row.add_child(stars_btn)
-
 	_update_top_bar_counters()
 
 	# Clipped map viewport — cards scroll within this. Anchored to fill all
-	# space left of the info sidebar so wider windows show more map, not a
-	# dead strip.
+	# space left of the info sidebar (minus a strip for the scrollbar) so
+	# wider windows show more map, not a dead strip.
 	_map_clip = Control.new()
 	_map_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_map_clip.offset_top    = TOP_H
-	_map_clip.offset_right  = -(INFO_W + 1)
+	_map_clip.offset_right  = -(INFO_W + 1 + SCROLLBAR_W)
 	_map_clip.clip_contents = true
 	add_child(_map_clip)
 	var map_clip := _map_clip
 
 	_map_content = Control.new()
 	_map_content.position = Vector2.ZERO
-	_map_content.size     = Vector2(MAP_W, _map_total_h())
 	map_clip.add_child(_map_content)
 
-	# Block header labels — one per block transition (blocks 2-5 have tutorial rows)
-	_build_block_headers()
-
-	# Property cards — children of _map_content, positioned relative to it.
-	# Debug-district levels are laid out separately below (_build_debug_section)
-	# instead of at their own map_row/map_col — those coordinates routinely
-	# collide with real levels' cells (a debug sandbox and a tutorial level
-	# both claiming row 0 / col 0, say), which only stayed invisible-by-luck
-	# because debug levels used to be hidden outright.
-	var real_index := 0
-	for ld in _levels_data.get("levels", []):
-		var d := ld as Dictionary
-		if _is_debug_level(d):
-			continue
-		var card := _create_card(d, real_index)
-		_cards[d["id"]] = card
-		real_index += 1
-	_build_debug_section()
+	# Visible scrollbar, in the strip reserved between the map and the divider —
+	# mouse-wheel scrolling (see _gui_input) keeps it in sync, and dragging it
+	# directly moves _map_content the same way.
+	_scrollbar = VScrollBar.new()
+	_scrollbar.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	_scrollbar.offset_left  = -(INFO_W + 1 + SCROLLBAR_W)
+	_scrollbar.offset_right = -(INFO_W + 1)
+	_scrollbar.offset_top   = TOP_H
+	_scrollbar.offset_bottom = 0
+	_scrollbar.min_value = 0
+	_scrollbar.value_changed.connect(func(v: float):
+		_map_content.position.y = -v
+		queue_redraw())
+	add_child(_scrollbar)
 
 	# Vertical divider before info panel — hugs the sidebar's left edge
 	var div := ColorRect.new()
@@ -357,6 +286,17 @@ func _build_ui() -> void:
 	_action_btn.pressed.connect(_on_action_pressed)
 	vb.add_child(_action_btn)
 
+	# Second entry point shown only for levels that already have a saved
+	# layout (i.e. won at least once) — lets the player start over from
+	# scratch instead of reopening the layout they won with.
+	_redesign_btn = Button.new()
+	_redesign_btn.text = "Rediseñar desde Cero"
+	_redesign_btn.custom_minimum_size = Vector2(210, 32)
+	_redesign_btn.add_theme_font_size_override("font_size", 11)
+	_redesign_btn.visible = false
+	_redesign_btn.pressed.connect(_on_redesign_pressed)
+	vb.add_child(_redesign_btn)
+
 	# Bottom spacer pushes the secondary buttons to the bottom of the panel
 	var push := Control.new()
 	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -391,78 +331,136 @@ func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowra
 	return lbl
 
 
-# ── Card creation ────────────────────────────────────────────────────────────
-func _create_card(ld: Dictionary, index: int = 0) -> Button:
-	var pos := _card_xy(index % COLS, index / COLS)
+# ── Archivador rebuild ───────────────────────────────────────────────────────
+# Clears and rebuilds the whole scrollable list from scratch. Needed (rather
+# than just toggling row visibility) because debug mode changes WHERE the
+# debug section sits — first when active, per the "put it up front while
+# poking around" request — which means every real level's row also has to
+# shift down, not just show/hide.
+func _rebuild_levels_ui() -> void:
+	for ch in _map_content.get_children():
+		ch.queue_free()
+	_cards.clear()
 
-	var card := Button.new()
-	card.position = pos
-	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
-	card.size = Vector2(CARD_W, CARD_H)
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	_list_w = _map_clip.size.x if _map_clip and _map_clip.size.x > 0.0 else float(MAP_W)
+
+	var y := V_PAD
+	if GameState.debug_mode:
+		y = _build_debug_section(y)
+	y = _build_levels_list(y)
+
+	_content_h = y
+	_map_content.size = Vector2(_list_w, _content_h)
+	_map_content.position.y = clampf(_map_content.position.y, _max_scroll(), 0.0)
+	_update_scrollbar()
+	queue_redraw()
+
+
+# Lays out every non-debug level as a full-width row, grouped under a header
+# per block (in the order blocks are authored in levels.json), starting at y.
+# Returns the y position immediately after the last row.
+func _build_levels_list(start_y: float) -> float:
+	var y := start_y
+	var levels: Array = _levels_data.get("levels", [])
+	for blk in _levels_data.get("blocks", []):
+		var bd  := blk as Dictionary
+		var bid := bd.get("id", 0) as int
+		var block_levels: Array = []
+		for ld in levels:
+			var d := ld as Dictionary
+			if _is_debug_level(d):
+				continue
+			if (d.get("block", 1) as int) == bid:
+				block_levels.append(d)
+		if block_levels.is_empty():
+			continue
+
+		var hex := bd.get("color", "#3870A0") as String
+		y = _add_section_header(y,
+			"BLOQUE %d — %s" % [bid, (bd.get("name", "") as String).to_upper()],
+			bd.get("subtitle", "") as String,
+			Color(hex))
+
+		for ld in block_levels:
+			var row := _create_row(ld as Dictionary)
+			row.position = Vector2(H_PAD, y)
+			_cards[(ld as Dictionary)["id"]] = row
+			_fill_row(row, ld as Dictionary)
+			y += ROW_H + ROW_GAP
+		y += SECTION_GAP
+	return y
+
+
+# Thin colored rule + label, same look the old grid's block headers used —
+# now every block (including Tutorial/Aprendizaje) gets one, since a plain
+# list has no background-color district cue to lean on instead.
+func _add_section_header(y: float, title: String, subtitle: String, col: Color) -> float:
+	var line := ColorRect.new()
+	line.color = Color(col.r, col.g, col.b, 0.35)
+	line.position = Vector2(H_PAD, y)
+	line.size = Vector2(_list_w - H_PAD * 2, 1)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(line)
+
+	var hdr := Label.new()
+	hdr.text = title + ("  ·  " + subtitle if subtitle != "" else "")
+	hdr.position = Vector2(H_PAD, y + 6.0)
+	hdr.size     = Vector2(_list_w - H_PAD * 2, 16)
+	hdr.add_theme_font_size_override("font_size", 9)
+	hdr.add_theme_color_override("font_color", col.lightened(0.3))
+	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(hdr)
+
+	return y + HEADER_H
+
+
+# ── Row creation ─────────────────────────────────────────────────────────────
+func _create_row(ld: Dictionary) -> Button:
+	var row := Button.new()
+	row.custom_minimum_size = Vector2(_list_w - H_PAD * 2, ROW_H)
+	row.size = Vector2(_list_w - H_PAD * 2, ROW_H)
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var sn := StyleBoxFlat.new()
 	sn.bg_color     = Color(0.165, 0.145, 0.120)
 	sn.border_color = Color(0.320, 0.270, 0.205)
 	sn.set_border_width_all(1)
-	sn.set_corner_radius_all(7)
-	sn.set_content_margin_all(0)
+	sn.set_corner_radius_all(5)
+	sn.set_content_margin(SIDE_LEFT,  12)
+	sn.set_content_margin(SIDE_RIGHT, 12)
 	sn.anti_aliasing = true
-	sn.shadow_color = Color(0, 0, 0, 0.30)
-	sn.shadow_size = 5
-	sn.shadow_offset = Vector2(0, 2)
-	card.add_theme_stylebox_override("normal", sn)
+	row.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
 	sh.border_color = GameTheme.C_AMBER
 	sh.set_border_width_all(2)
-	sh.shadow_color = Color(0.960, 0.800, 0.450, 0.30)
-	sh.shadow_size = 8
-	card.add_theme_stylebox_override("hover", sh)
-	card.add_theme_stylebox_override("pressed", sh)
+	row.add_theme_stylebox_override("hover", sh)
+	row.add_theme_stylebox_override("pressed", sh)
 
-	# Hover lift: the card floats up a touch, like picking a folder off a desk.
-	# The rest position is read lazily on first hover ("base_y" meta) because
-	# some cards (debug section) are repositioned AFTER _create_card returns —
-	# capturing `pos` here would tween them back to the wrong row.
-	card.mouse_entered.connect(func():
-		if not card.has_meta("base_y"):
-			card.set_meta("base_y", card.position.y)
-		var tw := card.create_tween()
-		tw.tween_property(card, "position:y", (card.get_meta("base_y") as float) - 3.0, 0.10) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
-	card.mouse_exited.connect(func():
-		if not card.has_meta("base_y"):
-			return
-		var tw := card.create_tween()
-		tw.tween_property(card, "position:y", card.get_meta("base_y") as float, 0.14) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
-
-	card.pressed.connect(_select_level.bind(ld))
-	_map_content.add_child(card)
-	return card
+	row.pressed.connect(_select_level.bind(ld))
+	_map_content.add_child(row)
+	return row
 
 
-# ── Card content refresh ─────────────────────────────────────────────────────
+# ── Row content refresh ──────────────────────────────────────────────────────
 func _refresh_all_cards() -> void:
 	for ld in _levels_data.get("levels", []):
 		var lid := (ld as Dictionary)["id"] as String
-		var card := _cards.get(lid) as Button
-		if card:
-			_fill_card(card, ld as Dictionary)
+		var row := _cards.get(lid) as Button
+		if row:
+			_fill_row(row, ld as Dictionary)
 
 
-func _fill_card(card: Button, ld: Dictionary) -> void:
-	var district  := ld.get("district", "Wedding") as String
+func _fill_row(row: Button, ld: Dictionary) -> void:
+	var district := ld.get("district", "Wedding") as String
 	# Debug/dev-only sandbox levels (loft mechanics, sloped ceilings, balcony
 	# rendering, etc.) are clutter for a real player, so they stay hidden
 	# until debug mode is on.
-	card.visible = not _is_debug_level(ld) or GameState.debug_mode
-	if not card.visible:
+	row.visible = not _is_debug_level(ld) or GameState.debug_mode
+	if not row.visible:
 		return
 
-	# Remove previous content
-	for ch in card.get_children():
+	for ch in row.get_children():
 		ch.queue_free()
 
 	var lid       := ld["id"] as String
@@ -474,14 +472,13 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 	var stars     := GameState.get_stars(lid)
 	var dist_col  := DISTRICT_COLORS.get(district, Color(0.4, 0.4, 0.4, 1.0)) as Color
 
-	# Update card background tint via normal StyleBoxFlat
-	var sn := card.get_theme_stylebox("normal") as StyleBoxFlat
+	var sn := row.get_theme_stylebox("normal") as StyleBoxFlat
 	if sn:
 		if not level_visible:
 			sn.bg_color = Color(0.08, 0.09, 0.11)
 			sn.border_color = Color(0.200, 0.175, 0.145)
 		elif is_owned:
-			sn.bg_color     = Color(dist_col.r * 0.28 + 0.07, dist_col.g * 0.28 + 0.09, dist_col.b * 0.28 + 0.11)
+			sn.bg_color     = Color(dist_col.r * 0.22 + 0.06, dist_col.g * 0.22 + 0.07, dist_col.b * 0.22 + 0.09)
 			sn.border_color = Color(dist_col.r * 0.70 + 0.10, dist_col.g * 0.70 + 0.10, dist_col.b * 0.70 + 0.10, 0.80)
 		elif can_buy:
 			sn.bg_color     = Color(0.165, 0.145, 0.120)
@@ -490,40 +487,60 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 			sn.bg_color     = Color(0.110, 0.098, 0.085)
 			sn.border_color = Color(0.16, 0.20, 0.25)
 
-	var vb := VBoxContainer.new()
-	vb.position = Vector2(7, 7)
-	vb.size     = Vector2(CARD_W - 14, CARD_H - 14)
-	vb.add_theme_constant_override("separation", 3)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(vb)
+	# A manually-added child Control ignores the row's own stylebox content
+	# margins (those only apply to the Button's own internal text/icon), so
+	# without matching insets here the right-hand status label sits flush
+	# against the row's edge with no breathing room.
+	var hb := HBoxContainer.new()
+	hb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hb.offset_left  = 12
+	hb.offset_right = -12
+	hb.add_theme_constant_override("separation", 10)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hb)
+
+	# [X] / [ ] / locked checkbox glyph, leftmost — the "expediente" marker
+	var chk := Label.new()
+	chk.custom_minimum_size = Vector2(20, 0)
+	chk.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	chk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if not level_visible:
+		chk.text = "🔒"
+		chk.add_theme_font_size_override("font_size", 12)
+		chk.add_theme_color_override("font_color", Color(0.34, 0.38, 0.44))
+	elif stars > 0:
+		chk.text = "✓"
+		chk.add_theme_font_size_override("font_size", 15)
+		chk.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60))
+	else:
+		chk.text = "○"
+		chk.add_theme_font_size_override("font_size", 13)
+		chk.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hb.add_child(chk)
 
 	if not level_visible:
-		var q := Label.new()
-		q.text = "?"
-		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		q.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		q.size_flags_vertical  = Control.SIZE_EXPAND_FILL
-		q.add_theme_font_size_override("font_size", 30)
-		q.add_theme_color_override("font_color", Color(0.26, 0.30, 0.35))
-		vb.add_child(q)
-		var nl := Label.new()
-		nl.text = "Need %d ★" % min_stars
-		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nl.add_theme_font_size_override("font_size", 9)
-		nl.add_theme_color_override("font_color", Color(0.34, 0.38, 0.44))
-		vb.add_child(nl)
+		var lbl := Label.new()
+		lbl.text = "%s   —   Necesita %d ★ para desbloquear" % [ld["name"] as String, min_stars]
+		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_color_override("font_color", Color(0.34, 0.38, 0.44))
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(lbl)
 		return
 
-	# Level name
-	var nm := Label.new()
-	nm.text = ld["name"] as String
-	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nm.add_theme_font_size_override("font_size", 11)
-	nm.add_theme_color_override("font_color", GameTheme.C_AMBER if is_owned else GameTheme.C_TEXT)
-	vb.add_child(nm)
+	var name_vb := VBoxContainer.new()
+	name_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_vb.add_theme_constant_override("separation", 0)
+	hb.add_child(name_vb)
 
-	# District tag (or TUTORIAL badge)
+	var tenant := ld.get("tenant", {}) as Dictionary
+	var nm := Label.new()
+	nm.text = "%s  —  %s" % [ld["name"] as String, tenant.get("name", "") as String]
+	nm.add_theme_font_size_override("font_size", 12)
+	nm.add_theme_color_override("font_color", GameTheme.C_AMBER if is_owned else GameTheme.C_TEXT)
+	name_vb.add_child(nm)
+
+	# District tag (or TUTORIAL badge), as a small subtitle under the name
 	var is_tut := ld.get("is_tutorial", false) as bool
 	var dt := Label.new()
 	if is_tut:
@@ -534,76 +551,28 @@ func _fill_card(card: Button, ld: Dictionary) -> void:
 		dt.text = district.to_upper()
 		dt.add_theme_font_size_override("font_size", 8)
 		dt.add_theme_color_override("font_color", Color(dist_col.r * 0.8 + 0.1, dist_col.g * 0.8 + 0.1, dist_col.b * 0.8 + 0.1))
-	vb.add_child(dt)
+	name_vb.add_child(dt)
 
-	# Tutorial glow border override
-	if is_tut:
-		var tut_s := card.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-		tut_s.bg_color     = Color(0.08, 0.16, 0.14)
-		tut_s.border_color = Color(0.30, 0.80, 0.60, 0.75)
-		tut_s.set_border_width_all(1)
-		card.add_theme_stylebox_override("normal", tut_s)
-
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(spacer)
-
-	# Bottom row: stars / cost / ready
+	# Right-aligned status: stars / [DISPONIBLE] / price
 	if stars > 0:
 		var sl := Label.new()
 		sl.text = "★".repeat(stars) + "☆".repeat(3 - stars)
-		sl.add_theme_font_size_override("font_size", 15)
+		sl.add_theme_font_size_override("font_size", 14)
 		sl.add_theme_color_override("font_color", GameTheme.C_AMBER)
-		vb.add_child(sl)
+		hb.add_child(sl)
 	elif is_owned:
-		# Empty star slots next to READY — the map reads as a level-select
-		# screen where every card visibly has three stars up for grabs.
-		var hb := HBoxContainer.new()
-		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_theme_constant_override("separation", 6)
 		var rl := Label.new()
-		rl.text = "READY"
+		rl.text = "[DISPONIBLE]"
 		rl.add_theme_font_size_override("font_size", 10)
 		rl.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60))
 		hb.add_child(rl)
-		var es := Label.new()
-		es.text = "☆☆☆"
-		es.add_theme_font_size_override("font_size", 12)
-		es.add_theme_color_override("font_color", Color(0.36, 0.42, 0.50))
-		hb.add_child(es)
-		vb.add_child(hb)
 	else:
 		var cl := Label.new()
 		cl.text = ("%d€" if can_buy else "🔒 %d€") % cost
 		cl.add_theme_font_size_override("font_size", 11)
 		cl.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60) if can_buy else GameTheme.C_MUTED)
-		vb.add_child(cl)
+		hb.add_child(cl)
 
-	# ── Filter overlays ───────────────────────────────────────────────────────
-	var completed := lid in GameState.completed
-	if _filter_progress and completed:
-		# Grey veil over completed apartments so new ones pop
-		var veil := ColorRect.new()
-		veil.color = Color(0.05, 0.06, 0.08, 0.62)
-		veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(veil)
-	elif _filter_stars and completed and stars < 3:
-		# Amber glow border on 1-2 star apartments — worth replaying
-		var sn2 := card.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-		sn2.border_color = Color(GameTheme.C_AMBER.r, GameTheme.C_AMBER.g, GameTheme.C_AMBER.b, 0.85)
-		sn2.set_border_width_all(2)
-		card.add_theme_stylebox_override("normal", sn2)
-		var tag := Label.new()
-		tag.text = "↺"
-		tag.add_theme_font_size_override("font_size", 18)
-		tag.add_theme_color_override("font_color", GameTheme.C_AMBER)
-		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		tag.vertical_alignment   = VERTICAL_ALIGNMENT_TOP
-		tag.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(tag)
 
 
 # ── Info panel update ────────────────────────────────────────────────────────
@@ -650,15 +619,27 @@ func _select_level(ld: Dictionary) -> void:
 		_info_cost.text    = "Locked — need %d total ★" % min_st
 		_action_btn.text   = "LOCKED"
 		_action_btn.disabled = true
+		_redesign_btn.visible = false
 	elif is_owned:
 		var reward := ld.get("funds_base_reward", 0) as int
 		_info_cost.text    = "Reward: ~%d€ CompanyFunds" % reward
-		_action_btn.text   = "ENTER  →"
-		_action_btn.disabled = false
+		if stars > 0 and GameState.has_level_layout(lid):
+			# Already won at least once — default to reopening it exactly as
+			# left, with "start over" as an explicit secondary choice rather
+			# than the only option.
+			_action_btn.text   = "Revisar Plano Actual"
+			_action_btn.disabled = false
+			_redesign_btn.visible = true
+			_redesign_btn.disabled = false
+		else:
+			_action_btn.text   = "ENTER  →"
+			_action_btn.disabled = false
+			_redesign_btn.visible = false
 	else:
 		_info_cost.text    = "Acquisition: %d€ CompanyFunds" % cost
 		_action_btn.text   = "BUY — %d€" % cost
 		_action_btn.disabled = not can_buy
+		_redesign_btn.visible = false
 
 
 func _sqm_label(ld: Dictionary) -> String:
@@ -693,15 +674,36 @@ func _on_action_pressed() -> void:
 	if is_owned:
 		Audio.play("click")
 		GameState.pending_level_id = lid
+		# _action_btn doubles as "Revisar Plano Actual" once the level has a
+		# saved layout (see _select_level) — reopen it as-is in that case,
+		# otherwise this is a first-time "ENTER" and there's nothing to reopen.
+		GameState.pending_use_saved_layout = \
+			GameState.get_stars(lid) > 0 and GameState.has_level_layout(lid)
 		Transition.change_scene("res://scenes/Main.tscn")
 	else:
 		var cost := _selected.get("acquisition_cost", 0) as int
 		if GameState.buy_level(lid, cost):
 			Audio.play("success")
-			_fill_card(_cards[lid] as Button, _selected)
+			_fill_row(_cards[lid] as Button, _selected)
 			_select_level(_selected)
 		else:
 			Audio.play("error")
+
+
+# Secondary entry point, only visible for levels with a saved layout — always
+# starts from the level's original starting_furniture, discarding nothing
+# (the saved layout itself is untouched, so "Revisar Plano Actual" still
+# works afterwards).
+func _on_redesign_pressed() -> void:
+	if _selected.is_empty():
+		return
+	var lid := _selected["id"] as String
+	if not GameState.is_owned(lid):
+		return
+	Audio.play("click")
+	GameState.pending_level_id = lid
+	GameState.pending_use_saved_layout = false
+	Transition.change_scene("res://scenes/Main.tscn")
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -714,10 +716,12 @@ func _gui_input(event: InputEvent) -> void:
 			var max_scroll  := _max_scroll()
 			if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_map_content.position.y = maxf(_map_content.position.y - scroll_step, max_scroll)
+				_update_scrollbar()
 				queue_redraw()
 				accept_event()
 			elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_map_content.position.y = minf(_map_content.position.y + scroll_step, 0.0)
+				_update_scrollbar()
 				queue_redraw()
 				accept_event()
 
@@ -754,13 +758,11 @@ func _on_toggle_debug_mode() -> void:
 
 
 func _on_debug_mode_changed(_enabled: bool) -> void:
+	# Debug rows need to move to the front of the list (or back out of it
+	# entirely) rather than just show/hide, so this fully rebuilds the list —
+	# see _rebuild_levels_ui.
+	_rebuild_levels_ui()
 	_refresh_all_cards()
-	_update_debug_section_visibility()
-	# The scrollable height just changed — keep the view inside the new range
-	if _map_content:
-		_map_content.size.y = _map_total_h()
-		_map_content.position.y = clampf(_map_content.position.y, _max_scroll(), 0.0)
-		queue_redraw()
 
 
 func _on_dev_unlock() -> void:
@@ -780,53 +782,12 @@ func _on_funds_changed(_amount: int) -> void:
 		_select_level(_selected)
 
 
-# ── Block headers ────────────────────────────────────────────────────────────
-func _build_block_headers() -> void:
-	var blocks: Array = _levels_data.get("blocks", [])
-	if blocks.is_empty():
-		return
-	# Find the first level of each block to get its row
-	var block_rows: Dictionary = {}  # block_id (int) -> row (int)
-	for ld in _levels_data.get("levels", []):
-		var b := (ld as Dictionary).get("block", 1) as int
-		var r := (ld as Dictionary).get("map_row", 0) as int
-		if b not in block_rows or r < block_rows[b]:
-			block_rows[b] = r
-
-	var cell_h := float(CARD_H + V_PAD * 2)
-	for blk in blocks:
-		var bid  := (blk as Dictionary).get("id",   1) as int
-		var blk_name := (blk as Dictionary).get("name", "") as String
-		var sub  := (blk as Dictionary).get("subtitle", "") as String
-		if bid == 0 or bid == 1:
-			continue  # no header before the first visible blocks
-		if bid not in block_rows:
-			continue
-		var row := block_rows[bid] as int
-		var y   := V_PAD * 0.5 + row * cell_h - 18.0
-
-		var hdr := Label.new()
-		hdr.text = ("BLOQUE %d  —  %s" % [bid, blk_name.to_upper()]) + ("  ·  " + sub if sub != "" else "")
-		hdr.position = Vector2(H_PAD, y)
-		hdr.size     = Vector2(MAP_W - H_PAD * 2, 16)
-		hdr.add_theme_font_size_override("font_size", 9)
-		# Color from block data
-		var hex: String = (blk as Dictionary).get("color", "#3870A0")
-		var col := Color(hex)
-		hdr.add_theme_color_override("font_color", col.lightened(0.3))
-		hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_map_content.add_child(hdr)
-
-		# Thin divider line above header
-		var line := ColorRect.new()
-		line.color    = Color(col.r, col.g, col.b, 0.35)
-		line.position = Vector2(H_PAD, y - 4.0)
-		line.size     = Vector2(MAP_W - H_PAD * 2, 1)
-		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_map_content.add_child(line)
-
-
 # ── Blueprint grid (drawn on root canvas) ────────────────────────────────────
+# District tinting used to be drawn here as background rectangles behind the
+# card grid — in list mode each row already carries its district as a text
+# tag and each block already gets its own colored header rule, so that
+# overlay (which relied on the old map_col/map_row grid coordinates) is gone;
+# only the blueprint graph-paper backdrop remains.
 func _draw() -> void:
 	var minor := Color(0.15, 0.20, 0.30, 0.18)
 	var major := Color(0.20, 0.28, 0.42, 0.35)
@@ -837,81 +798,33 @@ func _draw() -> void:
 	for y in range(0, vh, 20):
 		draw_line(Vector2(0, y), Vector2(vw, y), major if y % 100 == 0 else minor, 1.0)
 
-	# District region outlines — account for scroll offset
-	var scroll_y := _map_content.position.y if _map_content else 0.0
-	var dist_bounds: Dictionary = {}
-	var cw := (MAP_W - H_PAD * 2) / float(COLS)
-	var ch := float(CARD_H + V_PAD * 2)
-
-	for ld in _levels_data.get("levels", []):
-		var district := (ld as Dictionary).get("district", "") as String
-		var col := (ld as Dictionary).get("map_col", 0) as int
-		var row := (ld as Dictionary).get("map_row", 0) as int
-		var r := Rect2(
-			Vector2(H_PAD + col * cw, TOP_H + V_PAD + row * ch + scroll_y),
-			Vector2(cw, ch)
-		)
-		if district not in dist_bounds:
-			dist_bounds[district] = r
-		else:
-			dist_bounds[district] = (dist_bounds[district] as Rect2).merge(r)
-
-	for district in dist_bounds:
-		var r   := (dist_bounds[district] as Rect2).grow(-6)
-		var dc  := DISTRICT_COLORS.get(district, Color(0.5, 0.5, 0.5, 1.0)) as Color
-		var tc  := Color(dc.r * 0.50, dc.g * 0.50, dc.b * 0.50, 0.06)
-		var bc  := Color(dc.r * 0.60, dc.g * 0.60, dc.b * 0.60, 0.38)
-		draw_rect(r, tc, true)
-		draw_rect(r, bc, false, 1.0)
-		draw_string(ThemeDB.fallback_font,
-			r.position + Vector2(7, 13),
-			district.to_upper(),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
-			Color(bc.r * 1.6, bc.g * 1.6, bc.b * 1.6, 0.75))
-
 
 # ── Debug section (dev-only sandbox levels) ─────────────────────────────────
-
-func _build_debug_section() -> void:
+# Placed at the very front of the list while debug mode is on (see
+# _rebuild_levels_ui), under its own "DEBUG LEVELS" header — only ever called
+# while debug_mode is on, so the rows are built plainly visible; the whole
+# section is simply torn down again the moment debug mode goes back off.
+func _build_debug_section(start_y: float) -> float:
 	var debug_levels: Array = []
 	for ld in _levels_data.get("levels", []):
 		if _is_debug_level(ld as Dictionary):
 			debug_levels.append(ld)
 	if debug_levels.is_empty():
-		return
-	var sy := _debug_section_y()
+		return start_y
 
-	_debug_section_line = ColorRect.new()
-	_debug_section_line.color         = Color(0.55, 0.32, 0.20, 0.35)
-	_debug_section_line.position      = Vector2(H_PAD, sy + 6.0)
-	_debug_section_line.size          = Vector2(MAP_W - H_PAD * 2, 1)
-	_debug_section_line.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	_map_content.add_child(_debug_section_line)
+	var y := _add_section_header(start_y,
+		"DEBUG LEVELS  (Ctrl+Shift+Alt+D)", "",
+		Color(0.85, 0.58, 0.38))
 
-	_debug_section_hdr = Label.new()
-	_debug_section_hdr.text          = "DEBUG LEVELS  (Ctrl+Shift+Alt+D)"
-	_debug_section_hdr.position      = Vector2(H_PAD, sy + 10.0)
-	_debug_section_hdr.size          = Vector2(MAP_W - H_PAD * 2, 16)
-	_debug_section_hdr.add_theme_font_size_override("font_size", 9)
-	_debug_section_hdr.add_theme_color_override("font_color", Color(0.85, 0.58, 0.38, 0.85))
-	_debug_section_hdr.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	_map_content.add_child(_debug_section_hdr)
+	for ld in debug_levels:
+		var d := ld as Dictionary
+		var row := _create_row(d)
+		row.position = Vector2(H_PAD, y)
+		_cards[d["id"]] = row
+		_fill_row(row, d)
+		y += ROW_H + ROW_GAP
 
-	for i in range(debug_levels.size()):
-		var ld := debug_levels[i] as Dictionary
-		var card := _create_card(ld)
-		card.position = _debug_card_xy(i)
-		_cards[ld["id"]] = card
-
-	_update_debug_section_visibility()
-
-
-func _update_debug_section_visibility() -> void:
-	var v := GameState.debug_mode
-	if is_instance_valid(_debug_section_line):
-		_debug_section_line.visible = v
-	if is_instance_valid(_debug_section_hdr):
-		_debug_section_hdr.visible = v
+	return y + SECTION_GAP
 
 
 # ── My Levels (custom / player-created) ──────────────────────────────────────
@@ -1091,3 +1004,4 @@ func _select_custom_level(ld: Dictionary) -> void:
 
 	_action_btn.text     = "PLAY →"
 	_action_btn.disabled = false
+	_redesign_btn.visible = false

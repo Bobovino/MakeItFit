@@ -75013,7 +75013,152 @@
             ],
             "id": "fl_0",
             "label": "Ground Floor",
-            "mezzanine_tiles": [],
+            "mezzanine_tiles": [
+              [
+                18,
+                60
+              ],
+              [
+                18,
+                61
+              ],
+              [
+                18,
+                62
+              ],
+              [
+                18,
+                63
+              ],
+              [
+                18,
+                64
+              ],
+              [
+                18,
+                65
+              ],
+              [
+                19,
+                60
+              ],
+              [
+                19,
+                61
+              ],
+              [
+                19,
+                62
+              ],
+              [
+                19,
+                63
+              ],
+              [
+                19,
+                64
+              ],
+              [
+                19,
+                65
+              ],
+              [
+                20,
+                60
+              ],
+              [
+                20,
+                61
+              ],
+              [
+                20,
+                62
+              ],
+              [
+                20,
+                63
+              ],
+              [
+                20,
+                64
+              ],
+              [
+                20,
+                65
+              ],
+              [
+                21,
+                60
+              ],
+              [
+                21,
+                61
+              ],
+              [
+                21,
+                62
+              ],
+              [
+                21,
+                63
+              ],
+              [
+                21,
+                64
+              ],
+              [
+                21,
+                65
+              ],
+              [
+                22,
+                60
+              ],
+              [
+                22,
+                61
+              ],
+              [
+                22,
+                62
+              ],
+              [
+                22,
+                63
+              ],
+              [
+                22,
+                64
+              ],
+              [
+                22,
+                65
+              ],
+              [
+                23,
+                60
+              ],
+              [
+                23,
+                61
+              ],
+              [
+                23,
+                62
+              ],
+              [
+                23,
+                63
+              ],
+              [
+                23,
+                64
+              ],
+              [
+                23,
+                65
+              ]
+            ],
             "rails": [
               {
                 "x1": 3,
@@ -75094,8 +75239,39 @@
               "min_h": 1.8
             },
             "stair_tiles": [],
-            "stairs": [],
+            "stairs": [
+              {
+                "x": 15,
+                "y": 60,
+                "w": 3,
+                "h": 2,
+                "direction": "north",
+                "target": "loft"
+              },
+              {
+                "x": 14,
+                "y": 64,
+                "w": 3,
+                "h": 2,
+                "direction": "north",
+                "target": "floor"
+              }
+            ],
             "type": "floor"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_0_loft",
+            "label": "Ground Floor Mezzanine",
+            "mezzanine_tiles": [],
+            "parent_id": "fl_0",
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "loft"
           },
           {
             "columns": [],
@@ -75110,6 +75286,52 @@
             "stair_tiles": [],
             "stairs": [],
             "type": "ceiling"
+          },
+          {
+            "columns": [],
+            "floor_tiles": [],
+            "id": "fl_1",
+            "label": "Second Floor",
+            "mezzanine_tiles": [],
+            "rails": [],
+            "reveal_zones": [],
+            "segments": [
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 64,
+                "y1": 1,
+                "y2": 1
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 64,
+                "x2": 64,
+                "y1": 1,
+                "y2": 77
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 64,
+                "x2": 1,
+                "y1": 77,
+                "y2": 77
+              },
+              {
+                "demolished": false,
+                "primary": true,
+                "x1": 1,
+                "x2": 1,
+                "y1": 77,
+                "y2": 1
+              }
+            ],
+            "stair_tiles": [],
+            "stairs": [],
+            "type": "floor"
           },
           {
             "columns": [],

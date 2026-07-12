@@ -58,7 +58,10 @@
       "sell_price": 250,
       "color": "6a8eb0",
       "model": "res://assets/models/furniture/bedBunk.glb",
-      "hide_nodes": ["coverBottom", "pillowBottom"]
+      "hide_nodes": [
+        "coverBottom",
+        "pillowBottom"
+      ]
     },
     {
       "id": "bunk_bed",
@@ -1215,6 +1218,2530 @@
       "sell_price": 38,
       "color": "c08878",
       "model": "res://assets/models/furniture/rugRectangle.glb"
+    },
+    {
+      "id": "bathroom_drawer_cabinet",
+      "name": "Bathroom Drawer Cabinet",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 5
+      },
+      "wall_h": 12,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 140,
+      "sell_price": 55,
+      "color": "d8e4ec",
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/bathroomCabinetDrawer.glb"
+    },
+    {
+      "id": "sink_square",
+      "name": "Square Sink",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 5
+      },
+      "wall_h": 14,
+      "floor_depth": 5,
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 190,
+      "sell_price": 95,
+      "color": "c8d8e8",
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/bathroomSinkSquare.glb"
+    },
+    {
+      "id": "teddy_bear",
+      "name": "Teddy Bear",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 3
+      },
+      "wall_h": 4,
+      "floor_depth": 3,
+      "functions": [],
+      "buy_price": 20,
+      "sell_price": 5,
+      "color": "a07850",
+      "model": "res://assets/models/furniture/bear.glb"
+    },
+    {
+      "id": "double_bed",
+      "name": "Double Bed",
+      "placement": "floor",
+      "size": {
+        "w": 22,
+        "h": 14
+      },
+      "wall_h": 6,
+      "floor_depth": 14,
+      "functions": [
+        "sleep"
+      ],
+      "buy_price": 480,
+      "sell_price": 220,
+      "color": "7a9ec0",
+      "model": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "id": "bench",
+      "name": "Bench",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "8a7050",
+      "model": "res://assets/models/furniture/bench.glb"
+    },
+    {
+      "id": "cushioned_bench",
+      "name": "Cushioned Bench",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 130,
+      "sell_price": 50,
+      "color": "9a7858",
+      "model": "res://assets/models/furniture/benchCushion.glb"
+    },
+    {
+      "id": "low_bench",
+      "name": "Low Bench",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 4
+      },
+      "wall_h": 4,
+      "floor_depth": 4,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 100,
+      "sell_price": 40,
+      "color": "907048",
+      "model": "res://assets/models/furniture/benchCushionLow.glb"
+    },
+    {
+      "id": "closed_bookcase",
+      "name": "Closed Bookcase",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 20,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "907040",
+      "model": "res://assets/models/furniture/bookcaseClosed.glb"
+    },
+    {
+      "id": "wide_bookcase",
+      "name": "Wide Bookcase",
+      "placement": "floor",
+      "size": {
+        "w": 14,
+        "h": 3
+      },
+      "wall_h": 20,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 260,
+      "sell_price": 100,
+      "color": "987848",
+      "model": "res://assets/models/furniture/bookcaseClosedWide.glb"
+    },
+    {
+      "id": "book_stack",
+      "name": "Book Stack",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 15,
+      "sell_price": 5,
+      "color": "a05838",
+      "model": "res://assets/models/furniture/books.glb"
+    },
+    {
+      "id": "tv_cabinet_doors",
+      "name": "TV Cabinet with Doors",
+      "placement": "floor",
+      "size": {
+        "w": 18,
+        "h": 5
+      },
+      "wall_h": 9,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 210,
+      "sell_price": 85,
+      "color": "604838",
+      "model": "res://assets/models/furniture/cabinetTelevisionDoors.glb"
+    },
+    {
+      "id": "moving_box",
+      "name": "Moving Box",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 20,
+      "sell_price": 5,
+      "color": "b89868",
+      "model": "res://assets/models/furniture/cardboardBoxClosed.glb"
+    },
+    {
+      "id": "ceiling_fan",
+      "name": "Ceiling Fan",
+      "placement": "wall",
+      "size": {
+        "w": 4,
+        "h": 1
+      },
+      "wall_h": 2,
+      "floor_depth": 1,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "c8c8c0",
+      "model": "res://assets/models/furniture/ceilingFan.glb"
+    },
+    {
+      "id": "dining_chair",
+      "name": "Dining Chair",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 60,
+      "sell_price": 20,
+      "color": "8a6848",
+      "model": "res://assets/models/furniture/chair.glb"
+    },
+    {
+      "id": "cushioned_chair",
+      "name": "Cushioned Chair",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "a07050",
+      "model": "res://assets/models/furniture/chairCushion.glb"
+    },
+    {
+      "id": "modern_chair",
+      "name": "Modern Chair",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 8,
+      "floor_depth": 6,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "404850",
+      "model": "res://assets/models/furniture/chairModernCushion.glb"
+    },
+    {
+      "id": "modern_frame_chair",
+      "name": "Modern Frame Chair",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 8,
+      "floor_depth": 6,
+      "ghost_radius": 2,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 170,
+      "sell_price": 65,
+      "color": "484038",
+      "model": "res://assets/models/furniture/chairModernFrameCushion.glb"
+    },
+    {
+      "id": "keyboard",
+      "name": "Keyboard",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 1
+      },
+      "wall_h": 1,
+      "floor_depth": 1,
+      "functions": [],
+      "buy_price": 15,
+      "sell_price": 5,
+      "color": "e0e0e0",
+      "model": "res://assets/models/furniture/computerKeyboard.glb"
+    },
+    {
+      "id": "computer_mouse",
+      "name": "Computer Mouse",
+      "placement": "floor",
+      "size": {
+        "w": 1,
+        "h": 1
+      },
+      "wall_h": 1,
+      "floor_depth": 1,
+      "functions": [],
+      "buy_price": 8,
+      "sell_price": 2,
+      "color": "e0e0e0",
+      "model": "res://assets/models/furniture/computerMouse.glb"
+    },
+    {
+      "id": "monitor",
+      "name": "Monitor",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 2
+      },
+      "wall_h": 4,
+      "floor_depth": 2,
+      "functions": [
+        "work"
+      ],
+      "needs_power": true,
+      "buy_price": 90,
+      "sell_price": 30,
+      "color": "202020",
+      "model": "res://assets/models/furniture/computerScreen.glb"
+    },
+    {
+      "id": "dryer",
+      "name": "Dryer",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 16,
+      "floor_depth": 6,
+      "functions": [
+        "laundry"
+      ],
+      "needs_water": true,
+      "needs_power": true,
+      "buy_price": 260,
+      "sell_price": 100,
+      "color": "d0d0d0",
+      "model": "res://assets/models/furniture/dryer.glb"
+    },
+    {
+      "id": "range_hood_large",
+      "name": "Range Hood",
+      "placement": "wall",
+      "size": {
+        "w": 10,
+        "h": 2
+      },
+      "wall_h": 6,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "b8b8b0",
+      "model": "res://assets/models/furniture/hoodLarge.glb"
+    },
+    {
+      "id": "range_hood_modern",
+      "name": "Modern Range Hood",
+      "placement": "wall",
+      "size": {
+        "w": 8,
+        "h": 2
+      },
+      "wall_h": 6,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 110,
+      "sell_price": 45,
+      "color": "383838",
+      "model": "res://assets/models/furniture/hoodModern.glb"
+    },
+    {
+      "id": "kitchen_bar_end",
+      "name": "Kitchen Bar End",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 22,
+      "floor_depth": 6,
+      "needs_water": true,
+      "needs_power": true,
+      "functions": [
+        "cook"
+      ],
+      "buy_price": 200,
+      "sell_price": 75,
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenBarEnd.glb"
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 30,
+      "sell_price": 10,
+      "color": "606870",
+      "model": "res://assets/models/furniture/kitchenBlender.glb"
+    },
+    {
+      "id": "kitchen_corner_cabinet_inner",
+      "name": "Kitchen Corner Cabinet",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 20,
+      "floor_depth": 6,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenCabinetCornerInner.glb"
+    },
+    {
+      "id": "kitchen_corner_cabinet_round",
+      "name": "Rounded Corner Cabinet",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 20,
+      "floor_depth": 6,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "buy_price": 190,
+      "sell_price": 75,
+      "color": "988c78",
+      "model": "res://assets/models/furniture/kitchenCabinetCornerRound.glb"
+    },
+    {
+      "id": "kitchen_upper_corner_cabinet",
+      "name": "Upper Corner Cabinet",
+      "placement": "wall",
+      "size": {
+        "w": 6,
+        "h": 3
+      },
+      "wall_h": 6,
+      "floor_depth": 3,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 150,
+      "sell_price": 55,
+      "color": "887030",
+      "model": "res://assets/models/furniture/kitchenCabinetUpperCorner.glb"
+    },
+    {
+      "id": "kitchen_upper_cabinet_double",
+      "name": "Double Upper Cabinet",
+      "placement": "wall",
+      "size": {
+        "w": 16,
+        "h": 3
+      },
+      "wall_h": 6,
+      "floor_depth": 3,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "buy_price": 260,
+      "sell_price": 100,
+      "color": "887030",
+      "model": "res://assets/models/furniture/kitchenCabinetUpperDouble.glb"
+    },
+    {
+      "id": "kitchen_upper_cabinet_low",
+      "name": "Low Upper Cabinet",
+      "placement": "wall",
+      "size": {
+        "w": 8,
+        "h": 2
+      },
+      "wall_h": 4,
+      "floor_depth": 2,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 140,
+      "sell_price": 55,
+      "color": "8a7238",
+      "model": "res://assets/models/furniture/kitchenCabinetUpperLow.glb"
+    },
+    {
+      "id": "coffee_machine",
+      "name": "Coffee Machine",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 3,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 60,
+      "sell_price": 20,
+      "color": "303030",
+      "model": "res://assets/models/furniture/kitchenCoffeeMachine.glb"
+    },
+    {
+      "id": "fridge_builtin",
+      "name": "Built-In Fridge",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 8
+      },
+      "wall_h": 20,
+      "floor_depth": 8,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 420,
+      "sell_price": 170,
+      "color": "c0ccd8",
+      "model": "res://assets/models/furniture/kitchenFridgeBuiltIn.glb"
+    },
+    {
+      "id": "fridge_large",
+      "name": "Large Fridge",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 8
+      },
+      "wall_h": 22,
+      "floor_depth": 8,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 520,
+      "sell_price": 210,
+      "color": "b8c4d0",
+      "model": "res://assets/models/furniture/kitchenFridgeLarge.glb"
+    },
+    {
+      "id": "mini_fridge",
+      "name": "Mini Fridge",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 10,
+      "floor_depth": 5,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "c8d4e0",
+      "model": "res://assets/models/furniture/kitchenFridgeSmall.glb"
+    },
+    {
+      "id": "microwave",
+      "name": "Microwave",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 3
+      },
+      "wall_h": 3,
+      "floor_depth": 3,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 70,
+      "sell_price": 25,
+      "color": "303030",
+      "model": "res://assets/models/furniture/kitchenMicrowave.glb"
+    },
+    {
+      "id": "kitchen_sink",
+      "name": "Kitchen Sink",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "functions": [
+        "cook"
+      ],
+      "needs_water": true,
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "c8ccd0",
+      "model": "res://assets/models/furniture/kitchenSink.glb"
+    },
+    {
+      "id": "stove",
+      "name": "Stove",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 9,
+      "floor_depth": 6,
+      "functions": [
+        "cook"
+      ],
+      "needs_power": true,
+      "buy_price": 260,
+      "sell_price": 100,
+      "color": "303030",
+      "model": "res://assets/models/furniture/kitchenStove.glb"
+    },
+    {
+      "id": "stove_electric",
+      "name": "Electric Stove",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 9,
+      "floor_depth": 6,
+      "functions": [
+        "cook"
+      ],
+      "needs_power": true,
+      "buy_price": 280,
+      "sell_price": 110,
+      "color": "383838",
+      "model": "res://assets/models/furniture/kitchenStoveElectric.glb"
+    },
+    {
+      "id": "ceiling_lamp",
+      "name": "Ceiling Lamp",
+      "placement": "wall",
+      "size": {
+        "w": 4,
+        "h": 1
+      },
+      "wall_h": 2,
+      "floor_depth": 1,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 50,
+      "sell_price": 18,
+      "color": "e8e0c8",
+      "model": "res://assets/models/furniture/lampSquareCeiling.glb"
+    },
+    {
+      "id": "square_floor_lamp",
+      "name": "Square Floor Lamp",
+      "placement": "floor",
+      "size": {
+        "w": 3,
+        "h": 3
+      },
+      "wall_h": 14,
+      "floor_depth": 3,
+      "functions": [],
+      "buy_price": 65,
+      "sell_price": 25,
+      "color": "d4c060",
+      "model": "res://assets/models/furniture/lampSquareFloor.glb"
+    },
+    {
+      "id": "square_table_lamp",
+      "name": "Square Table Lamp",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 5,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 45,
+      "sell_price": 15,
+      "color": "d4b060",
+      "model": "res://assets/models/furniture/lampSquareTable.glb"
+    },
+    {
+      "id": "wall_lamp",
+      "name": "Wall Lamp",
+      "placement": "wall",
+      "size": {
+        "w": 2,
+        "h": 1
+      },
+      "wall_h": 3,
+      "floor_depth": 1,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 40,
+      "sell_price": 15,
+      "color": "d4c060",
+      "model": "res://assets/models/furniture/lampWall.glb"
+    },
+    {
+      "id": "laptop",
+      "name": "Laptop",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 1,
+      "floor_depth": 2,
+      "functions": [
+        "work"
+      ],
+      "buy_price": 500,
+      "sell_price": 220,
+      "color": "808890",
+      "model": "res://assets/models/furniture/laptop.glb"
+    },
+    {
+      "id": "design_sofa",
+      "name": "Design Sofa",
+      "placement": "floor",
+      "size": {
+        "w": 20,
+        "h": 9
+      },
+      "wall_h": 9,
+      "floor_depth": 9,
+      "ghost_radius": 3,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 620,
+      "sell_price": 260,
+      "color": "384048",
+      "model": "res://assets/models/furniture/loungeDesignSofa.glb"
+    },
+    {
+      "id": "design_corner_sofa",
+      "name": "Design Corner Sofa",
+      "placement": "floor",
+      "size": {
+        "w": 24,
+        "h": 18
+      },
+      "wall_h": 9,
+      "floor_depth": 18,
+      "ghost_radius": 4,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 780,
+      "sell_price": 320,
+      "color": "303840",
+      "model": "res://assets/models/furniture/loungeDesignSofaCorner.glb"
+    },
+    {
+      "id": "corner_sofa",
+      "name": "Corner Sofa",
+      "placement": "floor",
+      "size": {
+        "w": 22,
+        "h": 16
+      },
+      "wall_h": 9,
+      "floor_depth": 16,
+      "ghost_radius": 4,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 520,
+      "sell_price": 220,
+      "color": "b86838",
+      "model": "res://assets/models/furniture/loungeSofaCorner.glb"
+    },
+    {
+      "id": "blue_pillow",
+      "name": "Blue Pillow",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 12,
+      "sell_price": 4,
+      "color": "4868a0",
+      "model": "res://assets/models/furniture/pillowBlue.glb"
+    },
+    {
+      "id": "blue_long_pillow",
+      "name": "Blue Long Pillow",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 18,
+      "sell_price": 6,
+      "color": "4868a0",
+      "model": "res://assets/models/furniture/pillowBlueLong.glb"
+    },
+    {
+      "id": "long_pillow",
+      "name": "Long Pillow",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 16,
+      "sell_price": 5,
+      "color": "c8a870",
+      "model": "res://assets/models/furniture/pillowLong.glb"
+    },
+    {
+      "id": "small_plant_2",
+      "name": "Small Plant",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 5,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 22,
+      "sell_price": 8,
+      "color": "508040",
+      "model": "res://assets/models/furniture/plantSmall2.glb"
+    },
+    {
+      "id": "small_plant_3",
+      "name": "Potted Fern",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 6,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 24,
+      "sell_price": 8,
+      "color": "487838",
+      "model": "res://assets/models/furniture/plantSmall3.glb"
+    },
+    {
+      "id": "radio",
+      "name": "Radio",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 3,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 45,
+      "sell_price": 15,
+      "color": "886858",
+      "model": "res://assets/models/furniture/radio.glb"
+    },
+    {
+      "id": "round_rug",
+      "name": "Round Rug",
+      "placement": "floor",
+      "size": {
+        "w": 10,
+        "h": 10
+      },
+      "wall_h": 1,
+      "floor_depth": 10,
+      "functions": [],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "a07898",
+      "model": "res://assets/models/furniture/rugRound.glb"
+    },
+    {
+      "id": "rounded_rug",
+      "name": "Rounded Rug",
+      "placement": "floor",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 1,
+      "floor_depth": 10,
+      "functions": [],
+      "buy_price": 100,
+      "sell_price": 40,
+      "color": "987098",
+      "model": "res://assets/models/furniture/rugRounded.glb"
+    },
+    {
+      "id": "square_rug",
+      "name": "Square Rug",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 12
+      },
+      "wall_h": 1,
+      "floor_depth": 12,
+      "functions": [],
+      "buy_price": 95,
+      "sell_price": 38,
+      "color": "a88870",
+      "model": "res://assets/models/furniture/rugSquare.glb"
+    },
+    {
+      "id": "round_shower",
+      "name": "Round Shower",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 7
+      },
+      "wall_h": 20,
+      "floor_depth": 7,
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 380,
+      "sell_price": 190,
+      "color": "b8ccd8",
+      "floor_category": "bathroom",
+      "model": "res://assets/models/furniture/showerRound.glb"
+    },
+    {
+      "id": "speaker",
+      "name": "Speaker",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 8,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 80,
+      "sell_price": 30,
+      "color": "202020",
+      "model": "res://assets/models/furniture/speaker.glb"
+    },
+    {
+      "id": "small_speaker",
+      "name": "Small Speaker",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 5,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 45,
+      "sell_price": 15,
+      "color": "282828",
+      "model": "res://assets/models/furniture/speakerSmall.glb"
+    },
+    {
+      "id": "square_bar_stool",
+      "name": "Square Bar Stool",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 4
+      },
+      "wall_h": 10,
+      "floor_depth": 4,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 75,
+      "sell_price": 28,
+      "color": "806848",
+      "model": "res://assets/models/furniture/stoolBarSquare.glb"
+    },
+    {
+      "id": "clothed_table",
+      "name": "Clothed Table",
+      "placement": "floor",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 6,
+      "floor_depth": 10,
+      "ghost_radius": 3,
+      "functions": [
+        "dine"
+      ],
+      "buy_price": 280,
+      "sell_price": 110,
+      "color": "d8ccb8",
+      "model": "res://assets/models/furniture/tableCloth.glb"
+    },
+    {
+      "id": "glass_coffee_table",
+      "name": "Glass Coffee Table",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 5
+      },
+      "wall_h": 4,
+      "floor_depth": 5,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 140,
+      "sell_price": 55,
+      "color": "b8d0d8",
+      "model": "res://assets/models/furniture/tableCoffeeGlass.glb"
+    },
+    {
+      "id": "square_glass_coffee_table",
+      "name": "Square Glass Coffee Table",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 7
+      },
+      "wall_h": 4,
+      "floor_depth": 7,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 130,
+      "sell_price": 50,
+      "color": "b8d0d8",
+      "model": "res://assets/models/furniture/tableCoffeeGlassSquare.glb"
+    },
+    {
+      "id": "square_coffee_table",
+      "name": "Square Coffee Table",
+      "placement": "floor",
+      "size": {
+        "w": 7,
+        "h": 7
+      },
+      "wall_h": 4,
+      "floor_depth": 7,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 110,
+      "sell_price": 42,
+      "color": "b09870",
+      "model": "res://assets/models/furniture/tableCoffeeSquare.glb"
+    },
+    {
+      "id": "cross_leg_table",
+      "name": "Cross-Leg Table",
+      "placement": "floor",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 6,
+      "floor_depth": 10,
+      "ghost_radius": 3,
+      "functions": [
+        "dine"
+      ],
+      "buy_price": 240,
+      "sell_price": 95,
+      "color": "b09060",
+      "model": "res://assets/models/furniture/tableCross.glb"
+    },
+    {
+      "id": "cross_leg_clothed_table",
+      "name": "Cross-Leg Clothed Table",
+      "placement": "floor",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 6,
+      "floor_depth": 10,
+      "ghost_radius": 3,
+      "functions": [
+        "dine"
+      ],
+      "buy_price": 300,
+      "sell_price": 120,
+      "color": "d8ccb8",
+      "model": "res://assets/models/furniture/tableCrossCloth.glb"
+    },
+    {
+      "id": "glass_table",
+      "name": "Glass Table",
+      "placement": "floor",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 6,
+      "floor_depth": 10,
+      "ghost_radius": 3,
+      "functions": [
+        "dine"
+      ],
+      "buy_price": 320,
+      "sell_price": 130,
+      "color": "b8d0d8",
+      "model": "res://assets/models/furniture/tableGlass.glb"
+    },
+    {
+      "id": "vintage_antenna_tv",
+      "name": "Vintage Antenna TV",
+      "placement": "wall",
+      "size": {
+        "w": 10,
+        "h": 1
+      },
+      "wall_h": 8,
+      "floor_depth": 1,
+      "functions": [],
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "504840",
+      "model": "res://assets/models/furniture/televisionAntenna.glb"
+    },
+    {
+      "id": "vintage_tv",
+      "name": "Vintage TV",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 6
+      },
+      "wall_h": 10,
+      "floor_depth": 6,
+      "functions": [],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "584c3c",
+      "model": "res://assets/models/furniture/televisionVintage.glb"
+    },
+    {
+      "id": "toaster",
+      "name": "Toaster",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 2,
+      "floor_depth": 2,
+      "functions": [],
+      "needs_power": true,
+      "buy_price": 25,
+      "sell_price": 8,
+      "color": "c8c8c8",
+      "model": "res://assets/models/furniture/toaster.glb"
+    },
+    {
+      "id": "square_toilet",
+      "name": "Square Toilet",
+      "placement": "floor",
+      "color": "d4dde8",
+      "functions": [
+        "hygiene"
+      ],
+      "buy_price": 220,
+      "sell_price": 110,
+      "size": {
+        "w": 5,
+        "h": 6
+      },
+      "floor_category": "bathroom",
+      "wall_h": 8,
+      "floor_depth": 6,
+      "model": "res://assets/models/furniture/toiletSquare.glb"
+    },
+    {
+      "id": "trash_can",
+      "name": "Trash Can",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 3,
+      "floor_depth": 2,
+      "functions": [],
+      "buy_price": 15,
+      "sell_price": 5,
+      "color": "707878",
+      "model": "res://assets/models/furniture/trashcan.glb"
+    },
+    {
+      "id": "washer",
+      "name": "Washer",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 14,
+      "floor_depth": 6,
+      "functions": [
+        "laundry"
+      ],
+      "needs_water": true,
+      "needs_power": true,
+      "buy_price": 300,
+      "sell_price": 120,
+      "color": "d0d0d0",
+      "model": "res://assets/models/furniture/washer.glb"
+    },
+    {
+      "id": "washer_dryer_stack",
+      "name": "Stacked Washer/Dryer",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 22,
+      "floor_depth": 6,
+      "height_category": "tall",
+      "functions": [
+        "laundry"
+      ],
+      "needs_water": true,
+      "needs_power": true,
+      "buy_price": 480,
+      "sell_price": 190,
+      "color": "c8c8c8",
+      "model": "res://assets/models/furniture/washerDryerStacked.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "murphy_bed_double",
+      "name": "Double Murphy Bed",
+      "size": {
+        "w": 14,
+        "h": 3
+      },
+      "wall_h": 20,
+      "floor_depth": 22,
+      "foldable": true,
+      "extended_add_h": 19,
+      "functions": [
+        "sleep"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 950,
+      "sell_price": 430,
+      "color": "5a7ea0",
+      "model": "res://assets/models/furniture/cabinetBed.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "murphy_bed_sofa",
+      "name": "Murphy Bed + Sofa",
+      "size": {
+        "w": 14,
+        "h": 4
+      },
+      "wall_h": 20,
+      "floor_depth": 20,
+      "foldable": true,
+      "extended_add_h": 16,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 1250,
+      "sell_price": 560,
+      "color": "6a86a8",
+      "model": "res://assets/models/furniture/cabinetBed.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "armchair_bed",
+      "name": "Armchair Bed",
+      "size": {
+        "w": 8,
+        "h": 8
+      },
+      "wall_h": 8,
+      "floor_depth": 8,
+      "foldable": true,
+      "extended_add_h": 10,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 380,
+      "sell_price": 150,
+      "color": "a87050",
+      "model": "res://assets/models/furniture/loungeChair.glb",
+      "model_extended": "res://assets/models/furniture/bedSingle.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "ottoman_bed",
+      "name": "Ottoman Bed",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 5,
+      "floor_depth": 6,
+      "foldable": true,
+      "extended_add_h": 12,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 340,
+      "sell_price": 130,
+      "color": "c8a060",
+      "model": "res://assets/models/furniture/loungeSofaOttoman.glb",
+      "model_extended": "res://assets/models/furniture/bedSingle.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "design_sofa_bed",
+      "name": "Design Sofa Bed",
+      "size": {
+        "w": 20,
+        "h": 9
+      },
+      "wall_h": 9,
+      "floor_depth": 9,
+      "ghost_radius": 3,
+      "foldable": true,
+      "extended_add_h": 12,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 780,
+      "sell_price": 330,
+      "color": "384048",
+      "model": "res://assets/models/furniture/loungeDesignSofa.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "corner_sofa_bed",
+      "name": "Corner Sofa Bed",
+      "size": {
+        "w": 22,
+        "h": 16
+      },
+      "wall_h": 9,
+      "floor_depth": 16,
+      "ghost_radius": 4,
+      "foldable": true,
+      "extended_add_h": 6,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 880,
+      "sell_price": 360,
+      "color": "b86838",
+      "model": "res://assets/models/furniture/loungeSofaCorner.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "trundle_bed",
+      "name": "Trundle Bed",
+      "size": {
+        "w": 19,
+        "h": 9
+      },
+      "wall_h": 5,
+      "floor_depth": 9,
+      "foldable": true,
+      "extended_add_h": 9,
+      "functions": [
+        "sleep"
+      ],
+      "folded_functions": [
+        "sleep"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 520,
+      "sell_price": 210,
+      "color": "7a9ec0",
+      "model": "res://assets/models/furniture/bedSingle.glb",
+      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "cabinet_guest_bed",
+      "name": "Cabinet Guest Bed",
+      "size": {
+        "w": 10,
+        "h": 5
+      },
+      "wall_h": 20,
+      "floor_depth": 5,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 14,
+      "functions": [
+        "storage",
+        "sleep"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 820,
+      "sell_price": 340,
+      "color": "887050",
+      "model": "res://assets/models/furniture/cabinetBedDrawer.glb",
+      "model_extended": "res://assets/models/furniture/bedSingle.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "bench_bed",
+      "name": "Bench Bed",
+      "size": {
+        "w": 12,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 7,
+      "functions": [
+        "sit",
+        "sleep"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 420,
+      "sell_price": 170,
+      "color": "9a7858",
+      "model": "res://assets/models/furniture/benchCushion.glb",
+      "model_extended": "res://assets/models/furniture/bedSingle.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "desk_bed_combo",
+      "name": "Desk Bed Combo",
+      "size": {
+        "w": 19,
+        "h": 9
+      },
+      "wall_h": 10,
+      "floor_depth": 9,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 2,
+      "functions": [
+        "work",
+        "sleep"
+      ],
+      "folded_functions": [
+        "work"
+      ],
+      "extended_functions": [
+        "sleep"
+      ],
+      "buy_price": 980,
+      "sell_price": 400,
+      "color": "5a8e68",
+      "model": "res://assets/models/furniture/cabinetBedDrawerTable.glb",
+      "model_extended": "res://assets/models/furniture/bedBunk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "drop_leaf_table",
+      "name": "Drop-Leaf Table",
+      "size": {
+        "w": 8,
+        "h": 6
+      },
+      "wall_h": 6,
+      "floor_depth": 6,
+      "foldable": true,
+      "extended_add_h": 6,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 200,
+      "sell_price": 80,
+      "color": "b09060",
+      "model": "res://assets/models/furniture/sideTable.glb",
+      "model_extended": "res://assets/models/furniture/table.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "extending_table",
+      "name": "Extending Table",
+      "size": {
+        "w": 16,
+        "h": 10
+      },
+      "wall_h": 6,
+      "floor_depth": 10,
+      "ghost_radius": 3,
+      "foldable": true,
+      "extended_add_h": 6,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [
+        "dine"
+      ],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 360,
+      "sell_price": 145,
+      "color": "b09060",
+      "model": "res://assets/models/furniture/table.glb",
+      "model_extended": "res://assets/models/furniture/tableCloth.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "lift_coffee_table",
+      "name": "Lift-Top Coffee Table",
+      "size": {
+        "w": 8,
+        "h": 5
+      },
+      "wall_h": 4,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 5,
+      "functions": [
+        "sit",
+        "dine"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 280,
+      "sell_price": 110,
+      "color": "b09870",
+      "model": "res://assets/models/furniture/tableCoffee.glb",
+      "model_extended": "res://assets/models/furniture/table.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "wall_dining_table",
+      "name": "Wall Dining Table",
+      "size": {
+        "w": 10,
+        "h": 2
+      },
+      "wall_h": 10,
+      "floor_depth": 10,
+      "foldable": true,
+      "extended_add_h": 8,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 300,
+      "sell_price": 120,
+      "color": "a08858",
+      "model": "res://assets/models/furniture/tableCross.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "nesting_tables",
+      "name": "Nesting Tables",
+      "size": {
+        "w": 7,
+        "h": 7
+      },
+      "wall_h": 4,
+      "floor_depth": 7,
+      "foldable": true,
+      "extended_add_h": 7,
+      "functions": [
+        "sit"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sit"
+      ],
+      "buy_price": 190,
+      "sell_price": 75,
+      "color": "b09870",
+      "model": "res://assets/models/furniture/tableCoffeeSquare.glb",
+      "model_extended": "res://assets/models/furniture/tableCoffeeGlassSquare.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "console_dining_table",
+      "name": "Console Dining Table",
+      "size": {
+        "w": 10,
+        "h": 4
+      },
+      "wall_h": 7,
+      "floor_depth": 4,
+      "foldable": true,
+      "extended_add_h": 8,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 310,
+      "sell_price": 125,
+      "color": "907858",
+      "model": "res://assets/models/furniture/sideTableDrawers.glb",
+      "model_extended": "res://assets/models/furniture/tableCross.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "folding_glass_table",
+      "name": "Folding Glass Table",
+      "size": {
+        "w": 12,
+        "h": 8
+      },
+      "wall_h": 6,
+      "floor_depth": 8,
+      "foldable": true,
+      "extended_add_h": 6,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [
+        "dine"
+      ],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 390,
+      "sell_price": 155,
+      "color": "b8d0d8",
+      "model": "res://assets/models/furniture/tableCoffeeGlass.glb",
+      "model_extended": "res://assets/models/furniture/tableGlass.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "murphy_table",
+      "name": "Murphy Table",
+      "size": {
+        "w": 8,
+        "h": 2
+      },
+      "wall_h": 8,
+      "floor_depth": 9,
+      "foldable": true,
+      "extended_add_h": 7,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 240,
+      "sell_price": 95,
+      "color": "987848",
+      "model": "res://assets/models/furniture/tableCoffeeSquare.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "extending_bar_table",
+      "name": "Extending Bar Table",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 9,
+      "floor_depth": 6,
+      "foldable": true,
+      "extended_add_h": 8,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 320,
+      "sell_price": 125,
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenBarEnd.glb",
+      "model_extended": "res://assets/models/furniture/kitchenBar.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "secretary_desk",
+      "name": "Secretary Desk",
+      "size": {
+        "w": 8,
+        "h": 4
+      },
+      "wall_h": 20,
+      "floor_depth": 4,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 5,
+      "functions": [
+        "storage",
+        "work"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "work",
+        "storage"
+      ],
+      "buy_price": 480,
+      "sell_price": 195,
+      "color": "8a7040",
+      "model": "res://assets/models/furniture/bookcaseClosedDoors.glb",
+      "model_extended": "res://assets/models/furniture/desk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "corner_fold_desk",
+      "name": "Corner Fold-Out Desk",
+      "size": {
+        "w": 8,
+        "h": 8
+      },
+      "wall_h": 8,
+      "floor_depth": 8,
+      "foldable": true,
+      "extended_add_h": 4,
+      "functions": [
+        "storage",
+        "work"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "work"
+      ],
+      "buy_price": 390,
+      "sell_price": 155,
+      "color": "6878a0",
+      "model": "res://assets/models/furniture/kitchenCabinetDrawer.glb",
+      "model_extended": "res://assets/models/furniture/deskCorner.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "wall_laptop_desk",
+      "name": "Wall Laptop Desk",
+      "size": {
+        "w": 6,
+        "h": 1
+      },
+      "wall_h": 8,
+      "floor_depth": 7,
+      "foldable": true,
+      "extended_add_h": 6,
+      "functions": [
+        "work"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "work"
+      ],
+      "buy_price": 190,
+      "sell_price": 75,
+      "color": "7aae88",
+      "model": "res://assets/models/furniture/bookcaseOpenLow.glb",
+      "model_extended": "res://assets/models/furniture/desk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "standing_desk",
+      "name": "Standing Desk",
+      "size": {
+        "w": 12,
+        "h": 6
+      },
+      "wall_h": 12,
+      "floor_depth": 6,
+      "ghost_radius": 3,
+      "foldable": true,
+      "extended_add_h": 2,
+      "functions": [
+        "work"
+      ],
+      "folded_functions": [
+        "work"
+      ],
+      "extended_functions": [
+        "work"
+      ],
+      "buy_price": 440,
+      "sell_price": 175,
+      "color": "6a9e78",
+      "model": "res://assets/models/furniture/desk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_desk",
+      "name": "Rolling Desk",
+      "size": {
+        "w": 8,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "ghost_radius": 2,
+      "rail_axis": "h",
+      "functions": [
+        "work"
+      ],
+      "buy_price": 320,
+      "sell_price": 130,
+      "color": "6a9e78",
+      "model": "res://assets/models/furniture/desk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "vanity_desk",
+      "name": "Convertible Vanity",
+      "size": {
+        "w": 8,
+        "h": 4
+      },
+      "wall_h": 8,
+      "floor_depth": 4,
+      "foldable": true,
+      "extended_add_h": 4,
+      "functions": [
+        "storage",
+        "work"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "work"
+      ],
+      "buy_price": 330,
+      "sell_price": 130,
+      "color": "907858",
+      "model": "res://assets/models/furniture/sideTableDrawers.glb",
+      "model_extended": "res://assets/models/furniture/desk.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "bookcase_desk",
+      "name": "Bookcase Desk",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 22,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 5,
+      "functions": [
+        "storage",
+        "work"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "work",
+        "storage"
+      ],
+      "buy_price": 420,
+      "sell_price": 170,
+      "color": "9a7840",
+      "model": "res://assets/models/furniture/bookcaseOpen.glb",
+      "model_extended": "res://assets/models/furniture/deskCorner.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "sliding_wardrobe_tall",
+      "name": "Sliding Wardrobe (Vertical)",
+      "size": {
+        "w": 10,
+        "h": 6
+      },
+      "wall_h": 20,
+      "floor_depth": 6,
+      "height_category": "tall",
+      "rail_axis": "v",
+      "zone_divider": true,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 360,
+      "sell_price": 130,
+      "color": "b08848",
+      "model": "res://assets/models/furniture/bookcaseClosedDoors.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "sliding_bookcase",
+      "name": "Sliding Bookcase (Vertical)",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 22,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "rail_axis": "v",
+      "zone_divider": true,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 210,
+      "sell_price": 80,
+      "color": "9a7840",
+      "model": "res://assets/models/furniture/bookcaseOpen.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_shelf_wide",
+      "name": "Rolling Wide Shelf",
+      "size": {
+        "w": 14,
+        "h": 3
+      },
+      "wall_h": 20,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "rail_axis": "h",
+      "zone_divider": true,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 330,
+      "sell_price": 120,
+      "color": "987848",
+      "model": "res://assets/models/furniture/bookcaseClosedWide.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_tv_unit",
+      "name": "Rolling TV Unit",
+      "size": {
+        "w": 18,
+        "h": 5
+      },
+      "wall_h": 9,
+      "floor_depth": 5,
+      "rail_axis": "h",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 280,
+      "sell_price": 110,
+      "color": "604838",
+      "model": "res://assets/models/furniture/cabinetTelevisionDoors.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_island",
+      "name": "Rolling Island",
+      "size": {
+        "w": 14,
+        "h": 8
+      },
+      "wall_h": 9,
+      "floor_depth": 8,
+      "rail_axis": "h",
+      "functions": [],
+      "buy_price": 400,
+      "sell_price": 160,
+      "color": "c0b090",
+      "model": "res://assets/models/furniture/kitchenBar.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_clothes_rack",
+      "name": "Rolling Clothes Rack",
+      "size": {
+        "w": 9,
+        "h": 5
+      },
+      "wall_h": 14,
+      "floor_depth": 5,
+      "rail_axis": "h",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 150,
+      "sell_price": 55,
+      "color": "909898",
+      "model": "res://assets/models/furniture/coatRackStanding.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "folding_storage_bench",
+      "name": "Folding Storage Bench",
+      "size": {
+        "w": 12,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 3,
+      "functions": [
+        "sit",
+        "storage"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sit",
+        "storage"
+      ],
+      "buy_price": 260,
+      "sell_price": 100,
+      "color": "9a7858",
+      "model": "res://assets/models/furniture/benchCushion.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "expanding_shelf",
+      "name": "Expanding Shelf",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 10,
+      "floor_depth": 3,
+      "foldable": true,
+      "extended_add_h": 3,
+      "functions": [
+        "storage"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "storage"
+      ],
+      "buy_price": 200,
+      "sell_price": 80,
+      "color": "987840",
+      "model": "res://assets/models/furniture/bookcaseOpenLow.glb",
+      "model_extended": "res://assets/models/furniture/bookcaseOpen.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "pocket_pantry",
+      "name": "Pocket Pantry",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 20,
+      "floor_depth": 5,
+      "height_category": "tall",
+      "rail_axis": "v",
+      "zone_divider": true,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "buy_price": 280,
+      "sell_price": 105,
+      "color": "8a7060",
+      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "pull_out_hamper",
+      "name": "Pull-Out Hamper",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 6,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 3,
+      "functions": [
+        "storage"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "storage"
+      ],
+      "buy_price": 90,
+      "sell_price": 35,
+      "color": "b89868",
+      "model": "res://assets/models/furniture/cardboardBoxClosed.glb",
+      "model_extended": "res://assets/models/furniture/cardboardBoxOpen.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "hidden_kitchenette",
+      "name": "Hidden Kitchenette",
+      "size": {
+        "w": 14,
+        "h": 6
+      },
+      "wall_h": 20,
+      "floor_depth": 6,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 2,
+      "needs_water": true,
+      "needs_power": true,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "cook"
+      ],
+      "buy_price": 800,
+      "sell_price": 320,
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenCabinet.glb",
+      "model_extended": "res://assets/models/furniture/kitchenBar.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "fold_down_breakfast_bar",
+      "name": "Fold-Down Breakfast Bar",
+      "size": {
+        "w": 10,
+        "h": 2
+      },
+      "wall_h": 6,
+      "floor_depth": 7,
+      "foldable": true,
+      "extended_add_h": 5,
+      "functions": [
+        "dine"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 230,
+      "sell_price": 90,
+      "color": "887030",
+      "model": "res://assets/models/furniture/kitchenCabinetUpperLow.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "rolling_kitchen_cart",
+      "name": "Rolling Kitchen Cart",
+      "size": {
+        "w": 6,
+        "h": 5
+      },
+      "wall_h": 9,
+      "floor_depth": 5,
+      "rail_axis": "h",
+      "functions": [],
+      "buy_price": 200,
+      "sell_price": 80,
+      "color": "a09888",
+      "model": "res://assets/models/furniture/kitchenCabinetDrawer.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "kitchen_tower",
+      "name": "Kitchen Tower",
+      "size": {
+        "w": 7,
+        "h": 8
+      },
+      "wall_h": 22,
+      "floor_depth": 8,
+      "height_category": "tall",
+      "foldable": true,
+      "extended_add_h": 4,
+      "needs_water": true,
+      "needs_power": true,
+      "functions": [
+        "storage",
+        "cook"
+      ],
+      "folded_functions": [
+        "storage"
+      ],
+      "extended_functions": [
+        "cook"
+      ],
+      "buy_price": 700,
+      "sell_price": 280,
+      "color": "908878",
+      "model": "res://assets/models/furniture/kitchenCabinet.glb",
+      "model_extended": "res://assets/models/furniture/kitchenStoveElectric.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "fold_out_counter",
+      "name": "Fold-Out Counter",
+      "size": {
+        "w": 8,
+        "h": 2
+      },
+      "wall_h": 8,
+      "floor_depth": 6,
+      "foldable": true,
+      "extended_add_h": 4,
+      "functions": [
+        "cook"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "cook"
+      ],
+      "buy_price": 350,
+      "sell_price": 140,
+      "color": "988c78",
+      "model": "res://assets/models/furniture/kitchenCabinetUpperDouble.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "folding_shower",
+      "name": "Folding Shower",
+      "size": {
+        "w": 8,
+        "h": 8
+      },
+      "wall_h": 20,
+      "floor_depth": 8,
+      "floor_category": "bathroom",
+      "foldable": true,
+      "extended_add_h": 2,
+      "needs_water": true,
+      "functions": [
+        "hygiene"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "hygiene"
+      ],
+      "buy_price": 460,
+      "sell_price": 230,
+      "color": "b8ccd8",
+      "model": "res://assets/models/furniture/shower.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "mirror_cabinet",
+      "name": "Mirror Cabinet",
+      "size": {
+        "w": 6,
+        "h": 1
+      },
+      "wall_h": 8,
+      "floor_depth": 3,
+      "foldable": true,
+      "extended_add_h": 2,
+      "functions": [
+        "storage"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "storage"
+      ],
+      "buy_price": 160,
+      "sell_price": 60,
+      "color": "90b8c8",
+      "model": "res://assets/models/furniture/bathroomMirror.glb",
+      "model_extended": "res://assets/models/furniture/bathroomCabinet.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "sliding_bathroom_cabinet",
+      "name": "Sliding Bathroom Cabinet",
+      "size": {
+        "w": 7,
+        "h": 5
+      },
+      "wall_h": 12,
+      "floor_depth": 5,
+      "floor_category": "bathroom",
+      "rail_axis": "h",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 180,
+      "sell_price": 70,
+      "color": "d8e4ec",
+      "model": "res://assets/models/furniture/bathroomCabinetDrawer.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "folding_chair",
+      "name": "Folding Chair",
+      "size": {
+        "w": 5,
+        "h": 2
+      },
+      "wall_h": 8,
+      "floor_depth": 2,
+      "foldable": true,
+      "extended_add_h": 3,
+      "functions": [
+        "sit"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "sit"
+      ],
+      "buy_price": 60,
+      "sell_price": 20,
+      "color": "8a6848",
+      "model": "res://assets/models/furniture/chair.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "stacking_stools",
+      "name": "Stacking Stools",
+      "size": {
+        "w": 4,
+        "h": 4
+      },
+      "wall_h": 10,
+      "floor_depth": 4,
+      "foldable": true,
+      "extended_add_h": 4,
+      "functions": [
+        "sit"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "sit"
+      ],
+      "buy_price": 130,
+      "sell_price": 50,
+      "color": "806848",
+      "model": "res://assets/models/furniture/stoolBarSquare.glb"
+    },
+    {
+      "placement": "wall",
+      "id": "wall_folding_seat",
+      "name": "Wall Folding Seat",
+      "size": {
+        "w": 5,
+        "h": 1
+      },
+      "wall_h": 5,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 4,
+      "functions": [
+        "sit"
+      ],
+      "folded_functions": [],
+      "extended_functions": [
+        "sit"
+      ],
+      "buy_price": 120,
+      "sell_price": 45,
+      "color": "907048",
+      "model": "res://assets/models/furniture/benchCushionLow.glb"
+    },
+    {
+      "placement": "floor",
+      "id": "picnic_bench_table",
+      "name": "Convertible Picnic Bench",
+      "size": {
+        "w": 12,
+        "h": 5
+      },
+      "wall_h": 8,
+      "floor_depth": 5,
+      "foldable": true,
+      "extended_add_h": 5,
+      "functions": [
+        "sit",
+        "dine"
+      ],
+      "folded_functions": [
+        "sit"
+      ],
+      "extended_functions": [
+        "dine"
+      ],
+      "buy_price": 300,
+      "sell_price": 120,
+      "color": "8a7050",
+      "model": "res://assets/models/furniture/bench.glb",
+      "model_extended": "res://assets/models/furniture/tableCross.glb"
     }
   ],
   "paintable": [

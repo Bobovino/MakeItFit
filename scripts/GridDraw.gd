@@ -153,8 +153,25 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	const FINE_COL    := Color(0.34, 0.54, 0.76, 0.55)  # 10 cm subcell lines
 	const MAJOR_COL   := Color(0.52, 0.74, 0.96, 0.75)  # 1 m cell lines (brighter)
 
+	# The level's authored canvas (grid_w x grid_h) is usually much bigger than
+	# any one room actually uses — drawing the paper sheet/grid across the
+	# whole thing buried the room in a sea of empty gridlines. Clip the
+	# background, frame, and gridlines to the room's real bounds plus a small
+	# margin instead; everything else in this function still draws in the
+	# same absolute tile coordinates, so nothing else needs to move.
+	const GRID_MARGIN_TILES := 2
+	var bounds := _room_bounds_tiles(parent)
+	var bx0 := maxi(bounds.position.x - GRID_MARGIN_TILES, 0)
+	var by0 := maxi(bounds.position.y - GRID_MARGIN_TILES, 0)
+	var bx1 := mini(bounds.position.x + bounds.size.x + GRID_MARGIN_TILES, w)
+	var by1 := mini(bounds.position.y + bounds.size.y + GRID_MARGIN_TILES, h)
+
 	var ww := w * TILE_SIZE
 	var hh := h * TILE_SIZE
+	var sheet_x := bx0 * TILE_SIZE
+	var sheet_y := by0 * TILE_SIZE
+	var sheet_w := (bx1 - bx0) * TILE_SIZE
+	var sheet_h := (by1 - by0) * TILE_SIZE
 
 	# ── Adaptive zoom ─────────────────────────────────────────────────────────
 	# Use the canvas transform scale to determine effective px-per-tile,
@@ -167,14 +184,14 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# ── 1. Canvas background — a paper sheet lying on the desk ───────────────
 	# Stacked soft drop shadows first, so the blueprint reads as a physical
 	# document resting on the warm desk surface behind it.
-	draw_rect(Rect2(6, 8, ww, hh), Color(0, 0, 0, 0.10))
-	draw_rect(Rect2(4, 5, ww, hh), Color(0, 0, 0, 0.14))
-	draw_rect(Rect2(2, 3, ww, hh), Color(0, 0, 0, 0.18))
-	draw_rect(Rect2(0, 0, ww, hh), CANVAS_BG)
+	draw_rect(Rect2(sheet_x + 6, sheet_y + 8, sheet_w, sheet_h), Color(0, 0, 0, 0.10))
+	draw_rect(Rect2(sheet_x + 4, sheet_y + 5, sheet_w, sheet_h), Color(0, 0, 0, 0.14))
+	draw_rect(Rect2(sheet_x + 2, sheet_y + 3, sheet_w, sheet_h), Color(0, 0, 0, 0.18))
+	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), CANVAS_BG)
 	# Faint paper grain — one shared noise texture tiled across the sheet
-	draw_texture_rect(_get_grain(), Rect2(0, 0, ww, hh), true, Color(1, 1, 1, 0.05))
+	draw_texture_rect(_get_grain(), Rect2(sheet_x, sheet_y, sheet_w, sheet_h), true, Color(1, 1, 1, 0.05))
 	# Cream cut edge — the white rim of the actual paper stock
-	draw_rect(Rect2(0, 0, ww, hh), Color(0.955, 0.930, 0.870, 0.85), false, 1.5)
+	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), Color(0.955, 0.930, 0.870, 0.85), false, 1.5)
 
 	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
 	if not parent.shadow_mask.is_empty():
@@ -480,29 +497,31 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	var fine_col := FINE_COL if show_grid else Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, 0.22)
 	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, 0.40)
 	if show_fine:
-		for x in range(w + 1):
+		for x in range(bx0, bx1 + 1):
 			if x % METER_TILES != 0:
-				draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), fine_col, 1.0)
-		for y in range(h + 1):
+				draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), fine_col, 1.0)
+		for y in range(by0, by1 + 1):
 			if y % METER_TILES != 0:
-				draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), fine_col, 1.0)
-	for x in range(0, w + 1, METER_TILES):
-		draw_line(Vector2(x * TILE_SIZE, 0), Vector2(x * TILE_SIZE, hh), maj_col, 2.0)
-	for y in range(0, h + 1, METER_TILES):
-		draw_line(Vector2(0, y * TILE_SIZE), Vector2(ww, y * TILE_SIZE), maj_col, 2.0)
+				draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), fine_col, 1.0)
+	for x in range(bx0 - bx0 % METER_TILES, bx1 + 1, METER_TILES):
+		if x >= bx0:
+			draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), maj_col, 2.0)
+	for y in range(by0 - by0 % METER_TILES, by1 + 1, METER_TILES):
+		if y >= by0:
+			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, 2.0)
 
 	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
 	const FRAME_COL := Color(0.56, 0.78, 0.98, 0.70)
 	var m1 := 4.0
 	var m2 := 7.0
-	draw_rect(Rect2(m1, m1, ww - m1 * 2, hh - m1 * 2), FRAME_COL, false, 1.5)
-	draw_rect(Rect2(m2, m2, ww - m2 * 2, hh - m2 * 2), Color(FRAME_COL.r, FRAME_COL.g, FRAME_COL.b, 0.35), false, 1.0)
+	draw_rect(Rect2(sheet_x + m1, sheet_y + m1, sheet_w - m1 * 2, sheet_h - m1 * 2), FRAME_COL, false, 1.5)
+	draw_rect(Rect2(sheet_x + m2, sheet_y + m2, sheet_w - m2 * 2, sheet_h - m2 * 2), Color(FRAME_COL.r, FRAME_COL.g, FRAME_COL.b, 0.35), false, 1.0)
 	# Corner registration ticks — small drafting L-marks just inside the frame
 	var tk := 6.0
 	var tm := m2 + 4.0
-	for corner in [Vector2(tm, tm), Vector2(ww - tm, tm), Vector2(tm, hh - tm), Vector2(ww - tm, hh - tm)]:
-		var dx := tk if corner.x < ww * 0.5 else -tk
-		var dy := tk if corner.y < hh * 0.5 else -tk
+	for corner in [Vector2(sheet_x + tm, sheet_y + tm), Vector2(sheet_x + sheet_w - tm, sheet_y + tm), Vector2(sheet_x + tm, sheet_y + sheet_h - tm), Vector2(sheet_x + sheet_w - tm, sheet_y + sheet_h - tm)]:
+		var dx := tk if corner.x < sheet_x + sheet_w * 0.5 else -tk
+		var dy := tk if corner.y < sheet_y + sheet_h * 0.5 else -tk
 		draw_line(corner, corner + Vector2(dx, 0), BP_INK_SOFT, 1.0, true)
 		draw_line(corner, corner + Vector2(0, dy), BP_INK_SOFT, 1.0, true)
 

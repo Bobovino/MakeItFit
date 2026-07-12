@@ -5,11 +5,11 @@ const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
 @onready var gm:           GameManager  = $GameManager
 @onready var room:         Node2D       = $Room
-@onready var minimap:      Minimap      = $UI/BottomBar/Minimap
-@onready var moment_selector: Minimap   = $UI/BottomBar/MomentSelector
+@onready var minimap:      Minimap      = $UI/TopBar/Minimap
+@onready var moment_selector: Minimap   = $UI/TopBar/MomentSelector
 @onready var budget_label: Label        = $UI/TopBar/Label
-@onready var tenant_card:  TenantCard   = $UI/BottomBar/TenantCard
-@onready var inventory:    Inventory    = $UI/BottomBar/Inventory
+@onready var tenant_card:  TenantCard   = $UI/TenantCard
+@onready var inventory:    Inventory    = $UI/Inventory
 @onready var rent_btn:     Button       = $UI/TopBar/RentButton
 @onready var view3d_btn:   Button       = $UI/TopBar/View3DButton
 @onready var result_screen: ResultScreen = $ResultScreen
@@ -17,32 +17,44 @@ const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 @onready var divider:      ColorRect     = $UI/Divider
 @onready var ui_layer:     CanvasLayer   = $UI
 
-var _room3d_view = null
-
 const TILE_SIZE := 8          # pixels per grid tile — matches Floor/GridDraw
 const TOP_Y     := 46.0       # top bar height
-const BOT_Y     := 506.0      # bottom bar start
+const BOT_Y     := 720.0      # bottom of the play area — full window height now that
+							   # the furniture/tenant panels are side columns, not a bottom bar
 const FIT_PCT   := 0.95       # fraction of available area to fill
 
-# ── Floor plan / Wall Inspector resizable split ────────────────────────────
-const MIN_SPLIT_X := 450.0
-const MAX_SPLIT_X := 1050.0
-var _split_x:         float = 860.0
+# ── Left/right sidebars ─────────────────────────────────────────────────────
+# Furniture shop (left) and the compact tenant-needs tracker (right) are full-
+# height side columns now, so the floor plan / wall view / 3D view get the
+# entire remaining width instead of sharing it with a bottom strip.
+const LEFT_X  := 170.0    # furniture sidebar width — fits the 2-column item grid plus the panel's own margins and scrollbar
+const RIGHT_X := 1280.0   # play area now runs the full width — TenantCard floats as an overlay, not a reserved column
+
+# ── Floor plan / docked-panel resizable split ──────────────────────────────
+# The docked panel (Wall Inspector or the 3D preview, depending on mode) is a
+# horizontal strip along the BOTTOM of the screen — the top-down plan always
+# keeps the full width above it, so the divider only moves vertically.
+const MIN_SPLIT_Y := 300.0   # top plan area keeps at least this much height
+const MAX_SPLIT_Y := 620.0   # bottom panel keeps at least this much height
+var _split_y:          float = 460.0
 var _dragging_divider: bool = false
-var _undo_btn: Button = null   # floating corner button over the floor plan, kept flush with Wall Inspector's left edge
+var _undo_btn: Button = null   # floating corner button over the floor plan, top-right of the play area
+var _redo_btn: Button = null   # sits directly left of _undo_btn, same floating row
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
-# ── View mode: split (default) / top-down with a modal wall panel (mobile-
-# friendly) / 3D-primary. All three read and write the same Floor data —
-# switching modes never converts or loses anything, it just changes which
-# surface is on screen.
-enum ViewMode { SPLIT, TOPDOWN_MODAL, VIEW3D }
+# ── View mode: four ways to look at the same apartment, all reading/writing
+# the same Floor data — switching modes never converts or loses anything:
+#   TOPDOWN      — plan only, wall access via a modal popup (fast solving)
+#   TOPDOWN_WALL — plan + docked Wall Inspector side by side (vertical placement)
+#   TOPDOWN_3D   — plan + a live persistent 3D preview side by side (default)
+#   VIEW3D       — 3D only, to walk around and admire the finished apartment
+enum ViewMode { TOPDOWN, TOPDOWN_WALL, TOPDOWN_3D, VIEW3D }
 const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
-var _view_mode: int = ViewMode.SPLIT
-var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
+var _view_mode: int = ViewMode.TOPDOWN
+var _mode3d_view:    Control = null   # persistent 3D view for TOPDOWN_3D/VIEW3D modes (separate from the "reveal" overlay)
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
-var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside SPLIT mode
+var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
@@ -79,6 +91,7 @@ var _builder_pipe_ghost:  Line2D    = null
 # captured BEFORE the action it undoes.
 const BUILDER_UNDO_MAX := 50
 var _builder_undo_stack: Array = []
+var _redo_stack: Array = []   # entries popped off _builder_undo_stack by Undo, replayed by Redo
 var _last_furniture_state: Dictionary = {}   # cache of furniture state as of the last change
 var _restoring_furniture: bool = false       # guards the restore's own mutations from re-triggering a push
 var _paint_pieces:      Dictionary = {}  # floor_id -> {type_id: PaintedFurniture}
@@ -92,6 +105,8 @@ var _active_moment_id:  String = ""
 
 
 func _ready() -> void:
+	minimap.set_compact(true)
+	moment_selector.set_compact(true)
 	if not gm.budget_changed.is_connected(_on_budget_changed):
 		gm.budget_changed.connect(_on_budget_changed)
 	if not gm.functions_updated.is_connected(_on_functions_updated):
@@ -104,12 +119,13 @@ func _ready() -> void:
 		moment_selector.wall_selected.connect(_on_moment_selected)
 	if not inventory.buy_requested.is_connected(_on_buy_requested):
 		inventory.buy_requested.connect(_on_buy_requested)
-	if not inventory.view3d_requested.is_connected(_on_view3d_item_requested):
-		inventory.view3d_requested.connect(_on_view3d_item_requested)
 	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
 		inventory.builder_tool_selected.connect(_on_builder_tool_selected)
 	if not rent_btn.pressed.is_connected(_on_rent_pressed):
 		rent_btn.pressed.connect(_on_rent_pressed)
+	if not tenant_card.rent_out_requested.is_connected(_on_rent_pressed):
+		tenant_card.rent_out_requested.connect(_on_rent_pressed)
+	rent_btn.visible = false   # superseded by the TenantCard's own RENT OUT button
 	view3d_btn.visible = false   # superseded by the persistent 3D view mode
 	if not result_screen.next_level_requested.is_connected(_on_next_level):
 		result_screen.next_level_requested.connect(_on_next_level)
@@ -120,12 +136,12 @@ func _ready() -> void:
 	if not wall_inspector.wall_item_placed.is_connected(_on_wall_item_placed):
 		wall_inspector.wall_item_placed.connect(_on_wall_item_placed)
 	divider.mouse_filter = Control.MOUSE_FILTER_STOP
-	divider.mouse_default_cursor_shape = Control.CURSOR_HSPLIT
+	divider.mouse_default_cursor_shape = Control.CURSOR_VSPLIT
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
-		return pos.x < _floor_pane_right_x() and pos.y > TOP_Y and pos.y < BOT_Y
-	_update_split(_split_x)
+		return pos.x > LEFT_X and pos.x < RIGHT_X and pos.y > TOP_Y and pos.y < _floor_pane_bottom_y()
+	_update_split(_split_y)
 	_apply_ui_theme()
 	_load_level(GameState.pending_level_id)
 
@@ -213,17 +229,20 @@ func _apply_ui_theme() -> void:
 	if top.has_node("TestBtn"):
 		top.get_node("TestBtn").visible = false  # updated after level load
 
-	# View-mode switcher: Split (default) / Top-down + modal wall panel
-	# (mobile-friendly) / 3D-primary. Mutually exclusive via a ButtonGroup.
+	# View-mode switcher: four ways to look at the apartment (see the ViewMode
+	# enum comment). Mutually exclusive via a ButtonGroup.
 	if not top.has_node("ViewModeBox"):
 		var box := HBoxContainer.new()
 		box.name = "ViewModeBox"
 		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
+		# Segment labels read as one connected pill ("Top-Down | + Wall | + 3D |
+		# 3D Only"), so only the first spells out "Top-Down" in full.
 		var specs := [
-			[ViewMode.SPLIT,         "Split"],
-			[ViewMode.TOPDOWN_MODAL, "Top-Down"],
-			[ViewMode.VIEW3D,        "3D"],
+			[ViewMode.TOPDOWN,      "Top-Down",  "Plan only, wall access via a popup — fastest for solving"],
+			[ViewMode.TOPDOWN_WALL, "+ Wall",    "Plan + docked Wall Inspector — best when vertical placement matters"],
+			[ViewMode.TOPDOWN_3D,   "+ 3D",      "Plan + a live 3D preview side by side"],
+			[ViewMode.VIEW3D,       "3D Only",   "Walk around and admire the finished apartment"],
 		]
 		for i in specs.size():
 			var spec: Array = specs[i]
@@ -231,9 +250,10 @@ func _apply_ui_theme() -> void:
 			var btn := Button.new()
 			btn.name          = "ViewMode%d" % mode
 			btn.text          = spec[1]
+			btn.tooltip_text  = spec[2]
 			btn.toggle_mode   = true
 			btn.button_group  = group
-			btn.button_pressed = (mode == ViewMode.SPLIT)
+			btn.button_pressed = (mode == _view_mode)
 			btn.add_theme_font_size_override("font_size", 11)
 			# Segmented-control look: one connected pill, only the outer ends
 			# rounded, with the active segment filled amber.
@@ -276,14 +296,25 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_undo_btn):
 		_undo_btn = Button.new()
 		_undo_btn.name = "UndoBtn"
-		_undo_btn.text = "↶ Undo"
-		_undo_btn.tooltip_text = "Undo last action (Ctrl+Z)"
-		_undo_btn.add_theme_font_size_override("font_size", 12)
-		_undo_btn.custom_minimum_size = Vector2(90, 0)
+		_undo_btn.text = "↶"
+		_undo_btn.tooltip_text = "Undo last action (Ctrl+%s)" % OS.get_keycode_string(GameState.undo_keycode)
+		_undo_btn.add_theme_font_size_override("font_size", 16)
+		_undo_btn.custom_minimum_size = Vector2(32, 0)
 		_undo_btn.offset_top = TOP_Y + 8.0
 		_undo_btn.pressed.connect(_undo_builder_action)
 		ui_layer.add_child(_undo_btn)
+	if not is_instance_valid(_redo_btn):
+		_redo_btn = Button.new()
+		_redo_btn.name = "RedoBtn"
+		_redo_btn.text = "↷"
+		_redo_btn.tooltip_text = "Redo (Ctrl+Shift+%s)" % OS.get_keycode_string(GameState.undo_keycode)
+		_redo_btn.add_theme_font_size_override("font_size", 16)
+		_redo_btn.custom_minimum_size = Vector2(32, 0)
+		_redo_btn.offset_top = TOP_Y + 8.0
+		_redo_btn.pressed.connect(_redo_builder_action)
+		ui_layer.add_child(_redo_btn)
 	_position_undo_btn()
+	_refresh_undo_redo_buttons()
 
 
 static func _segment_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
@@ -489,8 +520,23 @@ func _load_level(level_id: String) -> void:
 	if top_bar.has_node("TestBtn"):
 		top_bar.get_node("TestBtn").visible = _has_foldable_furniture() and gm.moments.is_empty()
 
-	_restoring_furniture  = false
-	_last_furniture_state = _snapshot_all_furniture()
+	# "Revisar Plano Actual" — CityMap sets this one-shot flag right before
+	# switching scenes when the player picks up a previously-won level instead
+	# of a fresh one. Consumed here regardless of outcome so it never leaks
+	# into the next level load.
+	var _use_saved := GameState.pending_use_saved_layout
+	GameState.pending_use_saved_layout = false
+	if _use_saved and GameState.has_level_layout(level_id):
+		_restore_furniture_snapshot(GameState.get_level_layout(level_id))
+	else:
+		_restoring_furniture  = false
+		_last_furniture_state = _snapshot_all_furniture()
+
+	# _set_view_mode is normally only triggered by clicking a mode button —
+	# applying it once here makes the default mode's layout (hidden/docked
+	# Wall Inspector, 3D pane, divider) actually match on first load instead
+	# of relying on whatever Main.tscn's static node visibility happens to be.
+	_set_view_mode(_view_mode)
 
 	var paintable := gm.current_level.get("paintable_furniture", []) as Array
 	if not paintable.is_empty():
@@ -750,7 +796,7 @@ func _switch_floor(floor_id: String) -> void:
 	# so switching floor tabs (e.g. base <-> the loft a bunk/loft bed creates)
 	# while already in 3D mode silently kept showing the stale floor. Rebuild
 	# it for the newly-selected floor.
-	if _view_mode == ViewMode.VIEW3D:
+	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
 		_ensure_mode3d_view()
 
 
@@ -764,8 +810,8 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	const V_PAD  := 24.0
 	const PAD_T  := 3     # tile padding around apartment content
 
-	var avail_w := (_split_x if _view_mode == ViewMode.SPLIT else SCREEN_W) - H_PAD * 2
-	var avail_h := (BOT_Y - TOP_Y) - V_PAD * 2
+	var avail_w := (RIGHT_X - LEFT_X) - H_PAD * 2
+	var avail_h := (_floor_pane_bottom_y() - TOP_Y) - V_PAD * 2
 
 	var fw: float; var fh: float
 	var off_x := 0.0;   var off_y := 0.0
@@ -786,7 +832,7 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 
 	_base_scale    = s
 	_base_position = Vector2(
-		H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
+		LEFT_X + H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
 		TOP_Y + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
 	)
 	if reset_view:
@@ -801,36 +847,47 @@ func _apply_room_transform() -> void:
 	room.position = _base_position + _manual_pan
 
 
-# ── Floor/Wall split divider drag ──────────────────────────────────────────
+# ── Floor plan / docked-panel split divider drag ───────────────────────────
 func _on_divider_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_dragging_divider = (event as InputEventMouseButton).pressed
 
 
-func _update_split(x: float) -> void:
-	_split_x = clampf(x, MIN_SPLIT_X, MAX_SPLIT_X)
-	if _view_mode == ViewMode.SPLIT:
-		divider.offset_left        = _split_x - 3.0
-		divider.offset_right       = _split_x + 3.0
-		wall_inspector.offset_left = _split_x + 3.0
+func _update_split(y: float) -> void:
+	_split_y = clampf(y, MIN_SPLIT_Y, MAX_SPLIT_Y)
+	if _view_mode == ViewMode.TOPDOWN_WALL:
+		divider.offset_top          = _split_y - 3.0
+		divider.offset_bottom       = _split_y + 3.0
+		wall_inspector.offset_top   = _split_y + 3.0
+	elif _view_mode == ViewMode.TOPDOWN_3D:
+		divider.offset_top    = _split_y - 3.0
+		divider.offset_bottom = _split_y + 3.0
+		if is_instance_valid(_mode3d_view):
+			_mode3d_view.offset_top = _split_y + 3.0
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl:
 		_fit_floor(fl, false)
 	_position_undo_btn()
 
 
-# Keeps the floating Undo button pinned to the top-right corner of the floor
-# plan / room view, flush against whatever currently bounds it on the right
-# (the Split-mode divider, or the full screen width in the other view modes).
+# Keeps the floating Undo button pinned to the top-right corner of the play
+# area — just left of the floating TenantCard overlay (which sits at RIGHT_X
+# proper, since RIGHT_X is now the true screen edge and no longer reserves a
+# dedicated tenant sidebar column).
 func _position_undo_btn() -> void:
 	if not is_instance_valid(_undo_btn):
 		return
-	var right_edge := (_split_x if _view_mode == ViewMode.SPLIT else SCREEN_W)
+	var right_edge := tenant_card.offset_left - 8.0
 	_undo_btn.offset_right = right_edge - 8.0
 	_undo_btn.offset_left  = right_edge - 8.0 - (_undo_btn.custom_minimum_size.x as float)
 	# The 3D view (and other full-width overlays) get added to ui_layer after
 	# this button, which would otherwise draw over it and block its clicks.
 	ui_layer.move_child(_undo_btn, ui_layer.get_child_count() - 1)
+	if is_instance_valid(_redo_btn):
+		_redo_btn.offset_right = _undo_btn.offset_left - 6.0
+		_redo_btn.offset_left  = _redo_btn.offset_right - (_redo_btn.custom_minimum_size.x as float)
+		_redo_btn.offset_top   = _undo_btn.offset_top
+		ui_layer.move_child(_redo_btn, ui_layer.get_child_count() - 1)
 
 
 # ── View mode switcher ──────────────────────────────────────────────────────
@@ -840,18 +897,29 @@ func _set_view_mode(mode: int) -> void:
 		(_mode_buttons[m] as Button).button_pressed = (m == mode)
 
 	match mode:
-		ViewMode.SPLIT:
+		ViewMode.TOPDOWN_WALL:
 			_teardown_mode3d_view()
 			room.visible    = true
 			divider.visible = true
-			wall_inspector.show()   # SPLIT always shows it docked, even as the idle placeholder
-			wall_inspector.offset_left   = _split_x + 3.0
-			wall_inspector.offset_top    = TOP_Y
-			wall_inspector.offset_right  = SCREEN_W
+			wall_inspector.show()   # always shows it docked, even as the idle placeholder
+			wall_inspector.offset_left   = LEFT_X
+			wall_inspector.offset_top    = _split_y + 3.0
+			wall_inspector.offset_right  = RIGHT_X
 			wall_inspector.offset_bottom = BOT_Y
 			_hide_modal_backdrop()
 			_set_mode_hint("")
-		ViewMode.TOPDOWN_MODAL:
+		ViewMode.TOPDOWN_3D:
+			# Same docked-split mechanic as TOPDOWN_WALL (same divider, same
+			# _split_y), but the bottom pane is a live 3D preview instead of the
+			# Wall Inspector — wall access happens directly in that 3D pane
+			# (drag onto a wall), same as VIEW3D, so no 2D Wall Inspector here.
+			room.visible    = true
+			divider.visible = true
+			wall_inspector.hide()
+			_hide_modal_backdrop()
+			_ensure_mode3d_view()
+			_set_mode_hint("")
+		ViewMode.TOPDOWN:
 			_teardown_mode3d_view()
 			room.visible    = true
 			divider.visible = false
@@ -902,9 +970,12 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
 		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
 		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
-	_mode3d_view.offset_left   = 0.0
-	_mode3d_view.offset_top    = TOP_Y
-	_mode3d_view.offset_right  = SCREEN_W
+	# TOPDOWN_3D docks it in the bottom partition below the 2D plan (same
+	# split as TOPDOWN_WALL uses for the Wall Inspector); VIEW3D gives it the
+	# full height since there's no 2D plan on screen in that mode.
+	_mode3d_view.offset_left   = LEFT_X
+	_mode3d_view.offset_top    = (_split_y + 3.0) if _view_mode == ViewMode.TOPDOWN_3D else TOP_Y
+	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = BOT_Y
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"])
 
@@ -915,10 +986,10 @@ func _teardown_mode3d_view() -> void:
 	_mode3d_view = null
 
 
-# TOPDOWN_MODAL / VIEW3D show the Wall Inspector as a centered modal (with a
-# dismiss-on-tap backdrop) instead of the SPLIT mode's permanent docked panel —
-# there's no room for a permanent side panel once the floor plan (or the 3D
-# view) is using the full width.
+# TOPDOWN shows the Wall Inspector as a centered modal (with a dismiss-on-tap
+# backdrop) instead of TOPDOWN_WALL's permanent docked panel — there's no
+# room for a permanent side panel once the floor plan is using the full
+# width (TOPDOWN_3D/VIEW3D handle walls directly in the 3D pane instead).
 func _position_wall_inspector_modal() -> void:
 	if not is_instance_valid(_modal_backdrop):
 		_modal_backdrop = ColorRect.new()
@@ -932,7 +1003,7 @@ func _position_wall_inspector_modal() -> void:
 	_modal_backdrop.offset_left   = 0.0
 	_modal_backdrop.offset_top    = 0.0
 	_modal_backdrop.offset_right  = SCREEN_W
-	_modal_backdrop.offset_bottom = BOT_Y + 214.0   # covers BottomBar too
+	_modal_backdrop.offset_bottom = BOT_Y
 	_modal_backdrop.visible = true
 
 	# Size the modal to the wall's actual aspect ratio instead of a fixed
@@ -950,9 +1021,10 @@ func _position_wall_inspector_modal() -> void:
 	fit = minf(fit, 2.0)   # never blow up a tiny wall to fill the whole box either
 	var MW := clampf(content_w * fit + PAD, MIN_MW, MAX_MW)
 	var MH := clampf(content_h * fit + PAD, MIN_MH, MAX_MH)
-	wall_inspector.offset_left   = (SCREEN_W - MW) * 0.5
+	var center_x := (LEFT_X + RIGHT_X) * 0.5
+	wall_inspector.offset_left   = center_x - MW * 0.5
 	wall_inspector.offset_top    = TOP_Y + 20.0
-	wall_inspector.offset_right  = (SCREEN_W + MW) * 0.5
+	wall_inspector.offset_right  = center_x + MW * 0.5
 	wall_inspector.offset_bottom = TOP_Y + 20.0 + MH
 
 
@@ -961,9 +1033,10 @@ func _hide_modal_backdrop() -> void:
 		_modal_backdrop.visible = false
 
 
-# TOPDOWN_MODAL/VIEW3D have no permanent docked Wall Inspector to hint at wall
-# access the way SPLIT's placeholder panel does — this small banner fills
-# that gap. Empty text hides it (used for SPLIT, and whenever a wall is open).
+# TOPDOWN/VIEW3D have no permanent docked Wall Inspector to hint at wall
+# access the way TOPDOWN_WALL's placeholder panel does — this small banner
+# fills that gap. Empty text hides it (used by the docked-pane modes, and
+# whenever a wall is already open).
 func _set_mode_hint(text: String) -> void:
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
@@ -977,8 +1050,8 @@ func _set_mode_hint(text: String) -> void:
 		_mode_hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ui_layer.add_child(_mode_hint_lbl)
 	_mode_hint_lbl.text = text
-	_mode_hint_lbl.offset_left   = 0.0
-	_mode_hint_lbl.offset_right  = SCREEN_W
+	_mode_hint_lbl.offset_left   = LEFT_X
+	_mode_hint_lbl.offset_right  = RIGHT_X
 	_mode_hint_lbl.offset_top    = TOP_Y + 6.0
 	_mode_hint_lbl.offset_bottom = TOP_Y + 26.0
 	_mode_hint_lbl.visible = true
@@ -992,9 +1065,22 @@ func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> 
 	_refresh_functions()
 
 
+# TOPDOWN_WALL and TOPDOWN_3D both dock a bottom pane (Wall Inspector or the
+# 3D preview) against the same draggable _split_y divider — everywhere that
+# needs "does the 2D plan currently end at _split_y?" checks this.
+func _is_split_mode() -> bool:
+	return _view_mode == ViewMode.TOPDOWN_WALL or _view_mode == ViewMode.TOPDOWN_3D
+
+
 # ── Floor plan zoom (mouse wheel) / pan (middle-drag) ──────────────────────
+# The plan is always the full width now (the docked panel sits below it, not
+# beside it) — only the bottom edge moves with the split.
 func _floor_pane_right_x() -> float:
-	return _split_x if _view_mode == ViewMode.SPLIT else SCREEN_W
+	return RIGHT_X
+
+
+func _floor_pane_bottom_y() -> float:
+	return _split_y if _is_split_mode() else BOT_Y
 
 
 # Any full-screen modal that should freeze zoom/pan everywhere while it's up:
@@ -1016,7 +1102,7 @@ func _handle_view_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mbe := event as InputEventMouseButton
-		var in_bounds := mbe.position.x < _floor_pane_right_x() and mbe.position.y > TOP_Y and mbe.position.y < BOT_Y
+		var in_bounds := mbe.position.x > LEFT_X and mbe.position.x < _floor_pane_right_x() and mbe.position.y > TOP_Y and mbe.position.y < _floor_pane_bottom_y()
 		if mbe.button_index == MOUSE_BUTTON_WHEEL_UP and mbe.pressed and in_bounds:
 			_zoom_floor(0.15, mbe.position)
 		elif mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN and mbe.pressed and in_bounds:
@@ -1049,7 +1135,7 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 		else apt_floor.floor_id + "_loft")
 	var sibling := _floors.get(sibling_id) as Floor
 	wall_inspector.show_wall(apt_floor, edge, sibling, span_lo, span_hi)
-	if _view_mode != ViewMode.SPLIT:
+	if _view_mode != ViewMode.TOPDOWN_WALL:
 		_position_wall_inspector_modal()
 		_set_mode_hint("")
 
@@ -1059,7 +1145,7 @@ func _on_inspector_visibility_changed() -> void:
 		for fid in _floors:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 		_hide_modal_backdrop()
-		if _view_mode == ViewMode.TOPDOWN_MODAL:
+		if _view_mode == ViewMode.TOPDOWN:
 			_set_mode_hint("Click a highlighted wall edge on the plan to inspect it or hang items")
 
 
@@ -1227,18 +1313,8 @@ func _on_moments_updated(results: Dictionary) -> void:
 # requirement flips green, RENT OUT wakes up with a pulse so the player's eye
 # is drawn to the "finish" button without a tutorial pointing at it.
 func _update_rent_btn() -> void:
-	var was_disabled := rent_btn.disabled
 	rent_btn.disabled = not gm.check_win() or not _all_furniture_accessible()
-	if was_disabled and not rent_btn.disabled:
-		Audio.play("success")
-		rent_btn.pivot_offset = rent_btn.size * 0.5
-		rent_btn.scale = Vector2.ONE
-		var tw := create_tween()
-		for i in 3:
-			tw.tween_property(rent_btn, "scale", Vector2(1.08, 1.08), 0.12) \
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			tw.tween_property(rent_btn, "scale", Vector2.ONE, 0.12) \
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tenant_card.set_rent_available(not rent_btn.disabled)
 
 
 func _update_accessibility() -> void:
@@ -1255,24 +1331,6 @@ func _all_furniture_accessible() -> bool:
 		if (_floors[fid] as Floor).get_inaccessible_furniture().size() > 0:
 			return false
 	return true
-
-
-func _open_room3d_view() -> Node:
-	if is_instance_valid(_room3d_view):
-		_room3d_view.queue_free()
-	_room3d_view = Room3DViewScene.instantiate()
-	ui_layer.add_child(_room3d_view)
-	_room3d_view.closed.connect(func():
-		_room3d_view.queue_free()
-		_room3d_view = null)
-	return _room3d_view
-
-
-func _on_view3d_item_requested(furniture_id: String) -> void:
-	var fdata := gm.get_furniture_by_id(furniture_id)
-	if fdata.is_empty():
-		return
-	_open_room3d_view().build_single_item(fdata)
 
 
 func _on_rent_pressed() -> void:
@@ -1292,6 +1350,7 @@ func _on_rent_pressed() -> void:
 	var level_rent  := gm.current_level["tenant"]["monthly_rent"] as int
 
 	GameState.complete_level(_current_level_id, stars, funds, level_rent)
+	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
 
 	result_screen.show_success(
 		stars,
@@ -1330,7 +1389,7 @@ func _on_moment_selected(moment_id: String) -> void:
 	# snapshot of the floor, so switching moments while looking at the 3D
 	# view left it showing the pre-switch fold/rail state until you left
 	# and came back. Rebuilding here keeps it in sync immediately.
-	if _view_mode == ViewMode.VIEW3D:
+	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
 		_ensure_mode3d_view()
 	_refresh_functions()
 
@@ -1347,7 +1406,7 @@ func _on_test_toggled(pressed: bool) -> void:
 					fur.toggle_fold()
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
-	if _view_mode == ViewMode.VIEW3D:
+	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
 		_ensure_mode3d_view()
 	if not pressed:
 		_refresh_functions()
@@ -1381,7 +1440,6 @@ func _level_has_demolishable_partitions() -> bool:
 func _enter_demolition_phase() -> void:
 	_demolition_mode = true
 	inventory.visible = false
-	rent_btn.visible  = false
 	if is_instance_valid(_paint_panel):
 		_paint_panel.visible = false
 
@@ -1456,7 +1514,6 @@ func _exit_demolition_phase() -> void:
 		_demo_overlay.queue_free()
 		_demo_overlay = null
 	inventory.visible = true
-	rent_btn.visible  = true
 	if is_instance_valid(_paint_panel):
 		_paint_panel.visible = true
 
@@ -1464,13 +1521,22 @@ func _exit_demolition_phase() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var ke := event as InputEventKey
-		if ke.pressed and not ke.echo and ke.keycode == KEY_Z and (ke.ctrl_pressed or ke.meta_pressed):
-			_undo_builder_action()
+		# Undo key is remappable (Settings → Accessibility); Redo is always the
+		# same key + Shift, plus the fixed Ctrl+Y alias below.
+		if ke.pressed and not ke.echo and ke.keycode == GameState.undo_keycode and (ke.ctrl_pressed or ke.meta_pressed):
+			if ke.shift_pressed:
+				_redo_builder_action()
+			else:
+				_undo_builder_action()
+			get_viewport().set_input_as_handled()
+			return
+		if ke.pressed and not ke.echo and ke.keycode == KEY_Y and (ke.ctrl_pressed or ke.meta_pressed):
+			_redo_builder_action()
 			get_viewport().set_input_as_handled()
 			return
 	if _dragging_divider:
 		if event is InputEventMouseMotion:
-			_update_split((event as InputEventMouseMotion).position.x)
+			_update_split((event as InputEventMouseMotion).position.y)
 		elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT \
 				and not (event as InputEventMouseButton).pressed:
 			_dragging_divider = false
@@ -1673,7 +1739,7 @@ func _handle_paint_input(event: InputEvent) -> void:
 	if not event is InputEventMouse:
 		return
 	var mp := (event as InputEventMouse).position
-	if mp.x > _split_x or mp.y < TOP_Y or mp.y > BOT_Y:
+	if mp.x < LEFT_X or mp.x > _floor_pane_right_x() or mp.y < TOP_Y or mp.y > _floor_pane_bottom_y():
 		return
 
 	get_viewport().set_input_as_handled()
@@ -1773,7 +1839,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 		if mbe.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if mbe.pressed:
-			if mbe.position.x >= _floor_pane_right_x() or mbe.position.y < TOP_Y or mbe.position.y > BOT_Y:
+			if mbe.position.x <= LEFT_X or mbe.position.x >= _floor_pane_right_x() or mbe.position.y < TOP_Y or mbe.position.y > _floor_pane_bottom_y():
 				return
 			_builder_press_consumed = true
 			var tile := _builder_tile_at(fl)
@@ -1889,7 +1955,15 @@ func _handle_builder_input(event: InputEvent) -> void:
 # ever touches these six Floor fields, so capturing all six before a mutation
 # and restoring them wholesale on undo covers every tool with one mechanism.
 func _push_builder_undo(fl: Floor) -> void:
-	_builder_undo_stack.append({
+	_builder_undo_stack.append(_capture_builder_entry(fl))
+	if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
+		_builder_undo_stack.pop_front()
+	_redo_stack.clear()   # a fresh action invalidates whatever was undone before it
+	_refresh_undo_redo_buttons()
+
+
+func _capture_builder_entry(fl: Floor) -> Dictionary:
+	return {
 		"type": "builder",
 		"floor_id": fl.name,
 		"data": {
@@ -1900,18 +1974,10 @@ func _push_builder_undo(fl: Floor) -> void:
 			"reveal_zones":     fl.reveal_zones.duplicate(true),
 			"pipe_routes":      fl.pipe_routes.duplicate(true),
 		},
-	})
-	if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
-		_builder_undo_stack.pop_front()
+	}
 
 
-func _undo_builder_action() -> void:
-	if _builder_undo_stack.is_empty():
-		return
-	var entry := _builder_undo_stack.pop_back() as Dictionary
-	if (entry.get("type", "builder") as String) == "furniture":
-		_restore_furniture_snapshot(entry["snapshot"] as Dictionary)
-		return
+func _apply_builder_entry(entry: Dictionary) -> void:
 	var fl := _floors.get(entry["floor_id"] as String) as Floor
 	if not fl:
 		return
@@ -1927,7 +1993,48 @@ func _undo_builder_action() -> void:
 	if fl.grid_draw:
 		fl.grid_draw.queue_redraw()
 	_refresh_functions()
+
+
+func _undo_builder_action() -> void:
+	if _builder_undo_stack.is_empty():
+		return
+	var entry := _builder_undo_stack.pop_back() as Dictionary
+	if (entry.get("type", "builder") as String) == "furniture":
+		_redo_stack.append({"type": "furniture", "snapshot": _snapshot_all_furniture()})
+		_restore_furniture_snapshot(entry["snapshot"] as Dictionary)
+		_refresh_undo_redo_buttons()
+		return
+	var fl := _floors.get(entry["floor_id"] as String) as Floor
+	if fl:
+		_redo_stack.append(_capture_builder_entry(fl))
+	_apply_builder_entry(entry)
 	Audio.play("click")
+	_refresh_undo_redo_buttons()
+
+
+func _redo_builder_action() -> void:
+	if _redo_stack.is_empty():
+		return
+	var entry := _redo_stack.pop_back() as Dictionary
+	if (entry.get("type", "builder") as String) == "furniture":
+		_builder_undo_stack.append({"type": "furniture", "snapshot": _snapshot_all_furniture()})
+		_restore_furniture_snapshot(entry["snapshot"] as Dictionary)
+		Audio.play("click")
+		_refresh_undo_redo_buttons()
+		return
+	var fl := _floors.get(entry["floor_id"] as String) as Floor
+	if fl:
+		_builder_undo_stack.append(_capture_builder_entry(fl))
+	_apply_builder_entry(entry)
+	Audio.play("click")
+	_refresh_undo_redo_buttons()
+
+
+func _refresh_undo_redo_buttons() -> void:
+	if is_instance_valid(_undo_btn):
+		_undo_btn.disabled = _builder_undo_stack.is_empty()
+	if is_instance_valid(_redo_btn):
+		_redo_btn.disabled = _redo_stack.is_empty()
 
 
 # ── Furniture undo (buy/sell/move/fold) ──────────────────────────────────
@@ -1946,7 +2053,32 @@ func _on_furniture_action_changed() -> void:
 		_builder_undo_stack.append({"type": "furniture", "snapshot": _last_furniture_state})
 		if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
 			_builder_undo_stack.pop_front()
+		_redo_stack.clear()
+		_refresh_undo_redo_buttons()
 	_last_furniture_state = _snapshot_all_furniture()
+	_refresh_mode3d_pane()
+
+
+# Keeps TOPDOWN_3D's live preview in sync after every committed furniture
+# action (buy/sell/move/fold — this is called once per commit, never per
+# drag-preview frame, so it's cheap enough to just rebuild). A full rebuild
+# resets Room3DView's camera framing, so the player's own orbit/zoom is saved
+# and reapplied afterward rather than snapping back to the default angle
+# every time they place a piece of furniture.
+func _refresh_mode3d_pane() -> void:
+	if _view_mode != ViewMode.TOPDOWN_3D:
+		return
+	if not is_instance_valid(_mode3d_view):
+		_ensure_mode3d_view()
+		return
+	var yaw:   float = _mode3d_view._yaw
+	var pitch: float = _mode3d_view._pitch
+	var dist:  float = _mode3d_view._dist
+	_ensure_mode3d_view()
+	_mode3d_view._yaw   = yaw
+	_mode3d_view._pitch = pitch
+	_mode3d_view._dist  = dist
+	_mode3d_view._update_camera()
 
 
 func _snapshot_all_furniture() -> Dictionary:
@@ -1998,7 +2130,7 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	_restoring_furniture = false
 	_last_furniture_state = _snapshot_all_furniture()
 	_refresh_functions()
-	if _view_mode == ViewMode.VIEW3D:
+	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
 		_ensure_mode3d_view()
 	Audio.play("click")
 
