@@ -233,8 +233,8 @@ func _apply_ui_theme() -> void:
 		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
 		var specs := [
-			[ViewMode.TOPDOWN, "Top-Down", "Plan view — click a highlighted wall edge to inspect it or hang items"],
-			[ViewMode.VIEW3D,  "3D",       "Walk around and place items in 3D — drag onto a wall to hang them"],
+			[ViewMode.TOPDOWN, "Floor Plan", "Blueprint view — click a highlighted wall edge to inspect it or hang items"],
+			[ViewMode.VIEW3D,  "3D",         "Walk around and place items in 3D — drag onto a wall to hang them"],
 		]
 		for i in specs.size():
 			var spec: Array = specs[i]
@@ -978,9 +978,9 @@ func _position_wall_inspector_modal() -> void:
 	var MH := clampf(content_h * fit + PAD, MIN_MH, MAX_MH)
 	var center_x := (LEFT_X + RIGHT_X) * 0.5
 	wall_inspector.offset_left   = center_x - MW * 0.5
-	wall_inspector.offset_top    = TOP_Y + 20.0
+	wall_inspector.offset_bottom = BOT_Y - 20.0
 	wall_inspector.offset_right  = center_x + MW * 0.5
-	wall_inspector.offset_bottom = TOP_Y + 20.0 + MH
+	wall_inspector.offset_top    = BOT_Y - 20.0 - MH
 
 
 func _hide_modal_backdrop() -> void:
