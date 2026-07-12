@@ -42,16 +42,14 @@ var _undo_btn: Button = null   # floating corner button over the floor plan, top
 var _redo_btn: Button = null   # sits directly left of _undo_btn, same floating row
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
-# ── View mode: four ways to look at the same apartment, all reading/writing
+# ── View mode: two ways to look at the same apartment, both reading/writing
 # the same Floor data — switching modes never converts or loses anything:
-#   TOPDOWN      — plan only, wall access via a modal popup (fast solving)
-#   TOPDOWN_WALL — plan + docked Wall Inspector side by side (vertical placement)
-#   TOPDOWN_3D   — plan + a live persistent 3D preview side by side (default)
-#   VIEW3D       — 3D only, to walk around and admire the finished apartment
-enum ViewMode { TOPDOWN, TOPDOWN_WALL, TOPDOWN_3D, VIEW3D }
+#   TOPDOWN — plan only; click a highlighted wall edge to inspect it or hang items via a popup
+#   VIEW3D  — walk around in 3D; drag items onto a wall to hang them there
+enum ViewMode { TOPDOWN, VIEW3D }
 const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
 var _view_mode: int = ViewMode.TOPDOWN
-var _mode3d_view:    Control = null   # persistent 3D view for TOPDOWN_3D/VIEW3D modes (separate from the "reveal" overlay)
+var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
@@ -227,20 +225,16 @@ func _apply_ui_theme() -> void:
 	if top.has_node("TestBtn"):
 		top.get_node("TestBtn").visible = false  # updated after level load
 
-	# View-mode switcher: four ways to look at the apartment (see the ViewMode
+	# View-mode switcher: two ways to look at the apartment (see the ViewMode
 	# enum comment). Mutually exclusive via a ButtonGroup.
 	if not top.has_node("ViewModeBox"):
 		var box := HBoxContainer.new()
 		box.name = "ViewModeBox"
 		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
-		# Segment labels read as one connected pill ("Top-Down | + Wall | + 3D |
-		# 3D Only"), so only the first spells out "Top-Down" in full.
 		var specs := [
-			[ViewMode.TOPDOWN,      "Top-Down",  "Plan only, wall access via a popup — fastest for solving"],
-			[ViewMode.TOPDOWN_WALL, "+ Wall",    "Plan + docked Wall Inspector — best when vertical placement matters"],
-			[ViewMode.TOPDOWN_3D,   "+ 3D",      "Plan + a live 3D preview side by side"],
-			[ViewMode.VIEW3D,       "3D Only",   "Walk around and admire the finished apartment"],
+			[ViewMode.TOPDOWN, "Top-Down", "Plan view — click a highlighted wall edge to inspect it or hang items"],
+			[ViewMode.VIEW3D,  "3D",       "Walk around and place items in 3D — drag onto a wall to hang them"],
 		]
 		for i in specs.size():
 			var spec: Array = specs[i]
@@ -791,7 +785,7 @@ func _switch_floor(floor_id: String) -> void:
 	# so switching floor tabs (e.g. base <-> the loft a bunk/loft bed creates)
 	# while already in 3D mode silently kept showing the stale floor. Rebuild
 	# it for the newly-selected floor.
-	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
+	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
 
 
@@ -850,15 +844,6 @@ func _on_divider_gui_input(event: InputEvent) -> void:
 
 func _update_split(y: float) -> void:
 	_split_y = clampf(y, MIN_SPLIT_Y, MAX_SPLIT_Y)
-	if _view_mode == ViewMode.TOPDOWN_WALL:
-		divider.offset_top          = _split_y - 3.0
-		divider.offset_bottom       = _split_y + 3.0
-		wall_inspector.offset_top   = _split_y + 3.0
-	elif _view_mode == ViewMode.TOPDOWN_3D:
-		divider.offset_top    = _split_y - 3.0
-		divider.offset_bottom = _split_y + 3.0
-		if is_instance_valid(_mode3d_view):
-			_mode3d_view.offset_top = _split_y + 3.0
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl:
 		_fit_floor(fl, false)
@@ -892,28 +877,6 @@ func _set_view_mode(mode: int) -> void:
 		(_mode_buttons[m] as Button).button_pressed = (m == mode)
 
 	match mode:
-		ViewMode.TOPDOWN_WALL:
-			_teardown_mode3d_view()
-			room.visible    = true
-			divider.visible = true
-			wall_inspector.show()   # always shows it docked, even as the idle placeholder
-			wall_inspector.offset_left   = LEFT_X
-			wall_inspector.offset_top    = _split_y + 3.0
-			wall_inspector.offset_right  = RIGHT_X
-			wall_inspector.offset_bottom = BOT_Y
-			_hide_modal_backdrop()
-			_set_mode_hint("")
-		ViewMode.TOPDOWN_3D:
-			# Same docked-split mechanic as TOPDOWN_WALL (same divider, same
-			# _split_y), but the bottom pane is a live 3D preview instead of the
-			# Wall Inspector — wall access happens directly in that 3D pane
-			# (drag onto a wall), same as VIEW3D, so no 2D Wall Inspector here.
-			room.visible    = true
-			divider.visible = true
-			wall_inspector.hide()
-			_hide_modal_backdrop()
-			_ensure_mode3d_view()
-			_set_mode_hint("")
 		ViewMode.TOPDOWN:
 			_teardown_mode3d_view()
 			room.visible    = true
@@ -965,11 +928,8 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
 		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
 		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
-	# TOPDOWN_3D docks it in the bottom partition below the 2D plan (same
-	# split as TOPDOWN_WALL uses for the Wall Inspector); VIEW3D gives it the
-	# full height since there's no 2D plan on screen in that mode.
 	_mode3d_view.offset_left   = LEFT_X
-	_mode3d_view.offset_top    = (_split_y + 3.0) if _view_mode == ViewMode.TOPDOWN_3D else TOP_Y
+	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = BOT_Y
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"])
@@ -982,9 +942,9 @@ func _teardown_mode3d_view() -> void:
 
 
 # TOPDOWN shows the Wall Inspector as a centered modal (with a dismiss-on-tap
-# backdrop) instead of TOPDOWN_WALL's permanent docked panel — there's no
-# room for a permanent side panel once the floor plan is using the full
-# width (TOPDOWN_3D/VIEW3D handle walls directly in the 3D pane instead).
+# backdrop) rather than a docked panel — VIEW3D handles walls directly in the
+# 3D pane instead (drag onto a wall), so this modal only ever appears in
+# TOPDOWN mode.
 func _position_wall_inspector_modal() -> void:
 	if not is_instance_valid(_modal_backdrop):
 		_modal_backdrop = ColorRect.new()
@@ -1028,10 +988,9 @@ func _hide_modal_backdrop() -> void:
 		_modal_backdrop.visible = false
 
 
-# TOPDOWN/VIEW3D have no permanent docked Wall Inspector to hint at wall
-# access the way TOPDOWN_WALL's placeholder panel does — this small banner
-# fills that gap. Empty text hides it (used by the docked-pane modes, and
-# whenever a wall is already open).
+# Neither mode has a permanent docked Wall Inspector to hint at wall access
+# — this small banner fills that gap. Empty text hides it (used whenever a
+# wall is already open, or in VIEW3D where the hint text says something else).
 func _set_mode_hint(text: String) -> void:
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
@@ -1060,22 +1019,15 @@ func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> 
 	_refresh_functions()
 
 
-# TOPDOWN_WALL and TOPDOWN_3D both dock a bottom pane (Wall Inspector or the
-# 3D preview) against the same draggable _split_y divider — everywhere that
-# needs "does the 2D plan currently end at _split_y?" checks this.
-func _is_split_mode() -> bool:
-	return _view_mode == ViewMode.TOPDOWN_WALL or _view_mode == ViewMode.TOPDOWN_3D
-
-
 # ── Floor plan zoom (mouse wheel) / pan (middle-drag) ──────────────────────
-# The plan is always the full width now (the docked panel sits below it, not
-# beside it) — only the bottom edge moves with the split.
+# The plan is always the full window now — TOPDOWN is the only mode that
+# shows it at all (VIEW3D hides it entirely).
 func _floor_pane_right_x() -> float:
 	return RIGHT_X
 
 
 func _floor_pane_bottom_y() -> float:
-	return _split_y if _is_split_mode() else BOT_Y
+	return BOT_Y
 
 
 # Any full-screen modal that should freeze zoom/pan everywhere while it's up:
@@ -1126,18 +1078,17 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		fl.set_active_wall_edge("" if fl != apt_floor else edge)
-	# TOPDOWN_3D/VIEW3D handle walls directly in the docked 3D pane instead —
-	# opening the WallInspector modal here too used to cover that pane with a
-	# full-height popup instead of just highlighting the edge on the plan.
-	if _view_mode == ViewMode.TOPDOWN_3D or _view_mode == ViewMode.VIEW3D:
+	# VIEW3D handles walls directly in the 3D pane instead — opening the
+	# WallInspector modal here too used to cover that pane with a full-height
+	# popup instead of just highlighting the edge on the plan.
+	if _view_mode == ViewMode.VIEW3D:
 		return
 	var sibling_id := (apt_floor.parent_id if apt_floor.floor_type == "loft"
 		else apt_floor.floor_id + "_loft")
 	var sibling := _floors.get(sibling_id) as Floor
 	wall_inspector.show_wall(apt_floor, edge, sibling, span_lo, span_hi)
-	if _view_mode != ViewMode.TOPDOWN_WALL:
-		_position_wall_inspector_modal()
-		_set_mode_hint("")
+	_position_wall_inspector_modal()
+	_set_mode_hint("")
 
 
 func _on_inspector_visibility_changed() -> void:
@@ -1389,7 +1340,7 @@ func _on_moment_selected(moment_id: String) -> void:
 	# snapshot of the floor, so switching moments while looking at the 3D
 	# view left it showing the pre-switch fold/rail state until you left
 	# and came back. Rebuilding here keeps it in sync immediately.
-	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
+	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
 	_refresh_functions()
 
@@ -1406,7 +1357,7 @@ func _on_test_toggled(pressed: bool) -> void:
 					fur.toggle_fold()
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
-	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
+	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
 	if not pressed:
 		_refresh_functions()
@@ -1904,29 +1855,6 @@ func _on_furniture_action_changed() -> void:
 		_redo_stack.clear()
 		_refresh_undo_redo_buttons()
 	_last_furniture_state = _snapshot_all_furniture()
-	_refresh_mode3d_pane()
-
-
-# Keeps TOPDOWN_3D's live preview in sync after every committed furniture
-# action (buy/sell/move/fold — this is called once per commit, never per
-# drag-preview frame, so it's cheap enough to just rebuild). A full rebuild
-# resets Room3DView's camera framing, so the player's own orbit/zoom is saved
-# and reapplied afterward rather than snapping back to the default angle
-# every time they place a piece of furniture.
-func _refresh_mode3d_pane() -> void:
-	if _view_mode != ViewMode.TOPDOWN_3D:
-		return
-	if not is_instance_valid(_mode3d_view):
-		_ensure_mode3d_view()
-		return
-	var yaw:   float = _mode3d_view._yaw
-	var pitch: float = _mode3d_view._pitch
-	var dist:  float = _mode3d_view._dist
-	_ensure_mode3d_view()
-	_mode3d_view._yaw   = yaw
-	_mode3d_view._pitch = pitch
-	_mode3d_view._dist  = dist
-	_mode3d_view._update_camera()
 
 
 func _snapshot_all_furniture() -> Dictionary:
@@ -1978,7 +1906,7 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	_restoring_furniture = false
 	_last_furniture_state = _snapshot_all_furniture()
 	_refresh_functions()
-	if _view_mode == ViewMode.VIEW3D or _view_mode == ViewMode.TOPDOWN_3D:
+	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
 	Audio.play("click")
 
