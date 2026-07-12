@@ -211,6 +211,16 @@ func _on_container_input(event: InputEvent) -> void:
 # doesn't hold keyboard focus), so Esc-to-cancel a purchase is handled through
 # the normal _input() channel instead, same as Furniture.gd's 2D equivalent.
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+		if _buying_furniture and not _buying_on_wall:
+			_buying_furniture._rotate()
+			_update_buy_ghost(_to_vp(_last_local_mouse))
+			get_viewport().set_input_as_handled()
+			return
+		elif _dragging_furniture:
+			_rotate_dragged_furniture()
+			get_viewport().set_input_as_handled()
+			return
 	if _buying_furniture and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		_cancel_buy()
 		get_viewport().set_input_as_handled()
@@ -345,6 +355,38 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		_hide_reason()
 
 
+# R while an existing item is being dragged: same call as the 2D view's
+# Furniture._rotate() (swaps grid_w/grid_h, cycles rot_steps 0..3), then the
+# drag ghost's box + model + hitbox are resynced in place — the tile the
+# item is hovering over doesn't change, only its footprint/facing.
+func _rotate_dragged_furniture() -> void:
+	if _drag_target.is_empty():
+		return
+	var f: Furniture = _drag_target["furniture"]
+	var mesh: MeshInstance3D = _drag_target["mesh"]
+	var box := mesh.mesh as BoxMesh
+	var height_m: float = box.size.y
+	f._rotate()
+	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
+	box.size = new_size
+	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
+	var canon := Vector3(new_size.z, new_size.y, new_size.x) if f.rot_steps % 2 == 1 else new_size
+	_refit_item_model(mesh, canon)
+	_drag_target["size"] = new_size
+	# Re-centre on the same tile the cursor is currently over — grid_w/grid_h
+	# just swapped, so the footprint anchor has to be recomputed the same way
+	# _update_furniture_drag does, not left at the pre-rotation offset.
+	mesh.position.x = (_drag_last_tile.x - _room_bounds.position.x) * TILE_M + new_size.x * 0.5
+	mesh.position.z = (_drag_last_tile.y - _room_bounds.position.y) * TILE_M + new_size.z * 0.5
+	_drag_target["pos"] = mesh.position
+	_show_drag_highlight(Vector2(new_size.x, new_size.z))
+	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(new_size.x, new_size.z))
+	if _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, _drag_last_tile)):
+		_show_reason(_apt_floor.get_block_reason())
+	else:
+		_hide_reason()
+
+
 # Mirrors Furniture.begin_placement(): Main.gd creates and setup()s the
 # Furniture node for a purchase (deducting budget only once it's actually
 # placed, same as the 2D flow), then hands it here instead of calling
@@ -413,7 +455,14 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
 		_buying_mesh.position.y = box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
-		_refit_item_model(_buying_mesh, box.size)
+		_buying_mesh.rotation.y = deg_to_rad(_buying_furniture.rot_steps * 90.0)
+		# Fit the model into its CANONICAL (pre-rotation) box, same reasoning as
+		# _add_furniture_box — the outer box already has the correct (swapped)
+		# real-world footprint/position, mi.rotation.y alone spins the model to
+		# match it, so 0°/180° stop looking identical.
+		var rs: int = _buying_furniture.rot_steps
+		var canon := Vector3(box.size.z, box.size.y, box.size.x) if rs % 2 == 1 else box.size
+		_refit_item_model(_buying_mesh, canon)
 		_show_drag_highlight(Vector2(box.size.x, box.size.z))
 		_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 		if _apt_floor and not _apt_floor.can_place(_buying_furniture, tile):
@@ -467,7 +516,9 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	var ghost_mat := _buying_mesh.material_override as StandardMaterial3D
 	if ghost_mat:
 		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
-	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, item_size, _buying_fdata.get("hide_nodes", []) as Array)
+	var rs: int = f.rot_steps
+	var canon_size := Vector3(item_size.z, item_size.y, item_size.x) if rs % 2 == 1 else item_size
+	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
 	_buying_furniture = null
@@ -1801,10 +1852,21 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var local_x := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
 	var local_z := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
 	var col := Color("#" + (fdata.get("color", "888888") as String))
+	# The model is fit into its CANONICAL (pre-rotation) box so its natural
+	# proportions are preserved at every facing, then the whole box is spun
+	# to match the item's actual (already-swapped) footprint — fitting the
+	# model straight into the swapped fw/fd box instead would squish it and
+	# made 0°/180° (and 90°/270°) render identically, since swapping twice
+	# yields the same box size either way.
+	var cw := f.grid_h * TILE_M if f.rot_steps % 2 == 1 else fw
+	var cd := f.grid_w * TILE_M if f.rot_steps % 2 == 1 else fd
 	var box_size := Vector3(fw, height_m, fd)
+	var canon_size := Vector3(cw, height_m, cd)
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
-	var mi   := _box(box_size, pos, col)
-	_apply_item_model(mi, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
+	var mi   := _box(canon_size, Vector3.ZERO, col)
+	mi.position = pos
+	mi.rotation.y = deg_to_rad(f.rot_steps * 90.0)
+	_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 

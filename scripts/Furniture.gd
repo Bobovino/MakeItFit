@@ -22,6 +22,13 @@ func _play(sound: String) -> void:
 var furniture_id: String = ""
 var grid_w: int = 1
 var grid_h: int = 1
+# 0..3, one 90° step each — purely the *visual facing* (which side is the
+# front). grid_w/grid_h already swap on every _rotate() call regardless (so
+# collision/footprint has always cycled correctly through all 4 orientations
+# every 2 steps); this is the piece this session was missing: a way to tell
+# 0° apart from 180° (and 90° from 270°), since a plain w/h swap alone can't
+# — both members of each pair have an identical bounding box.
+var rot_steps: int = 0
 var grid_pos: Vector2 = Vector2.ZERO   # continuous tile-space position — 3D is the source of truth
 var functions: Array = []
 var buy_price: int = 0
@@ -245,19 +252,35 @@ func _draw() -> void:
 	# together.
 	var ink := Color(0.88, 0.95, 1.00, 1.0)
 
-	draw_rect(Rect2(0, 0, w, h), Color(_color.r, _color.g, _color.b, 0.45))
+	# rot_steps cycles 0..3 in quarter turns; grid_w/grid_h already swap every
+	# single step (for collision/footprint), so at odd steps the "canonical"
+	# (pre-rotation) size is the swapped-back w/h — this is what lets us spin
+	# the fixed-orientation symbol art around its own footprint instead of
+	# just squish-fitting it, so 180° actually reads as inverted rather than
+	# looking identical to 0°.
+	var cw := float(w if rot_steps % 2 == 0 else h)
+	var ch := float(h if rot_steps % 2 == 0 else w)
+	var theta := deg_to_rad(rot_steps * 90.0)
+	var origin := Vector2(w, h) * 0.5 - Vector2(cw, ch).rotated(theta) * 0.5
+	draw_set_transform(origin, theta, Vector2.ONE)
+
+	draw_rect(Rect2(0, 0, cw, ch), Color(_color.r, _color.g, _color.b, 0.45))
 	# Subtle 45° drafting hatch over the fill — keeps the per-item colour
 	# legible while making pieces read as drawn linework, not paint blocks.
 	var hatch := Color(ink.r, ink.g, ink.b, 0.07)
 	var hd := 6.0
-	while hd < w + h:
-		draw_line(Vector2(maxf(0.0, hd - h), minf(hd, h)),
-			Vector2(minf(hd, w), maxf(0.0, hd - w)), hatch, 1.0, true)
+	while hd < cw + ch:
+		draw_line(Vector2(maxf(0.0, hd - ch), minf(hd, ch)),
+			Vector2(minf(hd, cw), maxf(0.0, hd - cw)), hatch, 1.0, true)
 		hd += 6.0
-	draw_rect(Rect2(0, 0, w, h), ink, false, 1.5)
+	draw_rect(Rect2(0, 0, cw, ch), ink, false, 1.5)
 
 	# Architectural symbol
-	_draw_symbol(w, h, ink)
+	_draw_symbol(int(cw), int(ch), ink)
+
+	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
+	# only the fill/hatch/symbol need to actually spin.
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# Name label
 	draw_string(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
@@ -1055,6 +1078,9 @@ func _input(event: InputEvent) -> void:
 		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			cancel_placement()
 			get_viewport().set_input_as_handled()
+		elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+			_rotate()
+			get_viewport().set_input_as_handled()
 		return
 
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -1144,6 +1170,7 @@ func _drag(mouse_pos: Vector2) -> void:
 
 func _rotate() -> void:
 	_play("rotate")
+	rot_steps = (rot_steps + 1) % 4
 	var new_w := grid_h
 	var new_h := grid_w
 	if _wall_ref:
