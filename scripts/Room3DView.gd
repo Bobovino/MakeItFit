@@ -112,6 +112,8 @@ var _fold_closed_size: Vector3 = Vector3.ONE
 var _fold_closed_pos:  Vector3 = Vector3.ZERO
 var _fold_open_size:   Vector3 = Vector3.ONE
 var _fold_open_pos:    Vector3 = Vector3.ZERO
+var _fold_fdata: Dictionary = {}   # kept so _update_fold_visual can look up model/model_extended
+var _fold_model_extended_shown: bool = false   # which of the two real models is currently applied
 
 
 func _ready() -> void:
@@ -1038,8 +1040,18 @@ func _update_fold_visual() -> void:
 	if not is_instance_valid(_fold_mesh):
 		return
 	var mesh := _fold_mesh.mesh as BoxMesh
-	mesh.size          = _fold_closed_size.lerp(_fold_open_size, _fold_t)
+	mesh.size           = _fold_closed_size.lerp(_fold_open_size, _fold_t)
 	_fold_mesh.position = _fold_closed_pos.lerp(_fold_open_pos, _fold_t)
+	# The two states are real, distinct Kenney models (not a single mesh that
+	# can morph continuously), so the swap itself has to be a hard cut rather
+	# than blended — only the box's own size/position lerp smoothly, as a
+	# "slide into place" cue either side of the cut.
+	var want_extended := _fold_t >= 0.5
+	if want_extended != _fold_model_extended_shown:
+		_fold_model_extended_shown = want_extended
+		var box_size := _fold_open_size if want_extended else _fold_closed_size
+		_apply_item_model(_fold_mesh, _active_model_path(_fold_fdata, want_extended), box_size,
+			_fold_fdata.get("hide_nodes", []) as Array)
 
 
 func _update_camera() -> void:
@@ -1300,7 +1312,13 @@ func build_single_item(fdata: Dictionary) -> void:
 		_fold_target = 0.0
 		_fold_auto   = true
 		_fold_phase  = 0.0
+		_fold_fdata  = fdata
+		_fold_model_extended_shown = false
 		_fold_mesh = _box(_fold_closed_size, _fold_closed_pos, col)
+		# Show the item's real closed-state model instead of leaving this a bare
+		# colored box — _update_fold_visual() swaps it for the open-state model
+		# (model_extended) as the demo animates past the halfway point.
+		_apply_item_model(_fold_mesh, _active_model_path(fdata, false), _fold_closed_size, fdata.get("hide_nodes", []) as Array)
 	else:
 		var pad := maxf(fw, fd) * 1.6
 		_center = Vector3(0.0, height_m * 0.4, 0.0)
