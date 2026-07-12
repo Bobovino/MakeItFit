@@ -1092,6 +1092,12 @@ func _drag(mouse_pos: Vector2) -> void:
 	else:
 		tx = clampf(tx, 0.0, float(_wall_ref.grid_w - grid_w))
 		ty = clampf(ty, 0.0, float(_wall_ref.grid_h - grid_h))
+	# The 2D top-down plan snaps to whole tiles (matching the drawn grid) —
+	# only the 3D view keeps continuous, fractional placement. Without this,
+	# a piece follows the raw mouse position and can end up sitting between
+	# gridlines, making the grid purely decorative here.
+	tx = round(tx)
+	ty = round(ty)
 	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
 	_wall_ref.set_floor_drag_ghost(self, tx, ty)
 	queue_redraw()
