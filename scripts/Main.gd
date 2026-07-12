@@ -270,14 +270,13 @@ func _apply_ui_theme() -> void:
 	if not top.has_node("SettingsBtn"):
 		var settings_btn := Button.new()
 		settings_btn.name = "SettingsBtn"
-		# The trailing caret is the only visual cue this opens a menu (not a
-		# direct toggle like every other TopBar button) — a bare gear glyph
-		# reads as decoration otherwise. Tooltip spells it out for anyone who
-		# still hovers before clicking.
-		settings_btn.text = "⚙ ▾"
+		# A bare gear glyph (even with a trailing caret) read as pure
+		# decoration — spelling out "Menu" is what actually signals this
+		# opens a dropdown-style panel rather than acting directly.
+		settings_btn.text = "⚙ Menu ▾"
 		settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
 		settings_btn.add_theme_font_size_override("font_size", 13)
-		settings_btn.custom_minimum_size = Vector2(44, 0)
+		settings_btn.custom_minimum_size = Vector2(78, 0)
 		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 		top.add_child(settings_btn)
 		top.move_child(settings_btn, top.get_children().find(rent_btn))
