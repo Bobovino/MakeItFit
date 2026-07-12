@@ -194,19 +194,7 @@ func _apply_ui_theme() -> void:
 	rent_btn.add_theme_color_override("font_disabled_color", GameTheme.C_MUTED)
 	rent_btn.add_theme_font_size_override("font_size", 13)
 
-	# Back button — _go_back() checks GameState.testing_from_editor at press time
 	var top := $UI/TopBar as HBoxContainer
-	if not top.has_node("BackMapBtn"):
-		var back_btn := Button.new()
-		back_btn.name = "BackMapBtn"
-		back_btn.text = "← Projects"
-		back_btn.add_theme_font_size_override("font_size", 12)
-		back_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		back_btn.pressed.connect(_go_back)
-		top.add_child(back_btn)
-		top.move_child(back_btn, 0)
-	var _bbtn := top.get_node("BackMapBtn") as Button
-	_bbtn.text = "← Editor" if GameState.testing_from_editor else "← Projects"
 
 	# Test mode button — only visible if level has foldable furniture
 	if not top.has_node("TestBtn"):
@@ -282,9 +270,14 @@ func _apply_ui_theme() -> void:
 	if not top.has_node("SettingsBtn"):
 		var settings_btn := Button.new()
 		settings_btn.name = "SettingsBtn"
-		settings_btn.text = "⚙"
+		# The trailing caret is the only visual cue this opens a menu (not a
+		# direct toggle like every other TopBar button) — a bare gear glyph
+		# reads as decoration otherwise. Tooltip spells it out for anyone who
+		# still hovers before clicking.
+		settings_btn.text = "⚙ ▾"
+		settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
 		settings_btn.add_theme_font_size_override("font_size", 13)
-		settings_btn.custom_minimum_size = Vector2(32, 0)
+		settings_btn.custom_minimum_size = Vector2(44, 0)
 		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 		top.add_child(settings_btn)
 		top.move_child(settings_btn, top.get_children().find(rent_btn))
@@ -942,6 +935,14 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = BOT_Y
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"])
+	# The 3D view's rect fully contains TenantCard's corner (both are direct
+	# UI children), so appending it here — same CanvasLayer, later sibling —
+	# would otherwise draw over the card and hide it completely. Re-assert
+	# TenantCard (and, via _position_undo_btn, Undo/Redo) above it every time,
+	# regardless of which of this function's several callers triggered the
+	# (re)build.
+	ui_layer.move_child(tenant_card, ui_layer.get_child_count() - 1)
+	_position_undo_btn()
 
 
 func _teardown_mode3d_view() -> void:

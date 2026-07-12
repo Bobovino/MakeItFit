@@ -56,6 +56,21 @@ func _build() -> void:
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	vb.add_child(title)
 
+	# Only Main (an in-level session) has anywhere to go "back" to — CityMap
+	# opening this same menu has no equivalent, so the button only appears
+	# when the host actually supports it. get_parent() is the host node
+	# open() added this menu under, not a separately-stored reference.
+	var host := get_parent()
+	if host and host.has_method("_go_back"):
+		var back_btn := Button.new()
+		back_btn.text = "← Editor" if GameState.testing_from_editor else "← Projects"
+		back_btn.add_theme_font_size_override("font_size", 13)
+		back_btn.pressed.connect(func():
+			_close()
+			host.call("_go_back"))
+		vb.add_child(back_btn)
+		vb.add_child(HSeparator.new())
+
 	var audio := get_node_or_null("/root/Audio")
 
 	vb.add_child(_build_slider_row("SFX Volume",
