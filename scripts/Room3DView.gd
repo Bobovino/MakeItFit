@@ -932,12 +932,16 @@ func _update_camera() -> void:
 	_update_wall_visibility(offset)
 
 
-# Hides whichever wall(s) sit between the camera and the room so the
-# interior is never blocked — a "dollhouse cutaway" rather than a sealed box.
-# This only sets each wall's *target* alpha; _update_wall_fade eases toward it
-# every frame so a wall crossing the threshold fades out instead of popping
-# instantly, which read as a jarring flicker when orbiting near a corner.
-const WALL_FADE_SPEED := 6.0   # alpha units/sec
+# Shrinks whichever wall(s) sit between the camera and the room down to a
+# low stub — same "dollhouse cutaway" intent as fully hiding them, but a
+# stub still reads as "there's a wall here" instead of the wall silently
+# vanishing, which got confusing once a floor had more than one room's worth
+# of walls (interior partitions, balconies, mezzanines...) all applying the
+# same near-camera rule at once. This only sets each wall's *target* height
+# fraction; _update_wall_fade eases toward it every frame so a wall crossing
+# the threshold shrinks smoothly instead of popping instantly.
+const WALL_FADE_SPEED := 6.0     # height-fraction units/sec
+const STUB_HEIGHT_M   := 0.25    # low "wall's still there" brick line when it would otherwise block the view
 
 func _update_wall_visibility(cam_offset: Vector3) -> void:
 	var flat := Vector3(cam_offset.x, 0.0, cam_offset.z)
@@ -950,22 +954,21 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 		# Positive dot = camera is on the outside of this wall, looking in —
 		# that's the wall we need out of the way.
 		var facing := normal.dot(flat)
-		wd["target_alpha"] = 0.0 if facing > 0.0 else 1.0
+		wd["target_h"] = 0.0 if facing > 0.0 else 1.0
 
 
 func _update_wall_fade(delta: float) -> void:
 	for wd in _wall_data:
-		var target: float = wd.get("target_alpha", 1.0)
-		var alpha: float = wd.get("alpha", 1.0)
-		if alpha == target:
+		var target: float = wd.get("target_h", 1.0)
+		var h: float = wd.get("h", 1.0)
+		if h == target:
 			continue
-		alpha = move_toward(alpha, target, delta * WALL_FADE_SPEED)
-		wd["alpha"] = alpha
+		h = move_toward(h, target, delta * WALL_FADE_SPEED)
+		wd["h"] = h
 		var mesh: MeshInstance3D = wd["mesh"]
-		var wall_mat: StandardMaterial3D = wd["mat"]
-		var base: Color = wd["base"]
-		mesh.visible = alpha > 0.001
-		wall_mat.albedo_color = Color(base.r, base.g, base.b, alpha)
+		var full_h: float = wd.get("full_h", WALL_H_M)
+		var stub_ratio := clampf(STUB_HEIGHT_M / full_h, 0.0, 1.0)
+		mesh.scale.y = lerpf(stub_ratio, 1.0, h)
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
@@ -1658,7 +1661,7 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			else:
 				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col)
-			_wall_data.append({"mesh": mi, "mat": mi.material_override, "normal": normal, "base": wall_col})
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 		elif x1 == x2 and y1 != y2:
@@ -1681,7 +1684,7 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			else:
 				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col)
-			_wall_data.append({"mesh": mi, "mat": mi.material_override, "normal": normal, "base": wall_col})
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 
