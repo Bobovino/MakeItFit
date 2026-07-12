@@ -531,6 +531,11 @@ func _fill_row(row: Button, ld: Dictionary) -> void:
 	name_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_vb.add_theme_constant_override("separation", 0)
+	# hb stretches this to the row's full height, but VBoxContainer top-aligns
+	# its own children by default — that pinned the title flush against the
+	# row's top edge with no breathing room above it. Center the name+subtitle
+	# block vertically instead.
+	name_vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_child(name_vb)
 
 	var tenant := ld.get("tenant", {}) as Dictionary
