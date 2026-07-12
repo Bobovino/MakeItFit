@@ -323,8 +323,13 @@ func _draw() -> void:
 			if by > 0:
 				draw_dashed_line(Vector2(mid_x, h), Vector2(mid_x, h + by), Color(rc.r, rc.g, rc.b, 0.50), 1.0, 4.0)
 
-	# Blocked overlay with X
-	if not _accessible:
+	# Blocked overlay with X — this reflects the piece's last-settled resting
+	# spot (recomputed by Main._update_accessibility on furniture changes), not
+	# the live drag position. Showing it while actively dragging made every
+	# drag look permanently rejected, since it never matched wherever the
+	# ghost currently was; the live ✓/✗ pulse below already covers "can I drop
+	# here" during the drag itself.
+	if not _accessible and not _dragging:
 		draw_rect(Rect2(0, 0, w, h), Color(0.88, 0.08, 0.08, 0.32))
 		draw_line(Vector2(3, 3),     Vector2(w - 3, h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
 		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)

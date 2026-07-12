@@ -1131,6 +1131,11 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		fl.set_active_wall_edge("" if fl != apt_floor else edge)
+	# TOPDOWN_3D/VIEW3D handle walls directly in the docked 3D pane instead —
+	# opening the WallInspector modal here too used to cover that pane with a
+	# full-height popup instead of just highlighting the edge on the plan.
+	if _view_mode == ViewMode.TOPDOWN_3D or _view_mode == ViewMode.VIEW3D:
+		return
 	var sibling_id := (apt_floor.parent_id if apt_floor.floor_type == "loft"
 		else apt_floor.floor_id + "_loft")
 	var sibling := _floors.get(sibling_id) as Floor
