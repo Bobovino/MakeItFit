@@ -83,6 +83,18 @@ var _hitbox_highlights: Array = []          # one outline per placed floor item,
 var _drag_highlight: Node3D = null          # follows the item currently being dragged (floor moves + buy-ghost)
 var _cam_flat_dir: Vector3 = Vector3.ZERO   # XZ camera direction from center, set by _update_wall_visibility
 
+# ── Placement-rejection feedback ────────────────────────────────────────────
+# The 3D view reused Floor.can_place()'s true/false result but never surfaced
+# *why* — no sound, no tint, no reason — so a blocked drop here just silently
+# snapped back with nothing happening, unlike the 2D view's red tint + reason
+# chip. _reason_label follows the cursor while dragging/buying is invalid,
+# and lingers briefly (fading) after a rejected drop/confirm.
+var _reason_label: Label = null
+var _last_local_mouse: Vector2 = Vector2.ZERO
+var _reason_flash_t: float = 0.0
+const REASON_FLASH_DURATION := 1.4
+var _wall_block_reason: String = ""   # set by _can_place_wall_item, mirrors Wall.get_block_reason()
+
 # ── Foldable-item demo (single-item preview only) ──────────────────────────
 # Click the item to toggle folded/extended; before the first click it loops
 # on its own so the player can see the transform without touching anything.
@@ -111,6 +123,13 @@ func _process(delta: float) -> void:
 		_yaw += delta * 18.0
 		_update_camera()
 	_update_wall_fade(delta)
+	if _reason_flash_t > 0.0:
+		_reason_flash_t -= delta
+		if is_instance_valid(_reason_label):
+			var fade := clampf(_reason_flash_t / 0.4, 0.0, 1.0)
+			_reason_label.modulate.a = fade
+		if _reason_flash_t <= 0.0:
+			_hide_reason()
 	if _foldable:
 		if _fold_auto:
 			_fold_phase += delta * FOLD_LOOP_SPEED
@@ -175,6 +194,7 @@ func _on_container_input(event: InputEvent) -> void:
 			_update_camera()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
+		_last_local_mouse = mm.position
 		if _buying_furniture:
 			_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
@@ -319,6 +339,11 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	_drag_target["pos"] = mesh.position
 	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
 
+	if _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, tile)):
+		_show_reason(_apt_floor.get_block_reason())
+	else:
+		_hide_reason()
+
 
 # Mirrors Furniture.begin_placement(): Main.gd creates and setup()s the
 # Furniture node for a purchase (deducting budget only once it's actually
@@ -368,6 +393,10 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		_buying_mesh.set_meta("wall_edge", edge)
 		_buying_mesh.set_meta("wall_origin", origin)
 		_refit_item_model(_buying_mesh, box.size)
+		if not _can_place_wall_item(edge, origin, iw, wall_h, Vector2i(-999999, -999999)):
+			_show_reason(_wall_block_reason)
+		else:
+			_hide_reason()
 	else:
 		_buying_on_wall = false
 		_set_grid_overlay_visible(true)
@@ -387,6 +416,10 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		_refit_item_model(_buying_mesh, box.size)
 		_show_drag_highlight(Vector2(box.size.x, box.size.z))
 		_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
+		if _apt_floor and not _apt_floor.can_place(_buying_furniture, tile):
+			_show_reason(_apt_floor.get_block_reason())
+		else:
+			_hide_reason()
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
@@ -396,7 +429,9 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		var iw: int = _buying_furniture.grid_w
 		var ih: int = _buying_fdata.get("wall_h", 8) as int
 		if edge == "" or not _can_place_wall_item(edge, origin, iw, ih, Vector2i(-999999, -999999)):
+			_flash_reason(_wall_block_reason if edge != "" else "Can't place here")
 			return
+		_hide_reason()
 		var fid := _buying_furniture.furniture_id
 		if _apt_floor:
 			_apt_floor.place_wall_item(edge, origin, fid)
@@ -423,7 +458,9 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
+		_flash_reason(_apt_floor.get_block_reason())
 		return
+	_hide_reason()
 	_apt_floor.place_furniture(_buying_furniture, snap_pos)
 	var f := _buying_furniture
 	var item_size: Vector3 = (_buying_mesh.mesh as BoxMesh).size
@@ -526,6 +563,11 @@ func _update_wall_item_drag(vp_pos: Vector2) -> void:
 	var mesh: MeshInstance3D = _drag_wall_target["mesh"]
 	mesh.position = xf["pos"]
 
+	if not _can_place_wall_item(edge, origin, iw, ih, _drag_wall_target["origin"]):
+		_show_reason(_wall_block_reason)
+	else:
+		_hide_reason()
+
 
 func _finish_wall_item_drag() -> void:
 	_dragging_wall_item = false
@@ -544,8 +586,10 @@ func _finish_wall_item_drag() -> void:
 		if _can_place_wall_item(edge, new_origin, iw, ih, new_origin):
 			_apt_floor.place_wall_item(edge, new_origin, fid)
 			final_origin = new_origin
+			_hide_reason()
 		else:
 			_apt_floor.place_wall_item(edge, old_origin, fid)
+			_flash_reason(_wall_block_reason)
 	var xf := _wall_item_mesh_transform(edge, final_origin, iw, ih, depth)
 	mesh.position = xf["pos"]
 	for i in range(_wall_item_entries.size() - 1, -1, -1):
@@ -742,18 +786,23 @@ func _wall_floor_occludes(edge: String, at: Vector2i, iw: int, ih: int) -> bool:
 # without also comparing itself (used when the caller hasn't removed the old
 # entry yet).
 func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_origin: Vector2i) -> bool:
+	_wall_block_reason = ""
 	var item_rect := Rect2i(at.x, at.y, iw, ih)
 	for zone in _wall_restricted_zones(edge):
 		if (zone as Rect2i).intersects(item_rect):
+			_wall_block_reason = "Too close to a window or door"
 			return false
 	if _apt_floor and not _apt_floor.sloped_ceiling.is_empty():
 		for tx in range(iw):
 			if at.y < _wall_ceiling_cut_tiles(edge, at.x + tx):
+				_wall_block_reason = "Ceiling too low here"
 				return false
 	if _wall_floor_occludes(edge, at, iw, ih):
+		_wall_block_reason = "Blocked by furniture on the floor"
 		return false
 	var wall_w := _wall_usable_width(edge)
 	if at.x < 0 or at.x + iw > wall_w or at.y < 0 or at.y + ih > WALL_HEIGHT_TILES:
+		_wall_block_reason = "Doesn't fit on this wall"
 		return false
 	if not _apt_floor:
 		return true
@@ -771,6 +820,7 @@ func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_o
 				var pw: int = (pf.get("size", {}) as Dictionary).get("w", 1) as int
 				var ph: int = pf.get("wall_h", 1) as int
 				if check.x >= o.x and check.x < o.x + pw and check.y >= o.y and check.y < o.y + ph:
+					_wall_block_reason = "Overlaps " + (pf.get("name", "another item") as String)
 					return false
 	return true
 
@@ -837,8 +887,11 @@ func _finish_furniture_drag() -> void:
 				h.position.x = mesh.position.x - item_size.x * 0.5
 				h.position.z = mesh.position.z - item_size.z * 0.5
 		furniture_moved.emit(f)
+		_hide_reason()
 	else:
 		mesh.position = _drag_orig_pos
+		if _apt_floor:
+			_flash_reason(_apt_floor.get_block_reason())
 	_drag_target["pos"] = mesh.position
 	_drag_target = {}
 	_hide_drag_highlight()
@@ -969,6 +1022,58 @@ func _update_wall_fade(delta: float) -> void:
 		var full_h: float = wd.get("full_h", WALL_H_M)
 		var stub_ratio := clampf(STUB_HEIGHT_M / full_h, 0.0, 1.0)
 		mesh.scale.y = lerpf(stub_ratio, 1.0, h)
+
+
+func _ensure_reason_label() -> void:
+	if is_instance_valid(_reason_label):
+		return
+	_reason_label = Label.new()
+	_reason_label.add_theme_font_size_override("font_size", 11)
+	_reason_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.80, 0.95))
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.08, 0.04, 0.03, 0.88)
+	bg.set_content_margin_all(4)
+	bg.set_corner_radius_all(3)
+	_reason_label.add_theme_stylebox_override("normal", bg)
+	_reason_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_reason_label.visible = false
+	_reason_label.z_index = 50
+	add_child(_reason_label)
+
+
+# Live "why can't I drop it here" chip that tracks the cursor while an
+# invalid ghost is being dragged — mirrors Furniture.gd's 2D drag reason.
+func _show_reason(text: String) -> void:
+	if text == "":
+		_hide_reason()
+		return
+	_ensure_reason_label()
+	_reason_label.text = text
+	_reason_label.modulate.a = 1.0
+	_reason_label.position = _last_local_mouse + Vector2(14, 14)
+	_reason_label.visible = true
+	_reason_flash_t = 0.0   # a live reason always wins over a fading one
+
+
+func _hide_reason() -> void:
+	if is_instance_valid(_reason_label):
+		_reason_label.visible = false
+
+
+# Same reason chip, but lingering (with a fade) after a rejected drop/confirm
+# — dragging stops immediately on release, so without this the player only
+# ever got a silent snap-back with no lasting explanation, and 3D never even
+# played the 2D view's error sound.
+func _flash_reason(text: String) -> void:
+	Audio.play("error")
+	if text == "":
+		return
+	_ensure_reason_label()
+	_reason_label.text = text
+	_reason_label.modulate.a = 1.0
+	_reason_label.position = _last_local_mouse + Vector2(14, 14)
+	_reason_label.visible = true
+	_reason_flash_t = REASON_FLASH_DURATION
 
 
 # `catalog` is the furniture data array (gm.furniture_data["furniture"]).
