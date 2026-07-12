@@ -70,8 +70,6 @@ var _floors:            Dictionary = {}
 var _loft_floors:       Dictionary = {}  # base_floor_id -> dynamically created loft Floor node
 var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
-var _demolition_mode:   bool = false
-var _demo_overlay:      Control = null
 
 # ── Builder tab tools (free-form geometry editing during play) ────────────
 var _active_builder_tool: String    = ""    # "", "wall", "column", "erase"
@@ -541,9 +539,6 @@ func _load_level(level_id: String) -> void:
 	var paintable := gm.current_level.get("paintable_furniture", []) as Array
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
-
-	if _level_has_demolishable_partitions():
-		_enter_demolition_phase()
 
 	_show_mechanic_intro_if_needed()
 
@@ -1425,104 +1420,6 @@ func _has_foldable_furniture() -> bool:
 	return false
 
 
-func _level_has_demolishable_partitions() -> bool:
-	for fid in _floors:
-		var fl := _floors[fid] as Floor
-		# New-format levels (all real level data today) use segments, where
-		# "primary" is the load-bearing/permanent flag — see Wall.gd's
-		# demolish_segment(), which refuses to touch a primary segment.
-		for sd in fl.segments:
-			var s := sd as Dictionary
-			if not s.get("primary", false) and not s.get("demolished", false):
-				return true
-		# Old-format fallback — no real level uses this today, kept for safety.
-		for p in fl.partitions:
-			if not p.get("load_bearing", false) and not p.get("demolished", false):
-				return true
-	return false
-
-
-func _enter_demolition_phase() -> void:
-	_demolition_mode = true
-	inventory.visible = false
-	if is_instance_valid(_paint_panel):
-		_paint_panel.visible = false
-
-	_demo_overlay = Control.new()
-	_demo_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_demo_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	$UI.add_child(_demo_overlay)
-
-	# Dark side-panel info card
-	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color     = Color(0.115, 0.100, 0.085, 0.95)
-	sb.border_color = Color(0.78, 0.40, 0.16, 0.80)
-	sb.set_border_width_all(2)
-	sb.set_content_margin_all(12)
-	panel.add_theme_stylebox_override("panel", sb)
-	# Anchors default to 0 (top-left) — offsets below are absolute canvas
-	# pixels, matching TopBar/Divider/WallInspector's convention elsewhere in
-	# this scene. PRESET_CENTER_RIGHT was pinning both anchors to the right
-	# edge, which pushed this panel far off-screen (offset_left=868 measured
-	# from x=1280, landing around x=2148) — the demolition overlay has never
-	# actually been visible until this fix.
-	panel.offset_left = 868
-	panel.offset_right = 1276
-	panel.offset_top = 60
-	panel.offset_bottom = 716
-	_demo_overlay.add_child(panel)
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	panel.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "Demolition Phase"
-	title.add_theme_font_size_override("font_size", 16)
-	title.add_theme_color_override("font_color", Color(0.78, 0.40, 0.16))
-	vbox.add_child(title)
-
-	var hint := Label.new()
-	hint.text = "Click dashed partitions\nto demolish them.\nLoad-bearing walls (hatched)\ncannot be removed."
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.72, 0.65))
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
-	vbox.add_child(hint)
-
-	var budget_lbl := Label.new()
-	budget_lbl.name = "DemoBudget"
-	budget_lbl.add_theme_font_size_override("font_size", 11)
-	budget_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	vbox.add_child(budget_lbl)
-	_update_demo_budget_label()
-
-	var done_btn := Button.new()
-	done_btn.text = "Start Furnishing →"
-	done_btn.add_theme_font_size_override("font_size", 13)
-	done_btn.pressed.connect(_exit_demolition_phase)
-	vbox.add_child(done_btn)
-
-
-func _update_demo_budget_label() -> void:
-	if not _demo_overlay:
-		return
-	var lbl := _demo_overlay.find_child("DemoBudget", true, false) as Label
-	if lbl:
-		lbl.text = "Budget: %d€" % gm.budget
-
-
-func _exit_demolition_phase() -> void:
-	_demolition_mode = false
-	if _demo_overlay:
-		_demo_overlay.queue_free()
-		_demo_overlay = null
-	inventory.visible = true
-	if is_instance_valid(_paint_panel):
-		_paint_panel.visible = true
-
-
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var ke := event as InputEventKey
@@ -1552,61 +1449,7 @@ func _input(event: InputEvent) -> void:
 	if _active_builder_tool != "":
 		_handle_builder_input(event)
 		return
-	if not _demolition_mode:
-		_handle_view_input(event)
-		return
-	if not (event is InputEventMouseButton and (event as InputEventMouseButton).pressed
-			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT):
-		return
-	var fl := _floors.get(_current_floor_id) as Floor
-	if not fl:
-		return
-	var local := fl.to_local(get_viewport().get_mouse_position())
-
-	# New-format levels (all real level data today): hit-test against the
-	# actual segment geometry via the same helper Wall.gd's own wall-edge
-	# click detection uses, rather than reconstructing hit math here.
-	var seg_idx := fl.find_segment_near(local, 1.5)
-	if seg_idx >= 0:
-		var sd: Dictionary = fl.segments[seg_idx]
-		if sd.get("primary", false) or sd.get("demolished", false):
-			return
-		var seg_cost: int = sd.get("demolish_cost", 500) as int
-		if gm.budget < seg_cost:
-			Audio.play("error")
-			return
-		fl.demolish_segment(seg_idx)
-		gm.spend(seg_cost)
-		_update_demo_budget_label()
-		Audio.play("demolish")
-		get_viewport().set_input_as_handled()
-		return
-
-	# Old-format fallback — no real level uses this today, kept for safety.
-	var tx := int(local.x / Floor.TILE_SIZE)
-	var ty := int(local.y / Floor.TILE_SIZE)
-	for i in range(fl.partitions.size()):
-		var p: Dictionary = fl.partitions[i]
-		if p.get("load_bearing", false) or p.get("demolished", false):
-			continue
-		var x1: int = p["x1"]; var y1: int = p["y1"]
-		var x2: int = p["x2"]; var y2: int = p["y2"]
-		var hit := false
-		if x1 == x2:
-			hit = (tx == x1 and ty >= mini(y1, y2) and ty <= maxi(y1, y2))
-		else:
-			hit = (ty == y1 and tx >= mini(x1, x2) and tx <= maxi(x1, x2))
-		if hit:
-			var cost: int = p.get("demolish_cost", 500)
-			if gm.budget < cost:
-				Audio.play("error")
-				return
-			fl.demolish_partition(i)
-			gm.spend(cost)
-			_update_demo_budget_label()
-			Audio.play("demolish")
-			get_viewport().set_input_as_handled()
-			return
+	_handle_view_input(event)
 
 
 func _on_next_level() -> void:
