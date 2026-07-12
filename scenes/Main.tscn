@@ -36,9 +36,6 @@ offset_bottom = 46.0
 text = "Budget: 3000€"
 theme_override_font_sizes/font_size = 18
 
-[node name="MinimapSpacerL" type="Control" parent="UI/TopBar"]
-size_flags_horizontal = 3
-
 [node name="Minimap" type="PanelContainer" parent="UI/TopBar"]
 script = ExtResource("3")
 

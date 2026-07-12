@@ -272,6 +272,13 @@ func _apply_ui_theme() -> void:
 		top.add_child(spacer)
 		top.move_child(spacer, top.get_children().find(rent_btn))
 
+	if not top.has_node("GearSpacer"):
+		var gear_spacer := Control.new()
+		gear_spacer.name = "GearSpacer"
+		gear_spacer.custom_minimum_size = Vector2(14, 0)
+		top.add_child(gear_spacer)
+		top.move_child(gear_spacer, top.get_children().find(rent_btn))
+
 	if not top.has_node("SettingsBtn"):
 		var settings_btn := Button.new()
 		settings_btn.name = "SettingsBtn"
@@ -281,6 +288,12 @@ func _apply_ui_theme() -> void:
 		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 		top.add_child(settings_btn)
 		top.move_child(settings_btn, top.get_children().find(rent_btn))
+
+	# Every direct TopBar child gets some minimum breathing room from its
+	# neighbor — segmented pill groups (Minimap's floor tabs, ViewModeBox)
+	# keep their own zero-separation look internally since that's a nested
+	# HBoxContainer with its own override, unaffected by the parent's.
+	top.add_theme_constant_override("separation", 10)
 
 	if not is_instance_valid(_undo_btn):
 		_undo_btn = Button.new()

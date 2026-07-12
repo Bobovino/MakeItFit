@@ -216,8 +216,8 @@ func _clear_checklist() -> void:
 func _build_checklist(required: Array) -> void:
 	_clear_checklist()
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 4)
-	row.add_theme_constant_override("v_separation", 4)
+	row.add_theme_constant_override("h_separation", 7)
+	row.add_theme_constant_override("v_separation", 7)
 	checklist_container.add_child(row)
 	for func_name in required:
 		var chip := _make_need_chip(func_name, false)
@@ -228,18 +228,28 @@ func _build_checklist(required: Array) -> void:
 func _build_moment_checklist() -> void:
 	_clear_checklist()
 	_moment_check_chips = {}
-	for m in _moments:
+	for i in _moments.size():
+		var m     := _moments[i] as Dictionary
 		var mid   := m["id"]    as String
 		var label := m["label"] as String
 		var needs := m["needs"] as Array
+
+		# Extra breathing room before every section after the first — otherwise
+		# a header sits exactly as close to its OWN row as it does to the
+		# previous section's row, and the two moments read as one blob instead
+		# of two distinct groups.
+		if i > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 8)
+			checklist_container.add_child(gap)
 
 		var hdr := _make_moment_header_btn(label.to_upper(), mid)
 		checklist_container.add_child(hdr)
 		_moment_header_btns[mid] = hdr
 
 		var row := HFlowContainer.new()
-		row.add_theme_constant_override("h_separation", 4)
-		row.add_theme_constant_override("v_separation", 4)
+		row.add_theme_constant_override("h_separation", 7)
+		row.add_theme_constant_override("v_separation", 7)
 		checklist_container.add_child(row)
 
 		_moment_check_chips[mid] = {}
