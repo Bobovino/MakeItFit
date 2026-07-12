@@ -33,6 +33,14 @@ var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
 
 var floor_mask:     Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
 var floor_kind:     Dictionary = {}   # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
+# Whether this floor bothers zoning any tile as "bathroom" at all. Almost no
+# authored level does (only a couple of zoning-showcase levels) — bathroom
+# fixtures were still being placed as starting_furniture everywhere else, so
+# enforcing the bathroom-only restriction unconditionally made every
+# pre-placed toilet/sink/bathtub in those levels impossible to ever move
+# again (can_place rejected every tile, since none were tagged "bathroom").
+# Only enforce the restriction where a level actually opts into zoning.
+var _has_bathroom_zone: bool = false
 var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
 var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
 var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
@@ -155,7 +163,7 @@ func _floor_category_ok(furn_category: String, tile_kind: String) -> bool:
 		return furn_category == "balcony"
 	if furn_category == "balcony":
 		return false
-	if furn_category == "bathroom" and tile_kind != "bathroom":
+	if furn_category == "bathroom" and tile_kind != "bathroom" and _has_bathroom_zone:
 		return false
 	return true
 
@@ -429,6 +437,7 @@ func setup(floor_data: Dictionary) -> void:
 		floor_kind.clear()
 		for t in floor_data.get("floor_kinds", []):
 			floor_kind[Vector2i(t[0] as int, t[1] as int)] = t[2] as String
+		_has_bathroom_zone = floor_kind.values().has("bathroom")
 		mezzanine_mask.clear()
 		for t in floor_data.get("mezzanine_tiles", []):
 			mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
