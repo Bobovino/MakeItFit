@@ -200,6 +200,30 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			var t := tile as Vector2i
 			draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), SHADOW_COL)
 
+	# ── 1c. Ghost of the floor stacked below (gameplay) — mirrors Room3DView's
+	# _add_ghost_floor: a mezzanine/loft or upper floor shows the floor beneath
+	# it (walls + furniture silhouettes) as a faint reference layer so the
+	# player doesn't lose their bearings switching floors. Distinct from
+	# shadow_mask above (LevelEditor-only, floor tiles only, no walls/furniture).
+	if parent.below_floor:
+		const BELOW_FLOOR_COL := Color(0.82, 0.79, 0.72, 0.30)
+		const BELOW_WALL_COL  := Color(0.55, 0.56, 0.58, 0.55)
+		const BELOW_FURN_COL  := Color(0.55, 0.56, 0.58, 0.35)
+		var below := parent.below_floor
+		for tile in below.floor_mask:
+			var t := tile as Vector2i
+			draw_rect(Rect2(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), BELOW_FLOOR_COL)
+		for seg in below.segments:
+			if (seg as Dictionary).get("demolished", false):
+				continue
+			var x1: int = seg["x1"]; var y1: int = seg["y1"]
+			var x2: int = seg["x2"]; var y2: int = seg["y2"]
+			draw_line(Vector2(x1 * TILE_SIZE, y1 * TILE_SIZE), Vector2(x2 * TILE_SIZE, y2 * TILE_SIZE), BELOW_WALL_COL, 3.0)
+		for item in below.get_all_furniture():
+			var f := item as Furniture
+			draw_rect(Rect2(f.grid_pos.x * TILE_SIZE, f.grid_pos.y * TILE_SIZE,
+				f.grid_w * TILE_SIZE, f.grid_h * TILE_SIZE), BELOW_FURN_COL)
+
 	# ── 2. Painted floor tiles (blueprint blue, or tinted by kind) ───────────
 	const BALCONY_COL  := Color(0.14, 0.34, 0.32, 1.0)   # outdoor decking (teal-blue)
 	const BATHROOM_COL := Color(0.16, 0.34, 0.46, 1.0)   # wet-room (brighter cyan-blue)

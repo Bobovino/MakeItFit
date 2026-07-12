@@ -37,8 +37,6 @@ const UI_SCALE_MAX := 1.35
 var undo_keycode: int = KEY_Z
 
 var custom_level_data: Dictionary = {}
-var testing_from_editor: bool = false  # set by LevelEditor._test_level(); back btn returns to editor
-var resume_editor:       bool = false  # set by Main._go_back(); LevelEditor reloads custom_level_data
 
 # Player/debug mode toggle (Ctrl+Shift+Alt+D in CityMap) — deliberately not
 # persisted to the save file, resets to off on every launch. In debug mode

@@ -29,10 +29,15 @@ func setup(floors: Array, hidden_ids: Array = []) -> void:
 	_labels.clear()
 	_button_group = ButtonGroup.new()
 
-	# floors_data is authored bottom-up (ground floor first); display top-down
-	# like a building directory, so reverse it — highest floor at the top.
+	# floors_data is authored bottom-up (ground floor first). In the old
+	# vertical stack (BottomBar sidebar), that's displayed top-down like a
+	# building directory — highest floor at the top — so it's reversed. In
+	# the horizontal TopBar strip, "up" reads left-to-right instead, so the
+	# lowest floor belongs at the left and the array's natural bottom-up
+	# order is already correct as-is.
 	var ordered := floors.duplicate()
-	ordered.reverse()
+	if not _compact:
+		ordered.reverse()
 	for fd in ordered:
 		var fid := fd["id"] as String
 		if fid in hidden_ids:
@@ -79,7 +84,12 @@ func add_floor(fd: Dictionary, anchor_floor_id: String = "") -> void:
 	btn.pressed.connect(_on_floor_pressed.bind(fid))
 	container.add_child(btn)
 	if anchor_floor_id in _buttons:
-		container.move_child(btn, (_buttons[anchor_floor_id] as Button).get_index())
+		var anchor_index := (_buttons[anchor_floor_id] as Button).get_index()
+		# Vertical stack lists top-down (above = earlier index); the compact
+		# horizontal strip now runs low-to-high left-to-right (above = later
+		# index, i.e. further right), so "sits above" places it on the
+		# opposite side of the anchor depending on orientation.
+		container.move_child(btn, anchor_index if not _compact else anchor_index + 1)
 	_buttons[fid] = btn
 	_labels[fid]  = fd["label"] as String
 	visible = _buttons.size() > 1

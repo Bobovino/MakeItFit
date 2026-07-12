@@ -614,6 +614,16 @@ func _hide_tooltip() -> void:
 		_tooltip.visible = false
 
 
+# Previously a single HBoxContainer row (icon + name + functions tag + price
+# + Buy button) with minimum widths that added up to ~350px — far wider than
+# the Inventory panel's actual fixed 170px (see Main.tscn). It only ever
+# looked fine because Containers don't clip their children, so the overflow
+# just spilled rightward onto whatever was empty back there in Floor Plan
+# mode. In 3D mode that same screen region is the Room3DView viewport, which
+# sits on top and swallows both the visual and the clicks — so the Buy
+# button for Staircases silently became unreachable in 3D. Two compact rows
+# that actually fit inside 170px fixes this for every view mode at once,
+# rather than papering over 3D specifically.
 func _build_shop_row(f: Dictionary) -> PanelContainer:
 	var card := PanelContainer.new()
 	var item_col := Color("#" + (f.get("color", "888888") as String))
@@ -627,33 +637,44 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 		card_style.bg_color = Color(0.210, 0.185, 0.150)
 		card_style.border_color = Color(0.320, 0.270, 0.205))
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	card.add_child(row)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	card.add_child(vb)
+
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 6)
+	vb.add_child(top_row)
 
 	# Mini blueprint footprint icon (true shape, color-coded)
-	row.add_child(_make_item_icon(f, 28.0))
+	top_row.add_child(_make_item_icon(f, 22.0))
 
 	var name_lbl := Label.new()
 	name_lbl.text = f["name"]
-	name_lbl.custom_minimum_size.x = 108
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.add_theme_font_size_override("font_size", 12)
 	name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
-	row.add_child(name_lbl)
+	name_lbl.clip_text = true
+	top_row.add_child(name_lbl)
 
+	# The functions tag ("loft_access" etc.) moves onto its own line above the
+	# price/Buy row instead of sharing a row with them — three items plus a
+	# button never fit in the panel's 170px width no matter how much each is
+	# shrunk, and price+Buy are the two things that actually must be reachable.
 	var func_lbl := Label.new()
 	func_lbl.text = _fmt_funcs(f["functions"])
-	func_lbl.custom_minimum_size.x = 100
-	func_lbl.add_theme_font_size_override("font_size", 10)
+	func_lbl.add_theme_font_size_override("font_size", 9)
 	func_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	row.add_child(func_lbl)
+	func_lbl.clip_text = true
+	vb.add_child(func_lbl)
+
+	var bottom_row := HBoxContainer.new()
+	bottom_row.add_theme_constant_override("separation", 6)
+	vb.add_child(bottom_row)
 
 	var price_lbl := Label.new()
 	price_lbl.text = "%d€" % f["buy_price"]
-	price_lbl.custom_minimum_size.x = 52
 	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	price_lbl.add_theme_font_size_override("font_size", 12)
+	price_lbl.add_theme_font_size_override("font_size", 11)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
 	var pp := StyleBoxFlat.new()
 	pp.bg_color = Color(0.10, 0.22, 0.13)
@@ -661,20 +682,21 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 	pp.set_border_width_all(1)
 	pp.set_corner_radius_all(8)
 	pp.anti_aliasing = true
-	pp.set_content_margin(SIDE_LEFT, 7)
-	pp.set_content_margin(SIDE_RIGHT, 7)
-	pp.set_content_margin(SIDE_TOP, 2)
-	pp.set_content_margin(SIDE_BOTTOM, 2)
+	pp.set_content_margin(SIDE_LEFT, 5)
+	pp.set_content_margin(SIDE_RIGHT, 5)
+	pp.set_content_margin(SIDE_TOP, 1)
+	pp.set_content_margin(SIDE_BOTTOM, 1)
 	price_lbl.add_theme_stylebox_override("normal", pp)
-	row.add_child(price_lbl)
+	bottom_row.add_child(price_lbl)
 
 	var buy_btn := Button.new()
 	buy_btn.text = "Buy"
-	buy_btn.add_theme_font_size_override("font_size", 11)
+	buy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buy_btn.add_theme_font_size_override("font_size", 10)
 	buy_btn.set_meta("price", f["buy_price"] as int)
 	buy_btn.disabled = _gm != null and _gm.budget < (f["buy_price"] as int)
 	buy_btn.pressed.connect(_on_buy_pressed.bind(f["id"]))
-	row.add_child(buy_btn)
+	bottom_row.add_child(buy_btn)
 
 	return card
 

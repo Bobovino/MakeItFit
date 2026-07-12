@@ -49,6 +49,7 @@ enum ViewMode { TOPDOWN, VIEW3D }
 const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
 var _view_mode: int = ViewMode.TOPDOWN
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
+var _watch_done_btn: Button  = null   # floating "back to results" button shown during free-camera Watch Again
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
@@ -65,6 +66,7 @@ var _panning_floor: bool    = false
 
 var _floors:            Dictionary = {}
 var _loft_floors:       Dictionary = {}  # base_floor_id -> dynamically created loft Floor node
+var _floor_below_id:    Dictionary = {}  # floor id -> id of the "floor"-type floor stacked below it (for the 3D ghost-floor-below reference layer)
 var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
 
@@ -125,6 +127,10 @@ func _ready() -> void:
 		result_screen.next_level_requested.connect(_on_next_level)
 	if not result_screen.retry_requested.is_connected(_on_retry):
 		result_screen.retry_requested.connect(_on_retry)
+	if not result_screen.watch_again_requested.is_connected(_on_watch_again_reveal):
+		result_screen.watch_again_requested.connect(_on_watch_again_reveal)
+	if not result_screen.advance_level_requested.is_connected(_on_advance_level):
+		result_screen.advance_level_requested.connect(_on_advance_level)
 	if not wall_inspector.wall_closed.is_connected(_on_inspector_visibility_changed):
 		wall_inspector.wall_closed.connect(_on_inspector_visibility_changed)
 	if not wall_inspector.wall_item_placed.is_connected(_on_wall_item_placed):
@@ -331,12 +337,10 @@ static func _segment_style(bg: Color, border: Color, index: int, count: int) -> 
 
 
 func _go_back() -> void:
-	if GameState.testing_from_editor:
-		GameState.testing_from_editor = false
-		GameState.resume_editor       = true
-		Transition.change_scene("res://scenes/LevelEditor.tscn")
-	else:
-		Transition.change_scene("res://scenes/CityMap.tscn")
+	# Always Projects — a real player only ever reaches Main via CityMap in
+	# the first place, and the menu shouldn't offer (or silently take) a path
+	# back into the Level Editor even during a designer's Test Level session.
+	Transition.change_scene("res://scenes/CityMap.tscn")
 
 
 # Discoverable escape hatch for a bad layout (spent the budget on the wrong
@@ -351,6 +355,7 @@ func _restart_level() -> void:
 func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)
+	tenant_card.set_rented(false)
 	_builder_undo_stack.clear()
 	_last_furniture_state = {}
 	_restoring_furniture  = true   # level-load spawning shouldn't itself become undoable
@@ -367,6 +372,7 @@ func _load_level(level_id: String) -> void:
 		(_floors[fid] as Floor).queue_free()
 	_floors.clear()
 	_loft_floors.clear()
+	_floor_below_id.clear()
 
 	var level: Dictionary = gm.current_level
 	var apt_data: Dictionary = level["apartment"] as Dictionary
@@ -407,6 +413,7 @@ func _load_level(level_id: String) -> void:
 					if not (fd as Dictionary).has("segments"):
 						(fd as Dictionary)["segments"] = []
 					break
+			_floor_below_id[fd["id"]] = _lpid
 		# Regular floors above the ground floor get floor-stair openings from the floor below
 		elif _ftype == "floor" and not _last_floor_fd.is_empty():
 			var _below_stairs := _last_floor_fd.get("stairs", []) as Array
@@ -416,6 +423,7 @@ func _load_level(level_id: String) -> void:
 				if not (fd as Dictionary).has("stair_openings"):
 					(fd as Dictionary)["stair_openings"] = []
 				((fd as Dictionary)["stair_openings"] as Array).append_array(_fso)
+			_floor_below_id[fd["id"]] = _last_floor_fd["id"] as String
 		if _ftype == "floor":
 			_last_floor_fd = fd
 		apt_floor.setup(fd)
@@ -425,6 +433,8 @@ func _load_level(level_id: String) -> void:
 		apt_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(apt_floor))
 		apt_floor.visible = false
 		_floors[fd["id"]] = apt_floor
+		if fd["id"] in _floor_below_id:
+			apt_floor.below_floor = _floors.get(_floor_below_id[fd["id"]] as String) as Floor
 
 		for sf in fd.get("starting_furniture", []):
 			_spawn_furniture(sf["id"], apt_floor, sf["x"], sf["y"], sf as Dictionary)
@@ -943,8 +953,8 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = BOT_Y
 	var below_floor: Floor = null
-	if fl.floor_type == "loft" and fl.parent_id != "":
-		below_floor = _floors.get(fl.parent_id) as Floor
+	if fl.floor_id in _floor_below_id:
+		below_floor = _floors.get(_floor_below_id[fl.floor_id] as String) as Floor
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
 	# The 3D view's rect fully contains TenantCard's corner (both are direct
 	# UI children), so appending it here — same CanvasLayer, later sibling —
@@ -953,6 +963,13 @@ func _ensure_mode3d_view() -> void:
 	# regardless of which of this function's several callers triggered the
 	# (re)build.
 	ui_layer.move_child(tenant_card, ui_layer.get_child_count() - 1)
+	# Inventory's declared width (LEFT_X = 170px) is only its anchor offset —
+	# it actually grows past that to fit content (item tooltips, Builder-tab
+	# shop rows with a price pill + Buy button, ...), which the 3D view's
+	# rect (starting at LEFT_X) then overlapped and hid. Same fix as
+	# TenantCard above: keep Inventory the topmost sibling so its overflow —
+	# and the Buy button on it — stays visible and clickable in 3D mode.
+	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
 	_position_undo_btn()
 
 
@@ -1323,14 +1340,31 @@ func _on_rent_pressed() -> void:
 
 	GameState.complete_level(_current_level_id, stars, funds, level_rent)
 	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+	tenant_card.set_rented(true)
+
+	await _play_completion_reveal()
 
 	result_screen.show_success(
 		stars,
 		funds,
 		GameState.portfolio_rent,
 		gm.current_level["tenant"]["name"],
-		level_rent
+		level_rent,
+		not gm.get_next_owned_level_id(_current_level_id).is_empty()
 	)
+
+
+# The "wow" moment on a successful RENT OUT — a short scripted camera sweep
+# through the finished apartment (Room3DView.play_reveal) instead of jumping
+# straight to the results screen. Switches into 3D mode if the player was
+# still on the Floor Plan so there's always something to actually show; skips
+# entirely under Reduce Motion, same as the settings menu's other animations.
+func _play_completion_reveal() -> void:
+	if GameState.reduce_motion:
+		return
+	_set_view_mode(ViewMode.VIEW3D)
+	if is_instance_valid(_mode3d_view):
+		await _mode3d_view.play_reveal()
 
 
 
@@ -1430,6 +1464,60 @@ func _on_next_level() -> void:
 
 func _on_retry() -> void:
 	_load_level(_current_level_id)
+
+
+# "View Apartment" on the Results screen — just closes the modal and hands
+# full camera control back to the player (orbit/zoom/pan freely, same as the
+# normal 3D view), like tabbing out to the post-game map in an RTS. Does NOT
+# replay the scripted camera sweep — that already played once right after
+# RENT OUT; this is "let me look around," not "show me the intro again." A
+# small floating button is the only way back, since the Results panel stays
+# hidden the whole time so it doesn't block the view.
+func _on_watch_again_reveal() -> void:
+	result_screen.visible = false
+	_set_view_mode(ViewMode.VIEW3D)
+	_show_watch_done_button()
+
+
+func _show_watch_done_button() -> void:
+	if is_instance_valid(_watch_done_btn):
+		_watch_done_btn.queue_free()
+	_watch_done_btn = Button.new()
+	_watch_done_btn.text = "✕ Back to Results"
+	_watch_done_btn.add_theme_font_size_override("font_size", 13)
+	_watch_done_btn.custom_minimum_size = Vector2(200, 40)
+	ui_layer.add_child(_watch_done_btn)
+	# Centered on the play area (not the whole window) and sat below the
+	# diorama's resting position, rather than tucked in the top-left corner
+	# where it competed with the Builder tool panel.
+	var center_x := (LEFT_X + RIGHT_X) * 0.5
+	_watch_done_btn.offset_left   = center_x - 100.0
+	_watch_done_btn.offset_right  = center_x + 100.0
+	_watch_done_btn.offset_top    = BOT_Y - 90.0
+	_watch_done_btn.offset_bottom = BOT_Y - 50.0
+	# Same reasoning as Inventory in _ensure_mode3d_view: the 3D view is a
+	# later sibling in this same CanvasLayer, so a freshly added Control has
+	# to be moved after it explicitly or the 3D view's opaque background
+	# paints over it and swallows its clicks.
+	ui_layer.move_child(_watch_done_btn, ui_layer.get_child_count() - 1)
+	_watch_done_btn.pressed.connect(func():
+		_watch_done_btn.queue_free()
+		_watch_done_btn = null
+		result_screen.visible = true)
+
+
+# "Next Level" on the Results screen — loads the next owned level directly
+# instead of detouring through CityMap. get_next_owned_level_id() already
+# returned non-empty when the button became visible, but re-check here since
+# nothing stops the player sitting on the Results screen indefinitely first.
+func _on_advance_level() -> void:
+	var next_id := gm.get_next_owned_level_id(_current_level_id)
+	if next_id.is_empty():
+		Transition.change_scene("res://scenes/CityMap.tscn")
+		return
+	GameState.pending_level_id = next_id
+	GameState.pending_use_saved_layout = false
+	Transition.change_scene("res://scenes/Main.tscn")
 
 
 func _update_floor_locks() -> void:
@@ -1901,10 +1989,22 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	gm.budget = snap["funds"] as int
 	gm.budget_changed.emit(gm.budget)
 	var floors_data := snap["floors"] as Dictionary
+	var touched_current := false
 	for fid in floors_data:
 		var fl := _floors.get(fid) as Floor
 		if not fl:
 			continue   # a loft floor removed in between — rare edge case, skipped
+		var fd := floors_data[fid] as Dictionary
+		# A single undo/redo step only ever changes one floor (one tool action
+		# happened on one floor) — tearing down and respawning every OTHER
+		# floor's furniture too (destroy + re-instantiate + re-setup each
+		# piece) was the actual cost here, multiplied by every floor in the
+		# apartment on every single step. Skip any floor whose snapshot
+		# already matches its current state.
+		if _floor_matches_furniture_snapshot(fl, fd):
+			continue
+		if fid == _current_floor_id:
+			touched_current = true
 		for item in fl.get_all_furniture().duplicate():
 			# remove_furniture() (not a raw queue_free) so the Floor's own grid
 			# bookkeeping is cleaned up too — otherwise later code that iterates
@@ -1913,7 +2013,6 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 			# actually runs.
 			fl.remove_furniture(item as Furniture)
 		fl.wall_items.clear()
-		var fd := floors_data[fid] as Dictionary
 		for e in (fd["furniture"] as Array):
 			var ed := e as Dictionary
 			var f := _restore_spawn_furniture(ed["id"] as String, fl, int(ed["x"]), int(ed["y"]))
@@ -1927,9 +2026,20 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	_restoring_furniture = false
 	_last_furniture_state = _snapshot_all_furniture()
 	_refresh_functions()
-	if _view_mode == ViewMode.VIEW3D:
+	if _view_mode == ViewMode.VIEW3D and touched_current:
 		_ensure_mode3d_view()
 	Audio.play("click")
+
+
+# True if a floor's live furniture + wall items already equal what the
+# snapshot wants — lets _restore_furniture_snapshot skip the (expensive)
+# destroy/respawn cycle for every floor an undo/redo step didn't touch.
+func _floor_matches_furniture_snapshot(fl: Floor, fd: Dictionary) -> bool:
+	var furn := []
+	for item in fl.get_all_furniture():
+		var f := item as Furniture
+		furn.append({"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y, "extended": f.is_extended})
+	return furn == (fd["furniture"] as Array) and (fl.wall_items as Dictionary) == (fd["wall_items"] as Dictionary)
 
 
 # Same as _spawn_furniture but never auto-promotes onto a loft floor — used

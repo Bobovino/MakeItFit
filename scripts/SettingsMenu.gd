@@ -7,6 +7,10 @@ class_name SettingsMenu
 
 signal closed
 
+# preload (not the CreditsMenu class_name) so this works immediately without
+# waiting on Godot's global script-class cache to pick up the new file.
+const CreditsMenuScript := preload("res://scripts/CreditsMenu.gd")
+
 var _rebind_btn: Button = null
 var _capturing_rebind: bool = false
 
@@ -64,69 +68,15 @@ func _build() -> void:
 	help_btn.pressed.connect(func(): HowToPlay.open(self))
 	title_row.add_child(help_btn)
 
-	# Only Main (an in-level session) has anywhere to go "back" to — CityMap
-	# opening this same menu has no equivalent, so the button only appears
-	# when the host actually supports it. get_parent() is the host node
-	# open() added this menu under, not a separately-stored reference.
+	var credits_btn := Button.new()
+	credits_btn.text = "🖋 Credits"
+	credits_btn.add_theme_font_size_override("font_size", 12)
+	credits_btn.pressed.connect(func(): CreditsMenuScript.open(self))
+	title_row.add_child(credits_btn)
+
+	# get_parent() is the host node open() added this menu under, not a
+	# separately-stored reference.
 	var host := get_parent()
-	if host and host.has_method("_go_back"):
-		var back_btn := Button.new()
-		back_btn.text = "← Editor" if GameState.testing_from_editor else "← Projects"
-		back_btn.add_theme_font_size_override("font_size", 13)
-		back_btn.pressed.connect(func():
-			_close()
-			host.call("_go_back"))
-		vb.add_child(back_btn)
-
-	# Discoverable "start over" escape hatch for a bad layout (spent the
-	# budget on the wrong things, boxed something in unreachably, etc.) —
-	# same click-to-arm/click-to-confirm pattern as Quit below, since it
-	# throws away everything placed so far.
-	if host and host.has_method("_restart_level"):
-		var restart_row := VBoxContainer.new()
-		restart_row.add_theme_constant_override("separation", 6)
-		vb.add_child(restart_row)
-
-		var restart_btn := Button.new()
-		restart_btn.text = "↻ Restart Level"
-		restart_btn.add_theme_font_size_override("font_size", 13)
-		restart_row.add_child(restart_btn)
-
-		var r_confirm_row := HBoxContainer.new()
-		r_confirm_row.visible = false
-		r_confirm_row.add_theme_constant_override("separation", 8)
-		restart_row.add_child(r_confirm_row)
-
-		var r_confirm_lbl := Label.new()
-		r_confirm_lbl.text = "Discard this layout and start over?"
-		r_confirm_lbl.add_theme_font_size_override("font_size", 12)
-		r_confirm_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		r_confirm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r_confirm_row.add_child(r_confirm_lbl)
-
-		var r_yes_btn := Button.new()
-		r_yes_btn.text = "Yes, restart"
-		r_yes_btn.add_theme_font_size_override("font_size", 12)
-		r_yes_btn.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
-		r_yes_btn.pressed.connect(func():
-			_close()
-			host.call("_restart_level"))
-		r_confirm_row.add_child(r_yes_btn)
-
-		var r_cancel_btn := Button.new()
-		r_cancel_btn.text = "Cancel"
-		r_cancel_btn.add_theme_font_size_override("font_size", 12)
-		r_cancel_btn.pressed.connect(func():
-			r_confirm_row.visible = false
-			restart_btn.visible = true)
-		r_confirm_row.add_child(r_cancel_btn)
-
-		restart_btn.pressed.connect(func():
-			restart_btn.visible = false
-			r_confirm_row.visible = true)
-
-	if (host and host.has_method("_go_back")) or (host and host.has_method("_restart_level")):
-		vb.add_child(HSeparator.new())
 
 	var audio := get_node_or_null("/root/Audio")
 
@@ -187,6 +137,78 @@ func _build() -> void:
 
 	var sep := HSeparator.new()
 	vb.add_child(sep)
+
+	# Navigation — leaving the level entirely (Back/Restart), grouped
+	# together and set apart from the adjustable settings above so they
+	# read as "things that take you elsewhere," not more preferences to tune.
+	# Only Main (an in-level session) has anywhere to go "back" to or a level
+	# to restart — CityMap opening this same menu has neither, so each
+	# button only appears when the host actually supports it.
+	if (host and host.has_method("_go_back")) or (host and host.has_method("_restart_level")):
+		var nav_title := Label.new()
+		nav_title.text = "NAVIGATION"
+		nav_title.add_theme_font_size_override("font_size", 13)
+		nav_title.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		vb.add_child(nav_title)
+
+	if host and host.has_method("_go_back"):
+		var back_btn := Button.new()
+		back_btn.text = "← Projects"
+		back_btn.add_theme_font_size_override("font_size", 13)
+		back_btn.pressed.connect(func():
+			_close()
+			host.call("_go_back"))
+		vb.add_child(back_btn)
+
+	# Discoverable "start over" escape hatch for a bad layout (spent the
+	# budget on the wrong things, boxed something in unreachably, etc.) —
+	# same click-to-arm/click-to-confirm pattern as Quit below, since it
+	# throws away everything placed so far.
+	if host and host.has_method("_restart_level"):
+		var restart_row := VBoxContainer.new()
+		restart_row.add_theme_constant_override("separation", 6)
+		vb.add_child(restart_row)
+
+		var restart_btn := Button.new()
+		restart_btn.text = "↻ Restart Level"
+		restart_btn.add_theme_font_size_override("font_size", 13)
+		restart_row.add_child(restart_btn)
+
+		var r_confirm_row := HBoxContainer.new()
+		r_confirm_row.visible = false
+		r_confirm_row.add_theme_constant_override("separation", 8)
+		restart_row.add_child(r_confirm_row)
+
+		var r_confirm_lbl := Label.new()
+		r_confirm_lbl.text = "Discard this layout and start over?"
+		r_confirm_lbl.add_theme_font_size_override("font_size", 12)
+		r_confirm_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		r_confirm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r_confirm_row.add_child(r_confirm_lbl)
+
+		var r_yes_btn := Button.new()
+		r_yes_btn.text = "Yes, restart"
+		r_yes_btn.add_theme_font_size_override("font_size", 12)
+		r_yes_btn.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
+		r_yes_btn.pressed.connect(func():
+			_close()
+			host.call("_restart_level"))
+		r_confirm_row.add_child(r_yes_btn)
+
+		var r_cancel_btn := Button.new()
+		r_cancel_btn.text = "Cancel"
+		r_cancel_btn.add_theme_font_size_override("font_size", 12)
+		r_cancel_btn.pressed.connect(func():
+			r_confirm_row.visible = false
+			restart_btn.visible = true)
+		r_confirm_row.add_child(r_cancel_btn)
+
+		restart_btn.pressed.connect(func():
+			restart_btn.visible = false
+			r_confirm_row.visible = true)
+
+	if (host and host.has_method("_go_back")) or (host and host.has_method("_restart_level")):
+		vb.add_child(HSeparator.new())
 
 	# Quit to Desktop — click once to arm, click again to confirm
 	var quit_row := VBoxContainer.new()
@@ -279,9 +301,13 @@ func _build_slider_row(label_text: String, initial: float, on_change: Callable) 
 	return row
 
 
-# Same shape as _build_slider_row but for an arbitrary [min, max] range shown
-# as a percentage of that range (e.g. UI Scale 0.85–1.35 reads as 0%–100%
-# rather than a confusing "135%" for the max).
+# Same shape as _build_slider_row but for an arbitrary [min, max] range whose
+# value itself already reads naturally as a percentage (e.g. UI Scale's 1.0
+# default IS 100% zoom) — shown as v*100 directly. An earlier version showed
+# this as a percentage of the [min, max] *range* instead, which put the
+# default 1.0 at a confusing "30%" (since 1.0 sits 30% of the way from 0.85
+# to 1.35) and read as the UI being shrunk when it was actually at its
+# normal size.
 func _build_pct_slider_row(label_text: String, initial: float, min_v: float, max_v: float, on_change: Callable) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -302,14 +328,14 @@ func _build_pct_slider_row(label_text: String, initial: float, min_v: float, max
 	row.add_child(slider)
 
 	var pct := Label.new()
-	pct.text = "%d%%" % int(round((initial - min_v) / (max_v - min_v) * 100.0))
+	pct.text = "%d%%" % int(round(initial * 100.0))
 	pct.add_theme_font_size_override("font_size", 12)
 	pct.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	pct.custom_minimum_size.x = 40
 	row.add_child(pct)
 
 	slider.value_changed.connect(func(v: float):
-		pct.text = "%d%%" % int(round((v - min_v) / (max_v - min_v) * 100.0))
+		pct.text = "%d%%" % int(round(v * 100.0))
 		on_change.call(v))
 
 	return row

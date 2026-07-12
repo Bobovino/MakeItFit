@@ -160,15 +160,15 @@ visible = false
 
 [node name="Panel" type="PanelContainer" parent="ResultScreen"]
 offset_left = 340.0
-offset_top = 160.0
+offset_top = 90.0
 offset_right = 940.0
-offset_bottom = 540.0
+offset_bottom = 630.0
 
 [node name="VBox" type="VBoxContainer" parent="ResultScreen/Panel"]
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 580.0
-offset_bottom = 360.0
+offset_bottom = 520.0
 
 [node name="Title" type="Label" parent="ResultScreen/Panel/VBox"]
 text = "RENTED OUT"

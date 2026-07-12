@@ -35,7 +35,8 @@ var floor_mask:     Dictionary = {}   # Vector2i -> true; empty = whole grid is 
 var floor_kind:     Dictionary = {}   # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
 var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
-var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (loft view only)
+var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (LevelEditor loft view only)
+var below_floor:    Floor      = null # the "floor"-type floor stacked directly below this one, if any (gameplay 2D/3D ghost-below reference — see Main.gd's _floor_below_id)
 var rails:          Array      = []   # [{x1,y1,x2,y2}] sliding rail tracks
 var reveal_zones:   Array      = []   # [{x1,y1,x2,y2}] sub-range of a rail where a piece counts as "revealed"
 var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,demolished,...}]

@@ -83,6 +83,24 @@ func load_level(level_id: String) -> void:
 	push_error("Level not found: " + level_id)
 
 
+# Next level in the same authored order as CityMap/levels.json — but only if
+# the player already owns it. A locked level still needs to be bought from
+# CityMap first, so the Results screen's "Next Level" button falls back to
+# "no next level" (caller sends the player back to CityMap instead) rather
+# than jumping into a level they can't actually play yet.
+func get_next_owned_level_id(current_id: String) -> String:
+	var levels := levels_data.get("levels", []) as Array
+	var idx := -1
+	for i in range(levels.size()):
+		if (levels[i] as Dictionary).get("id", "") == current_id:
+			idx = i
+			break
+	if idx == -1 or idx + 1 >= levels.size():
+		return ""
+	var next_id := (levels[idx + 1] as Dictionary).get("id", "") as String
+	return next_id if GameState.is_owned(next_id) else ""
+
+
 func get_furniture_by_id(furniture_id: String) -> Dictionary:
 	for f in furniture_data["furniture"]:
 		if f["id"] == furniture_id:

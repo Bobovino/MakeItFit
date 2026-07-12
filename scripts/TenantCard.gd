@@ -11,6 +11,7 @@ signal moment_selected(moment_id: String)
 
 var _rent_btn: Button = null
 var _rent_available: bool = false
+var _already_rented: bool = false   # true once RENT OUT actually succeeded this session — button stays gone even though the win condition (still true) would otherwise keep re-showing it
 
 # flat-list mode
 var _check_chips: Dictionary = {}   # func_name -> Control
@@ -123,10 +124,23 @@ func _build_rent_btn() -> void:
 	vbox.add_child(_rent_btn)
 
 
+# Called by Main.gd right after a successful RENT OUT — the win condition
+# stays true afterwards (nothing about the furniture changed), so without
+# this the button would just reappear the next time set_rent_available()
+# runs. Once rented, it's gone for the rest of the session regardless.
+func set_rented(rented: bool) -> void:
+	_already_rented = rented
+	if rented:
+		_rent_btn.visible = false
+
+
 # Called by Main.gd whenever the win condition is (re-)evaluated — pulses
 # once the moment every requirement flips green, same celebratory cue the old
 # top-bar button used to give.
 func set_rent_available(available: bool) -> void:
+	if _already_rented:
+		_rent_btn.visible = false
+		return
 	var was_available := _rent_available
 	_rent_available = available
 	_rent_btn.visible = available

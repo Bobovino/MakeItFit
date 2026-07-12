@@ -1,14 +1,21 @@
 extends CanvasLayer
 class_name ResultScreen
 
-signal next_level_requested
+signal next_level_requested     # "Back to Projects" (also doubles as "Retire" at the retirement goal)
 signal retry_requested
+signal watch_again_requested    # "View Apartment" — close this modal and hand the player free camera control
+signal advance_level_requested  # "Next Level" — load the next owned level directly, skipping CityMap
 
 @onready var title_label: Label  = $Panel/VBox/Title
 @onready var body_label:  Label  = $Panel/VBox/Body
 @onready var rent_bar:    Label  = $Panel/VBox/RentBar
 @onready var next_btn:    Button = $Panel/VBox/NextButton
 @onready var retry_btn:   Button = $Panel/VBox/RetryButton
+
+# Built dynamically (not in Main.tscn) — same reasoning as CreditsMenu.gd this
+# session: avoids waiting on Godot's editor to notice scene-file changes.
+var watch_btn:   Button = null
+var advance_btn: Button = null
 
 var _stars_label: Label = null
 var _stamp: Label = null
@@ -49,6 +56,27 @@ func _ready() -> void:
 	retry_btn.custom_minimum_size = Vector2(220, 44)
 	retry_btn.add_theme_font_size_override("font_size", 13)
 
+	# Inserted right above NextButton, in this order: View Apartment, then
+	# Next Level, then the existing Back to Projects/Retry — "keep looking"
+	# and "move on" read as options offered before the exit action, not after.
+	watch_btn = Button.new()
+	watch_btn.text = "🔍 View Apartment"
+	watch_btn.custom_minimum_size = Vector2(220, 44)
+	watch_btn.add_theme_font_size_override("font_size", 13)
+	watch_btn.pressed.connect(func(): watch_again_requested.emit())
+	$Panel/VBox.add_child(watch_btn)
+	$Panel/VBox.move_child(watch_btn, next_btn.get_index())
+
+	advance_btn = Button.new()
+	advance_btn.text = "Next Level →"
+	advance_btn.custom_minimum_size = Vector2(220, 44)
+	advance_btn.add_theme_font_size_override("font_size", 13)
+	advance_btn.pressed.connect(func():
+		visible = false
+		advance_level_requested.emit())
+	$Panel/VBox.add_child(advance_btn)
+	$Panel/VBox.move_child(advance_btn, next_btn.get_index())
+
 	# "APPROVED" rubber stamp — slams down tilted over the panel's top-right
 	# corner on success, like a permit office signing off on the drawing.
 	_stamp = Label.new()
@@ -72,7 +100,14 @@ func _ready() -> void:
 	_stamp.rotation_degrees = -9.0
 	_stamp.visible = false
 	_stamp.z_index = 10
-	($Panel as Control).add_child(_stamp)
+	# A direct child of Panel (a PanelContainer) gets its position silently
+	# overridden on every layout pass — Containers auto-position ALL direct
+	# children, ignoring anything set manually, so the stamp would only sit
+	# where we put it until the next resize/re-sort (e.g. toggling `visible`
+	# for Watch Again) snapped it back to wherever the Container's own layout
+	# rules put a second child. Parenting it to the CanvasLayer instead (not
+	# a Container) makes the manual position stick permanently.
+	add_child(_stamp)
 
 
 func _slam_stamp() -> void:
@@ -84,7 +119,7 @@ func _slam_stamp() -> void:
 	await get_tree().process_frame
 	_stamp.reset_size()
 	_stamp.pivot_offset = _stamp.size * 0.5
-	_stamp.position = Vector2(panel.size.x - _stamp.size.x - 30, 16)
+	_stamp.position = panel.position + Vector2(panel.size.x - _stamp.size.x - 30, 16)
 	_stamp.scale = Vector2(2.4, 2.4)
 	_stamp.modulate = Color(1, 1, 1, 0)
 	var tw := create_tween()
@@ -96,21 +131,24 @@ func _slam_stamp() -> void:
 
 
 func show_success(stars: int, funds_earned: int, portfolio_rent: int,
-		tenant_name: String, _level_rent: int) -> void:
+		tenant_name: String, _level_rent: int, has_next_level: bool = false) -> void:
 	visible = true
-	next_btn.visible  = true
-	retry_btn.visible = false
+	next_btn.visible    = true
+	retry_btn.visible   = false
+	watch_btn.visible   = true
+	advance_btn.visible = has_next_level
 
 	if GameState.is_retired():
 		title_label.text = "RETIREMENT ACHIEVED"
 		body_label.text  = "You retire.\nGen Z pays for it. As always."
 		next_btn.text    = "Retire"
+		advance_btn.visible = false
 	else:
 		title_label.text = "RENTED OUT"
 		body_label.text  = (
 			"Congratulations. You have successfully reduced\n%s's quality of life by 40%%." % tenant_name
 		)
-		next_btn.text = "Back to City"
+		next_btn.text = "Back to Projects"
 
 	_animate_stars(stars)
 	call_deferred("_slam_stamp")
@@ -150,8 +188,10 @@ func show_failure(reason: String) -> void:
 	if _stars_label:
 		_stars_label.text  = ""
 	rent_bar.text      = ""
-	next_btn.visible   = false
-	retry_btn.visible  = true
+	next_btn.visible    = false
+	retry_btn.visible   = true
+	watch_btn.visible   = false
+	advance_btn.visible = false
 
 
 func _on_next_pressed() -> void:

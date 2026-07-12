@@ -166,15 +166,8 @@ func _ready() -> void:
 		_furn_catalog = (jp.get_data() as Dictionary).get("furniture", []) as Array
 	_init_editor_floors()
 	_build_scene()
-	# Returning from a test session — restore the level that was being edited
-	var gs: Node = get_node("/root/GameState")
-	if gs.get("resume_editor") and not (gs.get("custom_level_data") as Dictionary).is_empty():
-		gs.set("resume_editor", false)
-		_load_from_dict(gs.get("custom_level_data") as Dictionary)
-		_set_status("Returned from test — level restored")
-	else:
-		_rebuild_floor()
-		_set_status("Floor Paint: LMB pintasuelos · RMB borra  |  Dibuja paredes encima del suelo")
+	_rebuild_floor()
+	_set_status("Floor Paint: LMB pintasuelos · RMB borra  |  Dibuja paredes encima del suelo")
 
 
 # ── Scene skeleton ────────────────────────────────────────────────────────────
@@ -3534,6 +3527,5 @@ func _test_level() -> void:
 	var gs: Node = get_node("/root/GameState")
 	gs.set("custom_level_data", d)
 	gs.set("pending_level_id",  "_custom")
-	gs.set("testing_from_editor", true)
 	gs.call("own_level", "_custom")
 	Transition.change_scene("res://scenes/Main.tscn")

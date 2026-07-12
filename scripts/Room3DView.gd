@@ -16,6 +16,7 @@ signal buy_confirmed_wall(furniture_id: String, edge: String, origin: Vector2i) 
 signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was backed out (Esc)
 signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a wall piece
 signal furniture_moved(furniture: Furniture)   # an existing piece was dragged to a new spot and committed
+signal reveal_finished   # a play_reveal() flythrough finished its scripted camera move
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -38,6 +39,8 @@ var _dragging: bool   = false
 var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
 const CLICK_MOVE_THRESHOLD := 6.0
+
+var _reveal_playing: bool = false   # true while play_reveal()'s scripted camera move is running
 
 # Floor-furniture dragging: reach back into the live Floor this diorama was
 # built from so a drag here actually moves the piece (unlike everything else
@@ -144,6 +147,8 @@ func _process(delta: float) -> void:
 
 
 func _on_container_input(event: InputEvent) -> void:
+	if _reveal_playing:
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -226,6 +231,8 @@ func _on_container_input(event: InputEvent) -> void:
 # doesn't hold keyboard focus), so Esc-to-cancel a purchase is handled through
 # the normal _input() channel instead, same as Furniture.gd's 2D equivalent.
 func _input(event: InputEvent) -> void:
+	if _reveal_playing:
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
 		if _buying_furniture and not _buying_on_wall:
 			_buying_furniture._rotate()
@@ -1063,6 +1070,39 @@ func _update_camera() -> void:
 	_update_wall_visibility(offset)
 
 
+# The "reveal" moment: a short scripted camera sweep over the finished room
+# instead of the player's last interactive camera angle, played once on a
+# successful RENT OUT (see Main.gd's _on_rent_pressed). Starts pulled back
+# and low, arcs around and pushes in to the same resting angle the player
+# would normally end up at — sells the "finished apartment" as a single
+# continuous move instead of a static screenshot. Reuses _yaw/_pitch/_dist/
+# _update_camera exactly as interactive orbiting does; the tween is just
+# another writer of the same three numbers.
+func play_reveal(duration: float = 3.5) -> void:
+	_reveal_playing = true
+	var end_yaw   := _yaw
+	var end_pitch := _pitch
+	var end_dist  := _dist
+	var start_yaw   := end_yaw - 130.0
+	var start_pitch := -14.0
+	var start_dist  := end_dist * 1.85
+	_yaw   = start_yaw
+	_pitch = start_pitch
+	_dist  = start_dist
+	_update_camera()
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(func(t: float) -> void:
+		_yaw   = lerpf(start_yaw, end_yaw, t)
+		_pitch = lerpf(start_pitch, end_pitch, t)
+		_dist  = lerpf(start_dist, end_dist, t)
+		_update_camera(),
+		0.0, 1.0, duration)
+	await tw.finished
+	_reveal_playing = false
+	reveal_finished.emit()
+
+
 # Shrinks whichever wall(s) sit between the camera and the room down to a
 # low stub — same "dollhouse cutaway" intent as fully hiding them, but a
 # stub still reads as "there's a wall here" instead of the wall silently
@@ -1210,6 +1250,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_add_window_door_overlays(bounds)
 	_add_reveal_zone_markers(bounds)
 	_add_balcony_extras(bounds)
+	_add_stairs(bounds)
 	_update_camera()   # also applies initial wall visibility now that _wall_data exists
 
 	for item in apt_floor.get_all_furniture():
@@ -1268,6 +1309,8 @@ func _add_ghost_floor(below_floor: Floor, bounds: Rect2i) -> void:
 		var lx := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
 		var lz := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
 		_make_ghost(_box(Vector3(fw, height_m, fd), Vector3(lx, y_off + height_m * 0.5, lz), GHOST_COLOR))
+
+	_add_ghost_stairs(below_floor, bounds)
 
 
 func _make_ghost(mi: MeshInstance3D) -> void:
@@ -1755,6 +1798,91 @@ func _add_columns(bounds: Rect2i) -> void:
 		var local_z := (cy - bounds.position.y) * TILE_M
 		_box(Vector3(TILE_M, WALL_H_M, TILE_M),
 			Vector3(local_x + TILE_M * 0.5, WALL_H_M * 0.5, local_z + TILE_M * 0.5), COL_COLOR)
+
+
+# Stairs (from Floor.stairs_data — geometry-only, no furniture object) were
+# never rendered in 3D at all: the 2D plan (GridDraw's direction-aware block
+# with tread nosings) had no 3D counterpart, so a stair rect just looked like
+# empty floor. A staircase placed with LevelEditor's Stairs tool (see its
+# STAIR_STEP_DEPTH/STAIR_WIDTH constants) already has a walkable, real-sized
+# footprint — so the fix is just to cut THAT rect into treads and stay
+# strictly inside it, not to invent extra run past its edges.
+#
+# A staircase is one physical object shared by the two floors it connects —
+# it must NOT be built twice (once as a real flight on its own floor, again
+# as a second "new" flight on the floor it arrives at, per _apt_floor.
+# stair_openings). The floor it arrives at instead gets a translucent ghost
+# of the SAME flight from _add_ghost_floor (below), shifted up so its top
+# step touches this floor's underside — see _add_ghost_stairs.
+const STAIR_STEP_DEPTH_TILES := 2   # matches LevelEditor.gd's STAIR_STEP_DEPTH
+const STAIR_LOFT_COL  := Color(0.52, 0.60, 0.82)
+const STAIR_FLOOR_COL := Color(0.78, 0.58, 0.22)
+
+func _add_stairs(bounds: Rect2i) -> void:
+	if not _apt_floor:
+		return
+	var full_h := Floor.FLOOR_HEIGHT_TILES * TILE_M
+	for entry in _apt_floor.stairs_data:
+		_add_stair_flight(entry as Dictionary, bounds, full_h, 0.0, false)
+
+
+func _add_stair_flight(ed: Dictionary, bounds: Rect2i, full_h: float,
+		y_offset: float, ghost: bool) -> void:
+	var r := ed["rect"] as Rect2i
+	var dir := ed.get("direction", "north") as String
+	var tgt := ed.get("target", "loft") as String
+	var col := STAIR_LOFT_COL if tgt == "loft" else STAIR_FLOOR_COL
+	var rx := r.position.x * TILE_M
+	var rz := r.position.y * TILE_M
+	var rw := r.size.x * TILE_M
+	var rd := r.size.y * TILE_M
+	var axis_len_tiles := (r.size.y if dir in ["north", "south"] else r.size.x)
+	var num_steps := maxi(axis_len_tiles / STAIR_STEP_DEPTH_TILES, 1)
+	var step_h := full_h / num_steps
+	var step_depth_m := (axis_len_tiles * TILE_M) / num_steps   # fills the rect exactly, no overflow
+	for i in range(num_steps):
+		var top_h := (i + 1) * step_h
+		var along0 := i * step_depth_m   # 0 = the low (entry) end of the run
+		var local_x: float
+		var local_z: float
+		var step_size: Vector3
+		match dir:
+			"north":   # ascends toward -z; low end at the south (max z) edge
+				local_x = rx; local_z = rz + rd - along0 - step_depth_m
+				step_size = Vector3(rw, top_h, step_depth_m)
+			"south":   # ascends toward +z
+				local_x = rx; local_z = rz + along0
+				step_size = Vector3(rw, top_h, step_depth_m)
+			"east":    # ascends toward +x
+				local_x = rx + along0; local_z = rz
+				step_size = Vector3(step_depth_m, top_h, rd)
+			_:         # west: ascends toward -x
+				local_x = rx + rw - along0 - step_depth_m; local_z = rz
+				step_size = Vector3(step_depth_m, top_h, rd)
+		local_x -= bounds.position.x * TILE_M
+		local_z -= bounds.position.y * TILE_M
+		var mi := _box(step_size, Vector3(local_x + step_size.x * 0.5, y_offset + top_h * 0.5, local_z + step_size.z * 0.5), col)
+		if ghost:
+			_make_ghost(mi)
+
+
+# The translucent flight of stairs a floor's own _add_stairs left off at its
+# own top — shifted up by a full floor height so the last step lands exactly
+# at y=0 (this floor's underside), giving a "the stairs continue below you"
+# cue on the floor a staircase arrives at, without building a second solid
+# flight (see _add_stairs).
+func _add_ghost_stairs(below_floor: Floor, bounds: Rect2i) -> void:
+	var full_h := Floor.FLOOR_HEIGHT_TILES * TILE_M
+	var y_off := -full_h
+	# below_floor may have stairs going to more than one place (e.g. the
+	# ground floor's stairs go both to its own loft AND to the next floor
+	# up) — only the flight that actually arrives at THIS floor belongs here.
+	var want_target := "loft" if _apt_floor.floor_type == "loft" else "floor"
+	for entry in below_floor.stairs_data:
+		var ed := entry as Dictionary
+		if (ed.get("target", "loft") as String) != want_target:
+			continue
+		_add_stair_flight(ed, bounds, full_h, y_off, true)
 
 
 # Windows/doors are only used for restricted-zone math (blocking wall-item
