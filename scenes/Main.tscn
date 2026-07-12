@@ -35,6 +35,8 @@ offset_bottom = 46.0
 [node name="Label" type="Label" parent="UI/TopBar"]
 text = "Budget: 3000€"
 theme_override_font_sizes/font_size = 18
+
+[node name="MinimapSpacerL" type="Control" parent="UI/TopBar"]
 size_flags_horizontal = 3
 
 [node name="Minimap" type="PanelContainer" parent="UI/TopBar"]
@@ -46,14 +48,8 @@ offset_top = 2.0
 offset_right = 300.0
 offset_bottom = 44.0
 
-[node name="MomentSelector" type="PanelContainer" parent="UI/TopBar"]
-script = ExtResource("3")
-
-[node name="HBox" type="BoxContainer" parent="UI/TopBar/MomentSelector"]
-offset_left = 4.0
-offset_top = 2.0
-offset_right = 200.0
-offset_bottom = 44.0
+[node name="MinimapSpacerR" type="Control" parent="UI/TopBar"]
+size_flags_horizontal = 3
 
 [node name="View3DButton" type="Button" parent="UI/TopBar"]
 text = "3D View"

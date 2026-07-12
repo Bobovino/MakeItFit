@@ -2,6 +2,7 @@ extends PanelContainer
 class_name TenantCard
 
 signal rent_out_requested()
+signal moment_selected(moment_id: String)
 
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
@@ -21,6 +22,11 @@ var _setup_ticks: int = 0
 # moment mode
 var _moments: Array = []
 var _moment_check_chips: Dictionary = {}  # moment_id -> { need -> Control }
+# Each moment's section header doubles as its nav button — clicking "DAY" or
+# "NIGHT" both labels that need-group and switches the active moment, so the
+# TopBar doesn't need its own separate Day/Night strip.
+var _moment_header_btns: Dictionary = {}  # moment_id -> Button
+var _moment_group := ButtonGroup.new()
 
 # Collapsed by default: the sidebar is now a narrow compact column, and the
 # flavor paragraph is the one thing that isn't needed at a glance — click the
@@ -203,6 +209,8 @@ func _clear_checklist() -> void:
 		child.queue_free()
 	_check_chips.clear()
 	_moment_check_chips.clear()
+	_moment_header_btns.clear()
+	_moment_group = ButtonGroup.new()
 
 
 func _build_checklist(required: Array) -> void:
@@ -225,8 +233,9 @@ func _build_moment_checklist() -> void:
 		var label := m["label"] as String
 		var needs := m["needs"] as Array
 
-		var hdr := _make_section_label(label.to_upper())
+		var hdr := _make_moment_header_btn(label.to_upper(), mid)
 		checklist_container.add_child(hdr)
+		_moment_header_btns[mid] = hdr
 
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 4)
@@ -246,6 +255,38 @@ func _make_section_label(text: String) -> Label:
 	lbl.add_theme_font_size_override("font_size", 9)
 	lbl.add_theme_color_override("font_color", INK_MUTED)
 	return lbl
+
+
+# A flat, borderless toggle styled to still read as a plain section label at
+# rest — only the active moment picks up the amber accent (same as every
+# other active-mode indicator in the game), so this doubles as both the
+# "DAY"/"NIGHT" heading and the moment switcher without adding a separate
+# control.
+func _make_moment_header_btn(text: String, mid: String) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.toggle_mode  = true
+	btn.button_group = _moment_group
+	btn.focus_mode   = Control.FOCUS_NONE
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	btn.add_theme_font_size_override("font_size", 9)
+	btn.add_theme_stylebox_override("normal",   StyleBoxEmpty.new())
+	btn.add_theme_stylebox_override("hover",    StyleBoxEmpty.new())
+	btn.add_theme_stylebox_override("pressed",  StyleBoxEmpty.new())
+	btn.add_theme_stylebox_override("focus",    StyleBoxEmpty.new())
+	btn.add_theme_color_override("font_color",         INK_MUTED)
+	btn.add_theme_color_override("font_hover_color",   INK)
+	btn.add_theme_color_override("font_pressed_color", GameTheme.C_AMBER)
+	btn.pressed.connect(func(): moment_selected.emit(mid))
+	return btn
+
+
+# Called by Main after it switches moments (including the initial one on
+# level load) so the header that matches the active moment stays highlighted
+# even when the switch was triggered some other way.
+func highlight_moment(moment_id: String) -> void:
+	if _moment_header_btns.has(moment_id):
+		(_moment_header_btns[moment_id] as Button).button_pressed = true
 
 
 # A small square glyph tile with a check/cross badge in the corner — reads at

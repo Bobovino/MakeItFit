@@ -6,7 +6,6 @@ const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 @onready var gm:           GameManager  = $GameManager
 @onready var room:         Node2D       = $Room
 @onready var minimap:      Minimap      = $UI/TopBar/Minimap
-@onready var moment_selector: Minimap   = $UI/TopBar/MomentSelector
 @onready var budget_label: Label        = $UI/TopBar/Label
 @onready var tenant_card:  TenantCard   = $UI/TenantCard
 @onready var inventory:    Inventory    = $UI/Inventory
@@ -102,7 +101,6 @@ var _active_moment_id:  String = ""
 
 func _ready() -> void:
 	minimap.set_compact(true)
-	moment_selector.set_compact(true)
 	if not gm.budget_changed.is_connected(_on_budget_changed):
 		gm.budget_changed.connect(_on_budget_changed)
 	if not gm.functions_updated.is_connected(_on_functions_updated):
@@ -111,8 +109,8 @@ func _ready() -> void:
 		gm.moments_updated.connect(_on_moments_updated)
 	if not minimap.wall_selected.is_connected(_switch_floor):
 		minimap.wall_selected.connect(_switch_floor)
-	if not moment_selector.wall_selected.is_connected(_on_moment_selected):
-		moment_selector.wall_selected.connect(_on_moment_selected)
+	if not tenant_card.moment_selected.is_connected(_on_moment_selected):
+		tenant_card.moment_selected.connect(_on_moment_selected)
 	if not inventory.buy_requested.is_connected(_on_buy_requested):
 		inventory.buy_requested.connect(_on_buy_requested)
 	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
@@ -145,7 +143,6 @@ func _ready() -> void:
 func _apply_ui_theme() -> void:
 	var t := GameTheme.make()
 	minimap.theme       = t
-	moment_selector.theme = t
 	tenant_card.theme   = t
 	inventory.theme     = t
 	wall_inspector.theme = t
@@ -469,12 +466,11 @@ func _load_level(level_id: String) -> void:
 	_active_moment_id = ""
 	Furniture.test_mode_active = false
 	Furniture.active_moment_id = ""
-	moment_selector.setup(gm.moments)
+	tenant_card.setup(level["tenant"])
+	tenant_card.setup_moments(gm.moments)
 	if not gm.moments.is_empty():
 		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
 		_on_moment_selected(_first_mid)
-	tenant_card.setup(level["tenant"])
-	tenant_card.setup_moments(gm.moments)
 	inventory.setup(gm)
 	var shop_list: Array = gm.furniture_data["furniture"]
 	if not gm.allowed_furniture.is_empty():
@@ -1316,7 +1312,7 @@ func _on_rent_pressed() -> void:
 
 func _on_moment_selected(moment_id: String) -> void:
 	_active_moment_id = moment_id
-	moment_selector.highlight(moment_id)
+	tenant_card.highlight_moment(moment_id)
 	# Selecting a moment enables the same fold/unfold interaction Test Layout
 	# does — the player still has to click each piece themselves to match the
 	# moment's needs; nothing is toggled automatically here.
