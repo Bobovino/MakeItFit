@@ -909,7 +909,7 @@ func _set_view_mode(mode: int) -> void:
 			wall_inspector.hide()
 			_hide_modal_backdrop()
 			_ensure_mode3d_view()
-			_set_mode_hint("Drop items on the floor, or drag them onto a wall to hang them")
+			_set_mode_hint("Drop items on the floor, or drag them onto a wall to hang them · Press R to rotate")
 
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:

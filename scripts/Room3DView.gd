@@ -27,6 +27,8 @@ const WALL_THICK  := 0.1
 @onready var cam:        Camera3D             = $SubViewportContainer/SubViewport/World/Cam
 @onready var build_root: Node3D               = $SubViewportContainer/SubViewport/World/BuildRoot
 @onready var close_btn:  Button               = $CloseBtn
+@onready var _sun:       DirectionalLight3D   = $SubViewportContainer/SubViewport/World/Light
+@onready var _world_env: WorldEnvironment     = $SubViewportContainer/SubViewport/World/WorldEnvironment
 
 var _yaw:     float   = -45.0
 var _pitch:   float   = -32.0
@@ -196,15 +198,26 @@ func _on_container_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		_last_local_mouse = mm.position
 		if _buying_furniture:
+			_hide_hover_highlight()
 			_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
+			_hide_hover_highlight()
 			_update_furniture_drag(_to_vp(mm.position))
 		elif _dragging_wall_item:
+			_hide_hover_highlight()
 			_update_wall_item_drag(_to_vp(mm.position))
 		elif _dragging:
+			_hide_hover_highlight()
 			_yaw   -= mm.relative.x * 0.4
 			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
 			_update_camera()
+		else:
+			# Idle — no drag/camera-orbit/purchase in progress, so hovering a
+			# floor piece is safe to reflect: an amber outline says "this is
+			# grabbable" before the player commits to a click, the same way
+			# the red/green hitbox outlines already say "this is where it
+			# sits"/"this is where it'd land" once a drag is under way.
+			_update_hover(_to_vp(mm.position))
 
 
 # gui_input only reliably delivers mouse/touch events here (the container
@@ -296,6 +309,7 @@ func _pick_furniture(vp_pos: Vector2) -> Dictionary:
 
 
 func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
+	_hide_hover_highlight()
 	_drag_target        = hit
 	_dragging_furniture = true
 	_drag_orig_pos       = hit["pos"]
@@ -400,6 +414,7 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	# buy_cancelled so Main.gd's pending Furniture node gets freed too.
 	if _buying_furniture:
 		_cancel_buy()
+	_hide_hover_highlight()
 	_buying_furniture = furniture
 	_buying_fdata     = fdata
 	_buying_on_wall   = false
@@ -1138,6 +1153,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 	_wall_grid_overlays.clear()
 	_hitbox_highlights.clear()
 	_drag_highlight = null
+	_hover_highlight = null
+	_hover_furniture = null
 	_furniture_entries.clear()
 	_wall_item_entries.clear()
 	_dragging_furniture = false
@@ -1183,6 +1200,56 @@ func build_from_floor(apt_floor: Floor, catalog: Array) -> void:
 		var items: Dictionary = apt_floor.wall_items[edge] as Dictionary
 		for origin in items:
 			_add_wall_item_box(edge, origin as Vector2i, items[origin] as String, catalog)
+
+	_apply_moment_lighting()
+
+
+# ── Day/Night lighting ──────────────────────────────────────────────────────
+# The moment system (DAY/NIGHT tenant needs, per-moment fold/rail state) had
+# no visual counterpart in 3D — switching moments only updated checklist
+# icons, the room itself stayed lit identically. Keyed off the active
+# moment's own id/label rather than a hardcoded "day"/"night" pair so any
+# moment whose name contains "night" gets the dim preset, everything else
+# (including levels with no moments at all) gets the normal daylight rig.
+const _DAY_SUN_ENERGY   := 1.1
+const _DAY_SUN_COLOR    := Color(1.0, 1.0, 1.0)
+const _DAY_AMBIENT      := Color(0.9, 0.9, 0.95)
+const _DAY_AMBIENT_NRG  := 0.45
+const _DAY_BG           := Color(0.85, 0.87, 0.9)
+const _NIGHT_SUN_ENERGY  := 0.12
+const _NIGHT_SUN_COLOR   := Color(0.55, 0.62, 0.85)
+const _NIGHT_AMBIENT     := Color(0.10, 0.11, 0.20)
+const _NIGHT_AMBIENT_NRG := 0.30
+const _NIGHT_BG          := Color(0.04, 0.05, 0.10)
+
+
+func _is_night_moment() -> bool:
+	var mid := Furniture.active_moment_id.to_lower()
+	return mid.find("night") != -1
+
+
+func _apply_moment_lighting() -> void:
+	var night := _is_night_moment()
+	var sun_energy: float  = _NIGHT_SUN_ENERGY  if night else _DAY_SUN_ENERGY
+	var sun_color: Color   = _NIGHT_SUN_COLOR   if night else _DAY_SUN_COLOR
+	var ambient: Color     = _NIGHT_AMBIENT     if night else _DAY_AMBIENT
+	var ambient_nrg: float = _NIGHT_AMBIENT_NRG if night else _DAY_AMBIENT_NRG
+	var bg: Color          = _NIGHT_BG          if night else _DAY_BG
+	var env := _world_env.environment
+	if GameState.reduce_motion:
+		_sun.light_energy = sun_energy
+		_sun.light_color  = sun_color
+		env.ambient_light_color  = ambient
+		env.ambient_light_energy = ambient_nrg
+		env.background_color     = bg
+		return
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_sun, "light_energy", sun_energy, 0.6)
+	tw.tween_property(_sun, "light_color",  sun_color,  0.6)
+	tw.tween_property(env,  "ambient_light_color",  ambient,     0.6)
+	tw.tween_property(env,  "ambient_light_energy", ambient_nrg, 0.6)
+	tw.tween_property(env,  "background_color",     bg,          0.6)
 
 
 # Product-shot mode: a single item on a small floor pad, slowly auto-rotating,
@@ -1499,6 +1566,7 @@ func _build_outline_group(footprint: Vector2, col: Color, y: float) -> Node3D:
 const HITBOX_Y := 0.006   # just above the grid overlay's own 0.002 offset
 const HITBOX_COLOR := Color(0.95, 0.25, 0.2, 0.85)     # red — where an item currently sits
 const DRAG_HITBOX_COLOR := Color(0.3, 0.9, 0.35, 0.9)  # green — where the dragged item would land
+const HOVER_HITBOX_COLOR := Color(0.98, 0.82, 0.35, 0.6)  # amber — "this is grabbable"
 
 # Traced around an existing floor item's footprint — shown alongside the grid
 # overlay so a piece being placed can be checked against every other item's
@@ -1548,6 +1616,38 @@ func _hide_drag_highlight() -> void:
 	if is_instance_valid(_drag_highlight):
 		_drag_highlight.queue_free()
 	_drag_highlight = null
+
+
+# Idle-hover outline — separate from _drag_highlight (which only exists once
+# a drag/buy/wall-drop is actually under way) so the player gets a "this is
+# grabbable" cue on the piece their cursor is over BEFORE they click, not
+# only after.
+var _hover_highlight: Node3D = null
+var _hover_furniture: Furniture = null
+
+func _update_hover(vp_pos: Vector2) -> void:
+	var hit := _pick_furniture(vp_pos)
+	if hit.is_empty():
+		_hide_hover_highlight()
+		return
+	var f: Furniture = hit["furniture"]
+	if f == _hover_furniture and is_instance_valid(_hover_highlight):
+		return
+	_hide_hover_highlight()
+	var pos: Vector3       = hit["pos"]
+	var item_size: Vector3 = hit["size"]
+	_hover_highlight = _build_outline_group(Vector2(item_size.x, item_size.z), HOVER_HITBOX_COLOR, HITBOX_Y + 0.002)
+	_hover_highlight.position.x = pos.x - item_size.x * 0.5
+	_hover_highlight.position.z = pos.z - item_size.z * 0.5
+	build_root.add_child(_hover_highlight)
+	_hover_furniture = f
+
+
+func _hide_hover_highlight() -> void:
+	if is_instance_valid(_hover_highlight):
+		_hover_highlight.queue_free()
+	_hover_highlight = null
+	_hover_furniture = null
 
 
 func _set_wall_grid_overlays_visible(v: bool) -> void:
