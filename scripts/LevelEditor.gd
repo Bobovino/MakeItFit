@@ -1600,7 +1600,11 @@ func _content_bounds_tiles() -> Rect2i:
 		any = true
 
 	if not any:
-		return Rect2i(0, 0, 20, 20)
+		# Nothing drawn yet — camera should still land centred in the middle
+		# of the big fixed-but-generous canvas (not anchored at its (0,0)
+		# corner), so the editor reads as "a huge open grid, centred" rather
+		# than "a cramped tiny box stuck in the corner of empty space".
+		return Rect2i(_gw / 2 - 10, _gh / 2 - 10, 20, 20)
 
 	const FIT_MARGIN := 3
 	return Rect2i(
