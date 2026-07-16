@@ -13,6 +13,7 @@ const DEFAULT_GH := 300
 
 const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
+const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
 enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE }
 
@@ -108,6 +109,14 @@ var _floor:  Floor    = null
 var _camera_fitted: bool = false  # true after first fit; prevents reset on every rebuild
 var _ov:     Node2D   = null
 
+# ── 3D preview (view-only — the editor's own tools all operate on the 2D
+# canvas; this is a "what does this actually look like" check, not a second
+# way to edit) ────────────────────────────────────────────────────────────────
+var _ui_layer:    CanvasLayer = null
+var _view3d_active: bool      = false
+var _view3d_node: Control     = null
+var _view3d_btn:  Button      = null
+
 # ── UI refs ───────────────────────────────────────────────────────────────────
 var _sw: SpinBox = null;  var _sh: SpinBox = null  # unused — grid fixed at 300×300
 var _status: Label = null
@@ -189,6 +198,7 @@ func _build_scene() -> void:
 	var ui := CanvasLayer.new()
 	ui.layer = 20
 	add_child(ui)
+	_ui_layer = ui
 
 	# Themed root — buttons inherit GameTheme from here
 	var troot := Control.new()
@@ -239,6 +249,16 @@ func _build_topbar(ui: Node) -> void:
 	hint.add_theme_font_size_override("font_size", 10)
 	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	hb.add_child(hint)
+
+	# View-only 3D preview of the currently edited floor — all the actual
+	# editing tools still only operate on the 2D canvas; this is just a "what
+	# does this actually look like" check without leaving the editor.
+	_view3d_btn = Button.new()
+	_view3d_btn.text = "3D Preview"
+	_view3d_btn.toggle_mode = true
+	_view3d_btn.add_theme_font_size_override("font_size", 11)
+	_view3d_btn.pressed.connect(_toggle_3d_view)
+	hb.add_child(_view3d_btn)
 
 
 func _build_left(ui: Node) -> void:
@@ -1290,6 +1310,66 @@ func _rebuild_floor() -> void:
 	_update_placed_furniture_overlay()
 
 	_fit_camera()
+
+	# If the 3D preview is open while a floor rebuild happens (e.g. switching
+	# floor tabs), refresh it against the freshly-rebuilt _floor instead of
+	# silently going stale — _rebuild_floor() replaces _floor with a new node
+	# every time (see "_floor = null" above), so the preview's reference to
+	# the old one would otherwise dangle.
+	if _view3d_active:
+		_show_3d_preview()
+
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  3D PREVIEW (view-only)                                                  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+func _toggle_3d_view() -> void:
+	_view3d_active = not _view3d_active
+	if _view3d_active:
+		_room.visible   = false
+		_camera.enabled = false
+		_show_3d_preview()
+	else:
+		_hide_3d_preview()
+		_room.visible   = true
+		_camera.enabled = true
+
+
+func _show_3d_preview() -> void:
+	if not is_instance_valid(_floor):
+		return
+	if not is_instance_valid(_view3d_node):
+		_view3d_node = Room3DViewScene.instantiate()
+		_ui_layer.add_child(_view3d_node)
+		# Anchored like the editor's own left/right tool panels (see
+		# _build_left/_build_right) rather than Main.gd's fixed-1280×720
+		# convention — the editor sizes its panels off the actual viewport,
+		# not a hardcoded design resolution.
+		_view3d_node.anchor_left   = 0.0
+		_view3d_node.anchor_top    = 0.0
+		_view3d_node.anchor_right  = 1.0
+		_view3d_node.anchor_bottom = 1.0
+		if _view3d_node.has_node("CloseBtn"):
+			(_view3d_node.get_node("CloseBtn") as Control).visible = false
+		# The editor's own tools (Floor Paint, Stairs, walls, ...) are the only
+		# way to actually edit anything here — this preview exists to answer
+		# "what does this look like," not to double as a second editing
+		# surface with its own drag/sell logic to keep in sync with the 2D
+		# authoring data.
+		_view3d_node.read_only = true
+	_view3d_node.offset_left   = LEFT_W
+	_view3d_node.offset_top    = TOP_H
+	_view3d_node.offset_right  = -RIGHT_W
+	_view3d_node.offset_bottom = -BOTTOM_H
+	_ui_layer.move_child(_view3d_node, _ui_layer.get_child_count() - 1)
+	_view3d_node.build_from_floor(_floor, _furn_catalog, null)
+
+
+func _hide_3d_preview() -> void:
+	if is_instance_valid(_view3d_node):
+		_view3d_node.queue_free()
+	_view3d_node = null
 
 
 func _fit_camera() -> void:
@@ -2585,6 +2665,13 @@ func _update_placed_furniture_overlay() -> void:
 		# Disable all processing so preview nodes don't react to input
 		f.process_mode = Node.PROCESS_MODE_DISABLED
 		_furn_preview_nodes.append(f)
+		# Also register onto the ephemeral _floor's own furniture tracking —
+		# these preview nodes are otherwise purely 2D-visual children of _room
+		# and invisible to Floor.get_all_furniture(), which is what the 3D
+		# preview (_show_3d_preview -> Room3DView.build_from_floor) reads to
+		# know what furniture exists on this floor.
+		if is_instance_valid(_floor):
+			_floor.place_furniture(f, Vector2(gx, gy))
 
 	# Clear overlay rects (real nodes used instead)
 	if is_instance_valid(_ov):
