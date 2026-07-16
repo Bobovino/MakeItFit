@@ -196,7 +196,8 @@ func _ready() -> void:
 	# startup) — re-fit once more next frame, forced, so the camera reliably
 	# lands centred on entry instead of occasionally needing a manual "Fit".
 	await get_tree().process_frame
-	_fit_camera(true)
+	if is_instance_valid(self) and is_inside_tree():
+		_fit_camera(true)
 
 
 # ── Scene skeleton ────────────────────────────────────────────────────────────

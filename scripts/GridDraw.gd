@@ -618,8 +618,20 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 		var sheet_w := mini(parent.grid_w, MIN_SHEET_TILES * 2)
 		var sheet_h := mini(parent.grid_h, MIN_SHEET_TILES * 2)
 		return Rect2i(parent.grid_w / 2 - sheet_w / 2, parent.grid_h / 2 - sheet_h / 2, sheet_w, sheet_h)
-	var w := maxi(mxx - mnx + 1, MIN_SHEET_TILES)
-	var h := maxi(mxy - mny + 1, MIN_SHEET_TILES)
+	# Expand symmetrically around the actual content to reach the minimum
+	# size, rather than only growing to the right/bottom from (mnx, mny) —
+	# the old maxi()-only version kept the top-left corner anchored on small
+	# content, which visibly detached the sheet from LevelEditor's own
+	# camera-fit box (that one already pads symmetrically), most noticeably
+	# right after painting a single tile.
+	var w := mxx - mnx + 1
+	var h := mxy - mny + 1
+	if w < MIN_SHEET_TILES:
+		mnx -= (MIN_SHEET_TILES - w) / 2
+		w = MIN_SHEET_TILES
+	if h < MIN_SHEET_TILES:
+		mny -= (MIN_SHEET_TILES - h) / 2
+		h = MIN_SHEET_TILES
 	return Rect2i(mnx, mny, w, h)
 
 
