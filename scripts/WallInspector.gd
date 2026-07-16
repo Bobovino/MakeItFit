@@ -17,6 +17,7 @@ var _panning: bool = false
 # should never actually be reachable while true — but mirrors Furniture.gd's
 # and Room3DView's own read_only flag in case some other path opens it.
 static var read_only: bool = false
+var _elevation_fetch_started: Dictionary = {}   # furniture_id -> true, dedupes Thumb fetches across redraw frames
 
 var _all_furniture: Array  = []
 var _wall_furniture: Array = []
@@ -947,11 +948,28 @@ func _draw_floor_piece(f: Furniture, wx: float, floor_baseline_px: float, is_dra
 	var wall_h: int = fdata.get("wall_h", 5) as int
 	var ph := wall_h * TILE_SIZE
 	var py := floor_baseline_px - ph
-	draw_area.draw_rect(Rect2(px, py, pw, ph), col)
+	# Real front-elevation render of the item's own 3D model, once Thumb has
+	# it — falls back to the flat colored box (and kicks off the fetch) while
+	# it's still in flight.
+	var tex := Thumb.get_cached_ortho("front", f.furniture_id) as Texture2D
+	if tex:
+		draw_area.draw_texture_rect(tex, Rect2(px, py, pw, ph), false,
+			Color(1, 1, 1, 0.35 if is_dragged else (0.85 if is_context else 1.0)))
+	else:
+		draw_area.draw_rect(Rect2(px, py, pw, ph), col)
+		if not _elevation_fetch_started.get(f.furniture_id, false):
+			_elevation_fetch_started[f.furniture_id] = true
+			_load_elevation_icon(fdata)
 	draw_area.draw_rect(Rect2(px, py, pw, ph),
 		Color(GridDraw.BP_INK.r, GridDraw.BP_INK.g, GridDraw.BP_INK.b, outline_a), false, 1.5)
 	if not is_dragged:
 		_draw_label(px + 3, py + 10, float(pw - 6), f.furniture_name)
+
+
+func _load_elevation_icon(fdata: Dictionary) -> void:
+	await Thumb.get_elevation_icon_async(fdata)
+	if is_instance_valid(self):
+		draw_area.queue_redraw()
 
 
 func _draw_loft_bed(f: Furniture, px: float, pw: float, col: Color, is_dragged: bool) -> void:

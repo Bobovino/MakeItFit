@@ -87,6 +87,13 @@ var _wall_ref: Floor = null
 var _color: Color = Color.WHITE
 var _accessible: bool = true
 
+# Real orthographic top-down render of this item's own 3D model (via the
+# Thumb autoload) — fetched once in setup() and drawn in place of the hand-
+# authored _draw_symbol() once it arrives, so the Floor Plan shows the
+# item's actual shape instead of a generic symbol. Left null (falls back to
+# _draw_symbol) until the async fetch resolves.
+var _topdown_icon: Texture2D = null
+
 # Brief "why did that fail" bubble shown after a rejected drop, once the ✗
 # glyph and its live reason (drawn only while _dragging) are both gone —
 # without this, a failed drop just silently snapped back with an error beep
@@ -144,6 +151,19 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	rect.visible = false  # drawing handled in _draw()
 
 	queue_redraw()
+	_fetch_topdown_icon(data)
+
+
+func _fetch_topdown_icon(data: Dictionary) -> void:
+	var cached := Thumb.get_cached_ortho("top", furniture_id)
+	if cached:
+		_topdown_icon = cached
+		queue_redraw()
+		return
+	var tex: Texture2D = await Thumb.get_topdown_icon_async(data)
+	if is_instance_valid(self) and tex:
+		_topdown_icon = tex
+		queue_redraw()
 
 
 func set_accessible(is_accessible: bool) -> void:
@@ -279,8 +299,13 @@ func _draw() -> void:
 		hd += 6.0
 	draw_rect(Rect2(0, 0, cw, ch), ink, false, 1.5)
 
-	# Architectural symbol
-	_draw_symbol(int(cw), int(ch), ink)
+	# Real top-down render of the item's own 3D model once it's arrived (see
+	# _fetch_topdown_icon) — shows its actual shape instead of a hand-authored
+	# symbol. Falls back to the symbol while the render is still in flight.
+	if _topdown_icon:
+		draw_texture_rect(_topdown_icon, Rect2(0, 0, cw, ch), false)
+	else:
+		_draw_symbol(int(cw), int(ch), ink)
 
 	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
 	# only the fill/hatch/symbol need to actually spin.
