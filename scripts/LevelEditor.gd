@@ -10,6 +10,15 @@ const TOP_H      := 36.0
 const BOTTOM_H   := 160.0
 const DEFAULT_GW := 300
 const DEFAULT_GH := 300
+# Fixed-but-generous canvas: DEFAULT_GW/GH above is already large enough that
+# almost no apartment will ever reach its edge, but if one does, grow it in
+# chunks rather than hard-capping — keeps editing frictionless without
+# needing a true infinite canvas. Growth only ever extends the +x/+y edges
+# (tile coords stay valid, nothing already placed needs to move); building
+# further up/left than (0,0) isn't supported since that would require
+# re-indexing every mask/segment/rail/column already placed.
+const GRID_GROW_MARGIN := 6
+const GRID_GROW_CHUNK  := 20
 
 const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
@@ -1224,6 +1233,7 @@ func _set_status(msg: String) -> void:
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 func _rebuild_floor() -> void:
+	_maybe_grow_grid()
 	if is_instance_valid(_floor):
 		_floor.queue_free()
 	if is_instance_valid(_ov):
@@ -1336,6 +1346,48 @@ func _rebuild_floor() -> void:
 	# the old one would otherwise dangle.
 	if _view3d_active:
 		_show_3d_preview()
+
+
+# Fixed-but-generous canvas that grows in chunks if content gets near its edge —
+# see the GRID_GROW_* comment above. Scans every placeable on the floor
+# currently being edited (other floors are checked when THEY become active,
+# since _gw/_gh is shared apartment-wide and _rebuild_floor() runs on every
+# floor switch too).
+func _maybe_grow_grid() -> void:
+	var max_x := 0
+	var max_y := 0
+	for t in _floor_mask:
+		max_x = maxi(max_x, (t as Vector2i).x); max_y = maxi(max_y, (t as Vector2i).y)
+	for t in _mezzanine_mask:
+		max_x = maxi(max_x, (t as Vector2i).x); max_y = maxi(max_y, (t as Vector2i).y)
+	for t in _stair_mask:
+		max_x = maxi(max_x, (t as Vector2i).x); max_y = maxi(max_y, (t as Vector2i).y)
+	for seg in _segments:
+		var sd := seg as Dictionary
+		max_x = maxi(max_x, maxi(sd["x1"] as int, sd["x2"] as int))
+		max_y = maxi(max_y, maxi(sd["y1"] as int, sd["y2"] as int))
+	for r in _rails:
+		var rd := r as Dictionary
+		max_x = maxi(max_x, maxi(rd["x1"] as int, rd["x2"] as int))
+		max_y = maxi(max_y, maxi(rd["y1"] as int, rd["y2"] as int))
+	for rz in _reveal_zones:
+		var zd := rz as Dictionary
+		max_x = maxi(max_x, maxi(zd["x1"] as int, zd["x2"] as int))
+		max_y = maxi(max_y, maxi(zd["y1"] as int, zd["y2"] as int))
+	for c in _cols:
+		var cd := c as Dictionary
+		max_x = maxi(max_x, cd["x"] as int)
+		max_y = maxi(max_y, cd["y"] as int)
+
+	var grew := false
+	while max_x + GRID_GROW_MARGIN >= _gw:
+		_gw += GRID_GROW_CHUNK
+		grew = true
+	while max_y + GRID_GROW_MARGIN >= _gh:
+		_gh += GRID_GROW_CHUNK
+		grew = true
+	if grew:
+		_set_status("Apartment grid grew to %d × %d tiles" % [_gw, _gh])
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
@@ -3218,6 +3270,49 @@ func _collect_meta() -> void:
 	pass
 
 
+# Fixed-but-generous editing canvas (DEFAULT_GW/GH, possibly grown further by
+# _maybe_grow_grid) vs. what actually gets saved: gameplay should start on a
+# grid sized to the real apartment, not the whole editing canvas, so this
+# scans every floor's actual content and returns the tile furthest from the
+# origin across all of them (apartment-wide grid_w/h is shared by all floors).
+func _compute_content_bounds() -> Vector2i:
+	_save_active_efloor()
+	var max_x := 0
+	var max_y := 0
+	for fd in _editor_floors:
+		var d := fd as Dictionary
+		for t in (d.get("floor_tiles", []) as Array):
+			max_x = maxi(max_x, t[0] as int); max_y = maxi(max_y, t[1] as int)
+		for t in (d.get("mezzanine_tiles", []) as Array):
+			max_x = maxi(max_x, t[0] as int); max_y = maxi(max_y, t[1] as int)
+		for t in (d.get("stair_tiles", []) as Array):
+			max_x = maxi(max_x, t[0] as int); max_y = maxi(max_y, t[1] as int)
+		for seg in (d.get("segments", []) as Array):
+			var sd := seg as Dictionary
+			max_x = maxi(max_x, maxi(sd["x1"] as int, sd["x2"] as int))
+			max_y = maxi(max_y, maxi(sd["y1"] as int, sd["y2"] as int))
+		for r in (d.get("rails", []) as Array):
+			var rd := r as Dictionary
+			max_x = maxi(max_x, maxi(rd["x1"] as int, rd["x2"] as int))
+			max_y = maxi(max_y, maxi(rd["y1"] as int, rd["y2"] as int))
+		for rz in (d.get("reveal_zones", []) as Array):
+			var zd := rz as Dictionary
+			max_x = maxi(max_x, maxi(zd["x1"] as int, zd["x2"] as int))
+			max_y = maxi(max_y, maxi(zd["y1"] as int, zd["y2"] as int))
+		for c in (d.get("columns", []) as Array):
+			var cd := c as Dictionary
+			max_x = maxi(max_x, cd["x"] as int)
+			max_y = maxi(max_y, cd["y"] as int)
+	for pf in _placed_furniture:
+		var pfd := pf as Dictionary
+		max_x = maxi(max_x, pfd.get("x", 0) as int)
+		max_y = maxi(max_y, pfd.get("y", 0) as int)
+	return Vector2i(max_x, max_y)
+
+
+const SAVE_CROP_MARGIN := 4
+const MIN_SAVED_GRID   := 20
+
 func _build_dict() -> Dictionary:
 	_collect_meta()
 	var req: Array = []
@@ -3225,6 +3320,9 @@ func _build_dict() -> Dictionary:
 		if _funcs[fn]:
 			req.append(fn)
 	var lvl_id := _lname.to_lower().replace(" ", "_")
+	var bounds := _compute_content_bounds()
+	var saved_gw := maxi(bounds.x + SAVE_CROP_MARGIN, MIN_SAVED_GRID)
+	var saved_gh := maxi(bounds.y + SAVE_CROP_MARGIN, MIN_SAVED_GRID)
 	return {
 		"id": lvl_id, "name": _lname, "district": _dist,
 		"acquisition_cost": _cost,
@@ -3250,7 +3348,7 @@ func _build_dict() -> Dictionary:
 				out.append(entry)
 			return out).call(),
 		"apartment": {
-			"grid_w": _gw, "grid_h": _gh,
+			"grid_w": saved_gw, "grid_h": saved_gh,
 			"active_floor": _active_efl,
 			"hidden_floors": _hidden_fl_ids.keys(),
 			"floors": (func() -> Array:
