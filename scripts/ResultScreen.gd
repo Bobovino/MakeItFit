@@ -21,7 +21,24 @@ var _stars_label: Label = null
 var _stamp: Label = null
 
 
+# Full-screen click-catcher behind the panel — without this, the panel (a
+# centered box far smaller than the viewport) leaves the floor plan, wall
+# view, or 3D diorama fully clickable around its edges: furniture could still
+# be dragged/sold/bought and the floating Undo/Redo buttons still pressed
+# while this "modal" was up. Transparent is fine — mouse_filter STOP still
+# blocks input through it regardless of visible opacity.
+func _add_input_blocking_backdrop() -> void:
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0.02, 0.02, 0.02, 0.45)
+	backdrop.size  = Vector2(1280, 720)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(backdrop)
+	move_child(backdrop, 0)
+
+
 func _ready() -> void:
+	_add_input_blocking_backdrop()
+
 	var s := StyleBoxFlat.new()
 	s.bg_color     = Color(0.115, 0.100, 0.085, 0.97)
 	s.border_color = Color(0.320, 0.270, 0.205)
@@ -55,6 +72,10 @@ func _ready() -> void:
 	next_btn.add_theme_font_size_override("font_size", 13)
 	retry_btn.custom_minimum_size = Vector2(220, 44)
 	retry_btn.add_theme_font_size_override("font_size", 13)
+	# Same button/signal for both outcomes — "restart from scratch" reads the
+	# same whether the previous attempt failed or you just want another go at
+	# a better score, so there's no need for two separately-worded buttons.
+	retry_btn.text = "↺ Restart Level"
 
 	# Inserted right above NextButton, in this order: View Apartment, then
 	# Next Level, then the existing Back to Projects/Retry — "keep looking"
@@ -76,6 +97,9 @@ func _ready() -> void:
 		advance_level_requested.emit())
 	$Panel/VBox.add_child(advance_btn)
 	$Panel/VBox.move_child(advance_btn, next_btn.get_index())
+	# Restart Level slots in right before the final Back to Projects/Retire
+	# exit action, same reasoning as watch_btn/advance_btn above.
+	$Panel/VBox.move_child(retry_btn, next_btn.get_index())
 
 	# "APPROVED" rubber stamp — slams down tilted over the panel's top-right
 	# corner on success, like a permit office signing off on the drawing.
@@ -134,7 +158,7 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 		tenant_name: String, _level_rent: int, has_next_level: bool = false) -> void:
 	visible = true
 	next_btn.visible    = true
-	retry_btn.visible   = false
+	retry_btn.visible   = true
 	watch_btn.visible   = true
 	advance_btn.visible = has_next_level
 

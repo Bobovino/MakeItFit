@@ -71,6 +71,10 @@ var reveal_functions: Array  = []   # extra functions granted while inside the r
 var moment_rail_pos:  Dictionary = {}   # moment_id -> Vector2 grid_pos left by the player
 
 static var test_mode_active: bool = false
+# Set by Main.gd for the post-win "View Apartment" free-look mode — the level
+# is already rented out and scored, so nothing should be draggable/sellable/
+# placeable anywhere in the 2D views. Mirrors Room3DView.read_only.
+static var read_only: bool = false
 var _extended_conflict: bool = false
 
 var _dragging: bool = false
@@ -1051,6 +1055,8 @@ func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 
 
 func _input(event: InputEvent) -> void:
+	if Furniture.read_only:
+		return
 	# ── Placement mode: furniture follows cursor until click or Esc ───────────
 	if _placement_mode:
 		if get_viewport().is_input_handled():

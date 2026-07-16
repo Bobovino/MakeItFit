@@ -35,12 +35,28 @@ var _yaw:     float   = -45.0
 var _pitch:   float   = -32.0
 var _dist:    float   = 6.0
 var _center:  Vector3 = Vector3.ZERO
-var _dragging: bool   = false
+var _dragging: bool   = false   # middle-drag — orbits yaw/pitch (Blender-style MMB)
+var _panning: bool    = false   # left-drag over empty floor — translates _center
 var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
+var _orbit_press_pos: Vector2 = Vector2.ZERO   # separate from _press_pos so a MMB click-to-recenter doesn't fight LMB click tracking
 const CLICK_MOVE_THRESHOLD := 6.0
 
+# "Home" framing captured whenever a real apartment room is built — lets a
+# plain middle-click (no drag) snap the camera back after free panning, since
+# unlike orbit-only cameras, panning has no other way back to a lost room.
+var _home_center: Vector3 = Vector3.ZERO
+var _home_dist:   float   = 6.0
+const HOME_YAW   := -45.0
+const HOME_PITCH := -32.0
+const PAN_MARGIN_M := 2.0   # how far past the room's own walls the camera target may be panned
+
 var _reveal_playing: bool = false   # true while play_reveal()'s scripted camera move is running
+
+# Set by Main.gd for the post-win "View Apartment" free-look mode — the level
+# is already rented out, so nothing should be movable/sellable/buyable there,
+# only the camera. Left unset (false) for the normal editable 3D view.
+var read_only: bool = false
 
 # Floor-furniture dragging: reach back into the live Floor this diorama was
 # built from so a drag here actually moves the piece (unlike everything else
@@ -154,19 +170,24 @@ func _on_container_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_press_pos = mb.position
-				if _buying_furniture:
+				if read_only:
+					# Post-win "View Apartment" mode — nothing to pick up, hang, or
+					# buy, so a left-press over empty floor only ever pans.
+					_panning = true
+				elif _buying_furniture:
 					_confirm_buy(_to_vp(mb.position))
 					return
-				var vp_pos := _to_vp(mb.position)
-				var wall_hit := _pick_wall_item(vp_pos)
-				if not wall_hit.is_empty():
-					_begin_wall_item_drag(wall_hit, vp_pos)
 				else:
-					var hit := _pick_furniture(vp_pos)
-					if not hit.is_empty():
-						_begin_furniture_drag(hit, vp_pos)
+					var vp_pos := _to_vp(mb.position)
+					var wall_hit := _pick_wall_item(vp_pos)
+					if not wall_hit.is_empty():
+						_begin_wall_item_drag(wall_hit, vp_pos)
 					else:
-						_dragging = true
+						var hit := _pick_furniture(vp_pos)
+						if not hit.is_empty():
+							_begin_furniture_drag(hit, vp_pos)
+						else:
+							_panning = true
 			else:
 				if _dragging_furniture:
 					# Mousedown always starts a "drag" the instant it lands on a
@@ -180,10 +201,12 @@ func _on_container_input(event: InputEvent) -> void:
 						_finish_furniture_drag()
 				elif _dragging_wall_item:
 					_finish_wall_item_drag()
-				elif mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
+				elif not read_only and mb.position.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD:
 					_on_item_clicked(_to_vp(mb.position))
-				_dragging = false
+				_panning = false
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if read_only:
+				return
 			if _buying_furniture:
 				_cancel_buy()
 				return
@@ -201,6 +224,16 @@ func _on_container_input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_dist = minf(30.0, _dist + 0.5)
 			_update_camera()
+		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
+			if mb.pressed:
+				_orbit_press_pos = mb.position
+				_dragging = true
+			else:
+				_dragging = false
+				# A plain middle-click (no drag) recenters — the only way back
+				# once free panning has carried the room out of view.
+				if mb.position.distance_to(_orbit_press_pos) < CLICK_MOVE_THRESHOLD:
+					_recenter_camera()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		_last_local_mouse = mm.position
@@ -218,13 +251,26 @@ func _on_container_input(event: InputEvent) -> void:
 			_yaw   -= mm.relative.x * 0.4
 			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
 			_update_camera()
+		elif _panning:
+			_hide_hover_highlight()
+			# Pan speed scales with _dist so it feels consistent whether zoomed
+			# in close or looking at the whole apartment from far away.
+			var pan_scale := _dist * 0.0022
+			var right := cam.global_transform.basis.x
+			var up    := cam.global_transform.basis.y
+			_center -= right * mm.relative.x * pan_scale
+			_center += up * mm.relative.y * pan_scale
+			_center  = _clamp_pan_center(_center)
+			_update_camera()
 		else:
 			# Idle — no drag/camera-orbit/purchase in progress, so hovering a
 			# floor piece is safe to reflect: an amber outline says "this is
 			# grabbable" before the player commits to a click, the same way
 			# the red/green hitbox outlines already say "this is where it
-			# sits"/"this is where it'd land" once a drag is under way.
-			_update_hover(_to_vp(mm.position))
+			# sits"/"this is where it'd land" once a drag is under way. Skipped
+			# in read-only mode — nothing is actually grabbable there.
+			if not read_only:
+				_update_hover(_to_vp(mm.position))
 
 
 # gui_input only reliably delivers mouse/touch events here (the container
@@ -576,6 +622,18 @@ func _sell_furniture(hit: Dictionary) -> void:
 			_furniture_entries.remove_at(i)
 	if is_instance_valid(mesh):
 		mesh.queue_free()
+	# The sold item's own static hitbox outline (and, if this sale happened
+	# mid-drag of some other piece, the shared grid/drag-highlight overlays)
+	# otherwise keep showing forever — nothing else ever turns them back off
+	# once a sale short-circuits the normal drag-finish path.
+	for i in range(_hitbox_highlights.size() - 1, -1, -1):
+		var h = _hitbox_highlights[i]
+		if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+			h.queue_free()
+			_hitbox_highlights.remove_at(i)
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
+	_hide_drag_highlight()
 	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
 
 
@@ -684,6 +742,7 @@ func _sell_wall_item(hit: Dictionary) -> void:
 			_wall_item_entries.remove_at(i)
 	if is_instance_valid(mesh):
 		mesh.queue_free()
+	_set_wall_grid_overlays_visible(false)
 	wall_sell_requested.emit(edge, origin)   # Main.gd handles apt_floor.remove_wall_item
 
 
@@ -1070,6 +1129,35 @@ func _update_camera() -> void:
 	_update_wall_visibility(offset)
 
 
+# Keeps a left-drag pan from carrying the camera target out past the room's
+# own walls — bounded to the actual apartment footprint (with a little slack
+# to still frame a wall from just outside it) rather than an arbitrary fixed
+# box, so it scales with whatever size room is loaded. Skipped when no real
+# room is loaded yet (_room_w_m/_room_d_m both 0, e.g. the single-item preview
+# modal), where an unbounded target doesn't matter.
+func _clamp_pan_center(c: Vector3) -> Vector3:
+	if _room_w_m <= 0.0 and _room_d_m <= 0.0:
+		return c
+	return Vector3(
+		clampf(c.x, -PAN_MARGIN_M, _room_w_m + PAN_MARGIN_M),
+		clampf(c.y, -PAN_MARGIN_M, WALL_H_M * 1.5),
+		clampf(c.z, -PAN_MARGIN_M, _room_d_m + PAN_MARGIN_M)
+	)
+
+
+# Middle-click (no drag) — snaps back to the room's default framing. The only
+# way back once a free pan has carried the room out of view, since orbiting
+# alone (unlike panning) can never lose the room.
+func _recenter_camera() -> void:
+	if _room_w_m <= 0.0 and _room_d_m <= 0.0:
+		return
+	_center = _home_center
+	_dist   = _home_dist
+	_yaw    = HOME_YAW
+	_pitch  = HOME_PITCH
+	_update_camera()
+
+
 # The "reveal" moment: a short scripted camera sweep over the finished room
 # instead of the player's last interactive camera angle, played once on a
 # successful RENT OUT (see Main.gd's _on_rent_pressed). Starts pulled back
@@ -1228,6 +1316,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 
 	_center = Vector3(w * 0.5, WALL_H_M * 0.35, d * 0.5)
 	_dist   = maxf(w, d) * 1.4 + 2.0
+	_home_center = _center
+	_home_dist   = _dist
 
 	_add_floor(w, d)
 

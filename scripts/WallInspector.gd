@@ -11,6 +11,12 @@ const MIN_ZOOM := 0.5
 const MAX_ZOOM := 3.0
 var _zoom: float = 1.0
 var _panning: bool = false
+# Set by Main.gd for the post-win "View Apartment" free-look mode. Defense in
+# depth: this panel is only ever shown in TOPDOWN mode, which Main.gd's
+# _set_view_mode already refuses to switch into while post-win, so this
+# should never actually be reachable while true — but mirrors Furniture.gd's
+# and Room3DView's own read_only flag in case some other path opens it.
+static var read_only: bool = false
 
 var _all_furniture: Array  = []
 var _wall_furniture: Array = []
@@ -265,6 +271,9 @@ func _on_draw_input(event: InputEvent) -> void:
 		if mbe.button_index == MOUSE_BUTTON_MIDDLE:
 			_panning = mbe.pressed
 			get_viewport().set_input_as_handled()
+			return
+
+		if WallInspector.read_only and mbe.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 
 		var tile := _pixel_to_tile(mbe.position)

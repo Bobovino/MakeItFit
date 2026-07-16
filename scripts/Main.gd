@@ -50,6 +50,8 @@ const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallIn
 var _view_mode: int = ViewMode.TOPDOWN
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _watch_done_btn: Button  = null   # floating "back to results" button shown during free-camera Watch Again
+var _post_win_view: bool = false      # true during Watch Again — level is already rented out, so editing/shortcuts are locked out; only the camera works
+var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
@@ -102,7 +104,15 @@ var _active_moment_id:  String = ""
 
 
 func _ready() -> void:
-	minimap.set_compact(true)
+	# Floor tabs (Ground Floor/Loft/Second Floor/...) read better as a vertical
+	# stack — it echoes the actual building elevation (higher floors literally
+	# higher on screen) instead of a left-to-right strip, and frees up the
+	# TopBar. Pulled out of TopBar entirely and floated bottom-right instead,
+	# same corner the Undo/Redo buttons already anchor off of.
+	minimap.set_compact(false)
+	minimap.get_parent().remove_child(minimap)
+	ui_layer.add_child(minimap)
+	_position_minimap()
 	if not gm.budget_changed.is_connected(_on_budget_changed):
 		gm.budget_changed.connect(_on_budget_changed)
 	if not gm.functions_updated.is_connected(_on_functions_updated):
@@ -314,6 +324,7 @@ func _apply_ui_theme() -> void:
 		_redo_btn.pressed.connect(_redo_builder_action)
 		ui_layer.add_child(_redo_btn)
 	_position_undo_btn()
+	_position_minimap()
 	_refresh_undo_redo_buttons()
 
 
@@ -356,6 +367,13 @@ func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
+	_post_win_view = false
+	Furniture.read_only     = false
+	WallInspector.read_only = false
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.read_only = false
+	inventory.visible = true
+	_last_wall_click_by_floor.clear()
 	_builder_undo_stack.clear()
 	_last_furniture_state = {}
 	_restoring_furniture  = true   # level-load spawning shouldn't itself become undoable
@@ -487,6 +505,7 @@ func _load_level(level_id: String) -> void:
 
 	var hidden_floors: Array = level["apartment"].get("hidden_floors", []) as Array
 	minimap.setup(floors_data, hidden_floors)
+	_position_minimap()
 	_active_moment_id = ""
 	Furniture.test_mode_active = false
 	Furniture.active_moment_id = ""
@@ -555,6 +574,7 @@ func _load_level(level_id: String) -> void:
 		_build_paint_panel(paintable)
 
 	_show_mechanic_intro_if_needed()
+	_refresh_undo_redo_buttons()
 
 
 func _show_mechanic_intro_if_needed() -> void:
@@ -736,6 +756,7 @@ func _get_or_create_loft_floor(base_floor: Floor) -> Floor:
 		_floor_tile_bounds[loft_id] = base_floor.get_room_bounds()
 
 	minimap.add_floor({"id": loft_id, "label": fd["label"]}, base_floor.floor_id)
+	_position_minimap()
 	return loft_floor
 
 
@@ -868,6 +889,28 @@ func _update_split(y: float) -> void:
 	if fl:
 		_fit_floor(fl, false)
 	_position_undo_btn()
+	_position_minimap()
+
+
+# Pins the floor-tab stack to the bottom-right corner of the play area, just
+# left of the floating TenantCard column (same right_edge math as the Undo/
+# Redo buttons). Sized generously tall and bottom-aligned (see Minimap.gd's
+# set_compact) so it stays flush with that corner whether the level has 2
+# floors or 6, instead of resizing itself and drifting around.
+func _position_minimap() -> void:
+	if not is_instance_valid(minimap):
+		return
+	var right_edge := tenant_card.offset_left - 8.0
+	minimap.offset_right  = right_edge
+	minimap.offset_left   = right_edge - 100.0
+	# Shrink-wrapped to however many floor buttons the current level actually
+	# has (reset_size() forces a fresh layout pass first) — a fixed tall box
+	# left a big empty panel above a short 2-floor stack.
+	minimap.reset_size()
+	var content_h := maxf(minimap.size.y, 40.0)
+	minimap.offset_bottom = BOT_Y - 8.0
+	minimap.offset_top    = BOT_Y - 8.0 - content_h
+	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
 
 
 # Keeps the floating Undo button pinned to the top-right corner of the play
@@ -892,6 +935,11 @@ func _position_undo_btn() -> void:
 
 # ── View mode switcher ──────────────────────────────────────────────────────
 func _set_view_mode(mode: int) -> void:
+	# Switching is still allowed during post-win "View Apartment" — the player
+	# should be able to look at the Floor Plan/Wall view same as 3D, just not
+	# edit anything there. Furniture.read_only/WallInspector.read_only (set
+	# alongside _post_win_view) are what actually lock out editing in those
+	# views; this function only ever controls which view is showing.
 	_view_mode = mode
 	for m in _mode_buttons:
 		(_mode_buttons[m] as Button).button_pressed = (m == mode)
@@ -926,6 +974,7 @@ func _set_view_mode(mode: int) -> void:
 	if fl and mode != ViewMode.VIEW3D:
 		_fit_floor(fl, false)
 	_position_undo_btn()
+	_position_minimap()
 
 
 # Persistent 3D view used by VIEW3D mode — distinct from the quick full-screen
@@ -955,6 +1004,12 @@ func _ensure_mode3d_view() -> void:
 	var below_floor: Floor = null
 	if fl.floor_id in _floor_below_id:
 		below_floor = _floors.get(_floor_below_id[fl.floor_id] as String) as Floor
+	# _teardown_mode3d_view() (called when switching to Floor Plan) frees this
+	# node entirely — switching back to 3D recreates it from scratch, which
+	# would otherwise silently reset read_only to its default (false) and
+	# reopen editing/selling the instant you tabbed away and back during
+	# post-win "View Apartment".
+	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
 	# The 3D view's rect fully contains TenantCard's corner (both are direct
 	# UI children), so appending it here — same CanvasLayer, later sibling —
@@ -971,6 +1026,7 @@ func _ensure_mode3d_view() -> void:
 	# and the Buy button on it — stays visible and clickable in 3D mode.
 	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
 	_position_undo_btn()
+	_position_minimap()
 
 
 func _teardown_mode3d_view() -> void:
@@ -1116,6 +1172,12 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		fl.set_active_wall_edge("" if fl != apt_floor else edge)
+	# Remembered per floor (not globally) so the "W" shortcut reopens the
+	# wall that was actually last inspected on whichever floor you're
+	# currently looking at, not wherever you happened to click last overall.
+	_last_wall_click_by_floor[apt_floor.floor_id] = {
+		"edge": edge, "span_lo": span_lo, "span_hi": span_hi,
+	}
 	# VIEW3D handles walls directly in the 3D pane instead — opening the
 	# WallInspector modal here too used to cover that pane with a full-height
 	# popup instead of just highlighting the edge on the plan.
@@ -1127,6 +1189,50 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	wall_inspector.show_wall(apt_floor, edge, sibling, span_lo, span_hi)
 	_position_wall_inspector_modal()
 	_set_mode_hint("")
+
+
+# Up/W and Down/S shortcuts — step to the floor directly above/below in the
+# same order the Minimap tabs show, so the shortcut always matches what
+# clicking a tab would do (including dynamically added loft floors).
+func _step_floor(direction: int) -> void:
+	var order := minimap.get_floor_order()
+	var idx := order.find(_current_floor_id)
+	if idx == -1:
+		return
+	var next_idx := idx + direction
+	if next_idx < 0 or next_idx >= order.size():
+		return
+	_switch_floor(order[next_idx] as String)
+
+
+# Left/A and Right/D shortcuts — step to the previous/next moment tab.
+func _step_moment(direction: int) -> void:
+	if gm.moments.is_empty():
+		return
+	var idx := -1
+	for i in range(gm.moments.size()):
+		if (gm.moments[i] as Dictionary).get("id", "") == _active_moment_id:
+			idx = i
+			break
+	var next_idx: int = clampi((idx if idx != -1 else 0) + direction, 0, gm.moments.size() - 1)
+	var next_id := (gm.moments[next_idx] as Dictionary).get("id", "") as String
+	if next_id != "":
+		_on_moment_selected(next_id)
+
+
+# "Q" shortcut — reopen the last wall panel inspected on the current floor,
+# without having to re-find and re-click the same edge on the plan.
+func _reopen_last_wall() -> void:
+	if _view_mode != ViewMode.TOPDOWN:
+		return
+	var last := _last_wall_click_by_floor.get(_current_floor_id, {}) as Dictionary
+	if last.is_empty():
+		_set_mode_hint("No wall inspected on this floor yet")
+		return
+	var apt_floor := _floors.get(_current_floor_id) as Floor
+	if not apt_floor:
+		return
+	_on_wall_edge_clicked(last["edge"] as String, last["span_lo"] as int, last["span_hi"] as int, apt_floor)
 
 
 func _on_inspector_visibility_changed() -> void:
@@ -1326,10 +1432,12 @@ func _on_rent_pressed() -> void:
 	if not gm.check_win():
 		Audio.play("error")
 		result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
+		_refresh_undo_redo_buttons()
 		return
 	if not _all_furniture_accessible():
 		Audio.play("error")
 		result_screen.show_failure("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it.")
+		_refresh_undo_redo_buttons()
 		return
 
 	Audio.play("success")
@@ -1352,6 +1460,7 @@ func _on_rent_pressed() -> void:
 		level_rent,
 		not gm.get_next_owned_level_id(_current_level_id).is_empty()
 	)
+	_refresh_undo_redo_buttons()
 
 
 # The "wow" moment on a successful RENT OUT — a short scripted camera sweep
@@ -1431,17 +1540,56 @@ func _input(event: InputEvent) -> void:
 		var ke := event as InputEventKey
 		# Undo key is remappable (Settings → Accessibility); Redo is always the
 		# same key + Shift, plus the fixed Ctrl+Y alias below.
-		if ke.pressed and not ke.echo and ke.keycode == GameState.undo_keycode and (ke.ctrl_pressed or ke.meta_pressed):
+		if ke.pressed and not ke.echo and not _post_win_view and ke.keycode == GameState.undo_keycode and (ke.ctrl_pressed or ke.meta_pressed):
 			if ke.shift_pressed:
 				_redo_builder_action()
 			else:
 				_undo_builder_action()
 			get_viewport().set_input_as_handled()
 			return
-		if ke.pressed and not ke.echo and ke.keycode == KEY_Y and (ke.ctrl_pressed or ke.meta_pressed):
+		if ke.pressed and not ke.echo and not _post_win_view and ke.keycode == KEY_Y and (ke.ctrl_pressed or ke.meta_pressed):
 			_redo_builder_action()
 			get_viewport().set_input_as_handled()
 			return
+		# Quick-access shortcuts — skip while the Results screen is up (its own
+		# buttons take precedence) and while a Builder/paint tool is capturing
+		# keys for something else (T/W/number keys are rare enough in that
+		# context that the tool's own use of them, if any, should win).
+		if ke.pressed and not ke.echo and not result_screen.visible \
+				and _active_paint_type == "" and _active_builder_tool == "" \
+				and not (ke.ctrl_pressed or ke.meta_pressed or ke.alt_pressed):
+			if ke.keycode == KEY_T:
+				_set_view_mode(ViewMode.VIEW3D if _view_mode == ViewMode.TOPDOWN else ViewMode.TOPDOWN)
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode == KEY_Q:
+				_reopen_last_wall()
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode >= KEY_1 and ke.keycode <= KEY_9:
+				var _midx := ke.keycode - KEY_1
+				if _midx < gm.moments.size():
+					var _mid := (gm.moments[_midx] as Dictionary).get("id", "") as String
+					if _mid != "":
+						_on_moment_selected(_mid)
+						get_viewport().set_input_as_handled()
+						return
+			if ke.keycode == KEY_UP or ke.keycode == KEY_W:
+				_step_floor(1)
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode == KEY_DOWN or ke.keycode == KEY_S:
+				_step_floor(-1)
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode == KEY_LEFT or ke.keycode == KEY_A:
+				_step_moment(-1)
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode == KEY_RIGHT or ke.keycode == KEY_D:
+				_step_moment(1)
+				get_viewport().set_input_as_handled()
+				return
 	if _dragging_divider:
 		if event is InputEventMouseMotion:
 			_update_split((event as InputEventMouseMotion).position.y)
@@ -1475,7 +1623,14 @@ func _on_retry() -> void:
 # hidden the whole time so it doesn't block the view.
 func _on_watch_again_reveal() -> void:
 	result_screen.visible = false
+	_post_win_view = true
+	Furniture.read_only     = true
+	WallInspector.read_only = true
 	_set_view_mode(ViewMode.VIEW3D)
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.read_only = true
+	inventory.visible = false
+	_refresh_undo_redo_buttons()
 	_show_watch_done_button()
 
 
@@ -1503,7 +1658,13 @@ func _show_watch_done_button() -> void:
 	_watch_done_btn.pressed.connect(func():
 		_watch_done_btn.queue_free()
 		_watch_done_btn = null
-		result_screen.visible = true)
+		_post_win_view = false
+		if is_instance_valid(_mode3d_view):
+			_mode3d_view.read_only = false
+		inventory.visible = true
+		result_screen.visible = true
+		_refresh_undo_redo_buttons()
+	)
 
 
 # "Next Level" on the Results screen — loads the next owned level directly
@@ -1938,11 +2099,16 @@ func _redo_builder_action() -> void:
 	_refresh_undo_redo_buttons()
 
 
+# Also locked out whenever the Results modal is up (or during the post-win
+# "View Apartment" free-look) — undoing/redoing a level that's already been
+# scored and saved makes no sense, in ANY view mode (floor plan, wall view,
+# or 3D), not just whichever one happened to be active when RENT OUT was hit.
 func _refresh_undo_redo_buttons() -> void:
+	var locked := result_screen.visible or _post_win_view
 	if is_instance_valid(_undo_btn):
-		_undo_btn.disabled = _builder_undo_stack.is_empty()
+		_undo_btn.disabled = locked or _builder_undo_stack.is_empty()
 	if is_instance_valid(_redo_btn):
-		_redo_btn.disabled = _redo_stack.is_empty()
+		_redo_btn.disabled = locked or _redo_stack.is_empty()
 
 
 # ── Furniture undo (buy/sell/move/fold) ──────────────────────────────────

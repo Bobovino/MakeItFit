@@ -5,6 +5,7 @@ signal buy_requested(furniture_id: String)
 signal builder_tool_selected(tool_id: String)   # "" = no tool (back to select/place mode)
 
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
+const FurnitureScene := preload("res://scenes/Furniture.tscn")
 
 # "Builder" is anything that shapes the room itself rather than furnishing it
 # (currently just staircases) — kept as a plain id-flag check so future
@@ -341,6 +342,107 @@ class FootprintIcon extends Control:
 		draw_rect(Rect2(org, rs), GridDraw.BP_INK, false, 1.2)
 
 
+static func _make_view_chip(label_text: String, icon: Control) -> Control:
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	vb.add_child(icon)
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(lbl)
+	return vb
+
+
+# Embeds a real (inert) Furniture node so the Floor Plan preview shows the
+# exact fill/hatch/outline/architectural symbol the item draws once actually
+# placed — not a generic shape-only placeholder. Instantiated from the real
+# .tscn (not Furniture.new()) since Furniture.gd's @onready rect/label expect
+# those scene children to exist.
+class FurniturePreviewIcon extends Control:
+	var _furniture: Furniture
+	var _tiles: Vector2
+
+	func _init(fdata: Dictionary, w_tiles: int, h_tiles: int, px: float = 72.0) -> void:
+		custom_minimum_size = Vector2(px, px)
+		clip_contents = true
+		_tiles = Vector2(maxi(w_tiles, 1), maxi(h_tiles, 1))
+
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = GridDraw.BP_FLOOR
+		bg.set_corner_radius_all(6)
+		bg.anti_aliasing = true
+		var panel := PanelContainer.new()
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_theme_stylebox_override("panel", bg)
+		panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(panel)
+
+		_furniture = FurnitureScene.instantiate() as Furniture
+		_furniture.furniture_id = fdata.get("id", "") as String
+		_furniture.grid_w = int(_tiles.x)
+		_furniture.grid_h = int(_tiles.y)
+		_furniture._color = Color("#" + (fdata.get("color", "888888") as String))
+		# This preview never sits in a real Floor and never needs to react to
+		# clicks/drags — without this, it would still receive global _input
+		# like any other Furniture node and could be dragged right out of the
+		# tooltip.
+		_furniture.set_process_input(false)
+		_furniture.set_process_unhandled_input(false)
+		add_child(_furniture)
+		# rect/label are the pre-setup() placeholder box Furniture.tscn ships
+		# with — setup() normally hides them since real drawing happens in
+		# _draw(); replicate that here since this preview skips setup()
+		# entirely (it requires a live Floor to attach to, which a throwaway
+		# preview has no business needing).
+		if _furniture.has_node("ColorRect"):
+			(_furniture.get_node("ColorRect") as CanvasItem).visible = false
+		call_deferred("_layout")
+
+	func _layout() -> void:
+		if not is_instance_valid(_furniture):
+			return
+		var natural := _tiles * Furniture.TILE_SIZE
+		var avail := size - Vector2(10, 10)
+		var s := minf(avail.x / natural.x, avail.y / natural.y)
+		_furniture.scale = Vector2(s, s)
+		_furniture.position = (size - natural * s) * 0.5
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			_layout()
+
+
+# Plain flat-fill rectangle + outline, matching the real Wall View's own
+# per-item rendering (WallInspector's _draw_floor_piece draws a solid box +
+# label, not a hatched/symbol icon — only loft beds get distinct elevation
+# art, niche enough to skip here). Deliberately looks different from the
+# Floor Plan chip since that's genuinely how the piece reads in that view.
+class WallViewIcon extends Control:
+	var _w: int
+	var _h: int
+	var _col: Color
+
+	func _init(w_tiles: int, h_tiles: int, col: Color, px: float = 72.0) -> void:
+		_w = maxi(w_tiles, 1)
+		_h = maxi(h_tiles, 1)
+		_col = col
+		custom_minimum_size = Vector2(px, px)
+
+	func _draw() -> void:
+		var style := StyleBoxFlat.new()
+		style.bg_color = GridDraw.BP_FLOOR
+		style.set_corner_radius_all(6)
+		style.draw(get_canvas_item(), Rect2(Vector2.ZERO, size))
+		var inner := Rect2(Vector2(5, 5), size - Vector2(10, 10))
+		var s := minf(inner.size.x / _w, inner.size.y / _h)
+		var rs := Vector2(_w, _h) * s
+		var org := inner.position + (inner.size - rs) * 0.5
+		draw_rect(Rect2(org, rs), Color(_col.r, _col.g, _col.b, 0.55))
+		draw_rect(Rect2(org, rs), GridDraw.BP_INK, false, 1.5)
+
+
 static func _make_item_icon(f: Dictionary, px: float) -> Control:
 	var col := Color("#" + (f.get("color", "888888") as String))
 	var sz := f.get("size", {}) as Dictionary
@@ -558,6 +660,21 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	price_lbl.add_theme_font_size_override("font_size", 11)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
 	vb.add_child(price_lbl)
+
+	# Floor Plan / Wall View chips — the real per-item rendering from each of
+	# those views (FurniturePreviewIcon embeds an actual inert Furniture node
+	# for its fill/hatch/architectural symbol; WallViewIcon mirrors the plain
+	# flat box WallInspector actually draws), not a generic placeholder shape.
+	# Gives a sense of how the piece reads in those two views before ever
+	# buying it, instead of only the isolated 3D diorama below.
+	var views_row := HBoxContainer.new()
+	views_row.add_theme_constant_override("separation", 12)
+	vb.add_child(views_row)
+	var item_col := Color("#" + (f.get("color", "888888") as String))
+	views_row.add_child(_make_view_chip("Floor Plan",
+		FurniturePreviewIcon.new(f, sz.get("w", 4) as int, sz.get("h", 4) as int)))
+	views_row.add_child(_make_view_chip("Wall View",
+		WallViewIcon.new(sz.get("w", 4) as int, f.get("wall_h", 8) as int, item_col)))
 
 	# The 3D preview lands here once the hover delay fires (see
 	# _embed_tooltip_preview) — starts empty so plain text tooltips stay cheap

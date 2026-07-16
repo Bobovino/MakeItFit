@@ -19,6 +19,12 @@ func set_compact(compact: bool) -> void:
 	_compact = compact
 	var container := $HBox as BoxContainer
 	container.vertical = not compact
+	# Vertical mode is anchored to a fixed bottom-right corner (see Main.gd),
+	# generously sized so it never has to grow as floors are added/removed —
+	# bottom-aligning the buttons inside that box keeps the stack flush with
+	# that corner regardless of how many floors the current level has, instead
+	# of drifting up from an empty gap left below a short stack.
+	container.alignment = BoxContainer.ALIGNMENT_END if not compact else BoxContainer.ALIGNMENT_BEGIN
 
 
 func setup(floors: Array, hidden_ids: Array = []) -> void:
@@ -63,6 +69,19 @@ func setup(floors: Array, hidden_ids: Array = []) -> void:
 
 	# Hide the whole switcher when there's only one visible floor
 	visible = _buttons.size() > 1
+
+
+# Bottom-to-top floor id order as currently shown (visible floors only,
+# including any dynamically added loft floors) — used by Main.gd's Up/Down
+# floor-switching shortcut so it steps through exactly what the tabs show.
+func get_floor_order() -> Array:
+	var order: Array = []
+	for child in ($HBox as BoxContainer).get_children():
+		for fid in _buttons:
+			if _buttons[fid] == child:
+				order.append(fid)
+				break
+	return order
 
 
 # anchor_floor_id: an existing floor whose button the new one should sit

@@ -66,6 +66,7 @@ func _build() -> void:
 	vb.add_child(_section("Controls", [
 		"Click a highlighted wall edge on the floor plan to inspect it or hang items.",
 		"In the 3D view, drag an item onto a wall to hang it there.",
+		"In the 3D view, middle-drag to orbit the camera, left-drag empty floor to pan, and scroll to zoom. Middle-click (no drag) recenters the view.",
 		"Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip.",
 		"Double-click a foldable piece (like a sofa bed) to fold or unfold it.",
 		"The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom.",
@@ -73,6 +74,11 @@ func _build() -> void:
 			OS.get_keycode_string(GameState.undo_keycode),
 			OS.get_keycode_string(GameState.undo_keycode),
 		],
+		"Press T to switch between the Floor Plan and 3D view.",
+		"Press Q to reopen the last wall panel you inspected on the current floor.",
+		"Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab.",
+		"Press Up/W or Down/S to step to the floor above or below.",
+		"Press Left/A or Right/D to step to the previous or next moment.",
 	]))
 
 	vb.add_child(_needs_legend())
