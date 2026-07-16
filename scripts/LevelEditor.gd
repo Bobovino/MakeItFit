@@ -1559,73 +1559,16 @@ func _fit_camera(force: bool = false) -> void:
 	_update_zoom_label()
 
 
-# Tile-space bounding box of everything actually on the floor being edited
-# (floor/mezzanine/stair tiles, wall segments, rails, reveal zones, columns),
-# padded by a small margin — used to fit/centre the camera on the real room
-# instead of the whole fixed-but-generous editing canvas. Falls back to a
-# sane default footprint when the floor is still empty.
+# The editor's default view is simply the whole fixed-but-generous editing
+# canvas (_gw x _gh) — not a small box fitted/unioned around whatever's been
+# drawn so far. _maybe_grow_grid() already guarantees _gw/_gh always covers
+# every painted tile/wall/etc with margin to spare, so "the whole canvas"
+# already includes all real content by construction; there's no separate
+# content-bounds calculation left to keep in sync with GridDraw's own sheet
+# bounds (see GridDraw.editor_mode), which is what kept causing the sheet
+# and the camera's fit to visibly disagree/detach from each other.
 func _content_bounds_tiles() -> Rect2i:
-	var mnx := 1 << 30; var mny := 1 << 30
-	var mxx := -(1 << 30); var mxy := -(1 << 30)
-	var any := false
-	for t in _floor_mask:
-		var v := t as Vector2i
-		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
-		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
-		any = true
-	for t in _mezzanine_mask:
-		var v := t as Vector2i
-		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
-		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
-		any = true
-	for t in _stair_mask:
-		var v := t as Vector2i
-		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
-		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
-		any = true
-	for seg in _segments:
-		var sd := seg as Dictionary
-		for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
-			mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
-			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
-			any = true
-	for r in _rails:
-		var rd := r as Dictionary
-		mnx = mini(mnx, mini(rd["x1"] as int, rd["x2"] as int)); mny = mini(mny, mini(rd["y1"] as int, rd["y2"] as int))
-		mxx = maxi(mxx, maxi(rd["x1"] as int, rd["x2"] as int)); mxy = maxi(mxy, maxi(rd["y1"] as int, rd["y2"] as int))
-		any = true
-	for rz in _reveal_zones:
-		var zd := rz as Dictionary
-		mnx = mini(mnx, mini(zd["x1"] as int, zd["x2"] as int)); mny = mini(mny, mini(zd["y1"] as int, zd["y2"] as int))
-		mxx = maxi(mxx, maxi(zd["x1"] as int, zd["x2"] as int)); mxy = maxi(mxy, maxi(zd["y1"] as int, zd["y2"] as int))
-		any = true
-	for c in _cols:
-		var cd := c as Dictionary
-		mnx = mini(mnx, cd["x"] as int); mny = mini(mny, cd["y"] as int)
-		mxx = maxi(mxx, cd["x"] as int); mxy = maxi(mxy, cd["y"] as int)
-		any = true
-
-	# Always union whatever's actually drawn with a generous default view
-	# centred in the middle of the big fixed-but-generous canvas — a single
-	# painted tile or a small room no longer shrinks the view down to just
-	# itself (which is what kept reading as "broken"/cramped); the camera
-	# always shows at least a good generous chunk of open grid, and only
-	# grows past that default once real content actually exceeds it.
-	const DEFAULT_VIEW_TILES := 30
-	var dvx0 := _gw / 2 - DEFAULT_VIEW_TILES / 2
-	var dvy0 := _gh / 2 - DEFAULT_VIEW_TILES / 2
-	var dvx1 := dvx0 + DEFAULT_VIEW_TILES - 1
-	var dvy1 := dvy0 + DEFAULT_VIEW_TILES - 1
-
-	if not any:
-		return Rect2i(dvx0, dvy0, DEFAULT_VIEW_TILES, DEFAULT_VIEW_TILES)
-
-	const FIT_MARGIN := 3
-	mnx -= FIT_MARGIN; mny -= FIT_MARGIN
-	mxx += FIT_MARGIN; mxy += FIT_MARGIN
-	mnx = mini(mnx, dvx0); mny = mini(mny, dvy0)
-	mxx = maxi(mxx, dvx1); mxy = maxi(mxy, dvy1)
-	return Rect2i(mnx, mny, mxx - mnx + 1, mxy - mny + 1)
+	return Rect2i(0, 0, _gw, _gh)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗

@@ -599,17 +599,17 @@ func _is_plate(parent: Floor) -> bool:
 # it must NOT be padded out with a big generous default.
 #
 # The Level Editor's own preview Floor sets editor_mode = true, and instead
-# always unions the real bounds with a generous default view centred in the
-# big fixed-but-generous canvas (mirroring LevelEditor's own
-# _content_bounds_tiles exactly — both must agree, or the sheet and the
-# camera's fit visibly detach into two disconnected boxes). A single painted
-# tile or small room no longer shrinks the editor's sheet down to just
-# itself; it always shows at least a generous chunk of open grid, and only
-# grows past that default once real content actually exceeds it.
-const DEFAULT_VIEW_TILES := 30
-const MIN_SHEET_TILES    := 10
+# just always shows the WHOLE fixed-but-generous grid_w x grid_h canvas —
+# matching LevelEditor.gd's own _content_bounds_tiles() exactly (both must
+# agree, or the sheet and the camera's fit visibly detach into two
+# disconnected boxes, which is what kept happening with more elaborate
+# "union with a smaller generous default" versions of this).
+const MIN_SHEET_TILES := 10
 
 func _room_bounds_tiles(parent: Floor) -> Rect2i:
+	if editor_mode:
+		return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+
 	var mnx := 1 << 30; var mny := 1 << 30
 	var mxx := -(1 << 30); var mxy := -(1 << 30)
 	var any := false
@@ -625,33 +625,17 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
 			any = true
 
-	if not editor_mode:
-		if not any:
-			return Rect2i(0, 0, parent.grid_w, parent.grid_h)
-		var w := mxx - mnx + 1
-		var h := mxy - mny + 1
-		if w < MIN_SHEET_TILES:
-			mnx -= (MIN_SHEET_TILES - w) / 2
-			w = MIN_SHEET_TILES
-		if h < MIN_SHEET_TILES:
-			mny -= (MIN_SHEET_TILES - h) / 2
-			h = MIN_SHEET_TILES
-		return Rect2i(mnx, mny, w, h)
-
-	var dvx0 := parent.grid_w / 2 - DEFAULT_VIEW_TILES / 2
-	var dvy0 := parent.grid_h / 2 - DEFAULT_VIEW_TILES / 2
-	var dvx1 := dvx0 + DEFAULT_VIEW_TILES - 1
-	var dvy1 := dvy0 + DEFAULT_VIEW_TILES - 1
-
 	if not any:
-		return Rect2i(dvx0, dvy0, DEFAULT_VIEW_TILES, DEFAULT_VIEW_TILES)
-
-	const FIT_MARGIN := 3
-	mnx -= FIT_MARGIN; mny -= FIT_MARGIN
-	mxx += FIT_MARGIN; mxy += FIT_MARGIN
-	mnx = mini(mnx, dvx0); mny = mini(mny, dvy0)
-	mxx = maxi(mxx, dvx1); mxy = maxi(mxy, dvy1)
-	return Rect2i(mnx, mny, mxx - mnx + 1, mxy - mny + 1)
+		return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+	var w := mxx - mnx + 1
+	var h := mxy - mny + 1
+	if w < MIN_SHEET_TILES:
+		mnx -= (MIN_SHEET_TILES - w) / 2
+		w = MIN_SHEET_TILES
+	if h < MIN_SHEET_TILES:
+		mny -= (MIN_SHEET_TILES - h) / 2
+		h = MIN_SHEET_TILES
+	return Rect2i(mnx, mny, w, h)
 
 
 func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
