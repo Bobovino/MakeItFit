@@ -522,22 +522,31 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	# ── 3. Blueprint grid — always visible (the defining blueprint element).
 	# Fine 10 cm lines get brighter while dragging; 1 m lines are always drawn.
+	# Line widths are specified in WORLD units, but a fixed width renders as
+	# less than one actual screen pixel once zoomed out far enough — sub-pixel
+	# non-antialiased lines rasterize inconsistently frame to frame (some
+	# columns/rows a hair brighter than others), which reads as the grid
+	# "glitching" or looking irregular while zoomed out. Floor both widths at
+	# a minimum on-screen pixel size (accounting for the current zoom via
+	# ct_scale) and draw them antialiased so they stay crisp at any zoom.
+	var min_px_fine := 1.0 / maxf(ct_scale, 0.001)
+	var min_px_maj  := 1.4 / maxf(ct_scale, 0.001)
 	var fine_base_a := 1.0 if show_grid else 0.22
 	var fine_col := Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, FINE_COL.a * fine_base_a * fine_fade)
 	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, 0.40)
 	if show_fine:
 		for x in range(bx0, bx1 + 1):
 			if x % METER_TILES != 0:
-				draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), fine_col, 1.0)
+				draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), fine_col, min_px_fine, true)
 		for y in range(by0, by1 + 1):
 			if y % METER_TILES != 0:
-				draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), fine_col, 1.0)
+				draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), fine_col, min_px_fine, true)
 	for x in range(bx0 - bx0 % METER_TILES, bx1 + 1, METER_TILES):
 		if x >= bx0:
-			draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), maj_col, 2.0)
+			draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), maj_col, min_px_maj, true)
 	for y in range(by0 - by0 % METER_TILES, by1 + 1, METER_TILES):
 		if y >= by0:
-			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, 2.0)
+			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, min_px_maj, true)
 
 	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
 	const FRAME_COL := Color(0.56, 0.78, 0.98, 0.70)

@@ -190,6 +190,14 @@ func _ready() -> void:
 	_rebuild_floor()
 	_set_status("Floor Paint: LMB pintasuelos · RMB borra  |  Dibuja paredes encima del suelo")
 
+	# The very first _fit_camera() call above can land before the viewport's
+	# layout has fully settled for one frame (anchors resolve immediately, but
+	# the window/viewport size itself can still be mid-transition right at
+	# startup) — re-fit once more next frame, forced, so the camera reliably
+	# lands centred on entry instead of occasionally needing a manual "Fit".
+	await get_tree().process_frame
+	_fit_camera(true)
+
 
 # ── Scene skeleton ────────────────────────────────────────────────────────────
 
@@ -1891,7 +1899,7 @@ func _input(event: InputEvent) -> void:
 # step — that scheme only had ~24 usable increments total across its whole
 # 1..32px/tile range and felt like it wasn't responding to most scroll input.
 const ZOOM_STEP := 1.12
-const ZOOM_MIN  := 0.15   # ~1.2px/tile — whole large apartments fit on screen
+const ZOOM_MIN  := 0.25   # ~2px/tile — below this, tiles/walls/furniture icons become illegible anyway
 const ZOOM_MAX  := 6.0    # ~48px/tile — fine detail work (rails, doors)
 
 func _do_zoom(zoom_in: bool, at_screen_pos = null) -> void:
