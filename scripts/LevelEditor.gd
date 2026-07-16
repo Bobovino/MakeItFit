@@ -1254,6 +1254,11 @@ func _rebuild_floor() -> void:
 	_floor = scene.instantiate() as Floor
 	_floor.set_process_input(false)
 	_room.add_child(_floor)
+	# Editor wants a generous blueprint grid that never shrinks down to just
+	# whatever's been drawn so far — gameplay (Main.gd) leaves this false so
+	# the sheet still hugs the actual apartment walls tightly there.
+	if _floor.has_node("GridDraw"):
+		(_floor.get_node("GridDraw") as GridDraw).editor_mode = true
 
 	var floor_tiles: Array = []
 	for tile in _floor_mask:
@@ -1600,18 +1605,27 @@ func _content_bounds_tiles() -> Rect2i:
 		mxx = maxi(mxx, cd["x"] as int); mxy = maxi(mxy, cd["y"] as int)
 		any = true
 
+	# Always union whatever's actually drawn with a generous default view
+	# centred in the middle of the big fixed-but-generous canvas — a single
+	# painted tile or a small room no longer shrinks the view down to just
+	# itself (which is what kept reading as "broken"/cramped); the camera
+	# always shows at least a good generous chunk of open grid, and only
+	# grows past that default once real content actually exceeds it.
+	const DEFAULT_VIEW_TILES := 30
+	var dvx0 := _gw / 2 - DEFAULT_VIEW_TILES / 2
+	var dvy0 := _gh / 2 - DEFAULT_VIEW_TILES / 2
+	var dvx1 := dvx0 + DEFAULT_VIEW_TILES - 1
+	var dvy1 := dvy0 + DEFAULT_VIEW_TILES - 1
+
 	if not any:
-		# Nothing drawn yet — camera should still land centred in the middle
-		# of the big fixed-but-generous canvas (not anchored at its (0,0)
-		# corner), so the editor reads as "a huge open grid, centred" rather
-		# than "a cramped tiny box stuck in the corner of empty space".
-		return Rect2i(_gw / 2 - 10, _gh / 2 - 10, 20, 20)
+		return Rect2i(dvx0, dvy0, DEFAULT_VIEW_TILES, DEFAULT_VIEW_TILES)
 
 	const FIT_MARGIN := 3
-	return Rect2i(
-		mnx - FIT_MARGIN, mny - FIT_MARGIN,
-		(mxx - mnx) + FIT_MARGIN * 2 + 1, (mxy - mny) + FIT_MARGIN * 2 + 1
-	)
+	mnx -= FIT_MARGIN; mny -= FIT_MARGIN
+	mxx += FIT_MARGIN; mxy += FIT_MARGIN
+	mnx = mini(mnx, dvx0); mny = mini(mny, dvy0)
+	mxx = maxi(mxx, dvx1); mxy = maxi(mxy, dvy1)
+	return Rect2i(mnx, mny, mxx - mnx + 1, mxy - mny + 1)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
