@@ -1234,6 +1234,7 @@ func _set_status(msg: String) -> void:
 
 func _rebuild_floor() -> void:
 	_maybe_grow_grid()
+	_autofill_enclosed_floor()
 	if is_instance_valid(_floor):
 		_floor.queue_free()
 	if is_instance_valid(_ov):
@@ -1388,6 +1389,67 @@ func _maybe_grow_grid() -> void:
 		grew = true
 	if grew:
 		_set_status("Apartment grid grew to %d × %d tiles" % [_gw, _gh])
+
+
+# Drawing a rectangular room's four walls used to leave the interior
+# unpainted until Floor Paint was also run tile-by-tile — this floods every
+# wall-enclosed pocket the moment its walls close a loop and adds those
+# tiles to _floor_mask automatically. Only ever ADDS tiles, never removes:
+# a manually-painted balcony/irregular extension outside the walled
+# rectangle stays untouched even if walls are edited afterwards.
+func _autofill_enclosed_floor() -> void:
+	if _segments.is_empty():
+		return
+
+	var bounds := _content_bounds_tiles()   # already padded with a margin beyond the walls
+	var blocked: Dictionary = {}
+	for seg in _segments:
+		var sd := seg as Dictionary
+		if sd.get("demolished", false):
+			continue
+		var x1: int = sd["x1"]; var y1: int = sd["y1"]
+		var x2: int = sd["x2"]; var y2: int = sd["y2"]
+		if y1 == y2:
+			for x in range(mini(x1, x2), maxi(x1, x2) + 1):
+				blocked[Vector2i(x, y1)] = true
+		elif x1 == x2:
+			for y in range(mini(y1, y2), maxi(y1, y2) + 1):
+				blocked[Vector2i(x1, y)] = true
+
+	# Flood-fill inward from the padded bounding box's border — anything the
+	# fill reaches is "outside"; whatever's left over (not blocked, not
+	# reached) is enclosed by walls on every side.
+	var bx0 := bounds.position.x; var by0 := bounds.position.y
+	var bx1 := bounds.position.x + bounds.size.x - 1
+	var by1 := bounds.position.y + bounds.size.y - 1
+	var outside: Dictionary = {}
+	var stack: Array = []
+	for x in range(bx0, bx1 + 1):
+		stack.append(Vector2i(x, by0)); stack.append(Vector2i(x, by1))
+	for y in range(by0, by1 + 1):
+		stack.append(Vector2i(bx0, y)); stack.append(Vector2i(bx1, y))
+
+	while not stack.is_empty():
+		var t: Vector2i = stack.pop_back()
+		if t.x < bx0 or t.x > bx1 or t.y < by0 or t.y > by1:
+			continue
+		if outside.has(t) or blocked.has(t):
+			continue
+		outside[t] = true
+		stack.append(Vector2i(t.x + 1, t.y)); stack.append(Vector2i(t.x - 1, t.y))
+		stack.append(Vector2i(t.x, t.y + 1)); stack.append(Vector2i(t.x, t.y - 1))
+
+	var added := 0
+	for x in range(bx0, bx1 + 1):
+		for y in range(by0, by1 + 1):
+			var t := Vector2i(x, y)
+			if blocked.has(t) or outside.has(t):
+				continue
+			if not _floor_mask.has(t):
+				_floor_mask[t] = true
+				added += 1
+	if added > 0:
+		_set_status("Auto-filled %d enclosed floor tile(s)" % added)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
