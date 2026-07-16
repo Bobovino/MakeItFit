@@ -1535,17 +1535,21 @@ func _fit_camera(force: bool = false) -> void:
 	_fit_zoom = fit_z
 	_camera.zoom = Vector2(fit_z, fit_z)
 
-	# Centre the camera on the middle of the actual content, not the whole canvas.
-	# The offset accounts for left/right/top panel asymmetry so the canvas
-	# midpoint (scx, scy) maps exactly to that centre in world space.
-	_camera.position = Vector2(
+	# Centre the camera on the middle of the actual content, not the whole
+	# canvas. Folded directly into camera.position (offset left at its default
+	# zero) rather than using Camera2D.offset — _do_zoom's proven-correct
+	# zoom-toward-cursor math already assumes offset is zero and derives
+	# world_point_at(screen_point) = camera.position + (screen_point - vp/2) / zoom,
+	# so reusing that exact relationship here (solved for camera.position
+	# instead of the world point) keeps both in agreement instead of guessing
+	# Camera2D.offset's own scaling convention, which is what produced a
+	# content-shifted-off-centre bug the first time this was attempted.
+	var content_center := Vector2(
 		(bounds.position.x + bounds.size.x * 0.5) * TILE_SIZE,
 		(bounds.position.y + bounds.size.y * 0.5) * TILE_SIZE
 	)
-	_camera.offset = Vector2(
-		(scx - vp.x * 0.5) / fit_z,
-		(scy - vp.y * 0.5) / fit_z
-	)
+	_camera.offset = Vector2.ZERO
+	_camera.position = content_center - Vector2(scx - vp.x * 0.5, scy - vp.y * 0.5) / fit_z
 	_update_zoom_label()
 
 

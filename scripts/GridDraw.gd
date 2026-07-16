@@ -606,7 +606,15 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
 			any = true
 	if not any:
-		return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+		# A completely empty floor has no content to bound — draw a small
+		# sheet near the origin (matching LevelEditor's own empty-floor camera
+		# fallback) instead of the entire grid_w x grid_h canvas (up to 300+
+		# tiles). The camera already fits a small default box in that case;
+		# drawing the full huge canvas as background here made only a
+		# fragment of it visible near the (0,0) corner, which looked like a
+		# camera-centering bug rather than what it actually was — a mismatch
+		# between the camera's and the sheet's own "nothing here yet" default.
+		return Rect2i(0, 0, mini(parent.grid_w, MIN_SHEET_TILES * 2), mini(parent.grid_h, MIN_SHEET_TILES * 2))
 	var w := maxi(mxx - mnx + 1, MIN_SHEET_TILES)
 	var h := maxi(mxy - mny + 1, MIN_SHEET_TILES)
 	return Rect2i(mnx, mny, w, h)
