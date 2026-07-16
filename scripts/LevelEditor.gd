@@ -116,6 +116,9 @@ var _ui_layer:    CanvasLayer = null
 var _view3d_active: bool      = false
 var _view3d_node: Control     = null
 var _view3d_btn:  Button      = null
+var _zoom_label:  Label       = null
+var _fit_zoom:    float       = 1.0   # zoom set by the last _fit_camera() call — 100% baseline for the zoom label
+var _space_held:  bool        = false # Space+drag pan, same convention as Godot's own 2D editor
 
 # ── UI refs ───────────────────────────────────────────────────────────────────
 var _sw: SpinBox = null;  var _sh: SpinBox = null  # unused — grid fixed at 300×300
@@ -249,6 +252,21 @@ func _build_topbar(ui: Node) -> void:
 	hint.add_theme_font_size_override("font_size", 10)
 	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	hb.add_child(hint)
+
+	_zoom_label = Label.new()
+	_zoom_label.text = "100%"
+	_zoom_label.custom_minimum_size = Vector2(40, 0)
+	_zoom_label.add_theme_font_size_override("font_size", 10)
+	_zoom_label.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hb.add_child(_zoom_label)
+
+	var fit_btn := Button.new()
+	fit_btn.text = "Fit"
+	fit_btn.tooltip_text = "Reset zoom/pan to fit the whole floor (F)"
+	fit_btn.add_theme_font_size_override("font_size", 11)
+	fit_btn.pressed.connect(_fit_camera.bind(true))
+	hb.add_child(fit_btn)
 
 	# View-only 3D preview of the currently edited floor — all the actual
 	# editing tools still only operate on the 2D canvas; this is just a "what
@@ -1085,8 +1103,8 @@ func _refresh_fl_switcher() -> void:
 		btn.text = fd.get("label", "Floor") as String
 		btn.tooltip_text = btn.text
 		btn.clip_text = true   # long labels ("Ground Floor Subfloor") truncate with an
-		                       # ellipsis instead of overflowing past the row into the
-		                       # neighboring rename/delete/visibility buttons — this
+							   # ellipsis instead of overflowing past the row into the
+							   # neighboring rename/delete/visibility buttons — this
 							   # narrow right panel doesn't have room to spare.
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.add_theme_font_size_override("font_size", 10)
@@ -1372,8 +1390,8 @@ func _hide_3d_preview() -> void:
 	_view3d_node = null
 
 
-func _fit_camera() -> void:
-	if not is_instance_valid(_camera) or _camera_fitted:
+func _fit_camera(force: bool = false) -> void:
+	if not is_instance_valid(_camera) or (_camera_fitted and not force):
 		return
 	_camera_fitted = true
 
@@ -1383,18 +1401,22 @@ func _fit_camera() -> void:
 	var scx := LEFT_W + aw * 0.5
 	var scy := TOP_H  + ah * 0.5
 
-	const INIT_PX_PER_TILE := 9.0
-	var z := INIT_PX_PER_TILE / float(TILE_SIZE)
-	_camera.zoom = Vector2(z, z)
+	# Pick a zoom that fits the whole grid in the visible canvas area (capped
+	# so a tiny grid doesn't zoom in absurdly far), rather than a fixed
+	# px/tile constant that didn't account for how big the actual floor is.
+	var fit_z: float = clampf(minf(aw / (_gw * TILE_SIZE), ah / (_gh * TILE_SIZE)) * 0.92, ZOOM_MIN, ZOOM_MAX)
+	_fit_zoom = fit_z
+	_camera.zoom = Vector2(fit_z, fit_z)
 
 	# Centre the camera on the middle of the grid.
 	# The offset accounts for left/right/top panel asymmetry so the canvas
 	# midpoint (scx, scy) maps exactly to the grid centre in world space.
 	_camera.position = Vector2(_gw * TILE_SIZE * 0.5, _gh * TILE_SIZE * 0.5)
 	_camera.offset = Vector2(
-		(scx - vp.x * 0.5) / z,
-		(scy - vp.y * 0.5) / z
+		(scx - vp.x * 0.5) / fit_z,
+		(scy - vp.y * 0.5) / fit_z
 	)
+	_update_zoom_label()
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
@@ -1448,7 +1470,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not event is InputEventMouse:
+	# The 3D preview is a separate Room3DView control layered on top that
+	# handles its own camera orbit/zoom/pan via its own gui_input — none of
+	# this 2D-canvas input handling (including camera zoom/pan below) should
+	# run underneath it, or scrolling over the 3D view ends up silently
+	# zooming the hidden 2D camera instead of the 3D one.
+	if _view3d_active:
+		return
+	if not (event is InputEventMouse or event is InputEventKey):
 		return
 
 	# ── Furniture placement mode ─────────────────────────────────────────────
@@ -1537,8 +1566,16 @@ func _input(event: InputEvent) -> void:
 			var mx := mb.position.x
 			var over_panel := mx < LEFT_W or mx > vp_size.x - RIGHT_W or mb.position.y < TOP_H or mb.position.y > vp_size.y - BOTTOM_H
 			if not over_panel:
-				_do_zoom(mb.button_index == MOUSE_BUTTON_WHEEL_UP)
+				_do_zoom(mb.button_index == MOUSE_BUTTON_WHEEL_UP, mb.position)
 				get_viewport().set_input_as_handled()
+			return
+		if mb.button_index == MOUSE_BUTTON_LEFT and _space_held:
+			# Space+drag pans too (in addition to middle-drag) — middle-mouse-only
+			# panning is uncomfortable/unavailable on a lot of trackpads, and
+			# Space+drag is the same convention Godot's own 2D editor uses.
+			_panning = mb.pressed
+			_pan_last = mb.position
+			get_viewport().set_input_as_handled()
 			return
 	elif event is InputEventMouseMotion and _panning:
 		var delta := (event as InputEventMouseMotion).relative
@@ -1546,6 +1583,17 @@ func _input(event: InputEvent) -> void:
 			_camera.position -= delta / _camera.zoom.x
 		get_viewport().set_input_as_handled()
 		return
+	elif event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.keycode == KEY_SPACE:
+			_space_held = ke.pressed
+			if not ke.pressed:
+				_panning = false
+			return
+		if ke.pressed and not ke.echo and ke.keycode == KEY_F and not (ke.ctrl_pressed or ke.shift_pressed or ke.alt_pressed):
+			_fit_camera(true)
+			get_viewport().set_input_as_handled()
+			return
 
 	# ── Button releases: clean up active paint/draw state even if over UI ───
 	if event is InputEventMouseButton:
@@ -1660,25 +1708,42 @@ func _input(event: InputEvent) -> void:
 			_ov.queue_redraw()
 
 
-func _do_zoom(zoom_in: bool) -> void:
+# Continuous exponential zoom (each notch scales by a fixed ratio, like
+# Godot's own 2D editor / Figma / Blender) instead of the old ±1 screen-pixel
+# step — that scheme only had ~24 usable increments total across its whole
+# 1..32px/tile range and felt like it wasn't responding to most scroll input.
+const ZOOM_STEP := 1.12
+const ZOOM_MIN  := 0.15   # ~1.2px/tile — whole large apartments fit on screen
+const ZOOM_MAX  := 6.0    # ~48px/tile — fine detail work (rails, doors)
+
+func _do_zoom(zoom_in: bool, at_screen_pos = null) -> void:
 	if not is_instance_valid(_camera):
 		return
-	var old_px := roundi(_camera.zoom.x * TILE_SIZE)
-	var new_px  := clampi(old_px + (1 if zoom_in else -1), 1, 32)
-	if new_px == old_px:
-		return
-	var new_z := float(new_px) / float(TILE_SIZE)
-	# Zoom toward canvas centre so the floor stays visible
-	var vp  := get_viewport().get_visible_rect().size
-	var aw  := vp.x - LEFT_W - RIGHT_W - 20.0
-	var ah  := vp.y - TOP_H - 16.0
-	var ctr := Vector2(LEFT_W + aw * 0.5, TOP_H + ah * 0.5)
 	var old_z := _camera.zoom.x
+	var new_z: float = clampf(old_z * (ZOOM_STEP if zoom_in else 1.0 / ZOOM_STEP), ZOOM_MIN, ZOOM_MAX)
+	if is_equal_approx(new_z, old_z):
+		return
+	# Zoom toward the cursor position when given (mouse wheel), else canvas centre (Fit/keys)
+	var vp  := get_viewport().get_visible_rect().size
+	var ctr: Vector2
+	if at_screen_pos != null:
+		ctr = at_screen_pos as Vector2
+	else:
+		var aw := vp.x - LEFT_W - RIGHT_W - 20.0
+		var ah := vp.y - TOP_H - 16.0
+		ctr = Vector2(LEFT_W + aw * 0.5, TOP_H + ah * 0.5)
 	var world_ctr := _camera.position + (ctr - vp * 0.5) / old_z
 	_camera.position = world_ctr - (ctr - vp * 0.5) / new_z
 	_camera.zoom     = Vector2(new_z, new_z)
-	_set_status("Zoom %d px/tile  (%.0fcm visible width)" % [
-		new_px, vp.x / new_z * 0.1])
+	_update_zoom_label()
+
+func _update_zoom_label() -> void:
+	if not is_instance_valid(_camera) or not is_instance_valid(_zoom_label):
+		return
+	# 100% = the initial fit-to-grid zoom set by _fit_camera(), not raw px/tile,
+	# so the number means "relative to your starting view" like other editors.
+	var pct := roundi(_camera.zoom.x / maxf(_fit_zoom, 0.0001) * 100.0)
+	_zoom_label.text = "%d%%" % pct
 
 
 func _is_ui(sp: Vector2) -> bool:
