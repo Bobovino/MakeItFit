@@ -1453,22 +1453,86 @@ func _fit_camera(force: bool = false) -> void:
 	var scx := LEFT_W + aw * 0.5
 	var scy := TOP_H  + ah * 0.5
 
-	# Pick a zoom that fits the whole grid in the visible canvas area (capped
-	# so a tiny grid doesn't zoom in absurdly far), rather than a fixed
-	# px/tile constant that didn't account for how big the actual floor is.
-	var fit_z: float = clampf(minf(aw / (_gw * TILE_SIZE), ah / (_gh * TILE_SIZE)) * 0.92, ZOOM_MIN, ZOOM_MAX)
+	# Fit to the floor's actual content (walls/floor/stairs/...), not the
+	# whole fixed-but-generous _gw x _gh canvas (up to 300+ tiles) — fitting
+	# to the raw canvas zoomed out so far that a normal-sized room looked
+	# tiny and its 10cm subcell gridlines dropped below GridDraw's
+	# visibility threshold, which read as "the subtiles are just missing".
+	var bounds := _content_bounds_tiles()
+	var content_w := maxi(bounds.size.x, 1) * TILE_SIZE
+	var content_h := maxi(bounds.size.y, 1) * TILE_SIZE
+	var fit_z: float = clampf(minf(aw / content_w, ah / content_h) * 0.92, ZOOM_MIN, ZOOM_MAX)
 	_fit_zoom = fit_z
 	_camera.zoom = Vector2(fit_z, fit_z)
 
-	# Centre the camera on the middle of the grid.
+	# Centre the camera on the middle of the actual content, not the whole canvas.
 	# The offset accounts for left/right/top panel asymmetry so the canvas
-	# midpoint (scx, scy) maps exactly to the grid centre in world space.
-	_camera.position = Vector2(_gw * TILE_SIZE * 0.5, _gh * TILE_SIZE * 0.5)
+	# midpoint (scx, scy) maps exactly to that centre in world space.
+	_camera.position = Vector2(
+		(bounds.position.x + bounds.size.x * 0.5) * TILE_SIZE,
+		(bounds.position.y + bounds.size.y * 0.5) * TILE_SIZE
+	)
 	_camera.offset = Vector2(
 		(scx - vp.x * 0.5) / fit_z,
 		(scy - vp.y * 0.5) / fit_z
 	)
 	_update_zoom_label()
+
+
+# Tile-space bounding box of everything actually on the floor being edited
+# (floor/mezzanine/stair tiles, wall segments, rails, reveal zones, columns),
+# padded by a small margin — used to fit/centre the camera on the real room
+# instead of the whole fixed-but-generous editing canvas. Falls back to a
+# sane default footprint when the floor is still empty.
+func _content_bounds_tiles() -> Rect2i:
+	var mnx := 1 << 30; var mny := 1 << 30
+	var mxx := -(1 << 30); var mxy := -(1 << 30)
+	var any := false
+	for t in _floor_mask:
+		var v := t as Vector2i
+		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
+		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
+		any = true
+	for t in _mezzanine_mask:
+		var v := t as Vector2i
+		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
+		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
+		any = true
+	for t in _stair_mask:
+		var v := t as Vector2i
+		mnx = mini(mnx, v.x); mny = mini(mny, v.y)
+		mxx = maxi(mxx, v.x); mxy = maxi(mxy, v.y)
+		any = true
+	for seg in _segments:
+		var sd := seg as Dictionary
+		for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
+			mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
+			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
+			any = true
+	for r in _rails:
+		var rd := r as Dictionary
+		mnx = mini(mnx, mini(rd["x1"] as int, rd["x2"] as int)); mny = mini(mny, mini(rd["y1"] as int, rd["y2"] as int))
+		mxx = maxi(mxx, maxi(rd["x1"] as int, rd["x2"] as int)); mxy = maxi(mxy, maxi(rd["y1"] as int, rd["y2"] as int))
+		any = true
+	for rz in _reveal_zones:
+		var zd := rz as Dictionary
+		mnx = mini(mnx, mini(zd["x1"] as int, zd["x2"] as int)); mny = mini(mny, mini(zd["y1"] as int, zd["y2"] as int))
+		mxx = maxi(mxx, maxi(zd["x1"] as int, zd["x2"] as int)); mxy = maxi(mxy, maxi(zd["y1"] as int, zd["y2"] as int))
+		any = true
+	for c in _cols:
+		var cd := c as Dictionary
+		mnx = mini(mnx, cd["x"] as int); mny = mini(mny, cd["y"] as int)
+		mxx = maxi(mxx, cd["x"] as int); mxy = maxi(mxy, cd["y"] as int)
+		any = true
+
+	if not any:
+		return Rect2i(0, 0, 20, 20)
+
+	const FIT_MARGIN := 3
+	return Rect2i(
+		mnx - FIT_MARGIN, mny - FIT_MARGIN,
+		(mxx - mnx) + FIT_MARGIN * 2 + 1, (mxy - mny) + FIT_MARGIN * 2 + 1
+	)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗

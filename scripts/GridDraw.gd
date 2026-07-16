@@ -179,7 +179,11 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	var ct_scale := get_viewport().get_canvas_transform().get_scale().x \
 		if get_viewport() else 1.0
 	var px_per_tile := ct_scale * float(TILE_SIZE)
-	var show_fine   := px_per_tile >= 5.0   # draw 10 cm subcell lines when ≥ 5 px/tile
+	# Fade the 10cm subcell lines in/out smoothly over a zoom range instead of
+	# a hard on/off cutoff — a single threshold made them pop in and out
+	# abruptly while zooming, which read as the grid glitching.
+	var fine_fade   := clampf((px_per_tile - 3.0) / 4.0, 0.0, 1.0)
+	var show_fine   := fine_fade > 0.02
 
 	# ── 1. Canvas background — a paper sheet lying on the desk ───────────────
 	# Stacked soft drop shadows first, so the blueprint reads as a physical
@@ -518,7 +522,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	# ── 3. Blueprint grid — always visible (the defining blueprint element).
 	# Fine 10 cm lines get brighter while dragging; 1 m lines are always drawn.
-	var fine_col := FINE_COL if show_grid else Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, 0.22)
+	var fine_base_a := 1.0 if show_grid else 0.22
+	var fine_col := Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, FINE_COL.a * fine_base_a * fine_fade)
 	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, 0.40)
 	if show_fine:
 		for x in range(bx0, bx1 + 1):
@@ -567,25 +572,35 @@ func _is_plate(parent: Floor) -> bool:
 	return not parent.segments.is_empty() or not parent.floor_mask.is_empty()
 
 
-# Room bounding box (in tiles): prefer the floor mask, fall back to the extent
-# of the wall segments, then to the whole grid.
+# Room bounding box (in tiles): the union of floor mask + wall segments (not
+# either/or) — a room is usually walled in one full stroke but floor-painted
+# tile by tile, so preferring floor_mask alone made the drafting sheet shrink
+# to a near-nothing patch the instant a room had walls but only one or two
+# painted floor tiles. Falls back to the whole grid if there's nothing yet,
+# and never shrinks below MIN_SHEET_TILES in either dimension so a
+# just-started room doesn't flash to a jarring tiny sheet either.
+const MIN_SHEET_TILES := 10
+
 func _room_bounds_tiles(parent: Floor) -> Rect2i:
 	var mnx := 1 << 30; var mny := 1 << 30
 	var mxx := -(1 << 30); var mxy := -(1 << 30)
-	if not parent.floor_mask.is_empty():
-		for tile in parent.floor_mask:
-			var t := tile as Vector2i
-			mnx = mini(mnx, t.x); mny = mini(mny, t.y)
-			mxx = maxi(mxx, t.x); mxy = maxi(mxy, t.y)
-		return Rect2i(mnx, mny, mxx - mnx + 1, mxy - mny + 1)
-	if not parent.segments.is_empty():
-		for seg in parent.segments:
-			var sd := seg as Dictionary
-			for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
-				mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
-				mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
-		return Rect2i(mnx, mny, mxx - mnx, mxy - mny)
-	return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+	var any := false
+	for tile in parent.floor_mask:
+		var t := tile as Vector2i
+		mnx = mini(mnx, t.x); mny = mini(mny, t.y)
+		mxx = maxi(mxx, t.x); mxy = maxi(mxy, t.y)
+		any = true
+	for seg in parent.segments:
+		var sd := seg as Dictionary
+		for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
+			mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
+			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
+			any = true
+	if not any:
+		return Rect2i(0, 0, parent.grid_w, parent.grid_h)
+	var w := maxi(mxx - mnx + 1, MIN_SHEET_TILES)
+	var h := maxi(mxy - mny + 1, MIN_SHEET_TILES)
+	return Rect2i(mnx, mny, w, h)
 
 
 func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
