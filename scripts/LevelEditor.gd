@@ -8,8 +8,11 @@ const LEFT_W     := 170.0
 const RIGHT_W    := 236.0
 const TOP_H      := 36.0
 const BOTTOM_H   := 160.0
-const DEFAULT_GW := 300
-const DEFAULT_GH := 300
+# "300x300" here means 300x300 of the BIG 1m grid squares (METER_TILES = 10
+# tiles each), not 300x300 of the small 10cm subgrid tiles — so the actual
+# tile-unit canvas size is 300 * METER_TILES = 3000 tiles (300 metres) per side.
+const DEFAULT_GW := 3000
+const DEFAULT_GH := 3000
 # Fixed-but-generous canvas: DEFAULT_GW/GH above is already large enough that
 # almost no apartment will ever reach its edge, but if one does, grow it in
 # chunks rather than hard-capping — keeps editing frictionless without
