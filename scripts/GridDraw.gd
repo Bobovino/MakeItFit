@@ -599,30 +599,17 @@ func _is_plate(parent: Floor) -> bool:
 # it must NOT be padded out with a big generous default.
 #
 # The Level Editor's own preview Floor sets editor_mode = true, and instead
-# shows the WHOLE fixed-but-generous grid_w x grid_h canvas once there's any
-# real content — matching LevelEditor.gd's own _content_bounds_tiles()
-# exactly (both must agree, or the sheet and the camera's fit visibly detach
-# into two disconnected boxes, which is what kept happening with more
-# elaborate "union with a smaller generous default" versions of this).
-#
-# A completely empty floor is the one exception: a smaller centred default
-# (EMPTY_VIEW_TILES, matching LevelEditor's own constant) instead of the
-# literal whole canvas, since fitting all 300 tiles on screen zoomed out far
-# enough that the 10cm subcell gridlines faded below visibility — which read
-# as "there's no detail grid at all" the moment a fresh level opens.
-const MIN_SHEET_TILES  := 10
-const EMPTY_VIEW_TILES := 60
+# always shows the WHOLE fixed-but-generous grid_w x grid_h canvas — this is
+# the actual drawn paper/gridlines you pan around in, independent of where
+# the camera happens to start framed. It must NOT shrink to a small default
+# when the floor is empty (that's a separate concern, handled purely by
+# LevelEditor's own _content_bounds_tiles() for the camera's initial
+# framing) — conflating the two meant panning an empty floor hit a dead
+# void just past a small patch instead of a continuous 300x300m grid.
+const MIN_SHEET_TILES := 10
 
 func _room_bounds_tiles(parent: Floor) -> Rect2i:
 	if editor_mode:
-		var empty := parent.floor_mask.is_empty() and parent.mezzanine_mask.is_empty() \
-			and parent.stair_mask.is_empty() and parent.segments.is_empty() \
-			and parent.rails.is_empty() and parent.reveal_zones.is_empty() and parent.columns.is_empty()
-		if empty:
-			return Rect2i(
-				parent.grid_w / 2 - EMPTY_VIEW_TILES / 2, parent.grid_h / 2 - EMPTY_VIEW_TILES / 2,
-				EMPTY_VIEW_TILES, EMPTY_VIEW_TILES
-			)
 		return Rect2i(0, 0, parent.grid_w, parent.grid_h)
 
 	var mnx := 1 << 30; var mny := 1 << 30
