@@ -1572,7 +1572,20 @@ func _fit_camera(force: bool = false) -> void:
 # content-bounds calculation left to keep in sync with GridDraw's own sheet
 # bounds (see GridDraw.editor_mode), which is what kept causing the sheet
 # and the camera's fit to visibly disagree/detach from each other.
+#
+# Exception: a completely empty floor uses a smaller centred default instead
+# of the literal whole canvas — fitting all 300 tiles on screen zoomed out so
+# far that the 10cm subcell gridlines faded below GridDraw's visibility
+# threshold, which read as "there's no detail grid at all" the moment you
+# open a fresh level. EMPTY_VIEW_TILES is comfortably bigger than a single
+# room while still keeping subtiles clearly visible at 100%.
+const EMPTY_VIEW_TILES := 60
+
 func _content_bounds_tiles() -> Rect2i:
+	var empty := _floor_mask.is_empty() and _mezzanine_mask.is_empty() and _stair_mask.is_empty() \
+		and _segments.is_empty() and _rails.is_empty() and _reveal_zones.is_empty() and _cols.is_empty()
+	if empty:
+		return Rect2i(_gw / 2 - EMPTY_VIEW_TILES / 2, _gh / 2 - EMPTY_VIEW_TILES / 2, EMPTY_VIEW_TILES, EMPTY_VIEW_TILES)
 	return Rect2i(0, 0, _gw, _gh)
 
 
