@@ -1747,6 +1747,15 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
+	# Every branch below this point is mouse-only canvas/tool logic (starting
+	# with the unconditional `(event as InputEventMouse).position` cast further
+	# down) — any key event that wasn't Space/F above (e.g. Print Screen, Tab,
+	# arrow keys, ...) must not fall through, since InputEventKey as
+	# InputEventMouse is null and `.position` on that crashes with "Invalid
+	# access to property or key 'position' on a base object of type 'Nil'".
+	if event is InputEventKey:
+		return
+
 	# ── Button releases: clean up active paint/draw state even if over UI ───
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
