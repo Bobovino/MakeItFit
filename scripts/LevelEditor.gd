@@ -1423,7 +1423,12 @@ func _autofill_enclosed_floor() -> void:
 	if _segments.is_empty():
 		return
 
-	var bounds := _content_bounds_tiles()   # already padded with a margin beyond the walls
+	# A TIGHT bounds around just the walls/floor actually drawn — NOT
+	# _content_bounds_tiles() (that one deliberately returns the whole
+	# fixed-but-generous canvas, now 3000x3000 tiles, for the camera/sheet).
+	# Flood-filling over the whole canvas here made this run a 9-million-cell
+	# BFS on every single wall edit, which froze the editor solid.
+	var bounds := _segment_bounds_tiles()
 	var blocked: Dictionary = {}
 	for seg in _segments:
 		var sd := seg as Dictionary
@@ -1590,6 +1595,25 @@ func _content_bounds_tiles() -> Rect2i:
 	if empty:
 		return Rect2i(_gw / 2 - EMPTY_VIEW_TILES / 2, _gh / 2 - EMPTY_VIEW_TILES / 2, EMPTY_VIEW_TILES, EMPTY_VIEW_TILES)
 	return Rect2i(0, 0, _gw, _gh)
+
+
+# Tight bounds around just the wall segments actually drawn, padded by a
+# small margin — used ONLY by _autofill_enclosed_floor()'s flood-fill, which
+# must stay cheap (a handful of tiles beyond the walls) regardless of how
+# big the fixed-but-generous canvas itself is. Never use _content_bounds_tiles()
+# here — that one deliberately returns the whole canvas for camera/sheet
+# purposes, and flood-filling that entire area on every wall edit is what
+# froze the editor once the canvas grew to 3000x3000 tiles.
+func _segment_bounds_tiles() -> Rect2i:
+	var mnx := 1 << 30; var mny := 1 << 30
+	var mxx := -(1 << 30); var mxy := -(1 << 30)
+	for seg in _segments:
+		var sd := seg as Dictionary
+		for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
+			mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
+			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
+	const SEG_MARGIN := 3
+	return Rect2i(mnx - SEG_MARGIN, mny - SEG_MARGIN, (mxx - mnx) + SEG_MARGIN * 2 + 1, (mxy - mny) + SEG_MARGIN * 2 + 1)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
