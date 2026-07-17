@@ -106,7 +106,8 @@
       "extended_functions": [
         "sleep"
       ],
-      "model": "res://assets/models/furniture/cabinetBed.glb"
+      "model": "res://assets/models/furniture/cabinetBed.glb",
+      "model_extended": "res://assets/models/furniture/murphyBedUnfolded.glb"
     },
     {
       "id": "futon",
@@ -133,7 +134,8 @@
       "buy_price": 280,
       "sell_price": 100,
       "color": "c8a870",
-      "model": "res://assets/models/furniture/loungeSofa.glb"
+      "model": "res://assets/models/furniture/loungeSofa.glb",
+      "model_extended": "res://assets/models/furniture/bedSingle.glb"
     },
     {
       "id": "sofa",
@@ -336,7 +338,8 @@
       "buy_price": 500,
       "sell_price": 220,
       "color": "5a8e68",
-      "model": "res://assets/models/furniture/cabinetBedDrawerTable.glb"
+      "model": "res://assets/models/furniture/cabinetBedDrawerTable.glb",
+      "model_extended": "res://assets/models/furniture/desk.glb"
     },
     {
       "id": "dining_table",
@@ -2905,7 +2908,8 @@
       "buy_price": 300,
       "sell_price": 120,
       "color": "a08858",
-      "model": "res://assets/models/furniture/tableCross.glb"
+      "model": "res://assets/models/furniture/tableCross.glb",
+      "model_extended": "res://assets/models/furniture/table.glb"
     },
     {
       "placement": "floor",
@@ -3008,7 +3012,8 @@
       "buy_price": 240,
       "sell_price": 95,
       "color": "987848",
-      "model": "res://assets/models/furniture/tableCoffeeSquare.glb"
+      "model": "res://assets/models/furniture/tableCoffeeSquare.glb",
+      "model_extended": "res://assets/models/furniture/tableRound.glb"
     },
     {
       "placement": "floor",
@@ -3496,7 +3501,8 @@
       "buy_price": 230,
       "sell_price": 90,
       "color": "887030",
-      "model": "res://assets/models/furniture/kitchenCabinetUpperLow.glb"
+      "model": "res://assets/models/furniture/kitchenCabinetUpperLow.glb",
+      "model_extended": "res://assets/models/furniture/kitchenBar.glb"
     },
     {
       "placement": "floor",
@@ -3568,7 +3574,8 @@
       "buy_price": 350,
       "sell_price": 140,
       "color": "988c78",
-      "model": "res://assets/models/furniture/kitchenCabinetUpperDouble.glb"
+      "model": "res://assets/models/furniture/kitchenCabinetUpperDouble.glb",
+      "model_extended": "res://assets/models/furniture/kitchenBarEnd.glb"
     },
     {
       "placement": "floor",
