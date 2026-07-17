@@ -315,13 +315,49 @@ func _prune_floor_mask_to_walls() -> void:
 	floor_mask = pruned
 
 
-# Builds the closed outer polygon from the wall segment chain (each segment's
-# start point connects to the previous one's end).
+# Builds the closed outer polygon by chasing shared endpoints across
+# `segments` regardless of array order or each segment's own start/end
+# direction — segments are commonly drawn as independent perimeter drags
+# (top, then bottom, then left, then right) rather than one continuous
+# chain, so this must not assume segments[i].end == segments[i+1].start.
+# Walks from segment 0's start point, at each step finding any not-yet-used
+# segment sharing the current point and hopping to its other endpoint,
+# until back at the start (or no match is found, e.g. an open/incomplete
+# wall run) — either way, whatever's been traced so far is returned.
 func _wall_polygon() -> PackedVector2Array:
-	var poly := PackedVector2Array()
+	if segments.is_empty():
+		return PackedVector2Array()
+	var pts: Array = []
 	for s in segments:
 		var sd := s as Dictionary
-		poly.append(Vector2(sd["x1"] as int, sd["y1"] as int))
+		pts.append([
+			Vector2(sd["x1"] as int, sd["y1"] as int),
+			Vector2(sd["x2"] as int, sd["y2"] as int)
+		])
+	var used: Dictionary = {}
+	var start: Vector2 = pts[0][0]
+	var cur: Vector2 = start
+	var poly := PackedVector2Array()
+	poly.append(cur)
+	while true:
+		var found := -1
+		var found_end := Vector2.ZERO
+		for i in range(pts.size()):
+			if used.has(i):
+				continue
+			var a: Vector2 = pts[i][0]
+			var b: Vector2 = pts[i][1]
+			if a.distance_to(cur) < 0.01:
+				found = i; found_end = b; break
+			elif b.distance_to(cur) < 0.01:
+				found = i; found_end = a; break
+		if found == -1:
+			break
+		used[found] = true
+		cur = found_end
+		poly.append(cur)
+		if cur.distance_to(start) < 0.01:
+			break
 	return poly
 
 

@@ -42,7 +42,7 @@ var _cols:           Array      = []  # [{x,y}]
 var _floor_painting:   bool = false
 var _floor_erase:      bool = false
 var _floor_brush:      int  = 10  # 1 = tile (10 cm), 10 = cell (1 m = 10×10 tiles)
-var _floor_kind_paint:  String = "normal"  # kind stamped by Floor Paint while painting floor tiles
+var _floor_kind_paint:  String = "balcony"  # kind stamped by Floor Paint while painting floor tiles
 var _floor_kind:        Dictionary = {}    # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 
 # Sloped ceiling (per active floor) — {axis, low_start, high_end, min_h, max_h}
@@ -385,10 +385,15 @@ func _build_left(ui: Node) -> void:
 				_ov.set("floor_brush", _floor_brush))
 		brush_row.add_child(bbtn)
 
-	# ── Floor kind selector (Floor Paint) — normal / balcony / bathroom ──────
+	# ── Floor kind selector (Floor Paint) — balcony / bathroom only. Normal
+	# interior floor is never hand-painted — it's auto-filled the moment its
+	# walls close a loop (see _autofill_enclosed_floor). Floor Paint exists
+	# only for the cases that AREN'T wall-enclosed and so can't be inferred
+	# that way: balconies/terraces (open-air, past the building envelope)
+	# and tagging a bathroom's wet-room floor kind.
 	_sect(vb, "FLOOR KIND")
 	var kind_bg := ButtonGroup.new()
-	for kdef: Array in [["normal", "Normal"], ["balcony", "Balcony/Terrace"], ["bathroom", "Bathroom"]]:
+	for kdef: Array in [["balcony", "Balcony/Terrace"], ["bathroom", "Bathroom"]]:
 		var kid  := kdef[0] as String
 		var klbl := kdef[1] as String
 		var kbtn := Button.new()
@@ -2164,19 +2169,12 @@ func _paint_floor_tile(tile: Vector2i, erase: bool) -> void:
 				if t not in _floor_mask:
 					_floor_mask[t] = true
 					changed = true
-				if _floor_kind_paint == "normal":
-					if t in _floor_kind:
-						_floor_kind.erase(t)
-						changed = true
-				elif _floor_kind.get(t) != _floor_kind_paint:
+				if _floor_kind.get(t) != _floor_kind_paint:
 					_floor_kind[t] = _floor_kind_paint
 					changed = true
 				if is_instance_valid(_floor):
 					_floor.floor_mask[t] = true
-					if _floor_kind_paint == "normal":
-						_floor.floor_kind.erase(t)
-					else:
-						_floor.floor_kind[t] = _floor_kind_paint
+					_floor.floor_kind[t] = _floor_kind_paint
 	if changed and is_instance_valid(_floor):
 		_floor.grid_draw.queue_redraw()
 
