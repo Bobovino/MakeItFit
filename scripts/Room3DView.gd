@@ -1187,12 +1187,19 @@ func focus_on_wall(edge: String, _span_lo: int, _span_hi: int) -> void:
 		"west":  _center = Vector3(0.0, eye_h, _room_d_m * 0.5)
 		"east":  _center = Vector3(_room_w_m, eye_h, _room_d_m * 0.5)
 		_:       _center = Vector3(_room_w_m * 0.5, eye_h, 0.0)
-	# _update_camera()'s offset formula is
-	# (cos(pitch)*sin(yaw), -sin(pitch), cos(pitch)*cos(yaw)) * dist — solving
-	# for the yaw that puts the camera on the `normal` side (so
-	# _update_wall_visibility sees this exact wall as "camera is outside,
-	# fade it") at pitch ≈ 0 gives yaw = atan2(normal.x, normal.z).
-	_yaw   = rad_to_deg(atan2(normal.x, normal.z))
+	# The camera must stay INSIDE the apartment looking AT this wall — not
+	# outside it looking in. _update_camera()'s offset formula is
+	# (cos(pitch)*sin(yaw), -sin(pitch), cos(pitch)*cos(yaw)) * dist, and
+	# camera position = _center + offset; using `normal` (outward) here put
+	# the camera on the building's exterior, so an exterior wall showed its
+	# outside face (and everything on it backwards) instead of the room.
+	# Negating it points the offset back into the room instead, so the
+	# camera sits inside, facing the wall — which then reads as fully
+	# in-frame rather than "faded/outside", exactly what we want to look at
+	# and decorate. The side walls (perpendicular normal, dot ≈ 0) stay
+	# visible either way for spatial context; the wall directly behind the
+	# camera would fade, but it's out of frame regardless.
+	_yaw   = rad_to_deg(atan2(-normal.x, -normal.z))
 	_pitch = -14.0   # near head-on, not the default top-down-ish HOME_PITCH
 	# Frame the WHOLE wall the clicked span belongs to, not just that
 	# sub-span — a short span (e.g. one segment between two doors) would
@@ -1211,7 +1218,12 @@ func focus_on_wall(edge: String, _span_lo: int, _span_hi: int) -> void:
 	var dist_for_height := (WALL_H_M * 0.5) / half_h
 	var dist_for_width  := (wall_len_m * 0.5) / (half_h * aspect)
 	const FILL := 0.8   # wall fills ~80% of the frame, not edge-to-edge
-	_dist = clampf(maxf(dist_for_height, dist_for_width) / FILL, 1.0, 12.0)
+	var wanted_dist := maxf(dist_for_height, dist_for_width) / FILL
+	# Never let the camera retreat far enough to pop out through the OPPOSITE
+	# wall — that would put it back outside the building again. Room depth
+	# along the viewing axis is the hard ceiling, with a little clearance.
+	var room_depth_m := _room_d_m if edge in ["north", "south"] else _room_w_m
+	_dist = clampf(wanted_dist, 1.0, maxf(room_depth_m - 0.3, 1.0))
 	_update_camera()
 	_apply_wall_focus_furniture_visibility(edge)
 
