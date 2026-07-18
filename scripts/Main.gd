@@ -1178,15 +1178,14 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	_last_wall_click_by_floor[apt_floor.floor_id] = {
 		"edge": edge, "span_lo": span_lo, "span_hi": span_hi,
 	}
-	# Clicking a wall edge always jumps straight into the 3D view, camera
-	# orbiting to face that exact wall — replaces the old 2D Wall Inspector
-	# modal entirely. VIEW3D already handled walls directly (drag items onto
-	# them) with no 2D panel at all; this just makes the floor-plan click use
-	# that same path instead of opening a separate popup.
+	# Clicking a wall edge jumps into the 3D view — replaces the old 2D Wall
+	# Inspector modal entirely. VIEW3D already handles walls directly (drag
+	# items onto them) with no 2D panel at all. There's no scripted camera
+	# orbit onto the specific wall (removed — needed constant per-room tuning
+	# and free orbiting already covers the same need); players position
+	# themselves manually from here.
 	if _view_mode != ViewMode.VIEW3D:
 		_set_view_mode(ViewMode.VIEW3D)
-	if is_instance_valid(_mode3d_view):
-		_mode3d_view.focus_on_wall(edge, span_lo, span_hi)
 
 
 # Up/W and Down/S shortcuts — step to the floor directly above/below in the
