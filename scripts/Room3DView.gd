@@ -1156,6 +1156,7 @@ func _recenter_camera() -> void:
 	_yaw    = HOME_YAW
 	_pitch  = HOME_PITCH
 	_update_camera()
+	_clear_wall_focus_furniture_visibility()
 
 
 # Orbits the camera to look straight at one exterior wall (edge = "north" /
@@ -1165,7 +1166,7 @@ func _recenter_camera() -> void:
 # panel. Reuses the exact same edge->axis/normal mapping _wall_hit_test()
 # already uses for wall-plane hit-testing, so "which way is out" always
 # agrees between the two.
-func focus_on_wall(edge: String, span_lo: int, span_hi: int) -> void:
+func focus_on_wall(edge: String, _span_lo: int, _span_hi: int) -> void:
 	if _room_w_m <= 0.0 and _room_d_m <= 0.0:
 		return
 	const NORMALS := {
@@ -1173,14 +1174,19 @@ func focus_on_wall(edge: String, span_lo: int, span_hi: int) -> void:
 		"west":  Vector3(-1, 0, 0), "east":  Vector3(1, 0, 0),
 	}
 	var normal: Vector3 = NORMALS.get(edge, Vector3(0, 0, -1))
-	var mid_m := (span_lo + span_hi) * 0.5 * TILE_M
+	# Centre on the WHOLE wall's midpoint, not just the clicked sub-span —
+	# span_lo/span_hi is only the contiguous segment under the cursor (it can
+	# be split by doors/windows/other rooms), but _dist below is sized to
+	# frame the entire wall. Centring on an off-centre sub-span while
+	# distance assumes the full width pushed the wall to one side of the
+	# frame with the room reading as off-centre.
 	var eye_h := WALL_H_M * 0.45
 	match edge:
-		"north": _center = Vector3(mid_m, eye_h, 0.0)
-		"south": _center = Vector3(mid_m, eye_h, _room_d_m)
-		"west":  _center = Vector3(0.0, eye_h, mid_m)
-		"east":  _center = Vector3(_room_w_m, eye_h, mid_m)
-		_:       _center = Vector3(mid_m, eye_h, 0.0)
+		"north": _center = Vector3(_room_w_m * 0.5, eye_h, 0.0)
+		"south": _center = Vector3(_room_w_m * 0.5, eye_h, _room_d_m)
+		"west":  _center = Vector3(0.0, eye_h, _room_d_m * 0.5)
+		"east":  _center = Vector3(_room_w_m, eye_h, _room_d_m * 0.5)
+		_:       _center = Vector3(_room_w_m * 0.5, eye_h, 0.0)
 	# _update_camera()'s offset formula is
 	# (cos(pitch)*sin(yaw), -sin(pitch), cos(pitch)*cos(yaw)) * dist — solving
 	# for the yaw that puts the camera on the `normal` side (so
@@ -1207,6 +1213,43 @@ func focus_on_wall(edge: String, span_lo: int, span_hi: int) -> void:
 	const FILL := 0.8   # wall fills ~80% of the frame, not edge-to-edge
 	_dist = clampf(maxf(dist_for_height, dist_for_width) / FILL, 1.0, 12.0)
 	_update_camera()
+	_apply_wall_focus_furniture_visibility(edge)
+
+
+# Margin (metres) within which a floor piece counts as "against" the focused
+# wall — generous enough for a headboard/sofa back that sits a few
+# centimetres proud of the wall, tight enough that anything actually out in
+# the room still hides.
+const WALL_FOCUS_MARGIN_M := 0.6
+
+# While focused on one wall, floor furniture that ISN'T pushed up against it
+# only clutters the shot and blocks the view of what's actually being worked
+# on — hide it. Restored by _recenter_camera() (the only other way this
+# camera repositions itself away from a specific wall).
+func _apply_wall_focus_furniture_visibility(edge: String) -> void:
+	for entry in _furniture_entries:
+		var mesh: MeshInstance3D = entry["mesh"]
+		if not is_instance_valid(mesh):
+			continue
+		var pos: Vector3 = entry["pos"]
+		var fsize: Vector3 = entry["size"]
+		var near: float
+		match edge:
+			"north": near = pos.z - fsize.z * 0.5
+			"south": near = _room_d_m - (pos.z + fsize.z * 0.5)
+			"west":  near = pos.x - fsize.x * 0.5
+			"east":  near = _room_w_m - (pos.x + fsize.x * 0.5)
+			_:       near = 0.0
+		mesh.visible = near <= WALL_FOCUS_MARGIN_M
+
+
+# Undoes _apply_wall_focus_furniture_visibility — every floor piece visible
+# again, for whenever the camera leaves a specific-wall focus.
+func _clear_wall_focus_furniture_visibility() -> void:
+	for entry in _furniture_entries:
+		var mesh: MeshInstance3D = entry["mesh"]
+		if is_instance_valid(mesh):
+			mesh.visible = true
 
 
 # The "reveal" moment: a short scripted camera sweep over the finished room
