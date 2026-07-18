@@ -2899,10 +2899,17 @@ func _cancel_placement() -> void:
 
 
 func _update_placed_furniture_overlay() -> void:
-	# Remove old preview nodes
+	# Remove old preview nodes — must unregister from _floor's own furniture
+	# tracking (_placed/_placed_continuous) BEFORE freeing, or the freed node
+	# lingers in that list and crashes the next place_furniture() call
+	# elsewhere (_recalculate_zones() casts every tracked item to Furniture,
+	# including stale freed ones) with "Trying to cast a freed object."
 	for pn in _furn_preview_nodes:
 		if is_instance_valid(pn):
-			pn.queue_free()
+			if is_instance_valid(_floor):
+				_floor.remove_furniture(pn)
+			else:
+				pn.queue_free()
 	_furn_preview_nodes.clear()
 
 	if not is_instance_valid(_room):

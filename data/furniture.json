@@ -3670,7 +3670,8 @@
       "buy_price": 60,
       "sell_price": 20,
       "color": "8a6848",
-      "model": "res://assets/models/furniture/chair.glb"
+      "model": "res://assets/models/furniture/chair.glb",
+      "model_extended": "res://assets/models/furniture/chairCushion.glb"
     },
     {
       "placement": "floor",
@@ -3720,7 +3721,8 @@
       "buy_price": 120,
       "sell_price": 45,
       "color": "907048",
-      "model": "res://assets/models/furniture/benchCushionLow.glb"
+      "model": "res://assets/models/furniture/benchCushionLow.glb",
+      "model_extended": "res://assets/models/furniture/benchCushion.glb"
     },
     {
       "placement": "floor",
