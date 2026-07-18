@@ -3148,7 +3148,8 @@
       "buy_price": 440,
       "sell_price": 175,
       "color": "6a9e78",
-      "model": "res://assets/models/furniture/desk.glb"
+      "model": "res://assets/models/furniture/desk.glb",
+      "model_extended": "res://assets/models/furniture/deskCorner.glb"
     },
     {
       "placement": "floor",
@@ -3697,7 +3698,8 @@
       "buy_price": 130,
       "sell_price": 50,
       "color": "806848",
-      "model": "res://assets/models/furniture/stoolBarSquare.glb"
+      "model": "res://assets/models/furniture/stoolBarSquare.glb",
+      "model_extended": "res://assets/models/furniture/stoolBar.glb"
     },
     {
       "placement": "wall",
