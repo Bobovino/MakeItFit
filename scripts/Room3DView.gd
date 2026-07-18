@@ -1158,6 +1158,57 @@ func _recenter_camera() -> void:
 	_update_camera()
 
 
+# Orbits the camera to look straight at one exterior wall (edge = "north" /
+# "south" / "east" / "west", span_lo/span_hi = the clicked sub-span in tiles)
+# — this is what replaced the old 2D Wall Inspector modal: Main.gd's floor-
+# plan wall click now jumps into 3D and calls this instead of opening that
+# panel. Reuses the exact same edge->axis/normal mapping _wall_hit_test()
+# already uses for wall-plane hit-testing, so "which way is out" always
+# agrees between the two.
+func focus_on_wall(edge: String, span_lo: int, span_hi: int) -> void:
+	if _room_w_m <= 0.0 and _room_d_m <= 0.0:
+		return
+	const NORMALS := {
+		"north": Vector3(0, 0, -1), "south": Vector3(0, 0, 1),
+		"west":  Vector3(-1, 0, 0), "east":  Vector3(1, 0, 0),
+	}
+	var normal: Vector3 = NORMALS.get(edge, Vector3(0, 0, -1))
+	var mid_m := (span_lo + span_hi) * 0.5 * TILE_M
+	var eye_h := WALL_H_M * 0.45
+	match edge:
+		"north": _center = Vector3(mid_m, eye_h, 0.0)
+		"south": _center = Vector3(mid_m, eye_h, _room_d_m)
+		"west":  _center = Vector3(0.0, eye_h, mid_m)
+		"east":  _center = Vector3(_room_w_m, eye_h, mid_m)
+		_:       _center = Vector3(mid_m, eye_h, 0.0)
+	# _update_camera()'s offset formula is
+	# (cos(pitch)*sin(yaw), -sin(pitch), cos(pitch)*cos(yaw)) * dist — solving
+	# for the yaw that puts the camera on the `normal` side (so
+	# _update_wall_visibility sees this exact wall as "camera is outside,
+	# fade it") at pitch ≈ 0 gives yaw = atan2(normal.x, normal.z).
+	_yaw   = rad_to_deg(atan2(normal.x, normal.z))
+	_pitch = -14.0   # near head-on, not the default top-down-ish HOME_PITCH
+	# Frame the WHOLE wall the clicked span belongs to, not just that
+	# sub-span — a short span (e.g. one segment between two doors) would
+	# otherwise pull the camera in uncomfortably close.
+	var wall_len_m := _room_w_m if edge in ["north", "south"] else _room_d_m
+	# Distance has to come from the camera's actual FOV/aspect, not a flat
+	# multiple of the wall's width — a wall is much shorter than it is wide
+	# (2.4m tall vs several metres across), so with the default ~75° vertical
+	# FOV, HEIGHT is almost always the binding constraint: framing by width
+	# alone left the wall filling only a third of the frame, with a huge gulf
+	# of empty sky/ground above and below it.
+	var fov_v  := deg_to_rad(cam.fov if cam.fov > 0.0 else 75.0)
+	var half_h := tan(fov_v * 0.5)
+	var csize  := container.size
+	var aspect := (csize.x / csize.y) if csize.y > 0.0 else 16.0 / 9.0
+	var dist_for_height := (WALL_H_M * 0.5) / half_h
+	var dist_for_width  := (wall_len_m * 0.5) / (half_h * aspect)
+	const FILL := 0.8   # wall fills ~80% of the frame, not edge-to-edge
+	_dist = clampf(maxf(dist_for_height, dist_for_width) / FILL, 1.0, 12.0)
+	_update_camera()
+
+
 # The "reveal" moment: a short scripted camera sweep over the finished room
 # instead of the player's last interactive camera angle, played once on a
 # successful RENT OUT (see Main.gd's _on_rent_pressed). Starts pulled back

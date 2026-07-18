@@ -1178,17 +1178,15 @@ func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: 
 	_last_wall_click_by_floor[apt_floor.floor_id] = {
 		"edge": edge, "span_lo": span_lo, "span_hi": span_hi,
 	}
-	# VIEW3D handles walls directly in the 3D pane instead — opening the
-	# WallInspector modal here too used to cover that pane with a full-height
-	# popup instead of just highlighting the edge on the plan.
-	if _view_mode == ViewMode.VIEW3D:
-		return
-	var sibling_id := (apt_floor.parent_id if apt_floor.floor_type == "loft"
-		else apt_floor.floor_id + "_loft")
-	var sibling := _floors.get(sibling_id) as Floor
-	wall_inspector.show_wall(apt_floor, edge, sibling, span_lo, span_hi)
-	_position_wall_inspector_modal()
-	_set_mode_hint("")
+	# Clicking a wall edge always jumps straight into the 3D view, camera
+	# orbiting to face that exact wall — replaces the old 2D Wall Inspector
+	# modal entirely. VIEW3D already handled walls directly (drag items onto
+	# them) with no 2D panel at all; this just makes the floor-plan click use
+	# that same path instead of opening a separate popup.
+	if _view_mode != ViewMode.VIEW3D:
+		_set_view_mode(ViewMode.VIEW3D)
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.focus_on_wall(edge, span_lo, span_hi)
 
 
 # Up/W and Down/S shortcuts — step to the floor directly above/below in the
@@ -1220,11 +1218,11 @@ func _step_moment(direction: int) -> void:
 		_on_moment_selected(next_id)
 
 
-# "Q" shortcut — reopen the last wall panel inspected on the current floor,
-# without having to re-find and re-click the same edge on the plan.
+# "Q" shortcut — reopen (or re-focus, now that wall clicks jump into 3D) the
+# last wall inspected on the current floor, without having to re-find and
+# re-click the same edge on the plan. Works from either view mode now: there's
+# no separate 2D wall state to be "already in" any more.
 func _reopen_last_wall() -> void:
-	if _view_mode != ViewMode.TOPDOWN:
-		return
 	var last := _last_wall_click_by_floor.get(_current_floor_id, {}) as Dictionary
 	if last.is_empty():
 		_set_mode_hint("No wall inspected on this floor yet")
