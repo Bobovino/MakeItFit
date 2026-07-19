@@ -238,8 +238,15 @@ func _on_container_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		_last_local_mouse = mm.position
 		if _buying_furniture:
-			_hide_hover_highlight()
-			_update_buy_ghost(_to_vp(mm.position))
+			# Skip while the cursor is over some other UI panel (e.g. the shop
+			# list) instead of the 3D view itself — this script's _input()
+			# receives every mouse-motion event regardless of what's drawn on
+			# top, so without this guard the ghost would jump to wherever that
+			# screen point happens to raycast into the room, which has nothing
+			# to do with a deliberate cursor position over the room.
+			if _mouse_over_own_view():
+				_hide_hover_highlight()
+				_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
 			_hide_hover_highlight()
 			_update_furniture_drag(_to_vp(mm.position))
@@ -301,6 +308,20 @@ func _input(event: InputEvent) -> void:
 
 
 # Picking / dragging helpers
+
+# This script's _input() sees every mouse-motion event regardless of z-order —
+# unlike _gui_input, nothing about another Control being drawn on top of the
+# 3D view stops it from arriving here. Buy-ghost placement needs to tell the
+# difference: a screen point sitting under the shop panel still raycasts to
+# *something* in the room (the SubViewport spans the same rect either way),
+# it's just not a position the player actually pointed at. Checked against
+# gui_get_hovered_control() (the actual topmost Control under the cursor)
+# rather than container's own rect, since sibling UI panels can overlap that
+# rect without shrinking it.
+func _mouse_over_own_view() -> bool:
+	var hovered := get_viewport().gui_get_hovered_control()
+	return hovered == null or hovered == self or is_ancestor_of(hovered)
+
 
 func _to_vp(pos: Vector2) -> Vector2:
 	var csize := container.size
@@ -481,12 +502,30 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
 	_set_grid_overlay_visible(true)
 	_set_hitbox_highlights_visible(true)
+	# The box above spawns at a hardcoded position near the room's own origin
+	# corner (not wherever the cursor actually is) — _update_buy_ghost() only
+	# ever runs off mouse-MOTION events, so if Buy was clicked from a UI panel
+	# (the shop list) and the mouse hasn't moved since, that raw spawn
+	# position stuck around indefinitely, showing as a ghost box sitting in
+	# the room's corner overlapping real furniture there. Hide it until the
+	# cursor is actually over the 3D view itself — _mouse_over_own_view()
+	# guards against the other half of the same bug: this script's _input()
+	# sees every mouse-motion event regardless of what UI panel is drawn on
+	# top (unlike _gui_input, which the shop panel would consume first), so
+	# naively raycasting from the cursor's last position the instant Buy is
+	# clicked can land the ghost wherever that screen point happens to
+	# project into the room — which is wherever the shop panel sits on
+	# screen, not a deliberate cursor position over the room at all.
+	_buying_mesh.visible = false
+	if _mouse_over_own_view():
+		_update_buy_ghost(_to_vp(_last_local_mouse))
 
 
 func _update_buy_ghost(vp_pos: Vector2) -> void:
 	var hit := _scene_hit(vp_pos)
 	if hit.is_empty():
 		return
+	_buying_mesh.visible = true
 	var iw: int = _buying_furniture.grid_w
 	var box := _buying_mesh.mesh as BoxMesh
 	if hit["mode"] == "wall":
