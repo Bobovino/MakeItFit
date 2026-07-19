@@ -918,8 +918,17 @@ func _position_tenant_card() -> void:
 		return
 	tenant_card.offset_left  = LEFT_X
 	tenant_card.offset_right = RIGHT_X
-	tenant_card.reset_size()
-	var content_h := maxf(tenant_card.size.y, 36.0)
+	# NOT reset_size() here — unlike Minimap/ViewModeBox (which want to shrink
+	# to their natural content width), this bar's whole point is to STAY the
+	# full LEFT_X..RIGHT_X width. reset_size() calls size = Vector2(), and
+	# Control's size setter always recomputes offset_right from offset_left +
+	# minimum width — silently overwriting the RIGHT_X just set above and
+	# collapsing the bar down to a tiny shrink-wrapped cluster (which also
+	# forced the checklist to wrap into extra rows it then had no height
+	# budget for, clipping off the bottom of the screen).
+	# get_combined_minimum_size() alone re-measures children at the CURRENT
+	# (already-fixed-width) rect without touching offsets.
+	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 36.0)
 	tenant_card.offset_bottom = BOT_Y - 8.0
 	tenant_card.offset_top    = BOT_Y - 8.0 - content_h
 

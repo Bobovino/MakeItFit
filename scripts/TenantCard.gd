@@ -51,16 +51,23 @@ const NEED_GLYPH := {
 
 
 func _ready() -> void:
+	# A full-width bottom HUD strip now, not a floating quest-tracker card —
+	# a border/rounded-corner treatment on all four sides read as a card
+	# hovering over the scene; a bar reads as part of the screen's edge, so
+	# only the top edge gets a border/shadow (matching how TopBarBg used to
+	# frame the old top strip) and corners go square.
 	var paper := StyleBoxFlat.new()
-	paper.bg_color = Color(0.05, 0.05, 0.05, 0.38)
+	paper.bg_color = Color(0.05, 0.05, 0.05, 0.55)
 	paper.border_color = Color(1, 1, 1, 0.14)
-	paper.set_border_width_all(1)
-	paper.set_corner_radius_all(6)
-	paper.set_content_margin_all(12)
+	paper.set_border_width(SIDE_TOP, 1)
+	paper.set_content_margin(SIDE_LEFT, 12)
+	paper.set_content_margin(SIDE_RIGHT, 12)
+	paper.set_content_margin(SIDE_TOP, 8)
+	paper.set_content_margin(SIDE_BOTTOM, 8)
 	paper.anti_aliasing = true
-	paper.shadow_color = Color(0, 0, 0, 0.25)
+	paper.shadow_color = Color(0, 0, 0, 0.3)
 	paper.shadow_size = 6
-	paper.shadow_offset = Vector2(0, 3)
+	paper.shadow_offset = Vector2(0, -2)
 	add_theme_stylebox_override("panel", paper)
 
 	# Now a bottom status bar, not a quest-tracker sidebar column — the name/
@@ -73,6 +80,12 @@ func _ready() -> void:
 	rent_label.visible = false
 
 	checklist_container.add_theme_constant_override("separation", 14)
+	# Needs its own available width actually handed down from the bar's full
+	# span, or the nested HFlowContainer rows below only ever see their own
+	# cramped natural minimum width and wrap into extra rows they have no
+	# height budget for (clipping off the bottom of the screen) even though
+	# the bar itself has plenty of room.
+	checklist_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_build_rent_btn()
 
@@ -93,6 +106,14 @@ func _update_card_height() -> void:
 # already is (in the quest tracker) instead of a separate top-bar button the
 # player has to notice on their own.
 func _build_rent_btn() -> void:
+	# Pushes RENT OUT to the bar's far right edge, away from Budget/moments on
+	# the left — a status bar reads better with its "primary action" pinned to
+	# one end than crowded right up against the last chip.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var hbox_ := $VBox as HBoxContainer
+	hbox_.add_child(spacer)
+
 	_rent_btn = Button.new()
 	_rent_btn.text = "RENT OUT"
 	_rent_btn.add_theme_font_size_override("font_size", 13)
@@ -173,6 +194,11 @@ func _build_checklist(required: Array) -> void:
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 7)
 	row.add_theme_constant_override("v_separation", 7)
+	# Without this the row only ever measures its own cramped natural width
+	# inside checklist_container (an HBoxContainer, which doesn't stretch a
+	# plain child to fill available space) and wraps into extra rows well
+	# before it actually runs out of real screen space.
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	checklist_container.add_child(row)
 	for func_name in required:
 		var chip := _make_need_chip(func_name, false)
@@ -203,6 +229,7 @@ func _build_moment_checklist() -> void:
 		# vertically) so multiple moments read left-to-right along the bar.
 		var group := HBoxContainer.new()
 		group.add_theme_constant_override("separation", 8)
+		group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		checklist_container.add_child(group)
 
 		var hdr := _make_moment_header_btn(label.to_upper(), mid)
@@ -212,6 +239,7 @@ func _build_moment_checklist() -> void:
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 7)
 		row.add_theme_constant_override("v_separation", 7)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		group.add_child(row)
 
 		_moment_check_chips[mid] = {}
