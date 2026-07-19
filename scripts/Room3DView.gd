@@ -1102,22 +1102,75 @@ func _active_model_path(fdata: Dictionary, is_extended: bool) -> String:
 	return fdata.get("model", "") as String
 
 
+const FOLD_CROSSFADE_DUR := 0.35   # seconds a stale model takes to fade out after being replaced
+
 func _update_fold_visual() -> void:
 	if not is_instance_valid(_fold_mesh):
 		return
 	var mesh := _fold_mesh.mesh as BoxMesh
-	mesh.size           = _fold_closed_size.lerp(_fold_open_size, _fold_t)
-	_fold_mesh.position = _fold_closed_pos.lerp(_fold_open_pos, _fold_t)
+	var box_size: Vector3 = _fold_closed_size.lerp(_fold_open_size, _fold_t)
+	var box_pos:  Vector3 = _fold_closed_pos.lerp(_fold_open_pos, _fold_t)
+	mesh.size           = box_size
+	_fold_mesh.position = box_pos
 	# The two states are real, distinct Kenney models (not a single mesh that
-	# can morph continuously), so the swap itself has to be a hard cut rather
-	# than blended — only the box's own size/position lerp smoothly, as a
-	# "slide into place" cue either side of the cut.
+	# can morph continuously), so the swap itself can't be a smooth vertex
+	# blend — but a hard, instant cut still reads as "the sofa vanished and a
+	# bed appeared out of nowhere". Instead: leave a fading ghost of the OLD
+	# model in place (shrinking away over FOLD_CROSSFADE_DUR while the new one
+	# fades in), so there's always visible "rastro" of what it used to be
+	# through the swap instead of a pop. The box itself keeps sliding/resizing
+	# every frame (below) so the model continues growing/shrinking into its
+	# final state on both sides of the cut, not just snapping to it.
 	var want_extended := _fold_t >= 0.5
 	if want_extended != _fold_model_extended_shown:
+		_spawn_fold_ghost(_fold_model_extended_shown, box_size, box_pos)
 		_fold_model_extended_shown = want_extended
-		var box_size := _fold_open_size if want_extended else _fold_closed_size
 		_apply_item_model(_fold_mesh, _active_model_path(_fold_fdata, want_extended), box_size,
 			_fold_fdata.get("hide_nodes", []) as Array)
+		if _fold_mesh.has_meta("model_inst"):
+			var new_inst: Node = _fold_mesh.get_meta("model_inst")
+			_set_model_transparency(new_inst, 1.0)
+			var tw := create_tween()
+			tw.tween_method(func(t: float) -> void: _set_model_transparency(new_inst, t), 1.0, 0.0, FOLD_CROSSFADE_DUR)
+	else:
+		_refit_item_model(_fold_mesh, box_size)
+
+
+# Every GeometryInstance3D (which MeshInstance3D is) has a built-in per-instance
+# "transparency" (screen-door/dithered alpha) that fades it out without having
+# to touch its own material — works uniformly across however many distinct
+# materials a Kenney model's sub-meshes carry, unlike animating albedo alpha
+# on each one individually.
+func _set_model_transparency(node: Node, t: float) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).transparency = t
+	for c in node.get_children():
+		_set_model_transparency(c, t)
+
+
+# Leaves a fading copy of the OUTGOING fold state's model in place at the
+# moment of the swap — gives the transition visible "rastro" of the previous
+# shape (e.g. the closed sofa silhouette lingering as the bed fades in) instead
+# of it just vanishing the instant the new model appears.
+func _spawn_fold_ghost(old_extended: bool, box_size: Vector3, box_pos: Vector3) -> void:
+	var old_path := _active_model_path(_fold_fdata, old_extended)
+	if old_path.is_empty():
+		return
+	var ghost := MeshInstance3D.new()
+	ghost.position = box_pos
+	var ghost_mat := StandardMaterial3D.new()
+	ghost_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ghost_mat.albedo_color.a = 0.0
+	ghost.material_override = ghost_mat
+	build_root.add_child(ghost)
+	_apply_item_model(ghost, old_path, box_size, _fold_fdata.get("hide_nodes", []) as Array)
+	if not ghost.has_meta("model_inst"):
+		ghost.queue_free()
+		return
+	var inst: Node = ghost.get_meta("model_inst")
+	var tw := create_tween()
+	tw.tween_method(func(t: float) -> void: _set_model_transparency(inst, t), 0.0, 1.0, FOLD_CROSSFADE_DUR)
+	tw.tween_callback(ghost.queue_free)
 
 
 func _update_camera() -> void:
