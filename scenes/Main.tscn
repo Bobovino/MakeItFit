@@ -23,14 +23,16 @@ position = Vector2(220, 52)
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 1280.0
-offset_bottom = 46.0
+offset_bottom = 10.0
 mouse_filter = 2
+visible = false
 
 [node name="TopBar" type="HBoxContainer" parent="UI"]
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 1280.0
-offset_bottom = 46.0
+offset_bottom = 10.0
+visible = false
 
 [node name="Label" type="Label" parent="UI/TopBar"]
 text = "Budget: 3000€"
@@ -109,7 +111,7 @@ visible = false
 
 [node name="Inventory" type="PanelContainer" parent="UI"]
 offset_left = 0.0
-offset_top = 46.0
+offset_top = 10.0
 offset_right = 170.0
 offset_bottom = 720.0
 script = ExtResource("5")
@@ -123,13 +125,13 @@ horizontal_scroll_mode = 0
 size_flags_horizontal = 3
 
 [node name="TenantCard" type="PanelContainer" parent="UI"]
-offset_left = 1146.0
-offset_top = 64.0
-offset_right = 1272.0
+offset_left = 170.0
+offset_top = 680.0
+offset_right = 1280.0
 offset_bottom = 720.0
 script = ExtResource("4")
 
-[node name="VBox" type="VBoxContainer" parent="UI/TenantCard"]
+[node name="VBox" type="HBoxContainer" parent="UI/TenantCard"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 6.0
@@ -152,7 +154,7 @@ text = "0€/month"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 10
 
-[node name="Checklist" type="VBoxContainer" parent="UI/TenantCard/VBox"]
+[node name="Checklist" type="HBoxContainer" parent="UI/TenantCard/VBox"]
 
 [node name="ResultScreen" type="CanvasLayer" parent="."]
 script = ExtResource("6")

@@ -17,7 +17,8 @@ const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 @onready var ui_layer:     CanvasLayer   = $UI
 
 const TILE_SIZE := 8          # pixels per grid tile — matches Floor/GridDraw
-const TOP_Y     := 46.0       # top bar height
+const TOP_Y     := 10.0       # slim top margin — the old full-width bar is gone; only a
+							   # floating gear icon (and Test Layout, when shown) sit up here now
 const BOT_Y     := 720.0      # bottom of the play area — full window height now that
 							   # the furniture/tenant panels are side columns, not a bottom bar
 const FIT_PCT   := 0.95       # fraction of available area to fill
@@ -39,6 +40,9 @@ var _split_y:          float = 460.0
 var _dragging_divider: bool = false
 var _undo_btn: Button = null   # floating corner button over the floor plan, top-right of the play area
 var _redo_btn: Button = null   # sits directly left of _undo_btn, same floating row
+var _test_btn: Button = null   # floating "Test Layout" toggle, top-left — only shown for levels with foldable furniture and no moments
+var _settings_btn: Button = null   # floating gear-only menu button, top-right corner
+var _view_mode_box: HBoxContainer = null   # floating Floor Plan/3D segmented toggle, stacked directly above the floor-tabs Minimap
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
 # ── View mode: two ways to look at the same apartment, both reading/writing
@@ -188,16 +192,15 @@ func _apply_ui_theme() -> void:
 	bp.set_content_margin(SIDE_TOP, 3)
 	bp.set_content_margin(SIDE_BOTTOM, 3)
 	budget_label.add_theme_stylebox_override("normal", bp)
-	# The label doubled as the bar's flexible spacer — a stretched pill looks
-	# wrong, so shrink it and hand the flex duty to a dedicated spacer.
 	budget_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var tb := $UI/TopBar as HBoxContainer
-	if not tb.has_node("BudgetSpacer"):
-		var bsp := Control.new()
-		bsp.name = "BudgetSpacer"
-		bsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tb.add_child(bsp)
-		tb.move_child(bsp, budget_label.get_index() + 1)
+	# The old TopBar is gone — Budget now lives at the near (left) end of the
+	# bottom TenantCard bar, right alongside the moments/needs it funds.
+	var tenant_hbox := tenant_card.get_node("VBox") as HBoxContainer
+	if budget_label.get_parent() != tenant_hbox:
+		if budget_label.get_parent():
+			budget_label.get_parent().remove_child(budget_label)
+		tenant_hbox.add_child(budget_label)
+		tenant_hbox.move_child(budget_label, 0)
 
 	var rs := GameTheme.make_rent_btn_style()
 	rent_btn.add_theme_stylebox_override("normal",   rs[0])
@@ -210,25 +213,27 @@ func _apply_ui_theme() -> void:
 	rent_btn.add_theme_color_override("font_disabled_color", GameTheme.C_MUTED)
 	rent_btn.add_theme_font_size_override("font_size", 13)
 
-	var top := $UI/TopBar as HBoxContainer
+	# The old full-width TopBar is gone — Budget/moments moved into the bottom
+	# TenantCard bar, and the view-mode toggle/gear menu/Test Layout button
+	# below are all floated directly on ui_layer (like Undo/Redo already were)
+	# instead of living in that now-empty bar.
 
 	# Test mode button — only visible if level has foldable furniture
-	if not top.has_node("TestBtn"):
-		var test_btn := Button.new()
-		test_btn.name        = "TestBtn"
-		test_btn.text        = "Test Layout"
-		test_btn.toggle_mode = true
-		test_btn.add_theme_font_size_override("font_size", 11)
-		test_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		test_btn.toggled.connect(_on_test_toggled)
-		top.add_child(test_btn)
-		top.move_child(test_btn, top.get_child_count() - 2)
-	if top.has_node("TestBtn"):
-		top.get_node("TestBtn").visible = false  # updated after level load
+	if not is_instance_valid(_test_btn):
+		_test_btn = Button.new()
+		_test_btn.name        = "TestBtn"
+		_test_btn.text        = "Test Layout"
+		_test_btn.toggle_mode = true
+		_test_btn.add_theme_font_size_override("font_size", 11)
+		_test_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_test_btn.toggled.connect(_on_test_toggled)
+		_test_btn.visible = false   # updated after level load
+		ui_layer.add_child(_test_btn)
 
 	# View-mode switcher: two ways to look at the apartment (see the ViewMode
-	# enum comment). Mutually exclusive via a ButtonGroup.
-	if not top.has_node("ViewModeBox"):
+	# enum comment). Mutually exclusive via a ButtonGroup. Floats stacked
+	# directly above the floor-tabs Minimap (see _position_view_mode_box).
+	if not is_instance_valid(_view_mode_box):
 		var box := HBoxContainer.new()
 		box.name = "ViewModeBox"
 		box.add_theme_constant_override("separation", 0)
@@ -261,47 +266,22 @@ func _apply_ui_theme() -> void:
 			btn.pressed.connect(_set_view_mode.bind(mode))
 			box.add_child(btn)
 			_mode_buttons[mode] = btn
-		top.add_child(box)
-		top.move_child(box, top.get_child_count() - 2)
+		_view_mode_box = box
+		ui_layer.add_child(box)
 
-	# Undo lives in the TopBar rather than buried in the Furniture/Builder
-	# shop panel — it reverts whatever kind of action happened most recently
-	# (buy/sell/move/fold furniture, or a Builder-tool edit), so it belongs
-	# with the other global, always-available controls, not tucked inside
-	# one specific tab.
-	if not top.has_node("ViewModeSpacer"):
-		var spacer := Control.new()
-		spacer.name = "ViewModeSpacer"
-		spacer.custom_minimum_size = Vector2(24, 0)
-		top.add_child(spacer)
-		top.move_child(spacer, top.get_children().find(rent_btn))
-
-	if not top.has_node("GearSpacer"):
-		var gear_spacer := Control.new()
-		gear_spacer.name = "GearSpacer"
-		gear_spacer.custom_minimum_size = Vector2(14, 0)
-		top.add_child(gear_spacer)
-		top.move_child(gear_spacer, top.get_children().find(rent_btn))
-
-	if not top.has_node("SettingsBtn"):
-		var settings_btn := Button.new()
-		settings_btn.name = "SettingsBtn"
-		# A bare gear glyph (even with a trailing caret) read as pure
-		# decoration — spelling out "Menu" is what actually signals this
-		# opens a dropdown-style panel rather than acting directly.
-		settings_btn.text = "⚙ Menu ▾"
-		settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
-		settings_btn.add_theme_font_size_override("font_size", 13)
-		settings_btn.custom_minimum_size = Vector2(78, 0)
-		settings_btn.pressed.connect(func(): SettingsMenu.open(self))
-		top.add_child(settings_btn)
-		top.move_child(settings_btn, top.get_children().find(rent_btn))
-
-	# Every direct TopBar child gets some minimum breathing room from its
-	# neighbor — segmented pill groups (Minimap's floor tabs, ViewModeBox)
-	# keep their own zero-separation look internally since that's a nested
-	# HBoxContainer with its own override, unaffected by the parent's.
-	top.add_theme_constant_override("separation", 10)
+	if not is_instance_valid(_settings_btn):
+		_settings_btn = Button.new()
+		_settings_btn.name = "SettingsBtn"
+		# Icon-only now that it floats in its own corner instead of sitting in
+		# a labelled bar — "Menu" spelled out next to a gear was needed there
+		# to read as a button at all; alone in the corner the gear reads fine
+		# by itself, same as any other icon-only HUD button.
+		_settings_btn.text = "⚙"
+		_settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
+		_settings_btn.add_theme_font_size_override("font_size", 16)
+		_settings_btn.custom_minimum_size = Vector2(32, 0)
+		_settings_btn.pressed.connect(func(): SettingsMenu.open(self))
+		ui_layer.add_child(_settings_btn)
 
 	if not is_instance_valid(_undo_btn):
 		_undo_btn = Button.new()
@@ -323,9 +303,23 @@ func _apply_ui_theme() -> void:
 		_redo_btn.offset_top = TOP_Y + 8.0
 		_redo_btn.pressed.connect(_redo_builder_action)
 		ui_layer.add_child(_redo_btn)
+	_position_top_left_icons()
 	_position_undo_btn()
 	_position_minimap()
 	_refresh_undo_redo_buttons()
+
+
+# Floats Test Layout and the gear menu in the top-left/top-right corners —
+# all that's left up here now that Budget/view-mode/tenant info moved off the
+# old full-width TopBar.
+func _position_top_left_icons() -> void:
+	if is_instance_valid(_test_btn):
+		_test_btn.offset_left = LEFT_X + 8.0
+		_test_btn.offset_top  = TOP_Y
+	if is_instance_valid(_settings_btn):
+		_settings_btn.offset_right = RIGHT_X - 8.0
+		_settings_btn.offset_left  = _settings_btn.offset_right - (_settings_btn.custom_minimum_size.x as float)
+		_settings_btn.offset_top   = TOP_Y
 
 
 static func _segment_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
@@ -547,9 +541,8 @@ func _load_level(level_id: String) -> void:
 	# Update test button visibility now that floors are loaded.
 	# Levels with moments drive fold interaction via the moment selector instead —
 	# the manual Test Layout toggle would be redundant there.
-	var top_bar := $UI/TopBar as HBoxContainer
-	if top_bar.has_node("TestBtn"):
-		top_bar.get_node("TestBtn").visible = _has_foldable_furniture() and gm.moments.is_empty()
+	if is_instance_valid(_test_btn):
+		_test_btn.visible = _has_foldable_furniture() and gm.moments.is_empty()
 
 	# "Revisar Plano Actual" — CityMap sets this one-shot flag right before
 	# switching scenes when the player picks up a previously-won level instead
@@ -900,7 +893,10 @@ func _update_split(y: float) -> void:
 func _position_minimap() -> void:
 	if not is_instance_valid(minimap):
 		return
-	var right_edge := tenant_card.offset_left - 8.0
+	_position_tenant_card()
+	# Stacked bottom-right, directly above the TenantCard bar now that it
+	# spans the bottom edge instead of sitting in a right-hand column.
+	var right_edge := RIGHT_X - 8.0
 	minimap.offset_right  = right_edge
 	minimap.offset_left   = right_edge - 100.0
 	# Shrink-wrapped to however many floor buttons the current level actually
@@ -908,21 +904,56 @@ func _position_minimap() -> void:
 	# left a big empty panel above a short 2-floor stack.
 	minimap.reset_size()
 	var content_h := maxf(minimap.size.y, 40.0)
-	minimap.offset_bottom = BOT_Y - 8.0
-	minimap.offset_top    = BOT_Y - 8.0 - content_h
+	minimap.offset_bottom = tenant_card.offset_top - 8.0
+	minimap.offset_top    = minimap.offset_bottom - content_h
 	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
+	_position_view_mode_box()
 
 
-# Keeps the floating Undo button pinned to the top-right corner of the play
-# area — just left of the floating TenantCard overlay (which sits at RIGHT_X
-# proper, since RIGHT_X is now the true screen edge and no longer reserves a
-# dedicated tenant sidebar column).
+# TenantCard is now a bottom status bar (moments/needs + Budget) spanning the
+# play area's width, instead of a floating right-hand column — sized to
+# whatever height its own content needs (like Minimap's shrink-wrap below).
+func _position_tenant_card() -> void:
+	if not is_instance_valid(tenant_card):
+		return
+	tenant_card.offset_left  = LEFT_X
+	tenant_card.offset_right = RIGHT_X
+	tenant_card.reset_size()
+	var content_h := maxf(tenant_card.size.y, 36.0)
+	tenant_card.offset_bottom = BOT_Y - 8.0
+	tenant_card.offset_top    = BOT_Y - 8.0 - content_h
+
+
+# The Floor Plan/3D segmented toggle floats directly above the Minimap floor
+# tabs, same right edge, now that both moved off the old TopBar.
+func _position_view_mode_box() -> void:
+	if not is_instance_valid(_view_mode_box):
+		return
+	# Same approach as _position_minimap(): fix left/right BEFORE reset_size()
+	# (which recomputes size from offset_left, so reading offset_right back
+	# out afterward isn't reliable) and only use the post-reset_size() height.
+	var right_edge := RIGHT_X - 8.0
+	_view_mode_box.offset_right = right_edge
+	_view_mode_box.offset_left  = right_edge - 180.0
+	_view_mode_box.reset_size()
+	var content_h := maxf(_view_mode_box.size.y, 24.0)
+	_view_mode_box.offset_bottom = minimap.offset_top - 8.0
+	_view_mode_box.offset_top    = _view_mode_box.offset_bottom - content_h
+	ui_layer.move_child(_view_mode_box, ui_layer.get_child_count() - 1)
+
+
+# Keeps the floating Undo/Redo buttons pinned to the top-right corner of the
+# play area, just left of the gear menu button (both float independently now
+# that the old full-width TopBar is gone).
 func _position_undo_btn() -> void:
 	if not is_instance_valid(_undo_btn):
 		return
-	var right_edge := tenant_card.offset_left - 8.0
-	_undo_btn.offset_right = right_edge - 8.0
-	_undo_btn.offset_left  = right_edge - 8.0 - (_undo_btn.custom_minimum_size.x as float)
+	var right_edge := RIGHT_X - 8.0
+	if is_instance_valid(_settings_btn):
+		right_edge = _settings_btn.offset_left - 8.0
+	_undo_btn.offset_right = right_edge
+	_undo_btn.offset_left  = right_edge - (_undo_btn.custom_minimum_size.x as float)
+	_undo_btn.offset_top   = TOP_Y
 	# The 3D view (and other full-width overlays) get added to ui_layer after
 	# this button, which would otherwise draw over it and block its clicks.
 	ui_layer.move_child(_undo_btn, ui_layer.get_child_count() - 1)

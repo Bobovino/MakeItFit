@@ -7,7 +7,7 @@ signal moment_selected(moment_id: String)
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
 @onready var rent_label: Label = $VBox/Rent
-@onready var checklist_container: VBoxContainer = $VBox/Checklist
+@onready var checklist_container: HBoxContainer = $VBox/Checklist
 
 var _rent_btn: Button = null
 var _rent_available: bool = false
@@ -28,12 +28,6 @@ var _moment_check_chips: Dictionary = {}  # moment_id -> { need -> Control }
 # TopBar doesn't need its own separate Day/Night strip.
 var _moment_header_btns: Dictionary = {}  # moment_id -> Button
 var _moment_group := ButtonGroup.new()
-
-# Collapsed by default: the sidebar is now a narrow compact column, and the
-# flavor paragraph is the one thing that isn't needed at a glance — click the
-# name row to reveal it.
-var _expanded: bool = false
-var _expand_arrow: Label = null
 
 
 # WoW-quest-tracker style: a floating overlay on the game view, not a solid
@@ -69,40 +63,30 @@ func _ready() -> void:
 	paper.shadow_offset = Vector2(0, 3)
 	add_theme_stylebox_override("panel", paper)
 
-	tenant_name_label.add_theme_font_size_override("font_size", 14)
-	tenant_name_label.add_theme_color_override("font_color", INK)
+	# Now a bottom status bar, not a quest-tracker sidebar column — the name/
+	# age, flavor blurb, and rent line were the "who is this tenant" framing
+	# that a tall column had room for; a bar only has room for (and only
+	# needs) the moments/needs themselves, so all three stay permanently
+	# hidden rather than toggled by the old expand header.
+	tenant_name_label.visible = false
+	flavor_label.visible = false
+	rent_label.visible = false
 
-	# The client's own words in handwriting — a note scribbled on the brief
-	var hand := GameTheme.handwriting()
-	if hand:
-		flavor_label.add_theme_font_override("font", hand)
-		flavor_label.add_theme_font_size_override("font_size", 15)
-	else:
-		flavor_label.add_theme_font_size_override("font_size", 10)
-	flavor_label.add_theme_color_override("font_color", INK_MUTED)
-	flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	checklist_container.add_theme_constant_override("separation", 14)
 
-	rent_label.add_theme_font_size_override("font_size", 12)
-	rent_label.add_theme_color_override("font_color", INK_GREEN)
-
-	checklist_container.add_theme_constant_override("separation", 6)
-
-	_build_expand_header()
-	flavor_label.visible = _expanded
 	_build_rent_btn()
 
-	# The card only occupies as much height as its actual content (needs
-	# checklist, rent line, RENT OUT button when it appears) instead of
-	# stretching all the way to the bottom of the screen — VBox's minimum
-	# size already reflects whichever children are visible right now.
-	var vbox := $VBox as VBoxContainer
-	vbox.minimum_size_changed.connect(_update_card_height)
+	# The bar only occupies as much width/height as its actual content (needs
+	# checklist, RENT OUT button when it appears) — HBox's minimum size
+	# already reflects whichever children are visible right now.
+	var hbox := $VBox as HBoxContainer
+	hbox.minimum_size_changed.connect(_update_card_height)
 	_update_card_height()
 
 
 func _update_card_height() -> void:
-	var vbox := $VBox as VBoxContainer
-	size.y = vbox.get_combined_minimum_size().y + 12.0
+	var hbox := $VBox as HBoxContainer
+	size.y = hbox.get_combined_minimum_size().y + 12.0
 
 
 # Hidden until every need is fulfilled, then appears right where the eye
@@ -120,8 +104,8 @@ func _build_rent_btn() -> void:
 	_rent_btn.add_theme_stylebox_override("pressed", rs[1])
 	_rent_btn.visible = false
 	_rent_btn.pressed.connect(func(): rent_out_requested.emit())
-	var vbox := $VBox as VBoxContainer
-	vbox.add_child(_rent_btn)
+	var hbox := $VBox as HBoxContainer
+	hbox.add_child(_rent_btn)
 
 
 # Called by Main.gd right after a successful RENT OUT — the win condition
@@ -156,49 +140,6 @@ func set_rent_available(available: bool) -> void:
 				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 			tw.tween_property(_rent_btn, "scale", Vector2.ONE, 0.12) \
 				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-
-
-# Wraps the name label in a header row with a ▸/▾ toggle button — clicking it
-# (or the name itself) reveals the flavor paragraph, which stays hidden by
-# default so the compact sidebar only shows it on request.
-func _build_expand_header() -> void:
-	var parent := tenant_name_label.get_parent() as VBoxContainer
-	var idx := tenant_name_label.get_index()
-	parent.remove_child(tenant_name_label)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 4)
-	header.mouse_filter = Control.MOUSE_FILTER_STOP
-	header.gui_input.connect(_on_header_gui_input)
-	parent.add_child(header)
-	parent.move_child(header, idx)
-
-	tenant_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tenant_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(tenant_name_label)
-
-	# A plain arrow glyph, not a Button — the whole header row is already the
-	# click target (see _on_header_gui_input), so there's no separate button
-	# chrome pretending to be a distinct control.
-	_expand_arrow = Label.new()
-	_expand_arrow.text = "▸"
-	_expand_arrow.add_theme_font_size_override("font_size", 11)
-	_expand_arrow.add_theme_color_override("font_color", INK_MUTED)
-	_expand_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(_expand_arrow)
-
-
-func _on_header_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed \
-	and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		_toggle_expanded()
-
-
-func _toggle_expanded() -> void:
-	_expanded = not _expanded
-	flavor_label.visible = _expanded
-	if is_instance_valid(_expand_arrow):
-		_expand_arrow.text = "▾" if _expanded else "▸"
 
 
 func setup(tenant: Dictionary) -> void:
@@ -249,22 +190,29 @@ func _build_moment_checklist() -> void:
 		var needs := m["needs"] as Array
 
 		# Extra breathing room before every section after the first — otherwise
-		# a header sits exactly as close to its OWN row as it does to the
+		# a group sits exactly as close to its OWN row as it does to the
 		# previous section's row, and the two moments read as one blob instead
-		# of two distinct groups.
+		# of two distinct groups. Vertical separator now that groups sit
+		# side-by-side in the bottom bar rather than stacked.
 		if i > 0:
 			var gap := Control.new()
-			gap.custom_minimum_size = Vector2(0, 8)
+			gap.custom_minimum_size = Vector2(18, 0)
 			checklist_container.add_child(gap)
 
+		# Header + its chip row now form one horizontal group (was stacked
+		# vertically) so multiple moments read left-to-right along the bar.
+		var group := HBoxContainer.new()
+		group.add_theme_constant_override("separation", 8)
+		checklist_container.add_child(group)
+
 		var hdr := _make_moment_header_btn(label.to_upper(), mid)
-		checklist_container.add_child(hdr)
+		group.add_child(hdr)
 		_moment_header_btns[mid] = hdr
 
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 7)
 		row.add_theme_constant_override("v_separation", 7)
-		checklist_container.add_child(row)
+		group.add_child(row)
 
 		_moment_check_chips[mid] = {}
 		for func_name in needs:
