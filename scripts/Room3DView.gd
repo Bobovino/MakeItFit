@@ -572,12 +572,27 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		var rs: int = _buying_furniture.rot_steps
 		var canon := Vector3(box.size.z, box.size.y, box.size.x) if rs % 2 == 1 else box.size
 		_refit_item_model(_buying_mesh, canon)
-		_show_drag_highlight(Vector2(box.size.x, box.size.z))
-		_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 		if _apt_floor and not _apt_floor.can_place(_buying_furniture, tile):
-			_show_reason(_apt_floor.get_block_reason())
+			var reason := _apt_floor.get_block_reason()
+			_show_reason(reason)
+			# The ground-hit raycast isn't clipped to the room's own footprint,
+			# so pointing anywhere past the walls (open ground/sky) computes a
+			# perfectly valid — just very far away — 3D position. Rendering the
+			# ghost box there reads as a broken floating artifact rather than
+			# useful drag feedback, since there's nothing nearby to judge scale
+			# or placement against. Hide the box itself in that case; the
+			# reason label alone ("Outside the room") already tells the player
+			# why nothing is being placed.
+			if reason == "Outside the room":
+				_buying_mesh.visible = false
+				_hide_drag_highlight()
+			else:
+				_show_drag_highlight(Vector2(box.size.x, box.size.z))
+				_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 		else:
 			_hide_reason()
+			_show_drag_highlight(Vector2(box.size.x, box.size.z))
+			_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
