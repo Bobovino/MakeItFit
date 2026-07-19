@@ -676,6 +676,7 @@ func _sell_furniture(hit: Dictionary) -> void:
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
+	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
 
 
 # Drops a Furniture piece from this view's own render cache (_furniture_entries)
@@ -709,7 +710,6 @@ func remove_furniture_entry(f: Furniture) -> void:
 	if _drag_target.get("furniture", null) == f:
 		_drag_target = {}
 		_dragging_furniture = false
-	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
 
 
 # ── Wall-mounted items ──────────────────────────────────────────────────────
