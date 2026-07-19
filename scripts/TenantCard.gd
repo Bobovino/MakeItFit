@@ -1,17 +1,12 @@
 extends PanelContainer
 class_name TenantCard
 
-signal rent_out_requested()
 signal moment_selected(moment_id: String)
 
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
 @onready var rent_label: Label = $VBox/Rent
 @onready var checklist_container: HBoxContainer = $VBox/Checklist
-
-var _rent_btn: Button = null
-var _rent_available: bool = false
-var _already_rented: bool = false   # true once RENT OUT actually succeeded this session — button stays gone even though the win condition (still true) would otherwise keep re-showing it
 
 # flat-list mode
 var _check_chips: Dictionary = {}   # func_name -> Control
@@ -87,11 +82,10 @@ func _ready() -> void:
 	# the bar itself has plenty of room.
 	checklist_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	_build_rent_btn()
-
-	# The bar only occupies as much width/height as its actual content (needs
-	# checklist, RENT OUT button when it appears) — HBox's minimum size
-	# already reflects whichever children are visible right now.
+	# The bar only occupies as much width/height as its actual content (the
+	# needs checklist — there's no RENT OUT button anymore, Main.gd finishes
+	# the level on its own the instant every need is met) — HBox's minimum
+	# size already reflects whichever children are visible right now.
 	var hbox := $VBox as HBoxContainer
 	hbox.minimum_size_changed.connect(_update_card_height)
 	_update_card_height()
@@ -102,65 +96,16 @@ func _update_card_height() -> void:
 	size.y = hbox.get_combined_minimum_size().y + 12.0
 
 
-# Hidden until every need is fulfilled, then appears right where the eye
-# already is (in the quest tracker) instead of a separate top-bar button the
-# player has to notice on their own.
-func _build_rent_btn() -> void:
-	# Pushes RENT OUT to the bar's far right edge, away from Budget/moments on
-	# the left — a status bar reads better with its "primary action" pinned to
-	# one end than crowded right up against the last chip.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var hbox_ := $VBox as HBoxContainer
-	hbox_.add_child(spacer)
-
-	_rent_btn = Button.new()
-	_rent_btn.text = "RENT OUT"
-	_rent_btn.add_theme_font_size_override("font_size", 13)
-	_rent_btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	_rent_btn.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72))
-	var rs := GameTheme.make_rent_btn_style()
-	_rent_btn.add_theme_stylebox_override("normal",  rs[0])
-	_rent_btn.add_theme_stylebox_override("hover",   rs[1])
-	_rent_btn.add_theme_stylebox_override("pressed", rs[1])
-	_rent_btn.visible = false
-	_rent_btn.pressed.connect(func(): rent_out_requested.emit())
-	var hbox := $VBox as HBoxContainer
-	hbox.add_child(_rent_btn)
+# RENT OUT was a manual "I'm done, finish the level" button; Main.gd now
+# fires the same completion flow itself the instant every requirement is
+# met, so there's nothing left here to show/hide — kept as no-op stubs since
+# Main.gd still calls them (harmless, avoids touching that call site too).
+func set_rented(_rented: bool) -> void:
+	pass
 
 
-# Called by Main.gd right after a successful RENT OUT — the win condition
-# stays true afterwards (nothing about the furniture changed), so without
-# this the button would just reappear the next time set_rent_available()
-# runs. Once rented, it's gone for the rest of the session regardless.
-func set_rented(rented: bool) -> void:
-	_already_rented = rented
-	if rented:
-		_rent_btn.visible = false
-
-
-# Called by Main.gd whenever the win condition is (re-)evaluated — pulses
-# once the moment every requirement flips green, same celebratory cue the old
-# top-bar button used to give.
-func set_rent_available(available: bool) -> void:
-	if _already_rented:
-		_rent_btn.visible = false
-		return
-	var was_available := _rent_available
-	_rent_available = available
-	_rent_btn.visible = available
-	if available and not was_available:
-		Audio.play("success")
-		if GameState.reduce_motion:
-			return
-		_rent_btn.pivot_offset = _rent_btn.size * 0.5
-		_rent_btn.scale = Vector2.ONE
-		var tw := create_tween()
-		for i in 3:
-			tw.tween_property(_rent_btn, "scale", Vector2(1.08, 1.08), 0.12) \
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			tw.tween_property(_rent_btn, "scale", Vector2.ONE, 0.12) \
-				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+func set_rent_available(_available: bool) -> void:
+	pass
 
 
 func setup(tenant: Dictionary) -> void:

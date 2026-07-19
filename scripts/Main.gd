@@ -105,6 +105,7 @@ var _paint_panel:       Control    = null
 var _paint_status_lbl:  Label      = null
 var _floor_tile_bounds: Dictionary = {}  # floor_id -> Rect2i of painted tile content
 var _active_moment_id:  String = ""
+var _rent_auto_armed:   bool = false   # false while a level is still spawning its starting furniture — see _update_rent_btn()
 
 
 func _ready() -> void:
@@ -131,11 +132,7 @@ func _ready() -> void:
 		inventory.buy_requested.connect(_on_buy_requested)
 	if not inventory.builder_tool_selected.is_connected(_on_builder_tool_selected):
 		inventory.builder_tool_selected.connect(_on_builder_tool_selected)
-	if not rent_btn.pressed.is_connected(_on_rent_pressed):
-		rent_btn.pressed.connect(_on_rent_pressed)
-	if not tenant_card.rent_out_requested.is_connected(_on_rent_pressed):
-		tenant_card.rent_out_requested.connect(_on_rent_pressed)
-	rent_btn.visible = false   # superseded by the TenantCard's own RENT OUT button
+	rent_btn.visible = false   # superseded — completion now fires on its own, see _update_rent_btn()
 	view3d_btn.visible = false   # superseded by the persistent 3D view mode
 	if not result_screen.next_level_requested.is_connected(_on_next_level):
 		result_screen.next_level_requested.connect(_on_next_level)
@@ -193,14 +190,14 @@ func _apply_ui_theme() -> void:
 	bp.set_content_margin(SIDE_BOTTOM, 3)
 	budget_label.add_theme_stylebox_override("normal", bp)
 	budget_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	# The old TopBar is gone — Budget now lives at the near (left) end of the
-	# bottom TenantCard bar, right alongside the moments/needs it funds.
-	var tenant_hbox := tenant_card.get_node("VBox") as HBoxContainer
-	if budget_label.get_parent() != tenant_hbox:
+	# The old TopBar is gone — Budget now floats on its own below the
+	# furniture shop panel (see _position_budget_label()), out of the way of
+	# the TenantCard bar, which is already crowded once a level has more than
+	# one moment or a floor-tab stack sharing that same bottom-right corner.
+	if budget_label.get_parent() != ui_layer:
 		if budget_label.get_parent():
 			budget_label.get_parent().remove_child(budget_label)
-		tenant_hbox.add_child(budget_label)
-		tenant_hbox.move_child(budget_label, 0)
+		ui_layer.add_child(budget_label)
 
 	var rs := GameTheme.make_rent_btn_style()
 	rent_btn.add_theme_stylebox_override("normal",   rs[0])
@@ -306,6 +303,7 @@ func _apply_ui_theme() -> void:
 	_position_top_left_icons()
 	_position_undo_btn()
 	_position_minimap()
+	_position_budget_label()
 	_refresh_undo_redo_buttons()
 
 
@@ -320,6 +318,22 @@ func _position_top_left_icons() -> void:
 		_settings_btn.offset_right = RIGHT_X - 8.0
 		_settings_btn.offset_left  = _settings_btn.offset_right - (_settings_btn.custom_minimum_size.x as float)
 		_settings_btn.offset_top   = TOP_Y
+
+
+# Floats Budget just below the furniture shop panel, out of the way of the
+# TenantCard bar (which fills up fast once a level has multiple moments or a
+# floor-tab stack sharing that same bottom-right corner). Unlike the
+# full-width bar or the shrink-wrapped Minimap/ViewModeBox, this one wants its
+# own natural (unstretched) size, so reset_size() is the right tool here —
+# it's only wrong when something else already fixed a wider offset_right
+# first (see _position_tenant_card()'s comment).
+func _position_budget_label() -> void:
+	if not is_instance_valid(budget_label):
+		return
+	budget_label.offset_left = 8.0
+	budget_label.reset_size()
+	budget_label.offset_top = BOT_Y - 8.0 - budget_label.size.y
+	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
 
 
 static func _segment_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
@@ -361,7 +375,8 @@ func _load_level(level_id: String) -> void:
 	_current_level_id  = level_id
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
-	_post_win_view = false
+	_post_win_view   = false
+	_rent_auto_armed = false
 	Furniture.read_only     = false
 	WallInspector.read_only = false
 	if is_instance_valid(_mode3d_view):
@@ -568,6 +583,14 @@ func _load_level(level_id: String) -> void:
 
 	_show_mechanic_intro_if_needed()
 	_refresh_undo_redo_buttons()
+	# Establish the correct disabled/available baseline from however the level
+	# actually loaded (freshly, or via "Revisar Plano Actual" resuming an
+	# already-satisfied saved layout) BEFORE arming auto-rent, so revisiting a
+	# finished apartment doesn't instantly replay the completion screen the
+	# moment it loads — only a real, subsequent change the player makes can
+	# trip the edge that fires it.
+	_update_rent_btn()
+	_rent_auto_armed = true
 
 
 func _show_mechanic_intro_if_needed() -> void:
@@ -1448,12 +1471,24 @@ func _on_moments_updated(results: Dictionary) -> void:
 	_update_rent_btn()
 
 
-# Celebrate the moment the puzzle becomes solvable: the instant every
-# requirement flips green, RENT OUT wakes up with a pulse so the player's eye
-# is drawn to the "finish" button without a tutorial pointing at it.
+# The RENT OUT button is gone — the instant every requirement flips green,
+# the level just finishes on its own instead of waiting for the player to
+# notice and click a "finish" button. rent_btn itself is long since invisible
+# (superseded by the TenantCard bar), kept only as a convenient bool holder
+# for the previous/current satisfied state so the edge below has something to
+# compare against.
 func _update_rent_btn() -> void:
+	var was_disabled := rent_btn.disabled
 	rent_btn.disabled = not gm.check_win() or not _all_furniture_accessible()
 	tenant_card.set_rent_available(not rent_btn.disabled)
+	# _rent_auto_armed stays false until _load_level() has finished spawning
+	# the level's starting furniture and synced this same baseline — otherwise
+	# resuming an already-satisfied saved layout ("Revisar Plano Actual")
+	# would trip this edge the instant it loads, replaying the completion
+	# screen before the player has done anything. _post_win_view means we're
+	# in the read-only "Watch Again" replay of an already-completed level.
+	if _rent_auto_armed and was_disabled and not rent_btn.disabled and not _post_win_view:
+		_on_rent_pressed()
 
 
 func _update_accessibility() -> void:
