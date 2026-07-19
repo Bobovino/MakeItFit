@@ -35,6 +35,7 @@ anchor_bottom = 1.0
 stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="SubViewportContainer"]
+own_world_3d = true
 handle_input_locally = false
 size = Vector2i(1280, 720)
 
