@@ -1099,7 +1099,7 @@ func _click_furniture_no_drag() -> void:
 	if entry.is_empty():
 		return
 	var f: Furniture = entry["furniture"]
-	if Furniture.test_mode_active and f.foldable and f.toggle_fold():
+	if f.foldable and f.toggle_fold():
 		_resize_furniture_entry(entry)
 
 

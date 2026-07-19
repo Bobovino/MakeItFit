@@ -1508,14 +1508,15 @@ func _on_moment_selected(moment_id: String) -> void:
 
 func _on_test_toggled(pressed: bool) -> void:
 	Furniture.test_mode_active = pressed
+	# Click-to-fold works all the time now, not just in Test Layout, so a
+	# piece's fold state is real/persistent furnishing state rather than a
+	# throwaway preview — toggling this button off no longer forces every
+	# foldable piece back closed the way it used to.
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
 		for f in fl.get_all_furniture():
 			var fur := f as Furniture
 			if fur.foldable:
-				# Fold all pieces back when exiting test mode
-				if not pressed and fur.is_extended:
-					fur.toggle_fold()
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
 	if _view_mode == ViewMode.VIEW3D:

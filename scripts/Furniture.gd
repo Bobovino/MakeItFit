@@ -338,8 +338,10 @@ func _draw() -> void:
 			draw_string(ThemeDB.fallback_font, Vector2(3, base_y + 8),
 				"▲ FOLD", HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
 				Color(ink.r, ink.g, ink.b, 0.55))
-		elif test_mode_active:
-			# Dashed preview of extended zone (not currently extended)
+		else:
+			# Dashed preview of extended zone (not currently extended) — shown
+			# any time this piece isn't extended, not just in Test Layout,
+			# since click-to-fold now works all the time too.
 			var ec    := Color(0.88, 0.10, 0.10, 0.45) if _extended_conflict else Color(0.60, 0.82, 0.98, 0.20)
 			var ec_bd := Color(0.88, 0.10, 0.10, 0.85) if _extended_conflict else Color(0.66, 0.86, 1.00, 0.75)
 			draw_rect(Rect2(0, h, w, ext_h), ec)
@@ -1127,7 +1129,7 @@ func _input(event: InputEvent) -> void:
 			elif _dragging and not event.pressed:
 				var release_pos: Vector2 = (event as InputEventMouseButton).position
 				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
-				if was_click and Furniture.test_mode_active and foldable:
+				if was_click and foldable:
 					_dragging = false
 					z_index = 0
 					if _wall_ref:
