@@ -1335,6 +1335,13 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 	Audio.play("sell")
 	gm.sell_furniture(furniture.furniture_id)
 	apt_floor.remove_furniture(furniture)
+	# This handler also runs for a sale initiated in 3D itself (Room3DView's
+	# own sell_requested), where it's already dropped from _furniture_entries —
+	# but a 2D-initiated sale never told the (separately cached, persistent)
+	# 3D view's render cache, leaving a stale entry pointing at the now-freed
+	# node that crashed the next time the 3D view hit-tested near it.
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.remove_furniture_entry(furniture)
 	_refresh_functions()
 	_on_furniture_action_changed()   # push pre-sell state, cache the new post-sell state
 

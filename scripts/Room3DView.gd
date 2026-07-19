@@ -375,6 +375,8 @@ func _pick_furniture(vp_pos: Vector2) -> Dictionary:
 	var best_t := INF
 	var best: Dictionary = {}
 	for entry in _furniture_entries:
+		if not is_instance_valid(entry["furniture"]) or not is_instance_valid(entry["mesh"]):
+			continue
 		var pos: Vector3 = entry["pos"]
 		var item_size: Vector3 = entry["size"]
 		var t := _ray_box_t(from, dir, pos - item_size * 0.5, pos + item_size * 0.5)
@@ -670,12 +672,29 @@ func _cancel_buy() -> void:
 
 func _sell_furniture(hit: Dictionary) -> void:
 	var f: Furniture = hit["furniture"]
-	var mesh: MeshInstance3D = hit["mesh"]
+	remove_furniture_entry(f)
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
+	_hide_drag_highlight()
+
+
+# Drops a Furniture piece from this view's own render cache (_furniture_entries)
+# and frees its mesh/hitbox outline — called both for a sale initiated HERE (3D
+# right-click, via _sell_furniture above) and, from Main.gd, for one initiated
+# in the 2D floor plan instead. The 2D and 3D views share the same underlying
+# Furniture node, but _furniture_entries is this script's OWN cache built once
+# in build_from_floor() — a 2D-side sell used to free the Furniture node
+# (Wall.gd's remove_furniture()) without this cache ever finding out, leaving
+# a stale entry pointing at a freed instance. The next _pick_furniture() hit
+# on that stale entry (e.g. just hovering nearby) then crashed trying to read
+# it ("Trying to assign invalid previously freed instance").
+func remove_furniture_entry(f: Furniture) -> void:
 	for i in range(_furniture_entries.size() - 1, -1, -1):
 		if _furniture_entries[i]["furniture"] == f:
+			var mesh: MeshInstance3D = _furniture_entries[i]["mesh"]
+			if is_instance_valid(mesh):
+				mesh.queue_free()
 			_furniture_entries.remove_at(i)
-	if is_instance_valid(mesh):
-		mesh.queue_free()
 	# The sold item's own static hitbox outline (and, if this sale happened
 	# mid-drag of some other piece, the shared grid/drag-highlight overlays)
 	# otherwise keep showing forever — nothing else ever turns them back off
@@ -685,9 +704,11 @@ func _sell_furniture(hit: Dictionary) -> void:
 		if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 			h.queue_free()
 			_hitbox_highlights.remove_at(i)
-	_set_grid_overlay_visible(false)
-	_set_hitbox_highlights_visible(false)
-	_hide_drag_highlight()
+	if _hover_furniture == f:
+		_hide_hover_highlight()
+	if _drag_target.get("furniture", null) == f:
+		_drag_target = {}
+		_dragging_furniture = false
 	sell_requested.emit(f)   # Main.gd handles the refund + apt_floor.remove_furniture
 
 
