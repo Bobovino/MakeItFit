@@ -15,20 +15,32 @@ var _check_chips: Dictionary = {}   # func_name -> Control
 # loads — only flips caused by the player's own actions should celebrate.
 var _setup_ticks: int = 0
 
-# moment mode
+# moment mode — chrome-tab style: every moment's tab is always visible in a
+# connected strip, but only the ACTIVE moment's need chips actually take up
+# space in the bar (the rest stay built but hidden), so a level with several
+# moments each needing several functions can't overflow/wrap the bar just
+# because every moment tried to show its chips side by side at once.
 var _moments: Array = []
 var _moment_check_chips: Dictionary = {}  # moment_id -> { need -> Control }
-# Each moment's section header doubles as its nav button — clicking "DAY" or
-# "NIGHT" both labels that need-group and switches the active moment, so the
-# TopBar doesn't need its own separate Day/Night strip.
+var _moment_rows: Dictionary = {}         # moment_id -> HFlowContainer (its chip row)
+# Each moment's tab doubles as its nav button — clicking "DAY" or "NIGHT"
+# both switches which chip row is visible and switches the active moment, so
+# the TopBar doesn't need its own separate Day/Night strip.
 var _moment_header_btns: Dictionary = {}  # moment_id -> Button
 var _moment_group := ButtonGroup.new()
 
 
-# WoW-quest-tracker style: a floating overlay on the game view, not a solid
-# card — dark translucent glass with light ink so it reads over any scene.
-const INK       := Color(0.94, 0.91, 0.83)   # warm cream text on dark glass
-const INK_MUTED := Color(0.74, 0.70, 0.62)
+# Blueprint drafting-table palette — matches GridDraw.gd's corner title block
+# (tenant/area/scale/sheet#), which used to draw directly on the 2D floor
+# plan; that block is gone now (it collided with the floor-tab stack on
+# multi-floor levels) and this bar adopts its look instead, so the same
+# "architect's title block" reads as one continuous piece of UI instead of
+# the plan losing it and the HUD gaining an unrelated dark bar.
+const BP_BG     := Color(0.070, 0.150, 0.260, 0.94)   # title-block navy
+const BP_LINE   := Color(0.62, 0.82, 0.98, 0.85)      # light blueprint-ink border
+const BP_ACCENT := Color(0.10, 0.24, 0.40, 0.90)      # title bar's darker accent strip
+const INK       := Color(0.91, 0.945, 0.965, 1.0)     # aged white drafting ink
+const INK_MUTED := Color(0.60, 0.76, 0.94, 0.80)
 const INK_GREEN := Color(0.56, 0.85, 0.50)
 
 # Small glyph per need — WoW-quest-style: a glance at the panel should read
@@ -46,14 +58,12 @@ const NEED_GLYPH := {
 
 
 func _ready() -> void:
-	# A full-width bottom HUD strip now, not a floating quest-tracker card —
-	# a border/rounded-corner treatment on all four sides read as a card
-	# hovering over the scene; a bar reads as part of the screen's edge, so
-	# only the top edge gets a border/shadow (matching how TopBarBg used to
-	# frame the old top strip) and corners go square.
+	# A full-width bottom HUD strip, styled as the blueprint's own title block
+	# rather than the old warm quest-tracker glass — same navy fill and light
+	# blueprint-ink border GridDraw.gd used to draw in the plan's corner.
 	var paper := StyleBoxFlat.new()
-	paper.bg_color = Color(0.05, 0.05, 0.05, 0.55)
-	paper.border_color = Color(1, 1, 1, 0.14)
+	paper.bg_color = BP_BG
+	paper.border_color = BP_LINE
 	paper.set_border_width(SIDE_TOP, 1)
 	paper.set_content_margin(SIDE_LEFT, 12)
 	paper.set_content_margin(SIDE_RIGHT, 12)
@@ -131,6 +141,7 @@ func _clear_checklist() -> void:
 	_check_chips.clear()
 	_moment_check_chips.clear()
 	_moment_header_btns.clear()
+	_moment_rows.clear()
 	_moment_group = ButtonGroup.new()
 
 
@@ -154,38 +165,36 @@ func _build_checklist(required: Array) -> void:
 func _build_moment_checklist() -> void:
 	_clear_checklist()
 	_moment_check_chips = {}
+
+	# Chrome-tab strip: every moment's tab sits in one connected row up front,
+	# always visible regardless of which one is active.
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 0)
+	checklist_container.add_child(tabs)
+
+	# Then a single shared content area — only the active moment's chip row is
+	# actually visible/sized inside it at any one time (see highlight_moment).
+	var content := HBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	checklist_container.add_child(content)
+
 	for i in _moments.size():
 		var m     := _moments[i] as Dictionary
 		var mid   := m["id"]    as String
 		var label := m["label"] as String
 		var needs := m["needs"] as Array
 
-		# Extra breathing room before every section after the first — otherwise
-		# a group sits exactly as close to its OWN row as it does to the
-		# previous section's row, and the two moments read as one blob instead
-		# of two distinct groups. Vertical separator now that groups sit
-		# side-by-side in the bottom bar rather than stacked.
-		if i > 0:
-			var gap := Control.new()
-			gap.custom_minimum_size = Vector2(18, 0)
-			checklist_container.add_child(gap)
-
-		# Header + its chip row now form one horizontal group (was stacked
-		# vertically) so multiple moments read left-to-right along the bar.
-		var group := HBoxContainer.new()
-		group.add_theme_constant_override("separation", 8)
-		group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		checklist_container.add_child(group)
-
-		var hdr := _make_moment_header_btn(label.to_upper(), mid)
-		group.add_child(hdr)
+		var hdr := _make_moment_header_btn(label.to_upper(), mid, i, _moments.size())
+		tabs.add_child(hdr)
 		_moment_header_btns[mid] = hdr
 
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 7)
 		row.add_theme_constant_override("v_separation", 7)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		group.add_child(row)
+		row.visible = (i == 0)   # first moment starts active; Main.gd corrects this via highlight_moment() right after load
+		content.add_child(row)
+		_moment_rows[mid] = row
 
 		_moment_check_chips[mid] = {}
 		for func_name in needs:
@@ -202,12 +211,12 @@ func _make_section_label(text: String) -> Label:
 	return lbl
 
 
-# Styled as a small pill/tab, same visual language as the segmented Floor
-# Plan/3D and floor-tab switchers elsewhere in the TopBar — a bare label with
-# just a color change on click doesn't read as a button at all, so this needs
-# a real chip background (border + fill) to signal "click me" at rest, not
-# only once the player happens to hover it.
-func _make_moment_header_btn(text: String, mid: String) -> Button:
+# Chrome-tab styling: one connected strip (zero separation between buttons,
+# only the outer ends rounded — see _tab_style()) instead of separate pill
+# chips, and the ACTIVE tab's fill matches the bar's own background so it
+# visually fuses with the chip row beneath it, the way a browser's selected
+# tab merges into the page below while the others stay a shade darker.
+func _make_moment_header_btn(text: String, mid: String, index: int, count: int) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.toggle_mode  = true
@@ -215,12 +224,9 @@ func _make_moment_header_btn(text: String, mid: String) -> Button:
 	btn.focus_mode   = Control.FOCUS_NONE
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.add_theme_font_size_override("font_size", 9)
-	var n := GameTheme.make_card_stylebox(Color(0.16, 0.14, 0.11, 0.7), Color(0.45, 0.40, 0.32), 8)
-	var h := GameTheme.make_card_stylebox(Color(0.22, 0.19, 0.14, 0.85), Color(0.70, 0.58, 0.32), 8)
-	var p := GameTheme.make_card_stylebox(Color(0.42, 0.34, 0.14), GameTheme.C_AMBER, 8)
-	n.set_content_margin(SIDE_TOP, 3); n.set_content_margin(SIDE_BOTTOM, 3)
-	h.set_content_margin(SIDE_TOP, 3); h.set_content_margin(SIDE_BOTTOM, 3)
-	p.set_content_margin(SIDE_TOP, 3); p.set_content_margin(SIDE_BOTTOM, 3)
+	var n := _tab_style(Color(0.045, 0.095, 0.165, 0.85), BP_LINE, index, count)
+	var h := _tab_style(Color(0.09, 0.19, 0.32, 0.9),     BP_LINE, index, count)
+	var p := _tab_style(BP_BG,                            Color(1.0, 0.95, 0.70), index, count)
 	btn.add_theme_stylebox_override("normal",   n)
 	btn.add_theme_stylebox_override("hover",    h)
 	btn.add_theme_stylebox_override("pressed",  p)
@@ -232,12 +238,35 @@ func _make_moment_header_btn(text: String, mid: String) -> Button:
 	return btn
 
 
+static func _tab_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(1)
+	s.anti_aliasing = true
+	s.set_content_margin(SIDE_LEFT, 10)
+	s.set_content_margin(SIDE_RIGHT, 10)
+	s.set_content_margin(SIDE_TOP, 4)
+	s.set_content_margin(SIDE_BOTTOM, 4)
+	var r_left  := 6 if index == 0 else 0
+	var r_right := 6 if index == count - 1 else 0
+	s.corner_radius_top_left     = r_left
+	s.corner_radius_bottom_left  = r_left
+	s.corner_radius_top_right    = r_right
+	s.corner_radius_bottom_right = r_right
+	return s
+
+
 # Called by Main after it switches moments (including the initial one on
 # level load) so the header that matches the active moment stays highlighted
-# even when the switch was triggered some other way.
+# even when the switch was triggered some other way. Also swaps which
+# moment's chip row is actually visible — the chrome-tab illusion of
+# "switching pages" rather than just re-coloring a button.
 func highlight_moment(moment_id: String) -> void:
 	if _moment_header_btns.has(moment_id):
 		(_moment_header_btns[moment_id] as Button).button_pressed = true
+	for mid in _moment_rows:
+		(_moment_rows[mid] as Control).visible = (mid == moment_id)
 
 
 # A small square glyph tile with a check/cross badge in the corner — reads at

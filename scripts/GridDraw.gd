@@ -577,9 +577,13 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	_draw_segments(parent)
 	_draw_sloped_ceiling(parent)
 
-	# ── 5. Blueprint annotations: dimension lines + corner title block ────────
+	# ── 5. Blueprint annotations: dimension lines ─────────────────────────────
+	# The corner title block (tenant/area/scale/sheet#) used to draw here too —
+	# removed in favor of the TenantCard bar adopting the same blueprint
+	# title-block styling instead (see TenantCard.gd), so the same
+	# information doesn't appear twice, and it no longer visually collides
+	# with the floor-tab stack for multi-floor levels.
 	_draw_dimensions(parent, ww, hh)
-	_draw_title_block(parent, ww, hh)
 
 
 # Is this Floor node a real floor plate (worth annotating) vs a subfloor/
@@ -691,52 +695,6 @@ func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
 
 
-func _draw_title_block(parent: Floor, ww: int, hh: int) -> void:
-	if _gm == null or _gm.current_level.is_empty():
-		return
-	if not _is_plate(parent):
-		return  # skip on overlay-only layers
-	var lvl: Dictionary = _gm.current_level
-	var font := ThemeDB.fallback_font
-	var b := _room_bounds_tiles(parent)
-	var area_m2 := b.size.x * b.size.y / float(METER_TILES * METER_TILES)
-	var tenant := (lvl.get("tenant", {}) as Dictionary).get("name", "—") as String
-	var title := (lvl.get("name", "APARTMENT") as String).to_upper()
-
-	# Block geometry — bottom-right corner, inside the sheet frame
-	var bw := 124.0
-	var bh := 48.0
-	var pad := 10.0
-	var bx := ww - bw - pad
-	var by := hh - bh - pad
-
-	const BG   := Color(0.070, 0.150, 0.260, 0.94)
-	const LINE := Color(0.62, 0.82, 0.98, 0.85)
-	const INK  := BP_INK
-	const MUT  := Color(0.60, 0.76, 0.94, 0.80)
-	draw_rect(Rect2(bx, by, bw, bh), BG)
-	draw_rect(Rect2(bx, by, bw, bh), LINE, false, 1.2)
-	# Title bar
-	draw_rect(Rect2(bx, by, bw, 12), Color(0.10, 0.24, 0.40, 0.90))
-	draw_line(Vector2(bx, by + 12), Vector2(bx + bw, by + 12), LINE, 1.0)
-	draw_string(font, Vector2(bx + 4, by + 9), title, HORIZONTAL_ALIGNMENT_LEFT, bw - 26, 7, INK)
-	# North arrow — small circle + up-arrow in the title bar's right corner
-	var nc := Vector2(bx + bw - 9, by + 6)
-	draw_arc(nc, 4.5, 0, TAU, 20, LINE, 1.0, true)
-	draw_line(nc + Vector2(0, 3), nc + Vector2(0, -3), INK, 1.0, true)
-	draw_line(nc + Vector2(0, -3), nc + Vector2(-1.6, -0.6), INK, 1.0, true)
-	draw_line(nc + Vector2(0, -3), nc + Vector2(1.6, -0.6), INK, 1.0, true)
-	# Rows (label column ruled off from value column)
-	draw_line(Vector2(bx + 41, by + 12), Vector2(bx + 41, by + 34), Color(LINE.r, LINE.g, LINE.b, 0.35), 0.7)
-	draw_string(font, Vector2(bx + 4, by + 22), "TENANT", HORIZONTAL_ALIGNMENT_LEFT, 60, 6, MUT)
-	draw_string(font, Vector2(bx + 45, by + 22), tenant, HORIZONTAL_ALIGNMENT_LEFT, bw - 49, 7, INK)
-	draw_string(font, Vector2(bx + 4, by + 31), "AREA", HORIZONTAL_ALIGNMENT_LEFT, 40, 6, MUT)
-	draw_string(font, Vector2(bx + 45, by + 31), "%.1f m2" % area_m2, HORIZONTAL_ALIGNMENT_LEFT, 50, 7, INK)
-	# Footer: scale + sheet number + date
-	draw_line(Vector2(bx, by + 34), Vector2(bx + bw, by + 34), Color(LINE.r, LINE.g, LINE.b, 0.4), 0.7)
-	draw_string(font, Vector2(bx + 4, by + 40), "SCALE 1:50", HORIZONTAL_ALIGNMENT_LEFT, 60, 6, MUT)
-	draw_string(font, Vector2(bx + bw - 40, by + 40), "SHT A-101", HORIZONTAL_ALIGNMENT_LEFT, 38, 6, MUT)
-	draw_string(font, Vector2(bx + 4, by + 46), Time.get_date_string_from_system(), HORIZONTAL_ALIGNMENT_LEFT, bw - 8, 6, Color(MUT.r, MUT.g, MUT.b, 0.55))
 
 
 func _draw_edge_overlays(parent: Floor) -> void:
