@@ -926,8 +926,14 @@ func _position_minimap() -> void:
 	# has (reset_size() forces a fresh layout pass first) — a fixed tall box
 	# left a big empty panel above a short 2-floor stack.
 	minimap.reset_size()
-	var content_h := maxf(minimap.size.y, 40.0)
-	minimap.offset_bottom = tenant_card.offset_top - 8.0
+	# Minimap.gd hides itself outright for a single-floor level (visible =
+	# _buttons.size() > 1) — reserving its usual height/margin anyway left a
+	# dead empty gap between the TenantCard bar and whatever floats above it
+	# with nothing actually in it. Collapse the reserved band to zero so the
+	# next thing up (ViewModeBox) touches the bar instead.
+	var content_h := maxf(minimap.size.y, 40.0) if minimap.visible else 0.0
+	var gap       := 8.0 if minimap.visible else 0.0
+	minimap.offset_bottom = tenant_card.offset_top - gap
 	minimap.offset_top    = minimap.offset_bottom - content_h
 	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
 	_position_view_mode_box()
@@ -952,12 +958,17 @@ func _position_tenant_card() -> void:
 	# get_combined_minimum_size() alone re-measures children at the CURRENT
 	# (already-fixed-width) rect without touching offsets.
 	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 36.0)
-	tenant_card.offset_bottom = BOT_Y - 8.0
-	tenant_card.offset_top    = BOT_Y - 8.0 - content_h
+	# Flush with the true bottom edge, no margin — this is a HUD bar sitting
+	# on the screen's own edge (matching how the old TopBar sat flush at the
+	# top), not a floating card that wants breathing room around it.
+	tenant_card.offset_bottom = BOT_Y
+	tenant_card.offset_top    = BOT_Y - content_h
 
 
-# The Floor Plan/3D segmented toggle floats directly above the Minimap floor
-# tabs, same right edge, now that both moved off the old TopBar.
+# The Floor Plan/3D segmented toggle floats directly above whatever's next in
+# the bottom-right stack — the Minimap floor tabs when there's more than one
+# floor, or the TenantCard bar itself (touching it, no dead gap) when Minimap
+# has hidden itself for a single-floor level.
 func _position_view_mode_box() -> void:
 	if not is_instance_valid(_view_mode_box):
 		return
@@ -969,7 +980,8 @@ func _position_view_mode_box() -> void:
 	_view_mode_box.offset_left  = right_edge - 180.0
 	_view_mode_box.reset_size()
 	var content_h := maxf(_view_mode_box.size.y, 24.0)
-	_view_mode_box.offset_bottom = minimap.offset_top - 8.0
+	var gap := 8.0 if minimap.visible else 0.0
+	_view_mode_box.offset_bottom = minimap.offset_top - gap
 	_view_mode_box.offset_top    = _view_mode_box.offset_bottom - content_h
 	ui_layer.move_child(_view_mode_box, ui_layer.get_child_count() - 1)
 
