@@ -921,11 +921,22 @@ func _position_minimap() -> void:
 	# spans the bottom edge instead of sitting in a right-hand column.
 	var right_edge := RIGHT_X - 8.0
 	minimap.offset_right  = right_edge
-	minimap.offset_left   = right_edge - 100.0
+	minimap.offset_left   = right_edge - 100.0   # rough placeholder — reset_size() below measures the real width
 	# Shrink-wrapped to however many floor buttons the current level actually
 	# has (reset_size() forces a fresh layout pass first) — a fixed tall box
 	# left a big empty panel above a short 2-floor stack.
 	minimap.reset_size()
+	# reset_size() (Control.size = Vector2()) recomputes offset_RIGHT from
+	# offset_left + minimum width, since anchor_left is the reference point —
+	# it does NOT stretch offset_left leftward to accommodate a wider floor
+	# name like "Ground Floor Mezzanine". Left uncorrected, a floor label
+	# wider than the 100px placeholder above pushes the panel's right edge
+	# past RIGHT_X, spilling text off the edge of the screen (exactly what
+	# happened here). Re-pin offset_right to right_edge and derive offset_left
+	# from the now-measured natural width instead of trusting the placeholder.
+	var content_w := maxf(minimap.size.x, 60.0)
+	minimap.offset_right = right_edge
+	minimap.offset_left  = right_edge - content_w
 	# Minimap.gd hides itself outright for a single-floor level (visible =
 	# _buttons.size() > 1) — reserving its usual height/margin anyway left a
 	# dead empty gap between the TenantCard bar and whatever floats above it
