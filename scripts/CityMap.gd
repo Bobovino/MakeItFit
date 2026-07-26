@@ -386,11 +386,14 @@ func _build_ui() -> void:
 	add_child(_map_clip)
 	var map_clip := _map_clip
 
-	# The blueprint sheet's own true fill — saturated cyanotype blue, same
-	# value as GridDraw.gd's actual floor-plan editor, drawn explicitly so the
-	# grid area no longer depends on incidentally showing through gaps.
+	# The blueprint sheet's own fill — noticeably brighter/more saturated than
+	# GameTheme.BP_PAPER (the real floor-plan editor's color, left untouched
+	# here on purpose). At BP_PAPER's actual value this whole page read as
+	# dark gray rather than blue once the grain/shadows/dimmed decorations
+	# added on top of it all stacked up — this is CityMap's own map-only fill,
+	# not the shared constant, so brightening it here can't affect that editor.
 	var blueprint_fill := ColorRect.new()
-	blueprint_fill.color = GameTheme.BP_PAPER
+	blueprint_fill.color = Color(0.11, 0.24, 0.40)
 	blueprint_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	blueprint_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_clip.add_child(blueprint_fill)
