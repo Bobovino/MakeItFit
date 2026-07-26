@@ -83,7 +83,8 @@ var _placement_mode: bool = false   # true while waiting for initial click-to-pl
 var _drag_offset: Vector2 = Vector2.ZERO
 var _original_pos: Vector2 = Vector2.ZERO
 var _press_pos: Vector2 = Vector2.ZERO   # viewport-space position at mouse-down, for click-vs-drag detection
-const CLICK_MOVE_THRESHOLD := 4.0        # px; below this, a release counts as a click, not a drag
+const CLICK_MOVE_THRESHOLD := 10.0       # px; below this, a release counts as a click, not a drag — 4px was tight enough that an ordinary click's natural hand jitter routinely misfired as "moved it", especially when the intent was just to fold/unfold
+const RAIL_POP_OFF_TILES := 1.5          # dragging this far off the rail's own line detaches the piece from it for good
 var _wall_ref: Floor = null
 var _color: Color = Color.WHITE
 var _accessible: bool = true
@@ -1190,6 +1191,19 @@ func _drag(mouse_pos: Vector2) -> void:
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var tx := target.x / TILE_SIZE
 	var ty := target.y / TILE_SIZE
+	# Dragging clearly AWAY from the rail line (or holding Ctrl, as an
+	# explicit always-works override) pops the piece off it for good —
+	# rail_axis is cleared on this instance only, so it falls through to the
+	# ordinary free-placement clamp below for the rest of this drag and every
+	# future one. Mirrors pulling a real object off a physical track: pull
+	# along it and it slides, pull away and it comes loose. Without this,
+	# the only way to free a rail item was never — it was locked to its rail
+	# for life.
+	if rail_axis != "" and _rail_lock >= 0:
+		var off_axis := absf(ty - _rail_lock) if rail_axis == "h" else absf(tx - _rail_lock)
+		if off_axis > RAIL_POP_OFF_TILES or Input.is_key_pressed(KEY_CTRL):
+			rail_axis = ""
+			Audio.play("place")
 	if rail_axis == "h" and _rail_lock >= 0:
 		ty = _rail_lock
 		var mn_x := 0.0                              if rail_start < 0 else float(rail_start)

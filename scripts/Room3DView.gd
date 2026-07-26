@@ -40,7 +40,8 @@ var _panning: bool    = false   # left-drag over empty floor — translates _cen
 var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
 var _orbit_press_pos: Vector2 = Vector2.ZERO   # separate from _press_pos so a MMB click-to-recenter doesn't fight LMB click tracking
-const CLICK_MOVE_THRESHOLD := 6.0
+const CLICK_MOVE_THRESHOLD := 10.0   # px; was 6 — tight enough that an ordinary click's natural hand jitter routinely misfired as "dragged it", especially when the intent was just to fold/unfold a piece
+const RAIL_POP_OFF_TILES := 1.5      # dragging this far off the rail's own line detaches the piece from it for good
 
 # "Home" framing captured whenever a real apartment room is built — lets a
 # plain middle-click (no drag) snap the camera back after free panning, since
@@ -434,6 +435,15 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# relative to everything else's hitbox.
 	var tile := (_room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset).round()
 	var f: Furniture = _drag_target["furniture"]
+	# Dragging clearly away from the rail line (or holding Ctrl as an
+	# explicit override) detaches the piece from it for good, mirroring the
+	# same behavior in Furniture.gd's 2D _drag() — see its own comment for
+	# the reasoning. rail_axis is cleared on this instance only.
+	if f.rail_axis != "" and _drag_rail_lock >= 0.0:
+		var off_axis := absf(tile.y - _drag_rail_lock) if f.rail_axis == "h" else absf(tile.x - _drag_rail_lock)
+		if off_axis > RAIL_POP_OFF_TILES or Input.is_key_pressed(KEY_CTRL):
+			f.rail_axis = ""
+			Audio.play("place")
 	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
 		tile.y = _drag_rail_lock
 		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)
