@@ -606,9 +606,10 @@ func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowra
 
 
 # Offscreen render of a real TenantMii — same model, same outline shader,
-# same happy face as the post-win 3D showcase — cropped tight on the head so
-# it reads as a portrait. Built once; _update_portrait() just recolors and
-# re-frames the existing Mii instead of rebuilding per-selection.
+# same happy face as the post-win 3D showcase — framed to show the whole
+# body rather than a tight headshot crop. Built once; _update_portrait()
+# just recolors and re-frames the existing Mii instead of rebuilding
+# per-selection.
 func _setup_portrait_viewport() -> void:
 	_portrait_viewport = SubViewport.new()
 	_portrait_viewport.size = Vector2i(128, 128)
@@ -616,9 +617,13 @@ func _setup_portrait_viewport() -> void:
 	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_portrait_viewport)
 
+	# Model's full-body world AABB measures ~0.975m tall, feet at y=0 — pulled
+	# back to ~1.13m of visible height at fov 35 (some headroom above/below)
+	# instead of the old tight crop on just the head.
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 0.83, 0.42)
+	cam.position = Vector3(0, 0.49, 1.8)
 	cam.fov = 35.0
+	cam.look_at_from_position(Vector3(0, 0.49, 1.8), Vector3(0, 0.49, 0), Vector3.UP)
 	_portrait_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()
