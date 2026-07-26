@@ -740,7 +740,11 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(TAB_W, TAB_H)
 	btn.size = Vector2(TAB_W, TAB_H)
-	btn.text = "%s\n%s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
+	# Icon and label share one line instead of the icon getting its own row —
+	# a 2-word label ("LOFTS Y ESPACIOS") already wraps to 2 lines on its
+	# own, and stacking the icon above it as a 3rd line overflowed TAB_H,
+	# clipping the bottom of the button.
+	btn.text = "%s  %s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
 	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	btn.add_theme_font_size_override("font_size", 10)
 	btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
@@ -753,18 +757,10 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	sn.corner_radius_top_right = 8
 	sn.corner_radius_bottom_right = 8
 	sn.set_content_margin_all(6)
-	# A real folder tab casts a shadow onto the page it protrudes over —
-	# same reasoning as the rail's own edge shadow, just per-tab so the
-	# active one (already offset +8px in _update_tab_styles) reads as
-	# physically sticking out further, not just brighter.
-	sn.shadow_color  = Color(0, 0, 0, 0.35)
-	sn.shadow_size   = 4
-	sn.shadow_offset = Vector2(2, 2)
 	btn.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
 	sh.bg_color = col.darkened(0.15)
-	sh.shadow_size = 6
 	btn.add_theme_stylebox_override("hover", sh)
 	btn.add_theme_stylebox_override("pressed", sh)
 
@@ -1639,9 +1635,14 @@ func _select_level(ld: Dictionary) -> void:
 	var tenant   := ld["tenant"] as Dictionary
 
 	_info_title.text    = ld["name"] as String
-	_info_district.text = "%s  ·  %s" % [
+	# Budget used to sit as its own line further down, competing with
+	# Requires/rent/Reward for attention when it's the one number a player
+	# actually needs before picking furniture — folded into the header line
+	# instead, right next to the size it's meant to be read alongside.
+	_info_district.text = "%s  ·  %s  ·  Budget: %d€" % [
 		ld.get("district", "?") as String,
-		_sqm_label(ld)
+		_sqm_label(ld),
+		ld.get("starting_budget", 0) as int,
 	]
 
 	var plan := _floor_plan_data(ld)
@@ -1669,7 +1670,7 @@ func _select_level(ld: Dictionary) -> void:
 		_info_reqs.text = "Requires: (see Moments)"
 	else:
 		_info_reqs.text = "Requires: " + ", ".join(funcs)
-	_info_budget.text = "Budget: %d€" % ld.get("starting_budget", 0)
+	_info_budget.visible = false
 	_info_rent.text   = "%d€ / month" % (tenant.get("monthly_rent", 0) as int)
 
 	if not level_visible:
@@ -2071,7 +2072,9 @@ func _select_custom_level(ld: Dictionary) -> void:
 	_selected_custom_data = ld
 
 	_info_title.text    = ld.get("name", "Unnamed Level") as String
-	_info_district.text = "Custom Level  ·  " + _sqm_label(ld)
+	_info_district.text = "Custom Level  ·  %s  ·  Budget: %d€" % [
+		_sqm_label(ld), ld.get("starting_budget", 0) as int,
+	]
 
 	var plan := _floor_plan_data(ld)
 	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld))
@@ -2092,7 +2095,7 @@ func _select_custom_level(ld: Dictionary) -> void:
 
 	var funcs := tenant.get("required_functions", []) as Array
 	_info_reqs.text   = ("Requires: " + ", ".join(funcs)) if not funcs.is_empty() else ""
-	_info_budget.text = "Budget: %d€" % ld.get("starting_budget", 0)
+	_info_budget.visible = false
 	_info_rent.text   = ""
 	_info_cost.text   = ""
 
