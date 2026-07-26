@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://3c4dvfbg6wx6"
-path="res://.godot/imported/idle.fbx-6c14a5b251d6e5d274efdceeeb1d6917.scn"
+uid="uid://cu804n8vyjyvb"
+path="res://.godot/imported/mii_tenant_male.glb-37b1332081d0068d25f751ef42c880ad.scn"
 
 [deps]
 
-source_file="res://assets/models/tenants/kenney_retro/Animations/idle.fbx"
-dest_files=["res://.godot/imported/idle.fbx-6c14a5b251d6e5d274efdceeeb1d6917.scn"]
+source_file="res://assets/models/tenants/mii_tenant_male.glb"
+dest_files=["res://.godot/imported/mii_tenant_male.glb-37b1332081d0068d25f751ef42c880ad.scn"]
 
 [params]
 
@@ -32,7 +32,7 @@ meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
-animation/trimming=true
+animation/trimming=false
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""
@@ -40,7 +40,6 @@ materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
 _subresources={}
-fbx/importer=0
-fbx/allow_geometry_helper_nodes=false
-fbx/embedded_image_handling=1
-fbx/naming_version=2
+gltf/naming_version=2
+gltf/embedded_image_handling=1
+gltf/texture_map_mode=1
