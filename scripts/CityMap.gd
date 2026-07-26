@@ -347,18 +347,6 @@ func _build_ui() -> void:
 	table_bg.add_theme_stylebox_override("panel", table_sn)
 	add_child(table_bg)
 
-	for i in range(3, 0, -1):
-		var shadow := ColorRect.new()
-		shadow.color = Color(0, 0, 0, 0.16)
-		shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
-		var off := float(i) * 3.0
-		shadow.offset_left   = TAB_W + PAPER_MARGIN - off
-		shadow.offset_top    = TOP_H + PAPER_MARGIN - off + 5.0
-		shadow.offset_right  = -(INFO_W + 1 + SCROLLBAR_W + PAPER_MARGIN) + off
-		shadow.offset_bottom = -(PAPER_MARGIN - off - 5.0)
-		add_child(shadow)
-
 	# Paper grain — a scatter of tiny specks over the kraft sheet so it reads
 	# as an actual textured material instead of a flat color fill. Purely
 	# decorative, drawn once at build time (not per-frame), sized to the
