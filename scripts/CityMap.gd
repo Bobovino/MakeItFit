@@ -277,6 +277,14 @@ func _build_ui() -> void:
 	top_row.add_theme_constant_override("separation", 14)
 	top_pc.add_child(top_row)
 
+	# Same tiny floor-plan motif as MainMenu's title — ties this screen back
+	# to the same brand mark instead of "PROJECTS" being a bare text label.
+	var motif := Control.new()
+	motif.custom_minimum_size = Vector2(26, 26)
+	motif.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	motif.draw.connect(_draw_title_motif.bind(motif))
+	top_row.add_child(motif)
+
 	var title_lbl := Label.new()
 	title_lbl.text = "PROJECTS"
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1786,6 +1794,18 @@ func _on_funds_changed(_amount: int) -> void:
 # opaque background of its own — is the only place this actually shows
 # through. That's deliberate: it's what makes the map read as a blueprint
 # sheet instead of plain dark UI.
+# Same tiny floor-plan silhouette as MainMenu's title motif — a one-room
+# apartment outline with a doorway gap — so both screens share one mark.
+func _draw_title_motif(node: Control) -> void:
+	var r := Rect2(Vector2.ZERO, node.custom_minimum_size)
+	node.draw_rect(r, GameTheme.BP_PAPER)
+	var inset := r.grow(-4)
+	node.draw_rect(inset, GameTheme.BP_INK, false, 1.3)
+	var mid_x := inset.position.x + inset.size.x * 0.55
+	node.draw_line(Vector2(mid_x, inset.position.y), Vector2(mid_x, inset.position.y + inset.size.y * 0.35), GameTheme.BP_INK, 1.3)
+	node.draw_line(Vector2(mid_x, inset.position.y + inset.size.y * 0.65), Vector2(mid_x, inset.position.y + inset.size.y), GameTheme.BP_INK, 1.3)
+
+
 var _vignette_tex: GradientTexture2D = null
 
 # Radial darkening toward the corners — built once (GradientTexture2D is
