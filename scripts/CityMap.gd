@@ -1566,11 +1566,11 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 		var face_dark: float
 		var border_dark: float
 		if is_owned:
-			base_dark = 0.65; face_dark = 0.25; border_dark = 0.0
+			base_dark = 0.45; face_dark = 0.05; border_dark = 0.0
 		elif can_buy:
-			base_dark = 0.70; face_dark = 0.45; border_dark = 0.25
+			base_dark = 0.55; face_dark = 0.30; border_dark = 0.15
 		else:
-			base_dark = 0.78; face_dark = 0.62; border_dark = 0.50
+			base_dark = 0.68; face_dark = 0.50; border_dark = 0.35
 		bsn.bg_color     = GameTheme.C_AMBER.darkened(base_dark)
 		bsn.border_color = Color(0, 0, 0, 0)
 		bld.add_theme_stylebox_override("panel", bsn)
