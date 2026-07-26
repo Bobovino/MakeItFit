@@ -645,7 +645,39 @@ func _setup_portrait_viewport() -> void:
 	_portrait_viewport.add_child(_portrait_mii)
 	_portrait_mii.set_process(false)   # static portrait — no idle bounce needed here
 
+	# A soft contact shadow right under the feet — with transparent_bg and no
+	# floor mesh, the full-body framing above left the figure looking like it
+	# was floating in empty space rather than standing on anything.
+	var shadow := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.42, 0.42)
+	shadow.mesh = quad
+	var shadow_mat := StandardMaterial3D.new()
+	shadow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shadow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	shadow_mat.albedo_texture = _make_shadow_blob_texture()
+	shadow.material_override = shadow_mat
+	shadow.rotation.x = deg_to_rad(-90.0)
+	shadow.position = Vector3(0, 0.01, 0)
+	_portrait_viewport.add_child(shadow)
+
 	_tenant_portrait.texture = _portrait_viewport.get_texture()
+
+
+# A soft radial dark blob fading to transparent at the edges, for the
+# portrait's ground-contact shadow — plain alpha falloff from center to rim.
+func _make_shadow_blob_texture() -> ImageTexture:
+	var size := 64
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center := Vector2(size / 2.0, size / 2.0)
+	var radius := size / 2.0
+	for x in range(size):
+		for y in range(size):
+			var d := Vector2(x, y).distance_to(center) / radius
+			var a := clampf(1.0 - d, 0.0, 1.0) * 0.45
+			img.set_pixel(x, y, Color(0, 0, 0, a))
+	return ImageTexture.create_from_image(img)
 
 
 func _update_portrait(tenant_name: String) -> void:
