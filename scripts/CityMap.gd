@@ -559,6 +559,16 @@ func _build_ui() -> void:
 	quit_btn.pressed.connect(func(): get_tree().quit())
 	vb.add_child(quit_btn)
 
+	# Cinematic vignette — corners fall off into shadow instead of the whole
+	# screen reading as one evenly-lit flat plane. Mouse-transparent, drawn
+	# on top of every other layer built above.
+	var vignette := Control.new()
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vignette.z_index = 20
+	vignette.draw.connect(_draw_vignette.bind(vignette))
+	add_child(vignette)
+
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
 	var lbl := Label.new()
@@ -673,11 +683,22 @@ func _find_block(bid: int) -> Dictionary:
 # the rail), rounded right side, colored by district. The active tab is
 # pushed further right and fully bright (see _update_tab_styles) so it reads
 # as "pulled forward," same as a real filing-cabinet tab.
+# One glyph per progression chapter — plain text labels alone read as a
+# generic settings list; a small icon per tab gives the rail its own
+# identity at a glance, same as a real game's chapter-select tabs.
+# Plain BMP symbols only — SpaceGrotesk (this game's global fallback font)
+# has no color-emoji glyphs, so the pictographs tried here first (🎓🛋🏢...)
+# rendered as empty tofu boxes. These are the same glyphs already proven to
+# render correctly elsewhere in this game (Settings/Undo/Redo/stars).
+const BLOCK_ICONS := {
+	0: "★", 1: "⚙", 2: "▲", 3: "↺", 4: "⏻", 5: "!", -1: "•",
+}
+
 func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(TAB_W, TAB_H)
 	btn.size = Vector2(TAB_W, TAB_H)
-	btn.text = label_text.to_upper()
+	btn.text = "%s\n%s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
 	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	btn.add_theme_font_size_override("font_size", 10)
 	btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
@@ -1765,6 +1786,26 @@ func _on_funds_changed(_amount: int) -> void:
 # opaque background of its own — is the only place this actually shows
 # through. That's deliberate: it's what makes the map read as a blueprint
 # sheet instead of plain dark UI.
+var _vignette_tex: GradientTexture2D = null
+
+# Radial darkening toward the corners — built once (GradientTexture2D is
+# cheap to render but wasteful to rebuild every redraw) and stretched to
+# whatever size the viewport is at draw time.
+func _draw_vignette(node: Control) -> void:
+	if not _vignette_tex:
+		var grad := Gradient.new()
+		grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.38)])
+		grad.offsets = PackedFloat32Array([0.55, 1.0])
+		_vignette_tex = GradientTexture2D.new()
+		_vignette_tex.gradient = grad
+		_vignette_tex.fill = GradientTexture2D.FILL_RADIAL
+		_vignette_tex.fill_from = Vector2(0.5, 0.5)
+		_vignette_tex.fill_to = Vector2(1.0, 1.0)
+		_vignette_tex.width = 512
+		_vignette_tex.height = 512
+	node.draw_texture_rect(_vignette_tex, Rect2(Vector2.ZERO, node.size), false)
+
+
 # A cheap procedural "paper texture" — a scatter of tiny specks at a fixed
 # seed (so it doesn't flicker/reshuffle on redraw), some ink-dark, some
 # highlight-light, mimicking flecked kraft paper fiber instead of a flat
