@@ -480,10 +480,25 @@ func _build_ui() -> void:
 
 	# Blueprint preview — the level's actual wall segments, drawn as a small
 	# top-down sketch, so you can see the real apartment shape before
-	# committing to it instead of just reading a size number.
+	# committing to it instead of just reading a size number. Framed like a
+	# pinned photo/plan (border + shadow) instead of floating loose against
+	# the sidebar's flat background.
+	var preview_frame := PanelContainer.new()
+	var pf_sn := StyleBoxFlat.new()
+	pf_sn.bg_color = Color(0, 0, 0, 0)
+	pf_sn.border_color = GameTheme.C_BORDER
+	pf_sn.set_border_width_all(3)
+	pf_sn.set_corner_radius_all(2)
+	pf_sn.shadow_color  = Color(0, 0, 0, 0.4)
+	pf_sn.shadow_size   = 6
+	pf_sn.shadow_offset = Vector2(2, 3)
+	pf_sn.set_content_margin_all(0)
+	preview_frame.add_theme_stylebox_override("panel", pf_sn)
+	vb.add_child(preview_frame)
+
 	_blueprint_preview = BlueprintPreviewScript.new()
 	_blueprint_preview.custom_minimum_size = Vector2(0, 130)
-	vb.add_child(_blueprint_preview)
+	preview_frame.add_child(_blueprint_preview)
 
 	var sep1 := HSeparator.new()
 	sep1.add_theme_color_override("color", GameTheme.C_BORDER)
@@ -497,10 +512,25 @@ func _build_ui() -> void:
 	tenant_row.add_theme_constant_override("separation", 10)
 	vb.add_child(tenant_row)
 
+	# Same pinned-photo framing as the blueprint preview — a bare 64x64
+	# texture floating in a row read as an icon, not a portrait.
+	var portrait_frame := PanelContainer.new()
+	var por_sn := StyleBoxFlat.new()
+	por_sn.bg_color = Color(0, 0, 0, 0)
+	por_sn.border_color = GameTheme.C_BORDER
+	por_sn.set_border_width_all(2)
+	por_sn.set_corner_radius_all(2)
+	por_sn.shadow_color  = Color(0, 0, 0, 0.4)
+	por_sn.shadow_size   = 5
+	por_sn.shadow_offset = Vector2(2, 2)
+	por_sn.set_content_margin_all(0)
+	portrait_frame.add_theme_stylebox_override("panel", por_sn)
+	tenant_row.add_child(portrait_frame)
+
 	_tenant_portrait = TextureRect.new()
 	_tenant_portrait.custom_minimum_size = Vector2(64, 64)
 	_tenant_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tenant_row.add_child(_tenant_portrait)
+	portrait_frame.add_child(_tenant_portrait)
 	_setup_portrait_viewport()
 
 	_info_tenant = Label.new()
