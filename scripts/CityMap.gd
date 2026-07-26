@@ -395,14 +395,10 @@ func _build_ui() -> void:
 	grid_lines.draw.connect(_draw_blueprint_grid.bind(grid_lines))
 	map_clip.add_child(grid_lines)
 
-	# A translucent wash over the whole page, tinted to the active tab's
-	# district color (see _update_page_tint) — the blueprint fill still
-	# shows through underneath, but each tab's "dossier" reads as its own
-	# distinctly-colored sheet instead of every tab looking identical.
-	_page_tint = ColorRect.new()
-	_page_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_page_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	map_clip.add_child(_page_tint)
+	# A per-district color wash used to live here, translucent over the whole
+	# map — removed, it read as a dark film sitting over the entire
+	# blueprint rather than a subtle per-tab tint. _page_tint stays null;
+	# _update_page_tint() below already no-ops when it is.
 
 	# Thin ink frame — the blueprint sheet reads as pinned/clipped onto the
 	# paper stack beneath it, not just a color change.
@@ -1858,6 +1854,7 @@ func _on_funds_changed(_amount: int) -> void:
 # opaque background of its own — is the only place this actually shows
 # through. That's deliberate: it's what makes the map read as a blueprint
 # sheet instead of plain dark UI.
+
 # Faint horizontal streaks — same wood-grain trick MainMenu's desk
 # background uses — applied to the walnut chrome (top bar, sidebar, tabs
 # rail) so those read as the same material as the desk instead of a flat
