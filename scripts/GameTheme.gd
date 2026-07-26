@@ -13,6 +13,16 @@ const C_PAPER   := Color(0.955, 0.930, 0.870)   # manila cream — paper cards, 
 const C_GOOD    := Color(0.560, 0.780, 0.470)   # sage green — valid / success
 const C_BAD     := Color(0.900, 0.475, 0.400)   # terracotta — invalid / error
 
+# Blueprint-blue (cyanotype) — same values as GridDraw.gd's BP_* consts.
+# Canonical source for any NEW chrome (MainMenu, CityMap) that needs to mix
+# blueprint-blue with the warm desk palette above. GridDraw.gd/BlueprintPreview.gd
+# keep their own local copies — leave those alone, they're stable and isolated.
+const BP_PAPER    := Color(0.070, 0.150, 0.260)   # deep cyanotype blue — the drafting surface
+const BP_FLOOR    := Color(0.110, 0.245, 0.385)   # lighter interior blue
+const BP_INK      := Color(0.910, 0.945, 0.965)   # drafting-ink white
+const BP_INK_SOFT := Color(0.640, 0.790, 0.920)
+const BP_GRID_MAJ := Color(0.560, 0.780, 0.980, 0.26)
+
 
 # Handwritten accent font (Caveat, OFL) — used sparingly: the APPROVED stamp,
 # tenant brief notes, pencil-style annotations. Everything else stays Space
@@ -124,6 +134,34 @@ static func _btn(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
 	s.shadow_size = 3
 	s.shadow_offset = Vector2(0, 2)
 	return s
+
+
+# "Furniture tag / drafting label" button — a near-square chip with a thin
+# blueprint-blue rule instead of a warm border, used for secondary menu
+# actions (Level Editor, Options) so they read as tags clipped onto the desk
+# rather than generic game buttons.
+static func make_tag_btn_style() -> Array:
+	var n := StyleBoxFlat.new()
+	n.bg_color = C_BG2
+	n.border_color = Color(BP_INK_SOFT.r, BP_INK_SOFT.g, BP_INK_SOFT.b, 0.55)
+	n.set_border_width_all(1)
+	n.set_corner_radius_all(2)
+	n.anti_aliasing = true
+	n.set_content_margin(SIDE_LEFT, 18)
+	n.set_content_margin(SIDE_RIGHT, 18)
+	n.set_content_margin(SIDE_TOP, 9)
+	n.set_content_margin(SIDE_BOTTOM, 9)
+	n.shadow_color = Color(0, 0, 0, 0.20)
+	n.shadow_size = 2
+	n.shadow_offset = Vector2(0, 1)
+	var h := n.duplicate() as StyleBoxFlat
+	h.border_color = BP_INK_SOFT
+	h.shadow_size = 6
+	h.shadow_offset = Vector2(0, 3)
+	var p := n.duplicate() as StyleBoxFlat
+	p.shadow_size = 0
+	p.set_content_margin(SIDE_TOP, 10)
+	return [n, h, p]
 
 
 # Small rounded "chip" stylebox — used for item-row cards, category tags, etc.

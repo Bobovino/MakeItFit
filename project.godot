@@ -29,10 +29,6 @@ Thumb="*res://scripts/ThumbnailRenderer.gd"
 
 [debug]
 
-; Tile-space math throughout the codebase (pixel ÷ TILE_SIZE, grid row/col
-; from counts, etc.) is deliberately integer division — the warning fires on
-; every such site with no real bug to fix, so it's disabled project-wide
-; rather than sprinkling @warning_ignore on ~20 call sites.
 gdscript/warnings/integer_division=0
 
 [display]
@@ -40,10 +36,9 @@ gdscript/warnings/integer_division=0
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.170, 0.146, 0.120, 1)
+environment/defaults/default_clear_color=Color(0.17, 0.146, 0.12, 1)

@@ -10,6 +10,11 @@ var portfolio_rent: int = 0
 var completed: Dictionary = {}   # level_id -> { stars, first_time }
 var owned: Array = []
 var pending_level_id: String = "level_01"
+# Last level actually entered (not just selected) — lets MainMenu's Continue
+# button jump straight back into it instead of always routing through
+# CityMap. Persisted; deliberately separate from pending_level_id, which is
+# transient and only means "the level Main.tscn should load next."
+var last_active_level_id: String = ""
 # Furniture-layout snapshot as of the last successful win of each level (same
 # shape as Main._snapshot_all_furniture()) — lets "Revisar Plano Actual" reopen
 # a completed level exactly as the player left it, instead of always starting
@@ -116,6 +121,7 @@ func save_game() -> void:
 		"reduce_motion":   reduce_motion,
 		"ui_scale":        ui_scale,
 		"undo_keycode":    undo_keycode,
+		"last_active_level_id": last_active_level_id,
 	}
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -145,12 +151,18 @@ func load_game() -> void:
 	reduce_motion   = data.get("reduce_motion", reduce_motion) as bool
 	ui_scale        = data.get("ui_scale", ui_scale) as float
 	undo_keycode    = data.get("undo_keycode", undo_keycode) as int
+	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
 		if data.has("sfx_volume"):
 			audio.set_sfx_volume(data["sfx_volume"] as float)
 		if data.has("music_volume"):
 			audio.set_music_volume(data["music_volume"] as float)
+
+
+func set_last_active_level(level_id: String) -> void:
+	last_active_level_id = level_id
+	save_game()
 
 
 func own_level(level_id: String) -> void:

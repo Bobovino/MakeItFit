@@ -53,6 +53,7 @@ enum ViewMode { TOPDOWN, VIEW3D }
 const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
 var _view_mode: int = ViewMode.TOPDOWN
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
+var _mode3d_sell_floor: Floor = null  # which Floor _mode3d_view's sell_requested/wall_sell_requested are currently bound to — see _ensure_mode3d_view
 var _watch_done_btn: Button  = null   # floating "back to results" button shown during free-camera Watch Again
 var _post_win_view: bool = false      # true during Watch Again — level is already rented out, so editing/shortcuts are locked out; only the camera works
 var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
@@ -106,6 +107,8 @@ var _paint_status_lbl:  Label      = null
 var _floor_tile_bounds: Dictionary = {}  # floor_id -> Rect2i of painted tile content
 var _active_moment_id:  String = ""
 var _rent_auto_armed:   bool = false   # false while a level is still spawning its starting furniture — see _update_rent_btn()
+var _level_load_id:     int  = 0       # bumped on every _load_level() call — lets an in-flight completion reveal detect a Restart Level mid-animation and bail instead of showing stale results
+var _level_completed:   bool = false   # true once this level's Results screen has been shown this session — see _on_settings_btn_pressed
 
 
 func _ready() -> void:
@@ -277,7 +280,7 @@ func _apply_ui_theme() -> void:
 		_settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
 		_settings_btn.add_theme_font_size_override("font_size", 16)
 		_settings_btn.custom_minimum_size = Vector2(32, 0)
-		_settings_btn.pressed.connect(func(): SettingsMenu.open(self))
+		_settings_btn.pressed.connect(_on_settings_btn_pressed)
 		ui_layer.add_child(_settings_btn)
 
 	if not is_instance_valid(_undo_btn):
@@ -372,11 +375,14 @@ func _restart_level() -> void:
 
 
 func _load_level(level_id: String) -> void:
+	_level_load_id += 1
+	var _load_gen := _level_load_id
 	_current_level_id  = level_id
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
 	_post_win_view   = false
 	_rent_auto_armed = false
+	_level_completed = false
 	Furniture.read_only     = false
 	WallInspector.read_only = false
 	if is_instance_valid(_mode3d_view):
@@ -585,12 +591,43 @@ func _load_level(level_id: String) -> void:
 	_refresh_undo_redo_buttons()
 	# Establish the correct disabled/available baseline from however the level
 	# actually loaded (freshly, or via "Revisar Plano Actual" resuming an
-	# already-satisfied saved layout) BEFORE arming auto-rent, so revisiting a
-	# finished apartment doesn't instantly replay the completion screen the
-	# moment it loads — only a real, subsequent change the player makes can
-	# trip the edge that fires it.
+	# already-satisfied saved layout) BEFORE arming auto-rent, so the
+	# was-disabled→now-enabled EDGE below doesn't trip the instant this loads
+	# — only a real, subsequent change the player makes can fire it that way.
+	# (Reopening an already-won layout still shows the Results screen once,
+	# explicitly, via _show_existing_completion below — just not through this
+	# edge-triggered path.)
 	_update_rent_btn()
 	_rent_auto_armed = true
+
+	# "Revisar Plano Actual" reopens a level the player already won — land
+	# them back on the same Results screen they saw the first time instead of
+	# dropping them silently into edit mode with only a generic gear menu as
+	# a cue. Fired without awaiting (never `await`ed by _load_level itself)
+	# so a Restart Level pressed mid-reveal can freely re-enter _load_level
+	# while this is still suspended — _show_existing_completion checks
+	# _load_gen against _level_load_id after every await so a stale tail is a
+	# harmless no-op instead of popping a results screen for a level that no
+	# longer matches what's on screen.
+	if _use_saved and gm.check_win():
+		_show_existing_completion(level_id, _load_gen)
+
+
+# See _load_level's call site above for why this is fire-and-forget with a
+# generation check rather than something _load_level awaits directly.
+func _show_existing_completion(level_id: String, load_gen: int) -> void:
+	tenant_card.set_rented(true)
+	await _play_completion_reveal()
+	if load_gen != _level_load_id:
+		return
+	_level_completed = true
+	result_screen.show_success(
+		GameState.get_stars(level_id),
+		0,
+		GameState.portfolio_rent,
+		gm.current_level["tenant"]["name"],
+		gm.current_level["tenant"]["monthly_rent"] as int,
+		not gm.get_next_owned_level_id(level_id).is_empty())
 
 
 func _show_mechanic_intro_if_needed() -> void:
@@ -1010,7 +1047,16 @@ func _position_undo_btn() -> void:
 	_undo_btn.offset_left  = right_edge - (_undo_btn.custom_minimum_size.x as float)
 	_undo_btn.offset_top   = TOP_Y
 	# The 3D view (and other full-width overlays) get added to ui_layer after
-	# this button, which would otherwise draw over it and block its clicks.
+	# these buttons, which would otherwise draw over them and block their
+	# clicks — settings_btn, _test_btn and budget_label need the same
+	# re-raise as undo/redo, they were just missing here (that's why the
+	# gear, Test Layout, and the budget counter could each vanish behind the
+	# 3D view, e.g. every time a level restarts while already in 3D mode).
+	if is_instance_valid(_settings_btn):
+		ui_layer.move_child(_settings_btn, ui_layer.get_child_count() - 1)
+	if is_instance_valid(_test_btn):
+		ui_layer.move_child(_test_btn, ui_layer.get_child_count() - 1)
+	_position_budget_label()
 	ui_layer.move_child(_undo_btn, ui_layer.get_child_count() - 1)
 	if is_instance_valid(_redo_btn):
 		_redo_btn.offset_right = _undo_btn.offset_left - 6.0
@@ -1080,9 +1126,27 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.anchor_bottom = 0.0
 		if _mode3d_view.has_node("CloseBtn"):
 			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
+		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
+	# sell_requested/wall_sell_requested are bound to a specific Floor via
+	# .bind(fl) — but _mode3d_view is a persistent node reused across floor
+	# switches AND level restarts, while the Floor it was last bound to gets
+	# queue_free()'d out from under it (restart) or is simply the wrong floor
+	# now (switching floors). Rebinding only inside the "just created" branch
+	# above meant every sale after either of those fired into a stale,
+	# strongly-typed Floor argument — Room3DView had already removed the 3D
+	# piece by the time that call errored, so the item visually vanished but
+	# _on_sell_pressed never reached gm.sell_furniture() to refund the budget.
+	if _mode3d_sell_floor != fl:
+		if is_instance_valid(_mode3d_sell_floor):
+			var old_sell := _on_sell_pressed.bind(_mode3d_sell_floor)
+			var old_wall := _on_wall_sell_pressed.bind(_mode3d_sell_floor)
+			if _mode3d_view.sell_requested.is_connected(old_sell):
+				_mode3d_view.sell_requested.disconnect(old_sell)
+			if _mode3d_view.wall_sell_requested.is_connected(old_wall):
+				_mode3d_view.wall_sell_requested.disconnect(old_wall)
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
 		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
-		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
+		_mode3d_sell_floor = fl
 	_mode3d_view.offset_left   = LEFT_X
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
@@ -1119,6 +1183,7 @@ func _teardown_mode3d_view() -> void:
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.queue_free()
 	_mode3d_view = null
+	_mode3d_sell_floor = null   # the next _ensure_mode3d_view() builds a brand new node with no connections yet — force a fresh bind regardless of which floor it lands on
 
 
 # TOPDOWN shows the Wall Inspector as a centered modal (with a dismiss-on-tap
@@ -1552,15 +1617,23 @@ func _on_rent_pressed() -> void:
 	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
 	tenant_card.set_rented(true)
 
+	var completed_level_id := _current_level_id
+	var _load_gen := _level_load_id
 	await _play_completion_reveal()
+	# A Restart Level (or leaving to Projects) pressed mid-reveal calls
+	# _load_level again, bumping _level_load_id — bail instead of popping a
+	# results screen for a level that's already been reset out from under it.
+	if _load_gen != _level_load_id:
+		return
 
+	_level_completed = true
 	result_screen.show_success(
 		stars,
 		funds,
 		GameState.portfolio_rent,
 		gm.current_level["tenant"]["name"],
 		level_rent,
-		not gm.get_next_owned_level_id(_current_level_id).is_empty()
+		not gm.get_next_owned_level_id(completed_level_id).is_empty()
 	)
 	_refresh_undo_redo_buttons()
 
@@ -1576,6 +1649,19 @@ func _play_completion_reveal() -> void:
 	_set_view_mode(ViewMode.VIEW3D)
 	if is_instance_valid(_mode3d_view):
 		await _mode3d_view.play_reveal()
+		_start_tenant_showcase()
+
+
+# Level data has no per-tenant color field, so one is derived from the
+# tenant's name — stable across replays of the same level, and gives each
+# tenant a distinct-enough look without needing new content authoring.
+func _start_tenant_showcase() -> void:
+	if not is_instance_valid(_mode3d_view):
+		return
+	var tenant_name: String = gm.current_level.get("tenant", {}).get("name", "Tenant")
+	var hue := float(tenant_name.hash() % 360) / 360.0
+	var color := Color.from_hsv(hue, 0.55, 0.85)
+	_mode3d_view.start_tenant_showcase(gm.moments, color)
 
 
 
@@ -1732,6 +1818,7 @@ func _on_watch_again_reveal() -> void:
 	_set_view_mode(ViewMode.VIEW3D)
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = true
+	_start_tenant_showcase()
 	inventory.visible = false
 	_refresh_undo_redo_buttons()
 	_show_watch_done_button()
@@ -1758,16 +1845,39 @@ func _show_watch_done_button() -> void:
 	# to be moved after it explicitly or the 3D view's opaque background
 	# paints over it and swallows its clicks.
 	ui_layer.move_child(_watch_done_btn, ui_layer.get_child_count() - 1)
-	_watch_done_btn.pressed.connect(func():
+	_watch_done_btn.pressed.connect(_close_watch_again)
+
+
+# Once this level's been rented out, the gear icon's job stops being "open
+# settings" and becomes "get back to the Results screen" — same target as the
+# floating "Back to Results" button, just reachable from anywhere afterward
+# instead of only during free-look. Deliberate: Settings has no other entry
+# point from here once this flips, but the alternative (a stray gear icon
+# that reopens generic Settings instead of the level you just won) is what
+# this replaces, per explicit direction.
+func _on_settings_btn_pressed() -> void:
+	if _level_completed:
+		if _post_win_view:
+			_close_watch_again()
+		else:
+			result_screen.visible = true
+		return
+	SettingsMenu.open(self)
+
+
+# Shared by the floating "Back to Results" button above and the gear menu
+# (_on_settings_btn_pressed) — both need to exit free-look the same way.
+func _close_watch_again() -> void:
+	if is_instance_valid(_watch_done_btn):
 		_watch_done_btn.queue_free()
 		_watch_done_btn = null
-		_post_win_view = false
-		if is_instance_valid(_mode3d_view):
-			_mode3d_view.read_only = false
-		inventory.visible = true
-		result_screen.visible = true
-		_refresh_undo_redo_buttons()
-	)
+	_post_win_view = false
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.read_only = false
+		_mode3d_view.stop_tenant_showcase()
+	inventory.visible = true
+	result_screen.visible = true
+	_refresh_undo_redo_buttons()
 
 
 # "Next Level" on the Results screen — loads the next owned level directly
@@ -1781,6 +1891,7 @@ func _on_advance_level() -> void:
 		return
 	GameState.pending_level_id = next_id
 	GameState.pending_use_saved_layout = false
+	GameState.set_last_active_level(next_id)
 	Transition.change_scene("res://scenes/Main.tscn")
 
 

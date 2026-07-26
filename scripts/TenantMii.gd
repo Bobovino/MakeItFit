@@ -1,0 +1,153 @@
+extends Node3D
+class_name TenantMii
+
+# Low-poly tenant avatar shown only in the post-win 3D showcase
+# (Room3DView.start_tenant_showcase) — teleports between the furniture that
+# satisfies each moment's needs and plays a single cheerful bounce loop the
+# whole time. No pathfinding, no rigging: the target position is always a
+# furniture tile we already know from _furniture_entries. Limbs are real
+# connected geometry (arms/legs joined to the torso), not floating parts, so
+# poses are done by moving/rotating the WHOLE model rather than individual
+# limbs — repositioning one limb without the others would visibly pull it
+# apart at the joint.
+
+const MODEL_PATH := "res://assets/models/tenants/mii_tenant.glb"
+const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
+const TINTED_PARTS := ["Torso", "Arm_L", "Arm_R", "Leg_L", "Leg_R", "Foot_L", "Foot_R"]
+
+const BOB_SPEED  := 3.2   # radians/sec
+const BOB_AMOUNT := 0.035 # metres
+const SQUASH_AMOUNT := 0.06
+
+enum Pose { STAND, SIT, LIE }
+
+var _model: Node3D = null
+var _t: float = randf() * TAU   # random phase so multiple instances don't sync
+var _pose: int = Pose.STAND
+var _pose_y_offset: float = 0.0
+
+
+func _ready() -> void:
+	var packed := load(MODEL_PATH) as PackedScene
+	if packed == null:
+		return
+	_model = packed.instantiate()
+	add_child(_model)
+	_apply_outline(_model)
+	_add_happy_face()
+
+
+# Black rim around each part via a next-pass shader (cull_front + vertex push
+# along normal) instead of baked-in inverted-hull geometry — much easier to
+# get right/iterate on than doubling geometry in Blender.
+func _apply_outline(node: Node) -> void:
+	var outline_mat := ShaderMaterial.new()
+	outline_mat.shader = OUTLINE_SHADER
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			(child as MeshInstance3D).material_overlay = outline_mat
+		_apply_outline(child)
+
+
+func _process(delta: float) -> void:
+	if not is_instance_valid(_model):
+		return
+	_t += delta * BOB_SPEED
+	var bounce := (sin(_t) + 1.0) * 0.5   # 0..1, so it only ever bounces up
+	if _pose == Pose.LIE:
+		# No hopping while lying down — a slow breathing scale pulse instead.
+		_model.position.y = _pose_y_offset
+		var breathe := 1.0 + sin(_t * 0.6) * 0.025
+		_model.scale = Vector3(1.0, breathe, breathe)
+	else:
+		_model.position.y = _pose_y_offset + bounce * BOB_AMOUNT * 2.0
+		var squash := 1.0 - bounce * SQUASH_AMOUNT
+		var stretch := 1.0 + bounce * SQUASH_AMOUNT * 0.5
+		_model.scale = Vector3(stretch, squash, stretch)
+
+
+# "stand" (default) / "sit" / "lie" — called by Room3DView alongside each
+# teleport so the tenant visibly uses whatever furniture it just landed on.
+func set_pose(pose_name: String) -> void:
+	match pose_name:
+		"lie":
+			_pose = Pose.LIE
+		"sit":
+			_pose = Pose.SIT
+		_:
+			_pose = Pose.STAND
+	_apply_pose()
+
+
+func _apply_pose() -> void:
+	match _pose:
+		Pose.STAND:
+			_model.rotation = Vector3.ZERO
+			_pose_y_offset = 0.0
+		Pose.SIT:
+			# Whole-body crouch — a lowered stance reads as "sitting at this
+			# piece of furniture" without needing to bend any one connected
+			# limb (which would visibly pull it away from its joint).
+			_model.rotation = Vector3.ZERO
+			_pose_y_offset = -0.14
+		Pose.LIE:
+			_model.rotation.x = deg_to_rad(-90.0)
+			_pose_y_offset = -0.5
+
+
+# A tiny procedurally-drawn smiley (two dot eyes + a curved mouth) on a
+# billboarded quad in front of the head — went back to this after real 3D
+# eyeball geometry turned out uncanny at this model's tiny scale (pupil vs.
+# sclera proportions are very hard to tune blind, and the result read as
+# empty eye sockets). A flat decal reads cleanly from any angle instead.
+const FACE_TEX_SIZE := 64
+const FACE_WORLD_SIZE := 0.16
+
+func _add_happy_face() -> void:
+	var head := _model.find_child("Head", true, false) as MeshInstance3D
+	if head == null:
+		return
+	var img := Image.create(FACE_TEX_SIZE, FACE_TEX_SIZE, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	_draw_dot(img, 22, 26, 4.2)
+	_draw_dot(img, 42, 26, 4.2)
+	# Smile arc: corners (t=0,1) sit HIGHER (smaller y) than the middle
+	# (t=0.5, larger y) — a "cup" shape, which is what a smiling mouth looks
+	# like in image coordinates where y increases downward.
+	for x in range(18, 47):
+		var t := float(x - 18) / 28.0
+		var y := 40 + int(round(6.0 * sin(PI * t)))
+		_draw_dot(img, x, y, 1.8)
+	var sprite := Sprite3D.new()
+	sprite.texture = ImageTexture.create_from_image(img)
+	sprite.pixel_size = FACE_WORLD_SIZE / FACE_TEX_SIZE
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.shaded = false
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.no_depth_test = true   # decal must never be clipped by the curved head surface it sits against
+	sprite.position = Vector3(0, 0, 0.19)
+	head.add_child(sprite)
+
+
+func _draw_dot(img: Image, cx: int, cy: int, r: float) -> void:
+	var ri := int(ceil(r))
+	for x in range(cx - ri, cx + ri + 1):
+		for y in range(cy - ri, cy + ri + 1):
+			if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
+				continue
+			if Vector2(x - cx, y - cy).length() <= r:
+				img.set_pixel(x, y, Color.BLACK)
+
+
+# Recolors the body (torso/feet) to the tenant's color, leaving the skin-toned
+# head/hands and the black outline shells untouched.
+func set_tint(color: Color) -> void:
+	if not is_instance_valid(_model):
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 1.0
+	for part_name in TINTED_PARTS:
+		var mi := _model.find_child(part_name, true, false) as MeshInstance3D
+		if mi:
+			mi.set_surface_override_material(0, mat)

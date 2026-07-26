@@ -146,6 +146,14 @@ func _process(delta: float) -> void:
 		_yaw += delta * 18.0
 		_update_camera()
 	_update_wall_fade(delta)
+	if is_instance_valid(_tenant) and _tenant_stops.size() > 1:
+		_tenant_stop_t += delta
+		if _tenant_stop_t >= TENANT_STOP_SECONDS:
+			_tenant_stop_t = 0.0
+			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
+			var stop: Dictionary = _tenant_stops[_tenant_stop_idx]
+			_tenant.position = stop["pos"]
+			_tenant.set_pose(stop["pose"])
 	if _reason_flash_t > 0.0:
 		_reason_flash_t -= delta
 		if is_instance_valid(_reason_label):
@@ -1319,6 +1327,103 @@ func play_reveal(duration: float = 3.5) -> void:
 	reveal_finished.emit()
 
 
+# ── Post-win tenant showcase ────────────────────────────────────────────────
+# A low-poly Mii avatar that teleports between whichever placed furniture
+# satisfies each moment's needs and plays a single happy bounce the whole
+# time — called once from Main.gd after play_reveal() finishes. No
+# pathfinding: each stop is just a furniture tile already known from
+# _furniture_entries, so "moving" the tenant is a straight position snap.
+const TenantMiiScript := preload("res://scripts/TenantMii.gd")
+const TENANT_STOP_SECONDS := 3.0
+
+# Which pose the tenant strikes for a given furniture function — anything not
+# listed here (hygiene, storage, toilet, shower, cook, laundry, ...) just
+# gets the default standing idle.
+const FUNCTION_POSES := {
+	"sleep": "lie",
+	"sit": "sit",
+	"work": "sit",
+	"dine": "sit",
+}
+
+var _tenant: Node3D = null
+var _tenant_stops: Array = []   # [{pos: Vector3, pose: String}], one per moment (or one per furniture piece, if no moments)
+var _tenant_stop_idx: int = 0
+var _tenant_stop_t: float = 0.0
+
+
+func start_tenant_showcase(moments: Array, tenant_color: Color = Color(0.20, 0.45, 0.85)) -> void:
+	stop_tenant_showcase()
+	if _furniture_entries.is_empty():
+		return
+	_tenant_stops = _collect_tenant_stops(moments)
+	if _tenant_stops.is_empty():
+		return
+	_tenant = TenantMiiScript.new()
+	build_root.add_child(_tenant)
+	_tenant.set_tint(tenant_color)
+	_tenant_stop_idx = 0
+	_tenant_stop_t = 0.0
+	var first: Dictionary = _tenant_stops[0]
+	_tenant.position = first["pos"]
+	_tenant.set_pose(first["pose"])
+
+
+func stop_tenant_showcase() -> void:
+	if is_instance_valid(_tenant):
+		_tenant.queue_free()
+	_tenant = null
+	_tenant_stops.clear()
+	_tenant_stop_idx = 0
+	_tenant_stop_t = 0.0
+
+
+func _pose_for_functions(fns: Array) -> String:
+	for fn in fns:
+		if FUNCTION_POSES.has(fn):
+			return FUNCTION_POSES[fn]
+	return "stand"
+
+
+# One stop per moment — whichever placed furniture piece currently provides
+# one of that moment's needs (functions_for_moment covers foldable items like
+# a Sofa Bed, which only counts as "sleep" once actually unfolded). Most
+# levels don't define moments at all (the tutorials just use a flat
+# required_functions list), so with no moments the tenant instead cycles
+# through every distinct placed furniture piece one at a time — otherwise it
+# would resolve to a single stop and never move.
+func _collect_tenant_stops(moments: Array) -> Array:
+	var stops: Array = []
+	if moments.is_empty():
+		for entry in _furniture_entries:
+			var f: Furniture = entry["furniture"]
+			if not is_instance_valid(f):
+				continue
+			var pos: Vector3 = entry["pos"]
+			if not stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
+				stops.append({"pos": pos, "pose": _pose_for_functions(f.functions)})
+		return stops
+	for m in moments:
+		var moment_id: String = (m as Dictionary).get("id", "")
+		var needs: Array = (m as Dictionary).get("needs", [])
+		var stop = _find_stop_for_needs(moment_id, needs)
+		if stop != null:
+			stops.append(stop)
+	return stops
+
+
+func _find_stop_for_needs(moment_id: String, needs: Array) -> Variant:
+	for entry in _furniture_entries:
+		var f: Furniture = entry["furniture"]
+		if not is_instance_valid(f):
+			continue
+		var fns := f.functions_for_moment(moment_id)
+		for n in needs:
+			if n in fns:
+				return {"pos": entry["pos"] as Vector3, "pose": _pose_for_functions(fns)}
+	return null
+
+
 # Shrinks whichever wall(s) sit between the camera and the room down to a
 # low stub — same "dollhouse cutaway" intent as fully hiding them, but a
 # stub still reads as "there's a wall here" instead of the wall silently
@@ -1418,6 +1523,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_auto_spin = false
 	_foldable  = false
 	_fold_mesh = null
+	_tenant = null
+	_tenant_stops.clear()
 	for c in build_root.get_children():
 		c.queue_free()
 	_wall_data.clear()
