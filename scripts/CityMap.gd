@@ -235,6 +235,7 @@ func _build_ui() -> void:
 	tabs_bg.color = GameTheme.C_BG
 	tabs_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	tabs_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tabs_bg.draw.connect(_draw_wood_grain.bind(tabs_bg))
 	_tabs_col.add_child(tabs_bg)
 
 	# A stepped shadow along the rail's right edge — same fading-ColorRect
@@ -271,6 +272,7 @@ func _build_ui() -> void:
 	ts.shadow_offset = Vector2(0, 3)
 	top_pc.add_theme_stylebox_override("panel", ts)
 	top_pc.z_index = 2
+	top_pc.draw.connect(_draw_wood_grain.bind(top_pc))
 	add_child(top_pc)
 
 	var top_row := HBoxContainer.new()
@@ -469,6 +471,7 @@ func _build_ui() -> void:
 	ip_s.shadow_offset = Vector2(-3, 0)
 	ip.add_theme_stylebox_override("panel", ip_s)
 	ip.z_index = 2
+	ip.draw.connect(_draw_wood_grain.bind(ip))
 	add_child(ip)
 
 	var vb := VBoxContainer.new()
@@ -1852,6 +1855,18 @@ func _on_funds_changed(_amount: int) -> void:
 # opaque background of its own — is the only place this actually shows
 # through. That's deliberate: it's what makes the map read as a blueprint
 # sheet instead of plain dark UI.
+# Faint horizontal streaks — same wood-grain trick MainMenu's desk
+# background uses — applied to the walnut chrome (top bar, sidebar, tabs
+# rail) so those read as the same material as the desk instead of a flat
+# UI-toolkit gray.
+func _draw_wood_grain(node: Control) -> void:
+	var streak := Color(0, 0, 0, 0.05)
+	var y := 6.0
+	while y < node.size.y:
+		node.draw_line(Vector2(0, y), Vector2(node.size.x, y), streak, 1.0)
+		y += 11.0
+
+
 # Same tiny floor-plan silhouette as MainMenu's title motif — a one-room
 # apartment outline with a doorway gap — so both screens share one mark.
 func _draw_title_motif(node: Control) -> void:
