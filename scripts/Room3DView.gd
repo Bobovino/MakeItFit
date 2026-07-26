@@ -1647,11 +1647,18 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 # a real CSG-cut one via _rebuild_wall_with_hole, punching an actual hole
 # rather than hiding the whole segment or papering over it with a decal.
 func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3, f: Furniture) -> void:
+	# Always restore this item's own previous hole (a no-op if it never cut
+	# one) before searching fresh — searching while EXCLUDING the item's
+	# already-owned wall (the previous approach) meant a fold toggle, which
+	# moves the box's center as its depth grows/shrinks, could resolve to a
+	# genuinely different "closest" wall and cut a SECOND hole for the same
+	# item instead of just re-cutting the first one at its new size. That
+	# left two holes per item, and _restore_wall_hole (which only undid one
+	# match) couldn't fully clean either of them up on sell.
+	_restore_wall_hole(f)
 	var best_wd: Dictionary = {}
 	var best_dist := INF
 	for wd in _wall_data:
-		if wd.get("hole_owner", null) == f:
-			continue   # this item's own already-cut wall — moving/re-rotating shouldn't re-match against itself
 		var mesh: Node3D = wd["mesh"]   # MeshInstance3D normally, or a CSGCombiner3D if _rebuild_wall_with_hole already ran on it
 		var normal: Vector3 = wd["normal"]
 		var dist: float = absf(item_pos.x - mesh.position.x) if absf(normal.x) > 0.5 else absf(item_pos.z - mesh.position.z)
@@ -1663,11 +1670,15 @@ func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3, f: Furnit
 	_rebuild_wall_with_hole(best_wd, item_pos, item_box_size, f)
 
 
-# Undoes _rebuild_wall_with_hole for whichever wall the given item cut a hole
-# in, rebuilding the original plain wall mesh from the parameters cached at
-# cut time — called when the item is sold (remove_furniture_entry) or picked
-# up to be dragged elsewhere (_begin_furniture_drag), since neither a sold
-# nor a mid-move item should leave a permanent hole in a wall behind.
+# Undoes _rebuild_wall_with_hole for whichever wall(s) the given item cut a
+# hole in (normally just one, but this cleans up every match rather than
+# stopping at the first — belt and braces against the item ever ending up
+# owning more than one again), rebuilding the original plain wall mesh from
+# the parameters cached at cut time. Called when the item is sold
+# (remove_furniture_entry), picked up to be dragged elsewhere
+# (_begin_furniture_drag), and at the start of every _hide_wall_behind_item
+# call — neither a sold, mid-move, nor about-to-be-recut item should leave a
+# permanent hole in a wall behind.
 func _restore_wall_hole(f: Furniture) -> void:
 	for wd in _wall_data:
 		if wd.get("hole_owner", null) != f:
@@ -1685,7 +1696,6 @@ func _restore_wall_hole(f: Furniture) -> void:
 		wd["force_hidden"] = false
 		wd["target_h"] = 1.0
 		wd["h"] = 1.0
-		return
 
 
 # Replaces a plain wall MeshInstance3D with a CSGCombiner3D (wall box minus a
