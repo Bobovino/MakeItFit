@@ -11,14 +11,7 @@ class_name TenantMii
 # limbs — repositioning one limb without the others would visibly pull it
 # apart at the joint.
 
-# Two body variants — rebuilt in Blender to fix the original single model's
-# proportions (oversized head, overlapping/hidden legs, crooked arms). Which
-# one a given tenant gets is decided in set_tint() below, from the same
-# color every caller already derives from the tenant's name — that keeps a
-# given tenant consistently the same body everywhere without needing their
-# name threaded through as a separate parameter.
-const MODEL_PATH_MALE   := "res://assets/models/tenants/mii_tenant_male.glb"
-const MODEL_PATH_FEMALE := "res://assets/models/tenants/mii_tenant_female.glb"
+const MODEL_PATH := "res://assets/models/tenants/mii_tenant.glb"
 const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 const TINTED_PARTS := ["Torso", "Arm_L", "Arm_R", "Leg_L", "Leg_R", "Foot_L", "Foot_R"]
 
@@ -29,30 +22,19 @@ const SQUASH_AMOUNT := 0.06
 enum Pose { STAND, SIT, LIE }
 
 var _model: Node3D = null
-var _model_path: String = ""   # which of the two variants is currently loaded, so set_tint doesn't reload it every call
 var _t: float = randf() * TAU   # random phase so multiple instances don't sync
 var _pose: int = Pose.STAND
 var _pose_y_offset: float = 0.0
 
 
 func _ready() -> void:
-	pass   # model loads lazily on the first set_tint() call, once the body variant is known
-
-
-func _load_model(path: String) -> void:
-	if path == _model_path:
-		return
-	if is_instance_valid(_model):
-		_model.queue_free()
-	var packed := load(path) as PackedScene
+	var packed := load(MODEL_PATH) as PackedScene
 	if packed == null:
 		return
 	_model = packed.instantiate()
 	add_child(_model)
-	_model_path = path
 	_apply_outline(_model)
 	_add_happy_face()
-	_apply_pose()   # the new model starts at identity transform — reapply whatever pose was already set
 
 
 # Black rim around each part via a next-pass shader (cull_front + vertex push
@@ -98,8 +80,6 @@ func set_pose(pose_name: String) -> void:
 
 
 func _apply_pose() -> void:
-	if not is_instance_valid(_model):
-		return   # set_pose() called before the first set_tint() picked a body variant
 	match _pose:
 		Pose.STAND:
 			_model.rotation = Vector3.ZERO
@@ -215,11 +195,8 @@ func _draw_dot(img: Image, cx: float, cy: float, r: float, color: Color = Color.
 
 
 # Recolors the body (torso/feet) to the tenant's color, leaving the skin-toned
-# head/hands and the black outline shells untouched. Also picks which body
-# variant to load — see the MODEL_PATH_* comment above — from the color's
-# hue, so it's deterministic per tenant without a separate parameter.
+# head/hands and the black outline shells untouched.
 func set_tint(color: Color) -> void:
-	_load_model(MODEL_PATH_FEMALE if int(color.h * 997.0) % 2 == 0 else MODEL_PATH_MALE)
 	if not is_instance_valid(_model):
 		return
 	var mat := StandardMaterial3D.new()
