@@ -26,6 +26,7 @@ Audio="*res://scripts/AudioManager.gd"
 GameState="*res://scripts/GameState.gd"
 Transition="*res://scripts/Transitions.gd"
 Thumb="*res://scripts/ThumbnailRenderer.gd"
+DevScreenshot="*res://scripts/DevScreenshot.gd"
 
 [debug]
 

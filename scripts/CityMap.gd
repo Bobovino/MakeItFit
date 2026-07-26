@@ -55,6 +55,7 @@ var _levels_data: Dictionary = {}
 var _furniture_catalog: Dictionary = {}   # furniture id → its data (size, color, ...), for the blueprint preview
 var _selected: Dictionary = {}
 var _cards: Dictionary = {}      # level_id → Button
+var _selected_card: Button = null   # whichever card last got the "selected" outline — see _select_level/_set_card_selected
 
 var _map_content: Control = null
 var _map_clip:    Control = null
@@ -700,6 +701,7 @@ func _rebuild_levels_ui() -> void:
 	for ch in _map_content.get_children():
 		ch.queue_free()
 	_cards.clear()
+	_selected_card = null   # the button it pointed to is one of the freed children above
 
 	_list_w = _map_clip.size.x if _map_clip and _map_clip.size.x > 0.0 else float(MAP_W)
 	_update_page_tint()
@@ -1304,9 +1306,32 @@ func _create_parcel(ld: Dictionary) -> Button:
 	btn.add_theme_stylebox_override("hover", sh)
 	btn.add_theme_stylebox_override("pressed", sh)
 
+	# Clicking a card used to leave no lasting trace once the mouse moved
+	# away again — hover/pressed are transient states, so nothing on the
+	# page actually showed which apartment the info panel was describing.
+	# A bright white outline (distinct from hover's amber, and from the
+	# amber fill real levels already use) is _set_card_selected's job below.
+	var sn_selected := sn.duplicate() as StyleBoxFlat
+	sn_selected.border_color = Color(1, 1, 1, 0.95)
+	sn_selected.set_border_width_all(3)
+	btn.set_meta("sn_normal", sn)
+	btn.set_meta("sn_selected", sn_selected)
+
 	btn.pressed.connect(_select_level.bind(ld))
 	_map_content.add_child(btn)
 	return btn
+
+
+# Swaps a card's own "normal" stylebox between its plain and highlighted
+# versions — deselecting the previous card and marking the new one, so the
+# blueprint always shows at a glance which apartment the info panel is
+# currently describing (see _select_level).
+func _set_card_selected(btn: Button, selected: bool) -> void:
+	if not is_instance_valid(btn):
+		return
+	var meta_key := "sn_selected" if selected else "sn_normal"
+	if btn.has_meta(meta_key):
+		btn.add_theme_stylebox_override("normal", btn.get_meta(meta_key) as StyleBoxFlat)
 
 
 # ── Parcel content refresh ───────────────────────────────────────────────────
@@ -1461,6 +1486,9 @@ func _select_level(ld: Dictionary) -> void:
 	_selected_is_custom = false
 	_selected = ld
 	var lid      := ld["id"] as String
+	_set_card_selected(_selected_card, false)
+	_selected_card = _cards.get(lid) as Button
+	_set_card_selected(_selected_card, true)
 	var is_owned := GameState.is_owned(lid)
 	var cost     := ld.get("acquisition_cost", 0) as int
 	var min_st   := ld.get("min_stars", 0) as int

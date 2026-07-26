@@ -1,6 +1,9 @@
 # Godot 4 generated cache — do not commit
 .godot/
 
+# Dev-only screenshot hotkey output (see scripts/DevScreenshot.gd)
+dev_screenshots/
+
 # Imported binary translations
 *.translation
 
