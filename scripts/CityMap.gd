@@ -551,6 +551,7 @@ func _build_ui() -> void:
 	_action_btn.add_theme_color_override("font_color",          GameTheme.C_AMBER)
 	_action_btn.add_theme_color_override("font_disabled_color", GameTheme.C_MUTED)
 	_action_btn.pressed.connect(_on_action_pressed)
+	_action_btn.draw.connect(_draw_sheen.bind(_action_btn))
 	vb.add_child(_action_btn)
 
 	# Second entry point shown only for levels that already have a saved
@@ -562,6 +563,7 @@ func _build_ui() -> void:
 	_redesign_btn.add_theme_font_size_override("font_size", 11)
 	_redesign_btn.visible = false
 	_redesign_btn.pressed.connect(_on_redesign_pressed)
+	_redesign_btn.draw.connect(_draw_sheen.bind(_redesign_btn))
 	vb.add_child(_redesign_btn)
 
 	# Bottom spacer pushes the secondary buttons to the bottom of the panel
@@ -752,6 +754,7 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	btn.add_theme_stylebox_override("pressed", sh)
 
 	btn.pressed.connect(_on_tab_pressed.bind(bid))
+	btn.draw.connect(_draw_sheen.bind(btn))
 	return btn
 
 
@@ -826,9 +829,9 @@ func _rebuild_levels_ui() -> void:
 # into the same wrap-flow grid as real apartment parcels — not confined to
 # leftover space — so the map reads as a mixed neighborhood instead of a
 # building lot for every single square. Kept in the same flat-shape style as
-# real parcels (no organic polygons — that made things unreadable last time),
-# just lower-contrast (root.modulate alpha) so it's visually obvious they're
-# not clickable.
+# real parcels (no organic polygons — that made things unreadable last time);
+# their own muted color palette (park green, plaza tan, ...) versus real
+# apartments' amber is what makes it obvious they're not clickable.
 const DECORATION_TYPES := ["park", "lake", "plaza", "monument", "church", "fountain", "parking", "sports", "cemetery", "building"]
 const DECOR_LABELS := {
 	"park": "Park", "lake": "Lake", "plaza": "Plaza", "monument": "Monument",
@@ -862,7 +865,10 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 	root.size = dsize
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.clip_contents = true   # symbol details (hatch lines, ripples, ...) must not bleed into neighboring cells
-	root.modulate = Color(1, 1, 1, 0.6)   # the "this isn't a real clickable lot" cue
+	# No opacity dimming — decorations cover roughly half the grid, so any
+	# alpha reduction here read as "the whole map is dark," not "these tiles
+	# aren't clickable." The amber real-apartment fill already does that job
+	# by itself; decorations stay at full color/opacity now.
 
 	match kind:
 		"park":
@@ -1103,23 +1109,8 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 
 
 func _decor_base(root: Control, fill: Color, border: Color, corner_radius: int = 2) -> void:
-	# A thin darker rim peeking out at the bottom-right (same base+face idea
-	# as the apartment "keycap", just much shallower) so decorations read as
-	# having a hair of thickness too, instead of being the only flat thing
-	# left on the page once the real buildings got their own depth.
-	var base := Panel.new()
-	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var base_sn := StyleBoxFlat.new()
-	base_sn.bg_color = fill.darkened(0.35)
-	base_sn.set_corner_radius_all(corner_radius)
-	base.add_theme_stylebox_override("panel", base_sn)
-	root.add_child(base)
-
 	var p := Panel.new()
-	p.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	p.position = Vector2.ZERO
-	p.size = root.custom_minimum_size - Vector2(2, 2)
+	p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sn := StyleBoxFlat.new()
 	sn.bg_color = fill
@@ -1865,6 +1856,28 @@ func _draw_wood_grain(node: Control) -> void:
 	while y < node.size.y:
 		node.draw_line(Vector2(0, y), Vector2(node.size.x, y), streak, 1.0)
 		y += 11.0
+
+
+var _sheen_tex: GradientTexture2D = null
+
+# A soft light-from-above gradient — the actual fix for flat StyleBoxFlat
+# color + border + drop shadow reading as generic UI-toolkit widgets rather
+# than crafted objects. Applied ONLY to chrome buttons (tabs, sidebar
+# actions) — never anything inside _map_clip, so it can't be mistaken for
+# another film sitting over the blueprint.
+func _draw_sheen(node: Control) -> void:
+	if not _sheen_tex:
+		var grad := Gradient.new()
+		grad.colors = PackedColorArray([Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.0)])
+		grad.offsets = PackedFloat32Array([0.0, 0.6])
+		_sheen_tex = GradientTexture2D.new()
+		_sheen_tex.gradient = grad
+		_sheen_tex.fill = GradientTexture2D.FILL_LINEAR
+		_sheen_tex.fill_from = Vector2(0.5, 0.0)
+		_sheen_tex.fill_to = Vector2(0.5, 1.0)
+		_sheen_tex.width = 8
+		_sheen_tex.height = 64
+	node.draw_texture_rect(_sheen_tex, Rect2(Vector2.ZERO, node.size), false)
 
 
 # Same tiny floor-plan silhouette as MainMenu's title motif — a one-room
