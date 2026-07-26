@@ -154,6 +154,15 @@ func _ready() -> void:
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
+		# The screen-rectangle check alone isn't enough: the Wall Inspector's
+		# elevation view can occupy that exact same rectangle when open,
+		# which made clicks/drags meant for it get misread as "landed on the
+		# floor plan" — letting the OTHER ghost armed by the same purchase
+		# (see Main.gd's _on_buy_requested) react to stale floor coordinates
+		# and surface its own rejection (e.g. "Outside the room") even while
+		# the player was clearly placing the item on a wall instead.
+		if wall_inspector.is_showing_wall():
+			return false
 		return pos.x > LEFT_X and pos.x < RIGHT_X and pos.y > TOP_Y and pos.y < _floor_pane_bottom_y()
 	_update_split(_split_y)
 	_apply_ui_theme()

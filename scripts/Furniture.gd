@@ -1174,6 +1174,17 @@ func _start_drag(mouse_pos: Vector2) -> void:
 func _drag(mouse_pos: Vector2) -> void:
 	if not _wall_ref:
 		return
+	# Buying an item arms BOTH a floor ghost (this one) and a Wall Inspector
+	# ghost at once, so the player can drop it into whichever panel they
+	# actually click into (see Main.gd's _on_buy_requested). The click
+	# handler below already ignores clicks that land outside the floor pane
+	# for that reason — but until now this continuous mouse-motion reposition
+	# had no such gate, so this ghost kept tracking/re-validating stray
+	# floor-plan coordinates from wherever the cursor was over the OTHER
+	# panel, and could surface its own rejection reason (e.g. "Outside the
+	# room") even while the player was clearly placing the item on a wall.
+	if Furniture.is_in_floor_pane.is_valid() and not Furniture.is_in_floor_pane.call(mouse_pos):
+		return
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var tx := target.x / TILE_SIZE
 	var ty := target.y / TILE_SIZE
