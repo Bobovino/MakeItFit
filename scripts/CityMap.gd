@@ -1099,7 +1099,15 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 		cap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 		cap.offset_top = -12
 		cap.offset_bottom = -1
-		cap.add_theme_font_size_override("font_size", 8)
+		# Hand-lettered like a real drafter's margin note instead of the
+		# game's normal UI type — a small, cheap way to make the page read as
+		# designed rather than every label sharing one generic body font.
+		var hand := GameTheme.handwriting()
+		if hand:
+			cap.add_theme_font_override("font", hand)
+			cap.add_theme_font_size_override("font_size", 13)
+		else:
+			cap.add_theme_font_size_override("font_size", 8)
 		cap.add_theme_color_override("font_color", Color(0.90, 0.93, 0.97, 0.9))
 		cap.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 		cap.add_theme_constant_override("shadow_offset_x", 1)
@@ -1441,6 +1449,19 @@ func _create_parcel(ld: Dictionary) -> Button:
 	btn.set_meta("sn_selected", sn_selected)
 
 	btn.pressed.connect(_select_level.bind(ld))
+
+	# A slight lift on hover — before this, the only feedback was the border
+	# swapping color, with zero motion anywhere on the page. Pivot is set at
+	# hover time (not here) since callers still resize the button after
+	# _create_parcel returns.
+	btn.mouse_entered.connect(func():
+		btn.pivot_offset = btn.size * 0.5
+		create_tween().tween_property(btn, "scale", Vector2(1.035, 1.035), 0.12) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
+	btn.mouse_exited.connect(func():
+		create_tween().tween_property(btn, "scale", Vector2.ONE, 0.12) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
+
 	_map_content.add_child(btn)
 	return btn
 
