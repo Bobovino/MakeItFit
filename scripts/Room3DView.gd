@@ -509,7 +509,10 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	col.a = 0.55
 	var box_size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
 	_buying_mesh = _box(box_size, Vector3(box_size.x * 0.5, box_size.y * 0.5, box_size.z * 0.5), col)
-	_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
+	if fdata.get("animated_fold", false):
+		_apply_animated_item_model(_buying_mesh, fdata.get("model", "") as String, false)
+	else:
+		_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
 	_set_grid_overlay_visible(true)
 	_set_hitbox_highlights_visible(true)
 	# The box above spawns at a hardcoded position near the room's own origin
@@ -538,7 +541,14 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 	_buying_mesh.visible = true
 	var iw: int = _buying_furniture.grid_w
 	var box := _buying_mesh.mesh as BoxMesh
-	if hit["mode"] == "wall":
+	# wall_flush_required items (the balcony window) always go through the
+	# FLOOR/Furniture placement path below, snapped flush against a wall by
+	# Wall.can_place()'s own check — never the separate "hang decoration on
+	# a wall" system (Wall.place_wall_item / _wall_item_entries), which is a
+	# plain {edge, origin, fid} data record with no Furniture node behind
+	# it at all, and therefore no fold/toggle support whatsoever. Dragging
+	# this item over a wall surface must NOT arm that path.
+	if hit["mode"] == "wall" and not _buying_furniture.wall_flush_required:
 		_buying_on_wall = true
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
@@ -581,7 +591,10 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		# match it, so 0°/180° stop looking identical.
 		var rs: int = _buying_furniture.rot_steps
 		var canon := Vector3(box.size.z, box.size.y, box.size.x) if rs % 2 == 1 else box.size
-		_refit_item_model(_buying_mesh, canon)
+		if _buying_fdata.get("animated_fold", false):
+			_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, false)
+		else:
+			_refit_item_model(_buying_mesh, canon)
 		if _apt_floor and not _apt_floor.can_place(_buying_furniture, tile):
 			var reason := _apt_floor.get_block_reason()
 			_show_reason(reason)
@@ -652,7 +665,10 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
 	var rs: int = f.rot_steps
 	var canon_size := Vector3(item_size.z, item_size.y, item_size.x) if rs % 2 == 1 else item_size
-	_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
+	if _buying_fdata.get("animated_fold", false):
+		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended)
+	else:
+		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
 	_buying_furniture = null
@@ -1188,15 +1204,17 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 # animation — then just played forward/backward from here on.
 func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_extended: bool) -> void:
 	var ap: AnimationPlayer
+	var inst: Node3D
 	if mi.has_meta("model_anim_player"):
 		ap = mi.get_meta("model_anim_player") as AnimationPlayer
+		inst = mi.get_meta("model_inst") as Node3D
 	else:
 		if model_path.is_empty() or not ResourceLoader.exists(model_path):
 			return
 		var packed := load(model_path) as PackedScene
 		if not packed:
 			return
-		var inst := packed.instantiate() as Node3D
+		inst = packed.instantiate() as Node3D
 		if not inst:
 			return
 		var mat := mi.material_override as StandardMaterial3D
@@ -1204,21 +1222,26 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			mat.albedo_color.a = 0.0
 		mi.add_child(inst)
-		# The model's own origin sits at its frame's floor-level, wall-flush
-		# point (see the Blender build notes for balconyWindow.glb) — offset
-		# down from the box's vertical CENTER (mi's own origin) to the box's
-		# floor, and back to the box's wall-facing edge, matching how every
-		# other item's box is anchored (wall-flush, floor-resting). Yawed
-		# 180° because the panels' built-in "open" direction pointed back
-		# into the room instead of out through the wall — confirmed wrong
-		# in-game, this flips it to open outward.
-		var box_size := (mi.mesh as BoxMesh).size
-		inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
+		# Yawed 180° because the panels' built-in "open" direction pointed
+		# back into the room instead of out through the wall — confirmed
+		# wrong in-game, this flips it to open outward.
 		inst.rotation.y = PI
 		ap = _merge_animations(inst)
 		mi.set_meta("model_inst", inst)
 		mi.set_meta("model_anim_player", ap)
-		_add_balcony_wall_gap(mi, box_size)
+	# The model's own origin sits at its frame's floor-level, wall-flush
+	# point (see the Blender build notes for balconyWindow.glb) — offset
+	# down from the box's vertical CENTER (mi's own origin) to the box's
+	# floor, and back to the box's wall-facing edge, matching how every
+	# other item's box is anchored (wall-flush, floor-resting). Recomputed
+	# on EVERY call, not just the first load: this item's box depth grows
+	# when extended (toggle_fold's extended_add_h), and since the box is
+	# centered on its own position, its CENTER moves outward as it grows —
+	# the frame's wall-flush edge must stay pinned at the wall regardless,
+	# not drift outward with that center.
+	var box_size := (mi.mesh as BoxMesh).size
+	inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
+	_add_balcony_wall_gap(mi, box_size)
 	if not is_instance_valid(ap):
 		return
 	if is_extended:
@@ -1236,21 +1259,25 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 # placeholder box already has, instead of recomputing edge/x_tile like the
 # window-specific version does.
 func _add_balcony_wall_gap(mi: MeshInstance3D, box_size: Vector3) -> void:
+	var gap: MeshInstance3D
 	if mi.has_meta("wall_gap"):
-		return
-	var gap := MeshInstance3D.new()
-	var quad := BoxMesh.new()
-	quad.size = Vector3(box_size.x * 0.92, box_size.y * 0.92, 0.02)
-	gap.mesh = quad
+		gap = mi.get_meta("wall_gap") as MeshInstance3D
+	else:
+		gap = MeshInstance3D.new()
+		gap.mesh = BoxMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color   = Color(0.55, 0.78, 0.92, 0.55)
+		mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
+		gap.material_override = mat
+		mi.add_child(gap)
+		mi.set_meta("wall_gap", gap)
+	# Recomputed every call for the same reason as inst's own position above
+	# — the box's depth (and therefore where its wall-flush edge sits
+	# relative to its own center) changes between folded/extended states.
+	(gap.mesh as BoxMesh).size = Vector3(box_size.x * 0.92, box_size.y * 0.92, 0.02)
 	gap.position = Vector3(0, 0, -box_size.z * 0.5)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color   = Color(0.55, 0.78, 0.92, 0.55)
-	mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
-	gap.material_override = mat
-	mi.add_child(gap)
-	mi.set_meta("wall_gap", gap)
 
 
 # balconyWindow.glb's four hinges were each keyframed as their OWN Blender

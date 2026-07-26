@@ -964,6 +964,18 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = "Blocked by a wall"
 			return false
 
+	if furniture.wall_flush_required:
+		var b := get_room_bounds()
+		var touches_wall := (
+			at.x - b.position.x <= WALL_SNAP
+			or (b.position.x + b.size.x) - (at.x + furniture.grid_w) <= WALL_SNAP
+			or at.y - b.position.y <= WALL_SNAP
+			or (b.position.y + b.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP
+		)
+		if not touches_wall:
+			_block_reason = "Must be placed against a wall"
+			return false
+
 	# Furniture-vs-furniture overlap: precise continuous rects + Z-range test,
 	# not tile-quantized — two pieces can sit flush at a fractional boundary
 	# without a false collision from tile rounding.

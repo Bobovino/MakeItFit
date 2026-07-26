@@ -51,6 +51,7 @@ var needs_water:  bool = false
 var needs_power:  bool = false
 var zone_divider: bool = false   # acts as a soft wall for zone flood-fill
 var floor_category: String = "any"   # "any" | "balcony" | "bathroom" — which tile kinds accept this piece
+var wall_flush_required: bool = false   # must end up snapped flush against a wall — see Wall.can_place()
 var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
@@ -135,6 +136,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	needs_power           = data.get("needs_power",       false)    as bool
 	zone_divider          = data.get("zone_divider",      false)    as bool
 	floor_category        = data.get("floor_category",    "any")    as String
+	wall_flush_required   = data.get("animated_fold",     false)    as bool
 	rail_axis             = data.get("rail_axis",         "")       as String
 	rail_start            = data.get("rail_start",        -1)       as int
 	rail_end              = data.get("rail_end",          -1)       as int

@@ -1471,17 +1471,6 @@ func _on_buy_requested(furniture_id: String) -> void:
 		_mode3d_view.buy_confirmed_wall.connect(h["wall_confirmed"], CONNECT_ONE_SHOT)
 		_mode3d_view.buy_cancelled.connect(h["cancelled"], CONNECT_ONE_SHOT)
 		_mode3d_view.start_buying(f, fdata)
-	elif (fdata.get("placement", "") as String) == "wall":
-		# Wall-only items (e.g. the balcony window) never get a floor ghost —
-		# arming one let the floor ghost's own validation reject positions
-		# that were only ever meant to be checked against the wall (its
-		# footprint doesn't mean anything as a free-standing floor rect), and
-		# a floor drop would place a window in the middle of the room. Needs
-		# a wall already open in the Wall Inspector to go anywhere; buying it
-		# with no wall selected currently has no placement UI to hand it to.
-		f.queue_free()
-		if wall_inspector.is_showing_wall():
-			wall_inspector.select_item(furniture_id)
 	else:
 		f.placement_confirmed.connect(func():
 			gm.buy_furniture(furniture_id)
@@ -1496,7 +1485,14 @@ func _on_buy_requested(furniture_id: String) -> void:
 			_refresh_functions())
 		f.begin_placement(apt_floor, get_viewport().get_mouse_position())
 		_pending_floor_ghost = f
-		if wall_inspector.is_showing_wall():
+		# wall_flush_required items (the balcony window) always place through
+		# THIS floor-ghost path — Wall.can_place() itself enforces the "must
+		# be flush against a wall" rule — never Wall Inspector's separate
+		# "hang decoration on a wall" system, which stores a plain
+		# {edge, origin, fid} record with no Furniture node behind it and so
+		# no fold/toggle support at all (confirmed: that's the very thing
+		# that made a placed balcony window impossible to open/close).
+		if wall_inspector.is_showing_wall() and not f.wall_flush_required:
 			wall_inspector.select_item(furniture_id)
 
 	_refresh_functions()

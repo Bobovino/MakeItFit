@@ -112,7 +112,7 @@
     {
       "id": "balcony_window",
       "name": "Balcony Window",
-      "placement": "wall",
+      "placement": "floor",
       "size": {
         "w": 17,
         "h": 2
