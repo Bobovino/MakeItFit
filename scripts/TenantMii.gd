@@ -24,21 +24,31 @@ const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 # (y=0 at the feet), so this doesn't need any extra vertical correction.
 const MODEL_SCALE := 2.2
 
-enum Pose { STAND, SIT, LIE }
+enum Pose { STAND, SIT, LIE, CROUCH }
 
 # How each pose maps onto the pack's baked animation names, and how far to
 # sink the whole rig into the furniture (the pack's own anims don't know
 # about our specific bed/chair meshes, so a small manual offset still does
 # the "actually inside the furniture, not floating above it" work).
+#
+# LIE does NOT use the pack's "die" animation, even though that's the only
+# one that visually ends up flat on its back — "die" is a fall-over
+# animation with its own baked rotation carrying the torso backward over
+# time, and since our fixed stop position assumes the character is already
+# lying in place, that baked fall swings the body backward through
+# whatever's directly behind it (a wall, in the bed case). Using a static
+# pose plus our OWN rotation keeps the whole body pinned to one spot.
 const POSE_ANIM := {
 	Pose.STAND: "idle",
 	Pose.SIT: "sit",
-	Pose.LIE: "die",   # only baked anim that puts the rig flat on its back
+	Pose.LIE: "static",
+	Pose.CROUCH: "crouch",   # bathtub: "sit" spreads legs forward far enough to poke through the tub's raised sides
 }
 const POSE_Y_OFFSET := {
 	Pose.STAND: 0.0,
 	Pose.SIT: -0.14,
-	Pose.LIE: -0.05,
+	Pose.LIE: 0.5,   # approx. mattress-top height — tune once seen in-game
+	Pose.CROUCH: -0.1,
 }
 
 var _model: Node3D = null
@@ -81,14 +91,17 @@ func _apply_outline(node: Node) -> void:
 		_apply_outline(child)
 
 
-# "stand" (default) / "sit" / "lie" — called by Room3DView alongside each
-# teleport so the tenant visibly uses whatever furniture it just landed on.
+# "stand" (default) / "sit" / "lie" / "crouch" — called by Room3DView
+# alongside each teleport so the tenant visibly uses whatever furniture it
+# just landed on.
 func set_pose(pose_name: String) -> void:
 	match pose_name:
 		"lie":
 			_pose = Pose.LIE
 		"sit":
 			_pose = Pose.SIT
+		"crouch":
+			_pose = Pose.CROUCH
 		_:
 			_pose = Pose.STAND
 	_apply_pose()
@@ -108,16 +121,16 @@ func _apply_pose() -> void:
 	if not is_instance_valid(_model):
 		return   # set_pose() called before the first set_tint() picked a body variant
 	position.y = POSE_Y_OFFSET[_pose]
+	# Rotating the WHOLE model (not any one limb) around its own feet-level
+	# origin is what actually lays it down — since position.y above already
+	# lifted that origin up to mattress height, the body swings out flat at
+	# that same height instead of describing an arc through the floor.
+	_model.rotation.x = deg_to_rad(-90.0) if _pose == Pose.LIE else 0.0
 	if is_instance_valid(_anim_player):
 		var anim_name: String = POSE_ANIM[_pose]
 		if _anim_player.has_animation(anim_name):
 			_anim_player.play(anim_name)
-			# "die" is a one-shot animation (it's meant to end with the
-			# character down and stay there) — everything else loops so the
-			# tenant doesn't freeze mid-stride while standing or sitting.
-			_anim_player.get_animation(anim_name).loop_mode = (
-				Animation.LOOP_NONE if _pose == Pose.LIE else Animation.LOOP_LINEAR
-			)
+			_anim_player.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
 
 
 # A tiny procedurally-drawn smiley (two dot eyes + a curved mouth) on a

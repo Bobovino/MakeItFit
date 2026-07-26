@@ -1347,14 +1347,14 @@ const FUNCTION_POSES := {
 }
 
 # "hygiene" covers bathtub/toilet/sink/shower/towel_rack alike, but standing
-# idle only actually looks right for the ones you use on your feet — a
-# bathtub or toilet needs the sit pose (the pack has no dedicated
-# bathing/crouching animation) so the tenant doesn't stand there stiffly
-# next to a bathtub it's supposedly using. Keyed by furniture id rather than
-# function since sink/shower/towel_rack share the same "hygiene" function
-# but should stay standing.
+# idle only actually looks right for the ones you use on your feet. Keyed by
+# furniture id rather than function since sink/shower/towel_rack share the
+# same "hygiene" function but should stay standing. Bathtub uses "crouch"
+# rather than "sit" — the sit animation spreads the legs forward far enough
+# to poke through a tub's raised side walls; a toilet's open sides don't
+# have that problem.
 const ID_POSES := {
-	"bathtub": "sit",
+	"bathtub": "crouch",
 	"toilet": "sit",
 }
 
