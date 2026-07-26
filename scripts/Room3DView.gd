@@ -471,7 +471,17 @@ func _rotate_dragged_furniture() -> void:
 	box.size = new_size
 	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
 	var canon := Vector3(new_size.z, new_size.y, new_size.x) if f.rot_steps % 2 == 1 else new_size
-	_refit_item_model(mesh, canon)
+	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	if fdata.get("animated_fold", false):
+		# _refit_item_model assumes the normal exact-fit-scaled model setup
+		# (a "model_native" meta key _apply_item_model always sets) — this
+		# item never goes through that path at all, so calling it here
+		# crashed on missing metadata the instant you tried to rotate one
+		# mid-drag. _apply_animated_item_model already re-derives the
+		# wall-flush offset from the box's current size on every call.
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
+	else:
+		_refit_item_model(mesh, canon)
 	_drag_target["size"] = new_size
 	# Re-centre on the same tile the cursor is currently over — grid_w/grid_h
 	# just swapped, so the footprint anchor has to be recomputed the same way
