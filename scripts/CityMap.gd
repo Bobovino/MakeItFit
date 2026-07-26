@@ -16,8 +16,8 @@ const CARD_H   := 108
 const MAP_VISIBLE_H := 666.0   # 720 - TOP_H
 const SCROLLBAR_W := 14.0
 const PAPER_MARGIN := 18.0   # thickness of the kraft-paper band framing the blueprint sheet — keep
-                              # this small: it eats directly into the grid's usable width, and wider
-                              # values silently drop a whole manzana column (verified: 34px only fit 1)
+							  # this small: it eats directly into the grid's usable width, and wider
+							  # values silently drop a whole manzana column (verified: 34px only fit 1)
 
 # ── City map (parcels) layout ───────────────────────────────────────────────
 # Each district is a "block" — a big tinted terrain rect containing that
@@ -1108,13 +1108,24 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 	return root
 
 
+# A blueprint is a cyanotype: one blue sheet, everything drawn on it in
+# white ink. The per-decoration fills passed in used to include near-black
+# grays (0.14/0.22/0.26...) that, sitting on the blue map, read as dead dark
+# patches — the "darkening" that kept showing up. Every decoration cell now
+# forces its fill to a blue only slightly lighter than the map, carrying
+# just a faint tint of its theme color, so nothing on the sheet is ever
+# darker than the sheet itself.
+const _DECOR_SHEET := Color(0.145, 0.30, 0.47)   # one step lighter than the map fill (0.11,0.24,0.40)
+
 func _decor_base(root: Control, fill: Color, border: Color, corner_radius: int = 2) -> void:
 	var p := Panel.new()
 	p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sn := StyleBoxFlat.new()
-	sn.bg_color = fill
-	sn.border_color = border
+	# Mostly the blueprint blue, only a quarter of the theme hue mixed in —
+	# never the raw (often near-black) fill that was passed in.
+	sn.bg_color = _DECOR_SHEET.lerp(fill, 0.25)
+	sn.border_color = border.lerp(GameTheme.BP_INK, 0.35)
 	sn.set_border_width_all(1)
 	sn.set_corner_radius_all(corner_radius)
 	p.add_theme_stylebox_override("panel", sn)
