@@ -383,6 +383,8 @@ func _pick_furniture(vp_pos: Vector2) -> Dictionary:
 	var best_t := INF
 	var best: Dictionary = {}
 	for entry in _furniture_entries:
+		if not entry.has("furniture") or not entry.has("mesh") or not entry.has("pos") or not entry.has("size"):
+			continue   # defensive: a malformed entry here used to hard-crash instead of just being skipped
 		if not is_instance_valid(entry["furniture"]) or not is_instance_valid(entry["mesh"]):
 			continue
 		var pos: Vector3 = entry["pos"]
@@ -400,6 +402,7 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	_dragging_furniture = true
 	_drag_orig_pos       = hit["pos"]
 	var f: Furniture     = hit["furniture"]
+	_restore_wall_hole(f)   # picking up a balcony window to move it opens the wall back up until it's dropped somewhere new
 	var tile             := _room_local_to_tile(_ground_hit(vp_pos))
 	_drag_offset         = Vector2(f.grid_pos.x, f.grid_pos.y) - tile
 	_drag_last_tile      = f.grid_pos
@@ -676,7 +679,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	var rs: int = f.rot_steps
 	var canon_size := Vector3(item_size.z, item_size.y, item_size.x) if rs % 2 == 1 else item_size
 	if _buying_fdata.get("animated_fold", false):
-		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended)
+		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
 		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
@@ -724,6 +727,7 @@ func _sell_furniture(hit: Dictionary) -> void:
 # on that stale entry (e.g. just hovering nearby) then crashed trying to read
 # it ("Trying to assign invalid previously freed instance").
 func remove_furniture_entry(f: Furniture) -> void:
+	_restore_wall_hole(f)   # a sold balcony window shouldn't leave its wall permanently open
 	for i in range(_furniture_entries.size() - 1, -1, -1):
 		if _furniture_entries[i]["furniture"] == f:
 			var mesh: MeshInstance3D = _furniture_entries[i]["mesh"]
@@ -1135,6 +1139,13 @@ func _finish_furniture_drag() -> void:
 		mesh.position = _drag_orig_pos
 		if _apt_floor:
 			_flash_reason(_apt_floor.get_block_reason())
+	# _begin_furniture_drag() already restored any wall hole this item had
+	# when picked up — cut a fresh one at wherever it actually landed
+	# (its new spot on success, or back at its original spot if the drop
+	# was rejected and it snapped back).
+	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	if fdata.get("animated_fold", false):
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 	_drag_target["pos"] = mesh.position
 	_drag_target = {}
 	_hide_drag_highlight()
@@ -1194,7 +1205,7 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 		# The two fold states are really one continuous mechanical motion
 		# (a hinged window folding into a balcony), not two separate
 		# models — see _apply_animated_item_model.
-		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
 		# A piece with a distinct "model_extended" (e.g. a sofa bed that should
 		# actually become a bed, not just a stretched sofa) needs the whole model
@@ -1212,7 +1223,7 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 # does, since the model's own geometry already reshapes itself between
 # states and rescaling it to a growing/shrinking box would fight the
 # animation — then just played forward/backward from here on.
-func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_extended: bool) -> void:
+func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_extended: bool, f: Furniture = null, finalize_wall: bool = false) -> void:
 	var ap: AnimationPlayer
 	var inst: Node3D
 	if mi.has_meta("model_anim_player"):
@@ -1252,7 +1263,12 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 	var box_size := (mi.mesh as BoxMesh).size
 	inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
 	_add_balcony_wall_gap(mi, box_size)
-	_hide_wall_behind_item(mi.position, box_size)
+	# Only cut on an actually-finalized placement (a real Furniture object,
+	# not the free-floating buy-ghost preview or a piece still being
+	# dragged/rotated mid-move) — cutting on every preview frame would punch
+	# holes in walls the player was only ever hovering over, never bought.
+	if finalize_wall and is_instance_valid(f):
+		_hide_wall_behind_item(mi.position, box_size, f)
 	if not is_instance_valid(ap):
 		return
 	if is_extended:
@@ -1630,10 +1646,12 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 # that wall's own normal points along) and replaces its plain box mesh with
 # a real CSG-cut one via _rebuild_wall_with_hole, punching an actual hole
 # rather than hiding the whole segment or papering over it with a decal.
-func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3) -> void:
+func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3, f: Furniture) -> void:
 	var best_wd: Dictionary = {}
 	var best_dist := INF
 	for wd in _wall_data:
+		if wd.get("hole_owner", null) == f:
+			continue   # this item's own already-cut wall — moving/re-rotating shouldn't re-match against itself
 		var mesh: Node3D = wd["mesh"]   # MeshInstance3D normally, or a CSGCombiner3D if _rebuild_wall_with_hole already ran on it
 		var normal: Vector3 = wd["normal"]
 		var dist: float = absf(item_pos.x - mesh.position.x) if absf(normal.x) > 0.5 else absf(item_pos.z - mesh.position.z)
@@ -1642,7 +1660,32 @@ func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3) -> void:
 			best_wd = wd
 	if best_wd.is_empty() or best_wd.get("has_hole", false):
 		return
-	_rebuild_wall_with_hole(best_wd, item_pos, item_box_size)
+	_rebuild_wall_with_hole(best_wd, item_pos, item_box_size, f)
+
+
+# Undoes _rebuild_wall_with_hole for whichever wall the given item cut a hole
+# in, rebuilding the original plain wall mesh from the parameters cached at
+# cut time — called when the item is sold (remove_furniture_entry) or picked
+# up to be dragged elsewhere (_begin_furniture_drag), since neither a sold
+# nor a mid-move item should leave a permanent hole in a wall behind.
+func _restore_wall_hole(f: Furniture) -> void:
+	for wd in _wall_data:
+		if wd.get("hole_owner", null) != f:
+			continue
+		var root: Node3D = wd["mesh"]
+		var orig: Dictionary = wd["orig_wall"]
+		if is_instance_valid(root):
+			root.queue_free()
+		var mesh := _add_sloped_wall(orig["length"], orig["thick"], orig["height"], orig["height"],
+			orig["pos"], orig["rot_y_deg"], orig["color"])
+		wd["mesh"] = mesh
+		wd.erase("has_hole")
+		wd.erase("hole_owner")
+		wd.erase("orig_wall")
+		wd["force_hidden"] = false
+		wd["target_h"] = 1.0
+		wd["h"] = 1.0
+		return
 
 
 # Replaces a plain wall MeshInstance3D with a CSGCombiner3D (wall box minus a
@@ -1654,7 +1697,7 @@ func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3) -> void:
 # (length, height, thick) — see _wedge_mesh — not centered, so every CSGBox3D
 # below is offset by half its own size to land in the same place a piece of
 # that box would have.
-func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: Vector3) -> void:
+func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: Vector3, f: Furniture) -> void:
 	var old_mesh: MeshInstance3D = wd["mesh"]
 	var aabb := old_mesh.mesh.get_aabb()
 	var length := aabb.size.x
@@ -1670,6 +1713,14 @@ func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: V
 		return
 	var mat := old_mesh.material_override as StandardMaterial3D
 	var color := mat.albedo_color if mat else Color(0.86, 0.83, 0.76)
+	# Cached so _restore_wall_hole can rebuild the exact same plain wall back
+	# if this item is later sold or picked up to move elsewhere.
+	wd["orig_wall"] = {
+		"length": length, "thick": thick, "height": height,
+		"pos": old_mesh.position, "rot_y_deg": rad_to_deg(old_mesh.rotation.y),
+		"color": color,
+	}
+	wd["hole_owner"] = f
 
 	var hole_local := old_mesh.global_transform.affine_inverse() * item_pos
 	var hole_w := maxf(item_box_size.x, item_box_size.z)
@@ -2754,7 +2805,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	mi.position = pos
 	mi.rotation.y = deg_to_rad(f.rot_steps * 90.0)
 	if fdata.get("animated_fold", false):
-		_apply_animated_item_model(mi, fdata.get("model", "") as String, f.is_extended)
+		_apply_animated_item_model(mi, fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
 		_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
