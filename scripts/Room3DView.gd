@@ -1208,18 +1208,49 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 		# point (see the Blender build notes for balconyWindow.glb) — offset
 		# down from the box's vertical CENTER (mi's own origin) to the box's
 		# floor, and back to the box's wall-facing edge, matching how every
-		# other item's box is anchored (wall-flush, floor-resting).
+		# other item's box is anchored (wall-flush, floor-resting). Yawed
+		# 180° because the panels' built-in "open" direction pointed back
+		# into the room instead of out through the wall — confirmed wrong
+		# in-game, this flips it to open outward.
 		var box_size := (mi.mesh as BoxMesh).size
 		inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
+		inst.rotation.y = PI
 		ap = _merge_animations(inst)
 		mi.set_meta("model_inst", inst)
 		mi.set_meta("model_anim_player", ap)
+		_add_balcony_wall_gap(mi, box_size)
 	if not is_instance_valid(ap):
 		return
 	if is_extended:
 		ap.play("Open")
 	else:
 		ap.play("Open", -1, -1.0, true)   # negative speed + from_end = play it backward, i.e. "Close"
+
+
+# Same "flat glassy decal flush against the wall" trick _add_wall_opening_overlay
+# already uses for ordinary windows (there's no real cutout in any wall mesh
+# in this game — see that function's own comment) — without it, the solid
+# wall shows right through the frame's thin bars and the item reads as
+# furniture stuck in front of an intact wall rather than an actual opening.
+# Parented to `mi` so it inherits whatever wall position/rotation the
+# placeholder box already has, instead of recomputing edge/x_tile like the
+# window-specific version does.
+func _add_balcony_wall_gap(mi: MeshInstance3D, box_size: Vector3) -> void:
+	if mi.has_meta("wall_gap"):
+		return
+	var gap := MeshInstance3D.new()
+	var quad := BoxMesh.new()
+	quad.size = Vector3(box_size.x * 0.92, box_size.y * 0.92, 0.02)
+	gap.mesh = quad
+	gap.position = Vector3(0, 0, -box_size.z * 0.5)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color   = Color(0.55, 0.78, 0.92, 0.55)
+	mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
+	gap.material_override = mat
+	mi.add_child(gap)
+	mi.set_meta("wall_gap", gap)
 
 
 # balconyWindow.glb's four hinges were each keyframed as their OWN Blender
