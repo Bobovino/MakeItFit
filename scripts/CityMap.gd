@@ -620,10 +620,13 @@ func _setup_portrait_viewport() -> void:
 	# model's current MODEL_SCALE, facing +Z) — tuned by measuring the
 	# model's own bone/mesh bounds rather than eyeballing it, since the old
 	# from-scratch model's proportions (and this camera rig) don't carry
-	# over to a differently-scaled replacement model.
+	# over to a differently-scaled replacement model. Pulled well back (was
+	# 0.85, right on top of the face and reading as a distorted close-up)
+	# so the whole head sits comfortably inside the 128x128 crop instead of
+	# filling and warping past its edges.
 	var cam := Camera3D.new()
-	cam.fov = 25.0
-	cam.look_at_from_position(Vector3(0, 1.12, 0.85), Vector3(0, 1.08, 0), Vector3.UP)
+	cam.fov = 22.0
+	cam.look_at_from_position(Vector3(0, 1.14, 2.0), Vector3(0, 1.08, 0), Vector3.UP)
 	_portrait_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()
@@ -653,6 +656,7 @@ func _update_portrait(tenant_name: String) -> void:
 		return
 	var hue := float(tenant_name.hash() % 360) / 360.0
 	_portrait_mii.set_tint(Color.from_hsv(hue, 0.55, 0.85))
+	_portrait_mii.set_animated(false)   # freeze on set_tint's first pose frame — no idling in a static headshot
 
 
 # ── Archivador tabs ──────────────────────────────────────────────────────────

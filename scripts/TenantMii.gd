@@ -94,6 +94,16 @@ func set_pose(pose_name: String) -> void:
 	_apply_pose()
 
 
+# Freezes/resumes the AnimationPlayer on its own — set_process(false) on this
+# node only stops OUR _process, not the AnimationPlayer child buried inside
+# the loaded model, which keeps advancing its own animation regardless. The
+# portrait viewport (CityMap.gd) needs a static headshot, not a tiny
+# perpetually-idling figure, so it calls this after set_tint().
+func set_animated(enabled: bool) -> void:
+	if is_instance_valid(_anim_player):
+		_anim_player.active = enabled
+
+
 func _apply_pose() -> void:
 	if not is_instance_valid(_model):
 		return   # set_pose() called before the first set_tint() picked a body variant
