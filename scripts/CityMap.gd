@@ -1081,8 +1081,13 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 		cap.text = DECOR_LABELS.get(kind, kind.capitalize())
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		cap.offset_top = -12
-		cap.offset_bottom = -1
+		# The handwriting font below renders at 13px, but this box was only
+		# 11px tall (offset_top -12 to offset_bottom -1) — root.clip_contents
+		# then chopped the top of every letter off. Taller box, plus a couple
+		# px of bottom margin instead of sitting flush on the cell's own edge.
+		cap.offset_top = -20
+		cap.offset_bottom = -3
+		cap.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		# Hand-lettered like a real drafter's margin note instead of the
 		# game's normal UI type — a small, cheap way to make the page read as
 		# designed rather than every label sharing one generic body font.
