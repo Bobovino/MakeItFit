@@ -3,36 +3,40 @@ class_name TenantMii
 
 # Low-poly tenant avatar shown only in the post-win 3D showcase
 # (Room3DView.start_tenant_showcase) — teleports between the furniture that
-# satisfies each moment's needs and plays a single cheerful bounce loop the
-# whole time. No pathfinding, no rigging: the target position is always a
-# furniture tile we already know from _furniture_entries. Limbs are real
-# connected geometry (arms/legs joined to the torso), not floating parts, so
-# poses are done by moving/rotating the WHOLE model rather than individual
-# limbs — repositioning one limb without the others would visibly pull it
-# apart at the joint.
-
-# Two body variants — rebuilt in Blender to fix the original single model's
-# proportions (oversized head, overlapping/hidden legs, crooked arms). Which
-# one a given tenant gets is decided in set_tint() below, from the same
-# color every caller already derives from the tenant's name — that keeps a
-# given tenant consistently the same body everywhere without needing their
-# name threaded through as a separate parameter.
-const MODEL_PATH_MALE   := "res://assets/models/tenants/mii_tenant_male.glb"
-const MODEL_PATH_FEMALE := "res://assets/models/tenants/mii_tenant_female.glb"
+# satisfies each moment's needs and plays a matching animation the whole
+# time. No pathfinding: the target position is always a furniture tile we
+# already know from _furniture_entries.
+#
+# Body model: Kenney's "Mini Characters" pack (CC0, kenney.nl) — a real
+# rigged/skinned low-poly character with 32 baked animations, replacing an
+# earlier from-scratch Blender build whose proportions and canned bob/squash
+# animation still read as amateurish. License copy lives alongside the
+# models at assets/models/tenants/kenney/LICENSE_Kenney_MiniCharacters.txt.
+const MODEL_PATH_MALE   := "res://assets/models/tenants/kenney/character-male-a.glb"
+const MODEL_PATH_FEMALE := "res://assets/models/tenants/kenney/character-female-a.glb"
 const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
-const TINTED_PARTS := ["Torso", "Arm_L", "Arm_R", "Leg_L", "Leg_R", "Foot_L", "Foot_R"]
-
-const BOB_SPEED  := 3.2   # radians/sec
-const BOB_AMOUNT := 0.035 # metres
-const SQUASH_AMOUNT := 0.06
 
 enum Pose { STAND, SIT, LIE }
 
+# How each pose maps onto the pack's baked animation names, and how far to
+# sink the whole rig into the furniture (the pack's own anims don't know
+# about our specific bed/chair meshes, so a small manual offset still does
+# the "actually inside the furniture, not floating above it" work).
+const POSE_ANIM := {
+	Pose.STAND: "idle",
+	Pose.SIT: "sit",
+	Pose.LIE: "die",   # only baked anim that puts the rig flat on its back
+}
+const POSE_Y_OFFSET := {
+	Pose.STAND: 0.0,
+	Pose.SIT: -0.14,
+	Pose.LIE: -0.05,
+}
+
 var _model: Node3D = null
 var _model_path: String = ""   # which of the two variants is currently loaded, so set_tint doesn't reload it every call
-var _t: float = randf() * TAU   # random phase so multiple instances don't sync
+var _anim_player: AnimationPlayer = null
 var _pose: int = Pose.STAND
-var _pose_y_offset: float = 0.0
 
 
 func _ready() -> void:
@@ -50,6 +54,7 @@ func _load_model(path: String) -> void:
 	_model = packed.instantiate()
 	add_child(_model)
 	_model_path = path
+	_anim_player = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_apply_outline(_model)
 	_add_happy_face()
 	_apply_pose()   # the new model starts at identity transform — reapply whatever pose was already set
@@ -65,23 +70,6 @@ func _apply_outline(node: Node) -> void:
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).material_overlay = outline_mat
 		_apply_outline(child)
-
-
-func _process(delta: float) -> void:
-	if not is_instance_valid(_model):
-		return
-	_t += delta * BOB_SPEED
-	var bounce := (sin(_t) + 1.0) * 0.5   # 0..1, so it only ever bounces up
-	if _pose == Pose.LIE:
-		# No hopping while lying down — a slow breathing scale pulse instead.
-		_model.position.y = _pose_y_offset
-		var breathe := 1.0 + sin(_t * 0.6) * 0.025
-		_model.scale = Vector3(1.0, breathe, breathe)
-	else:
-		_model.position.y = _pose_y_offset + bounce * BOB_AMOUNT * 2.0
-		var squash := 1.0 - bounce * SQUASH_AMOUNT
-		var stretch := 1.0 + bounce * SQUASH_AMOUNT * 0.5
-		_model.scale = Vector3(stretch, squash, stretch)
 
 
 # "stand" (default) / "sit" / "lie" — called by Room3DView alongside each
@@ -100,55 +88,51 @@ func set_pose(pose_name: String) -> void:
 func _apply_pose() -> void:
 	if not is_instance_valid(_model):
 		return   # set_pose() called before the first set_tint() picked a body variant
-	match _pose:
-		Pose.STAND:
-			_model.rotation = Vector3.ZERO
-			_pose_y_offset = 0.0
-		Pose.SIT:
-			# Whole-body crouch — a lowered stance reads as "sitting at this
-			# piece of furniture" without needing to bend any one connected
-			# limb (which would visibly pull it away from its joint).
-			_model.rotation = Vector3.ZERO
-			_pose_y_offset = -0.14
-		Pose.LIE:
-			_model.rotation.x = deg_to_rad(-90.0)
-			_pose_y_offset = -0.5
+	position.y = POSE_Y_OFFSET[_pose]
+	if is_instance_valid(_anim_player):
+		var anim_name: String = POSE_ANIM[_pose]
+		if _anim_player.has_animation(anim_name):
+			_anim_player.play(anim_name)
+			# "die" is a one-shot animation (it's meant to end with the
+			# character down and stay there) — everything else loops so the
+			# tenant doesn't freeze mid-stride while standing or sitting.
+			_anim_player.get_animation(anim_name).loop_mode = (
+				Animation.LOOP_NONE if _pose == Pose.LIE else Animation.LOOP_LINEAR
+			)
 
 
 # A tiny procedurally-drawn smiley (two dot eyes + a curved mouth) on a
-# billboarded quad in front of the head — went back to this after real 3D
-# eyeball geometry turned out uncanny at this model's tiny scale (pupil vs.
-# sclera proportions are very hard to tune blind, and the result read as
-# empty eye sockets). A flat decal reads cleanly from any angle instead.
+# billboarded quad in front of the head — the pack's own head mesh is a flat
+# skin-toned block with no baked face, same blank-slate situation as the
+# from-scratch model this replaced. Parented to a BoneAttachment3D tracking
+# the "head" bone (not the head-mesh node itself, which stays put at the
+# origin under GPU skinning — only its vertices move) so the face still
+# rides along with every animation.
 const FACE_TEX_SIZE := 64
 const FACE_WORLD_SIZE := 0.16
 
 func _add_happy_face() -> void:
-	var head := _model.find_child("Head", true, false) as MeshInstance3D
-	if head == null:
+	var skel := _model.find_child("Skeleton3D", true, false) as Skeleton3D
+	if skel == null:
 		return
+	var bone_idx := skel.find_bone("head")
+	if bone_idx < 0:
+		return
+	var attach := BoneAttachment3D.new()
+	skel.add_child(attach)
+	attach.bone_name = "head"
 	var img := Image.create(FACE_TEX_SIZE, FACE_TEX_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	# Soft near-black instead of pure black, and noticeably smaller than the
-	# original 4.2px discs — those read as big blank holes punched in the
-	# head. A small white glint offset toward the upper-left of each eye is
-	# what actually kills the "dead stare" look, same trick any simple
-	# cartoon face uses to fake a catch-light.
 	var ink := Color(0.14, 0.12, 0.11)
 	var eye_r := 3.0
 	_draw_dot(img, 22, 27, eye_r, ink)
 	_draw_dot(img, 42, 27, eye_r, ink)
 	_draw_dot(img, 20.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
 	_draw_dot(img, 40.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
-	# Smile arc: corners (t=0,1) sit HIGHER (smaller y) than the middle
-	# (t=0.5, larger y) — a "cup" shape, which is what a smiling mouth looks
-	# like in image coordinates where y increases downward.
 	for x in range(18, 47):
 		var t := float(x - 18) / 28.0
 		var y := 40 + int(round(6.0 * sin(PI * t)))
 		_draw_dot(img, x, y, 1.6, ink)
-	# Faint blush — reads as "friendly" rather than "blank," and costs
-	# nothing extra to draw.
 	_draw_dot(img, 14, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
 	_draw_dot(img, 50, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
 	var sprite := Sprite3D.new()
@@ -158,8 +142,8 @@ func _add_happy_face() -> void:
 	sprite.shaded = false
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sprite.no_depth_test = true   # decal must never be clipped by the curved head surface it sits against
-	sprite.position = Vector3(0, 0, 0.19)
-	head.add_child(sprite)
+	sprite.position = Vector3(0, 0.03, 0.075)
+	attach.add_child(sprite)
 
 
 # A soft 1px falloff at the rim (instead of a hard pixel edge) is the
@@ -195,18 +179,22 @@ func _draw_dot(img: Image, cx: float, cy: float, r: float, color: Color = Color.
 			img.set_pixel(x, y, out_col)
 
 
-# Recolors the body (torso/feet) to the tenant's color, leaving the skin-toned
-# head/hands and the black outline shells untouched. Also picks which body
-# variant to load — see the MODEL_PATH_* comment above — from the color's
-# hue, so it's deterministic per tenant without a separate parameter.
+# Recolors the body mesh (clothes/skin block) to the tenant's color, leaving
+# the head mesh (skin tone) and the black outline shells untouched. Also
+# picks which body variant to load — see the MODEL_PATH_* comment above —
+# from the color's hue, so it's deterministic per tenant without a separate
+# parameter.
 func set_tint(color: Color) -> void:
 	_load_model(MODEL_PATH_FEMALE if int(color.h * 997.0) % 2 == 0 else MODEL_PATH_MALE)
 	if not is_instance_valid(_model):
 		return
-	var mat := StandardMaterial3D.new()
+	var body := _model.find_child("body-mesh", true, false) as MeshInstance3D
+	if body == null:
+		return
+	# Duplicate the pack's own material (keeps its colormap texture/roughness
+	# intact) and multiply in the tenant's color via albedo_color rather than
+	# replacing the texture outright.
+	var base_mat := body.get_active_material(0) as StandardMaterial3D
+	var mat: StandardMaterial3D = base_mat.duplicate() if base_mat else StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.roughness = 1.0
-	for part_name in TINTED_PARTS:
-		var mi := _model.find_child(part_name, true, false) as MeshInstance3D
-		if mi:
-			mi.set_surface_override_material(0, mat)
+	body.set_surface_override_material(0, mat)
