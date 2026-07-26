@@ -1242,7 +1242,7 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 	var box_size := (mi.mesh as BoxMesh).size
 	inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
 	_add_balcony_wall_gap(mi, box_size)
-	_hide_wall_behind_item(mi.position)
+	_hide_wall_behind_item(mi.position, box_size)
 	if not is_instance_valid(ap):
 		return
 	if is_extended:
@@ -1613,30 +1613,82 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 
 
 # A balcony window is a permanent architectural opening, not furniture sitting
-# in front of the wall — leaving the wall solid behind it (visible whenever
-# the player looks from outside, or simply as an opaque backdrop with the
-# camera facing the room) contradicted the whole point of opening it. This
-# game has no real cutout system (see _add_wall_opening_overlay's comment)
-# and wall segments are single meshes spanning their whole run, so the
-# closest wall SEGMENT (not just the item's own span) is hidden outright,
-# matched by comparing the item's position against each wall's own fixed
-# plane coordinate (the axis its normal points along).
-func _hide_wall_behind_item(item_pos: Vector3) -> void:
+# in front of the wall — a solid wall behind it (this game otherwise has no
+# real cutout system anywhere, just an overlay decal per
+# _add_wall_opening_overlay) defeated the whole point of opening it. Finds
+# the closest wall segment to the placed item (matched on whichever axis
+# that wall's own normal points along) and replaces its plain box mesh with
+# a real CSG-cut one via _rebuild_wall_with_hole, punching an actual hole
+# rather than hiding the whole segment or papering over it with a decal.
+func _hide_wall_behind_item(item_pos: Vector3, item_box_size: Vector3) -> void:
 	var best_wd: Dictionary = {}
 	var best_dist := INF
 	for wd in _wall_data:
-		var mesh: MeshInstance3D = wd["mesh"]
+		var mesh: Node3D = wd["mesh"]   # MeshInstance3D normally, or a CSGCombiner3D if _rebuild_wall_with_hole already ran on it
 		var normal: Vector3 = wd["normal"]
 		var dist: float = absf(item_pos.x - mesh.position.x) if absf(normal.x) > 0.5 else absf(item_pos.z - mesh.position.z)
 		if dist < best_dist:
 			best_dist = dist
 			best_wd = wd
-	if best_wd.is_empty():
+	if best_wd.is_empty() or best_wd.get("has_hole", false):
 		return
-	best_wd["force_hidden"] = true
-	best_wd["target_h"] = 0.0
-	best_wd["h"] = 0.0
-	(best_wd["mesh"] as MeshInstance3D).scale.y = 0.001
+	_rebuild_wall_with_hole(best_wd, item_pos, item_box_size)
+
+
+# Replaces a plain wall MeshInstance3D with a CSGCombiner3D (wall box minus a
+# hole box) at the exact same transform — only handles the flat-wall case
+# (_wedge_mesh's h0==h1; a sloped wall's local AABB doesn't describe a
+# simple box, so cutting a rectangular hole in it isn't attempted here, and
+# it falls back to the old force-hide behavior instead). The wall mesh's own
+# local geometry starts at a CORNER (0,0,0) and extends to
+# (length, height, thick) — see _wedge_mesh — not centered, so every CSGBox3D
+# below is offset by half its own size to land in the same place a piece of
+# that box would have.
+func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: Vector3) -> void:
+	var old_mesh: MeshInstance3D = wd["mesh"]
+	var aabb := old_mesh.mesh.get_aabb()
+	var length := aabb.size.x
+	var height := aabb.size.y
+	var thick  := aabb.size.z
+	if absf(aabb.size.y - wd.get("full_h", height)) > 0.01:
+		# Sloped wall (or anything else whose AABB doesn't match a flat box) —
+		# no clean rectangular cut to make; fall back to hiding it outright.
+		wd["force_hidden"] = true
+		wd["target_h"] = 0.0
+		wd["h"] = 0.0
+		old_mesh.scale.y = 0.001
+		return
+	var mat := old_mesh.material_override as StandardMaterial3D
+	var color := mat.albedo_color if mat else Color(0.86, 0.83, 0.76)
+
+	var hole_local := old_mesh.global_transform.affine_inverse() * item_pos
+	var hole_w := maxf(item_box_size.x, item_box_size.z)
+	var hole_h := minf(item_box_size.y, height)   # never taller than the wall itself
+
+	var root := CSGCombiner3D.new()
+	root.position = old_mesh.position
+	root.rotation = old_mesh.rotation
+	build_root.add_child(root)
+
+	var wall_box := CSGBox3D.new()
+	wall_box.size = Vector3(length, height, thick)
+	wall_box.position = Vector3(length * 0.5, height * 0.5, thick * 0.5)
+	var wall_mat := StandardMaterial3D.new()
+	wall_mat.albedo_color = color
+	wall_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	wall_box.material = wall_mat
+	root.add_child(wall_box)
+
+	var hole := CSGBox3D.new()
+	hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+	hole.size = Vector3(hole_w, hole_h, thick * 4.0)   # over-extended depth for a clean through-cut
+	hole.position = Vector3(hole_local.x, hole_h * 0.5, thick * 0.5)
+	root.add_child(hole)
+
+	old_mesh.queue_free()
+	wd["mesh"] = root
+	wd["has_hole"] = true
+	wd["force_hidden"] = true   # opt out of the camera-facing fade entirely — a CSGCombiner3D has no .scale.y stub trick, and the hole itself already does the job that fade was for
 
 
 func _update_wall_fade(delta: float) -> void:

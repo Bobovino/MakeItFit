@@ -1081,6 +1081,19 @@ func _set_view_mode(mode: int) -> void:
 	# edit anything there. Furniture.read_only/WallInspector.read_only (set
 	# alongside _post_win_view) are what actually lock out editing in those
 	# views; this function only ever controls which view is showing.
+	#
+	# Mid-placement (a floor ghost still following the cursor after Buy),
+	# switching away tears down the view the ghost's own _input() and the
+	# Wall Inspector overlay both depend on — the ghost was left dangling
+	# with no way to confirm/cancel it cleanly. Block the switch outright
+	# instead; the player just needs to place or Esc-cancel first.
+	if mode != _view_mode and is_instance_valid(_pending_floor_ghost):
+		# The pressed button's own ButtonGroup already flipped its visual
+		# state before this handler ran — snap it back since the mode isn't
+		# actually changing.
+		for m in _mode_buttons:
+			(_mode_buttons[m] as Button).button_pressed = (m == _view_mode)
+		return
 	_view_mode = mode
 	for m in _mode_buttons:
 		(_mode_buttons[m] as Button).button_pressed = (m == mode)
