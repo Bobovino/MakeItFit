@@ -553,10 +553,17 @@ func _build_ui() -> void:
 	sep3.add_theme_color_override("color", Color(0.16, 0.20, 0.26))
 	vb.add_child(sep3)
 
+	# Same blueprint-label tag style as MainMenu's secondary actions — bare
+	# text links here read as a plain settings list, not part of the same
+	# desk/tag visual language everything else on this page now uses.
 	var settings_btn := Button.new()
 	settings_btn.text = "⚙ Settings"
 	settings_btn.add_theme_font_size_override("font_size", 12)
-	settings_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	settings_btn.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	var settings_ts := GameTheme.make_tag_btn_style()
+	settings_btn.add_theme_stylebox_override("normal",  settings_ts[0])
+	settings_btn.add_theme_stylebox_override("hover",   settings_ts[1])
+	settings_btn.add_theme_stylebox_override("pressed", settings_ts[2])
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	vb.add_child(settings_btn)
 
@@ -564,6 +571,10 @@ func _build_ui() -> void:
 	quit_btn.text = "⏻ Quit to Desktop"
 	quit_btn.add_theme_font_size_override("font_size", 12)
 	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	var quit_ts := GameTheme.make_tag_btn_style()
+	quit_btn.add_theme_stylebox_override("normal",  quit_ts[0])
+	quit_btn.add_theme_stylebox_override("hover",   quit_ts[1])
+	quit_btn.add_theme_stylebox_override("pressed", quit_ts[2])
 	quit_btn.pressed.connect(func(): get_tree().quit())
 	vb.add_child(quit_btn)
 
@@ -1422,6 +1433,23 @@ func _set_card_selected(btn: Button, selected: bool) -> void:
 	var meta_key := "sn_selected" if selected else "sn_normal"
 	if btn.has_meta(meta_key):
 		btn.add_theme_stylebox_override("normal", btn.get_meta(meta_key) as StyleBoxFlat)
+	# A slow breathing glow on the selected outline — the one bit of motion
+	# on this whole page that isn't tied to a hover/click, so it doesn't
+	# read as a completely static tool window. Only ever one card pulsing
+	# at a time; killed the instant it stops being the selected one.
+	if btn.has_meta("pulse_tween"):
+		var old_tw: Tween = btn.get_meta("pulse_tween")
+		if is_instance_valid(old_tw):
+			old_tw.kill()
+	if selected and btn.has_meta("sn_selected"):
+		var sel_sn: StyleBoxFlat = btn.get_meta("sn_selected")
+		sel_sn.border_color.a = 0.95
+		var tw := create_tween().set_loops()
+		tw.tween_property(sel_sn, "border_color:a", 0.55, 0.9) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(sel_sn, "border_color:a", 0.95, 0.9) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		btn.set_meta("pulse_tween", tw)
 
 
 # ── Parcel content refresh ───────────────────────────────────────────────────
