@@ -1164,13 +1164,115 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 		(f.grid_pos.y - _room_bounds.position.y) * TILE_M + fd * 0.5)
 	(mesh.mesh as BoxMesh).size = box_size
 	mesh.position = pos
-	# A piece with a distinct "model_extended" (e.g. a sofa bed that should
-	# actually become a bed, not just a stretched sofa) needs the whole model
-	# swapped for the new fold state, not just rescaled — _refit_item_model
-	# alone would keep showing the folded model at the extended size.
-	_apply_item_model(mesh, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
+	if fdata.get("animated_fold", false):
+		# The two fold states are really one continuous mechanical motion
+		# (a hinged window folding into a balcony), not two separate
+		# models — see _apply_animated_item_model.
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
+	else:
+		# A piece with a distinct "model_extended" (e.g. a sofa bed that should
+		# actually become a bed, not just a stretched sofa) needs the whole model
+		# swapped for the new fold state, not just rescaled — _refit_item_model
+		# alone would keep showing the folded model at the extended size.
+		_apply_item_model(mesh, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
 	entry["size"] = box_size
 	entry["pos"]  = pos
+
+
+# Items whose two fold states are really one continuous mechanical motion
+# (the balcony window's hinged panels) get a real baked animation instead of
+# the swap-and-crossfade every other foldable piece uses. Loaded once at its
+# true scale — NOT stretched to fill the grid box the way _apply_item_model
+# does, since the model's own geometry already reshapes itself between
+# states and rescaling it to a growing/shrinking box would fight the
+# animation — then just played forward/backward from here on.
+func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_extended: bool) -> void:
+	var ap: AnimationPlayer
+	if mi.has_meta("model_anim_player"):
+		ap = mi.get_meta("model_anim_player") as AnimationPlayer
+	else:
+		if model_path.is_empty() or not ResourceLoader.exists(model_path):
+			return
+		var packed := load(model_path) as PackedScene
+		if not packed:
+			return
+		var inst := packed.instantiate() as Node3D
+		if not inst:
+			return
+		var mat := mi.material_override as StandardMaterial3D
+		if mat:
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_color.a = 0.0
+		mi.add_child(inst)
+		# The model's own origin sits at its frame's floor-level, wall-flush
+		# point (see the Blender build notes for balconyWindow.glb) — offset
+		# down from the box's vertical CENTER (mi's own origin) to the box's
+		# floor, and back to the box's wall-facing edge, matching how every
+		# other item's box is anchored (wall-flush, floor-resting).
+		var box_size := (mi.mesh as BoxMesh).size
+		inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
+		ap = _merge_animations(inst)
+		mi.set_meta("model_inst", inst)
+		mi.set_meta("model_anim_player", ap)
+	if not is_instance_valid(ap):
+		return
+	if is_extended:
+		ap.play("Open")
+	else:
+		ap.play("Open", -1, -1.0, true)   # negative speed + from_end = play it backward, i.e. "Close"
+
+
+# balconyWindow.glb's four hinges were each keyframed as their OWN Blender
+# Action, so Blender's glTF exporter — which groups exported animations by
+# Action name — produced four separate clips instead of one "Open" clip
+# covering the whole mechanism. Worse: each of those clips also carries a
+# single-keyframe "snapshot" track for every OTHER animated object in the
+# scene (a glTF-exporter quirk when multiple objects have animation_data at
+# export time), so naively copying every track from every clip produces
+# several tracks per NodePath — only one of which is the real, fully-keyed
+# animation, the rest are stale 1-key snapshots that can silently override
+# it depending on which gets processed last. Deduplicates by NodePath,
+# keeping whichever candidate has the most keys, before building the merged
+# Animation on a fresh AnimationPlayer (placed at the exact same spot in the
+# tree, with the same root_node, as the original — track NodePaths are
+# resolved relative to that and won't mean anything from a different
+# position) so the whole rig can be played/reversed as one unit.
+func _merge_animations(inst: Node3D) -> AnimationPlayer:
+	var src_ap := inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	var new_ap := AnimationPlayer.new()
+	if is_instance_valid(src_ap):
+		src_ap.get_parent().add_child(new_ap)
+		new_ap.root_node = src_ap.root_node
+	else:
+		inst.add_child(new_ap)
+		return new_ap
+	var merged := Animation.new()
+	# path -> {"anim": Animation, "track": int} for whichever candidate track
+	# on that path has the most keys seen so far.
+	var best_by_path: Dictionary = {}
+	for lib_name in src_ap.get_animation_library_list():
+		var lib := src_ap.get_animation_library(lib_name)
+		for anim_name in lib.get_animation_list():
+			var anim := lib.get_animation(anim_name)
+			merged.length = maxf(merged.length, anim.length)
+			for i in range(anim.get_track_count()):
+				var path := anim.track_get_path(i)
+				var key_count := anim.track_get_key_count(i)
+				var prev: Dictionary = best_by_path.get(path, {})
+				if prev.is_empty() or key_count > (prev["anim"] as Animation).track_get_key_count(prev["track"]):
+					best_by_path[path] = {"anim": anim, "track": i, "type": anim.track_get_type(i)}
+	for path in best_by_path:
+		var best: Dictionary = best_by_path[path]
+		var anim: Animation = best["anim"]
+		var i: int = best["track"]
+		var track_idx := merged.add_track(best["type"])
+		merged.track_set_path(track_idx, path)
+		for k in range(anim.track_get_key_count(i)):
+			merged.track_insert_key(track_idx, anim.track_get_key_time(i, k), anim.track_get_key_value(i, k))
+	var new_lib := AnimationLibrary.new()
+	new_lib.add_animation("Open", merged)
+	new_ap.add_animation_library("", new_lib)
+	return new_ap
 
 
 # Picks which .glb represents a piece for its current fold state — most
@@ -2499,7 +2601,10 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var mi   := _box(canon_size, Vector3.ZERO, col)
 	mi.position = pos
 	mi.rotation.y = deg_to_rad(f.rot_steps * 90.0)
-	_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
+	if fdata.get("animated_fold", false):
+		_apply_animated_item_model(mi, fdata.get("model", "") as String, f.is_extended)
+	else:
+		_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 

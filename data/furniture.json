@@ -110,6 +110,31 @@
       "model_extended": "res://assets/models/furniture/murphyBedUnfolded.glb"
     },
     {
+      "id": "balcony_window",
+      "name": "Balcony Window",
+      "placement": "wall",
+      "size": {
+        "w": 17,
+        "h": 2
+      },
+      "wall_h": 22,
+      "floor_depth": 13,
+      "functions": [
+        "balcony"
+      ],
+      "buy_price": 3500,
+      "sell_price": 1750,
+      "color": "b8ccd8",
+      "foldable": true,
+      "extended_add_h": 11,
+      "folded_functions": [],
+      "extended_functions": [
+        "balcony"
+      ],
+      "model": "res://assets/models/furniture/balconyWindow.glb",
+      "animated_fold": true
+    },
+    {
       "id": "futon",
       "name": "Futon",
       "placement": "floor",
