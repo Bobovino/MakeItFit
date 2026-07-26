@@ -1906,6 +1906,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
 	_add_columns(bounds)
 	_add_window_door_overlays(bounds)
+	_add_rails(bounds)
 	_add_reveal_zone_markers(bounds)
 	_add_balcony_extras(bounds)
 	_add_stairs(bounds)
@@ -2595,6 +2596,40 @@ func _add_wall_opening_overlay(edge: String, x_tile: int, len_tiles: int, y0_m: 
 # Reveal zones (the sub-range of a rail a piece must sit in to count as
 # "revealed" for a moment's needs) get a glowing floor outline — otherwise
 # the only way to know where one is is to check the 2D view.
+# Rails (the sliding track a rail-locked item like a dress-up wardrobe is
+# constrained to) had no 3D representation at all — only GridDraw.gd's 2D
+# floor plan drew them (a dashed teal double-line channel), so in 3D a
+# rail-bound piece just looked like it was placed on ordinary floor with no
+# visible reason it can only slide one way. A flat tinted floor strip, same
+# teal as the 2D version, at least shows the constrained span exists even
+# without reproducing the exact dashed-line art style.
+func _add_rails(bounds: Rect2i) -> void:
+	if not _apt_floor:
+		return
+	const RAIL_COLOR := Color(0.22, 0.70, 0.78, 0.35)
+	for rail in _apt_floor.rails:
+		var rd := rail as Dictionary
+		var x1: int = rd.get("x1", 0) as int
+		var y1: int = rd.get("y1", 0) as int
+		var x2: int = rd.get("x2", 0) as int
+		var y2: int = rd.get("y2", 0) as int
+		var local_x := (mini(x1, x2) - bounds.position.x) * TILE_M
+		var local_z := (mini(y1, y2) - bounds.position.y) * TILE_M
+		var w_m := (absi(x2 - x1) + 1) * TILE_M
+		var d_m := (absi(y2 - y1) + 1) * TILE_M
+		var strip := MeshInstance3D.new()
+		var quad := BoxMesh.new()
+		quad.size = Vector3(w_m, 0.01, d_m)
+		strip.mesh = quad
+		strip.position = Vector3(local_x + w_m * 0.5, 0.006, local_z + d_m * 0.5)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = RAIL_COLOR
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		strip.material_override = mat
+		build_root.add_child(strip)
+
+
 func _add_reveal_zone_markers(bounds: Rect2i) -> void:
 	if not _apt_floor:
 		return
