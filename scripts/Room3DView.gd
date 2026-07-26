@@ -2600,34 +2600,56 @@ func _add_wall_opening_overlay(edge: String, x_tile: int, len_tiles: int, y0_m: 
 # constrained to) had no 3D representation at all — only GridDraw.gd's 2D
 # floor plan drew them (a dashed teal double-line channel), so in 3D a
 # rail-bound piece just looked like it was placed on ordinary floor with no
-# visible reason it can only slide one way. A flat tinted floor strip, same
-# teal as the 2D version, at least shows the constrained span exists even
-# without reproducing the exact dashed-line art style.
+# visible reason it can only slide one way. Reproduces that same look with
+# actual geometry instead of one flat tinted strip: two thin continuous side
+# rails plus perpendicular tie marks every tile, like a literal train track
+# — reads as "dashed" at a glance without an actual dashed-line shader.
 func _add_rails(bounds: Rect2i) -> void:
 	if not _apt_floor:
 		return
-	const RAIL_COLOR := Color(0.22, 0.70, 0.78, 0.35)
+	const RAIL_LINE_COLOR := Color(0.22, 0.70, 0.78, 0.9)
+	const RAIL_TIE_COLOR  := Color(0.22, 0.70, 0.78, 0.4)
+	const Y_LVL      := 0.006   # just above the floor mesh, avoids z-fighting
+	const LINE_THICK := 0.012
+	const LINE_MARGIN := 0.16   # how far each side rail sits from the channel's own centerline
 	for rail in _apt_floor.rails:
 		var rd := rail as Dictionary
 		var x1: int = rd.get("x1", 0) as int
 		var y1: int = rd.get("y1", 0) as int
 		var x2: int = rd.get("x2", 0) as int
 		var y2: int = rd.get("y2", 0) as int
+		var is_h_r := (y1 == y2)
 		var local_x := (mini(x1, x2) - bounds.position.x) * TILE_M
 		var local_z := (mini(y1, y2) - bounds.position.y) * TILE_M
-		var w_m := (absi(x2 - x1) + 1) * TILE_M
-		var d_m := (absi(y2 - y1) + 1) * TILE_M
-		var strip := MeshInstance3D.new()
-		var quad := BoxMesh.new()
-		quad.size = Vector3(w_m, 0.01, d_m)
-		strip.mesh = quad
-		strip.position = Vector3(local_x + w_m * 0.5, 0.006, local_z + d_m * 0.5)
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = RAIL_COLOR
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		strip.material_override = mat
-		build_root.add_child(strip)
+		var length := (absi(x2 - x1) + 1) * TILE_M if is_h_r else (absi(y2 - y1) + 1) * TILE_M
+		var channel_w := (absi(y2 - y1) + 1) * TILE_M if is_h_r else (absi(x2 - x1) + 1) * TILE_M
+		var center := (local_z + channel_w * 0.5) if is_h_r else (local_x + channel_w * 0.5)
+		var along0 := local_x if is_h_r else local_z
+		for side in [-1.0, 1.0]:
+			var size := Vector3(length, 0.002, LINE_THICK) if is_h_r else Vector3(LINE_THICK, 0.002, length)
+			var pos := Vector3(along0 + length * 0.5, Y_LVL, center + side * LINE_MARGIN) if is_h_r \
+				else Vector3(center + side * LINE_MARGIN, Y_LVL, along0 + length * 0.5)
+			_add_rail_decal(size, pos, RAIL_LINE_COLOR)
+		var t := 0.0
+		while t < length + 0.001:
+			var tie_size := Vector3(LINE_THICK, 0.002, channel_w) if is_h_r else Vector3(channel_w, 0.002, LINE_THICK)
+			var tie_pos := Vector3(along0 + t, Y_LVL, center) if is_h_r else Vector3(center, Y_LVL, along0 + t)
+			_add_rail_decal(tie_size, tie_pos, RAIL_TIE_COLOR)
+			t += TILE_M
+
+
+func _add_rail_decal(size: Vector3, pos: Vector3, color: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var quad := BoxMesh.new()
+	quad.size = size
+	mi.mesh = quad
+	mi.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = mat
+	build_root.add_child(mi)
 
 
 func _add_reveal_zone_markers(bounds: Rect2i) -> void:
