@@ -238,19 +238,7 @@ func _build_ui() -> void:
 	tabs_bg.draw.connect(_draw_wood_grain.bind(tabs_bg))
 	_tabs_col.add_child(tabs_bg)
 
-	# A stepped shadow along the rail's right edge — same fading-ColorRect
-	# trick as the paper stack below — so the archivador reads as a raised
-	# strip sitting in front of the desk instead of a flat color swatch.
-	for i in range(4, 0, -1):
-		var rail_shadow := ColorRect.new()
-		rail_shadow.color = Color(0, 0, 0, 0.06 * i)
-		rail_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rail_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
-		rail_shadow.offset_left  = TAB_W
-		rail_shadow.offset_right = TAB_W + i * 2.0
-		rail_shadow.z_index = 1   # drawn later (table_bg/paper) would otherwise paint over this
-		add_child(rail_shadow)
-	_tabs_col.z_index = 1
+	_tabs_col.z_index = 2
 
 	# Top bar — spans the map area only; the info sidebar owns the right edge,
 	# so the filter buttons never slide underneath it on wide windows.
@@ -772,7 +760,7 @@ func _update_tab_styles() -> void:
 		var btn: Button = _tab_buttons[bid]
 		var active: bool = bid == _current_block_id
 		btn.position.x = 8.0 if active else 0.0
-		btn.modulate = Color(1, 1, 1, 1) if active else Color(1, 1, 1, 0.72)
+		btn.modulate = Color(1, 1, 1, 1)
 
 
 # Tints the whole page a translucent wash of the active tab's district
