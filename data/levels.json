@@ -41280,6 +41280,122 @@
 			}
 		},
 		{
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 39,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 39,
+								"x2": 39,
+								"y1": 1,
+								"y2": 34
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 39,
+								"x2": 1,
+								"y1": 34,
+								"y2": 34
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 34,
+								"y2": 1
+							}
+						],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ground Floor Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof / Techo",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 35,
+				"grid_w": 40,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": 1,
+			"district": "Debug",
+			"funds_base_reward": 0,
+			"id": "debug:_balcony_window",
+			"is_tutorial": true,
+			"map_col": 5,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Debug: Balcony Window",
+			"starting_budget": 6000,
+			"starting_furniture": [
+				{
+					"id": "toilet",
+					"x": 5,
+					"y": 30
+				},
+				{
+					"id": "sink",
+					"x": 11,
+					"y": 30
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": 30,
+				"flavor": "Debug level for the animated Balcony Window (foldable wall item, id \"balcony_window\"). Top wall (y=1) runs the full 38 tiles so the 17-tile-wide item fits with room to spare; the room is 34 tiles deep so the 11-tile balcony extension has clearance to open without hitting the opposite wall. Big budget (6000) covers its 3500 buy price plus the starting toilet/sink used only to satisfy the required \"hygiene\" function.",
+				"monthly_rent": 0,
+				"name": "Debug Tenant",
+				"required_functions": [
+					"hygiene"
+				]
+			}
+		},
+		{
 			"acquisition_cost": 1500,
 			"allowed_furniture": [],
 			"apartment": {
