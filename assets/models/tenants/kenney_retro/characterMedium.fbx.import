@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://oh8mfiuo4hc"
-path="res://.godot/imported/mii_tenant_female.glb-c0adab659000a0a620812dd9d777fe41.scn"
+uid="uid://bc1pyyvgbtx03"
+path="res://.godot/imported/characterMedium.fbx-e3df2881a06f10f23ed55613fdeb60e0.scn"
 
 [deps]
 
-source_file="res://assets/models/tenants/mii_tenant_female.glb"
-dest_files=["res://.godot/imported/mii_tenant_female.glb-c0adab659000a0a620812dd9d777fe41.scn"]
+source_file="res://assets/models/tenants/kenney_retro/characterMedium.fbx"
+dest_files=["res://.godot/imported/characterMedium.fbx-e3df2881a06f10f23ed55613fdeb60e0.scn"]
 
 [params]
 
@@ -32,7 +32,7 @@ meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
-animation/trimming=false
+animation/trimming=true
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""
@@ -40,6 +40,7 @@ materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
 _subresources={}
-gltf/naming_version=2
-gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+fbx/importer=0
+fbx/allow_geometry_helper_nodes=false
+fbx/embedded_image_handling=1
+fbx/naming_version=2

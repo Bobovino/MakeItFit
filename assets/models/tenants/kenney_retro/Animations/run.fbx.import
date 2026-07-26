@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bnk1uvxriyqae"
-path="res://.godot/imported/character-female-a.glb-10faab079e07e2d4598c8d6414ed83b6.scn"
+uid="uid://bqp3jqkddt2jr"
+path="res://.godot/imported/run.fbx-1fdc75a4d6a8a7f1b2f6d016fc76cb7f.scn"
 
 [deps]
 
-source_file="res://assets/models/tenants/kenney/character-female-a.glb"
-dest_files=["res://.godot/imported/character-female-a.glb-10faab079e07e2d4598c8d6414ed83b6.scn"]
+source_file="res://assets/models/tenants/kenney_retro/Animations/run.fbx"
+dest_files=["res://.godot/imported/run.fbx-1fdc75a4d6a8a7f1b2f6d016fc76cb7f.scn"]
 
 [params]
 
@@ -32,7 +32,7 @@ meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
-animation/trimming=false
+animation/trimming=true
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""
@@ -40,6 +40,7 @@ materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
 _subresources={}
-gltf/naming_version=2
-gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+fbx/importer=0
+fbx/allow_geometry_helper_nodes=false
+fbx/embedded_image_handling=1
+fbx/naming_version=2

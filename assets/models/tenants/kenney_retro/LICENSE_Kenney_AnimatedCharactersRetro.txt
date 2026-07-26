@@ -1,10 +1,9 @@
 	
 
-	Mini Characters (1.0)
+	Animated Characters Retro (1.1)
 
 	Created/distributed by Kenney (www.kenney.nl)
-	Creation date: 17-07-2024 11:31
-	
+
 			------------------------------
 
 	License: (Creative Commons Zero, CC0)
@@ -23,6 +22,6 @@
 	
 	Follow on social media for updates:
 
-	• Twitter:   twitter.com/KenneyNL
+	• Twitter:	 twitter.com/KenneyNL
 	• Instagram: instagram.com/kenney_nl
-	• Mastodon:  mastodon.gamedev.place/@kenney
+	• Mastodon:	 mastodon.gamedev.place/@kenney

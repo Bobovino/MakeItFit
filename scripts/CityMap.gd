@@ -616,14 +616,13 @@ func _setup_portrait_viewport() -> void:
 	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_portrait_viewport)
 
-	# Framed for TenantMii's Kenney-pack body (head center ~1.12m up at the
-	# model's current MODEL_SCALE, facing +Z) — tuned by measuring the
-	# model's own bone/mesh bounds rather than eyeballing it, since the old
-	# from-scratch model's proportions (and this camera rig) don't carry
-	# over to a differently-scaled replacement model. Pulled well back (was
-	# 0.85, right on top of the face and reading as a distorted close-up)
-	# so the whole head sits comfortably inside the 128x128 crop instead of
-	# filling and warping past its edges.
+	# Framed for TenantMii's current body model (head center ~1.1m up at its
+	# MODEL_SCALE) — tuned by measuring the model's own bone/mesh bounds
+	# rather than eyeballing it, since neither the previous from-scratch
+	# model's proportions nor its Kenney Mini Characters replacement's carry
+	# over automatically to whatever body TenantMii loads next. Pulled well
+	# back so the whole head sits comfortably inside the 128x128 crop
+	# instead of filling and warping past its edges.
 	var cam := Camera3D.new()
 	cam.fov = 22.0
 	cam.look_at_from_position(Vector3(0, 1.14, 2.0), Vector3(0, 1.08, 0), Vector3.UP)

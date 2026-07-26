@@ -7,76 +7,101 @@ class_name TenantMii
 # time. No pathfinding: the target position is always a furniture tile we
 # already know from _furniture_entries.
 #
-# Body model: Kenney's "Mini Characters" pack (CC0, kenney.nl) — a real
-# rigged/skinned low-poly character with 32 baked animations, replacing an
-# earlier from-scratch Blender build whose proportions and canned bob/squash
-# animation still read as amateurish. License copy lives alongside the
-# models at assets/models/tenants/kenney/LICENSE_Kenney_MiniCharacters.txt.
-const MODEL_PATH_MALE   := "res://assets/models/tenants/kenney/character-male-a.glb"
-const MODEL_PATH_FEMALE := "res://assets/models/tenants/kenney/character-female-a.glb"
+# Body model: Kenney's "Animated Characters Retro" pack (CC0, kenney.nl),
+# swapped in over the previous "Mini Characters" pack (also CC0/Kenney)
+# because Mini Characters' wide tapered-cone torso read as "fat" once seen
+# at real in-game size. This pack uses one shared rig/mesh
+# ("characterMedium") for every skin — gender is told apart by which skin
+# texture goes on it, not by loading a different model. Its head texture
+# already has a painted face, so there's no need for this script's old
+# procedural smiley-decal system anymore. License copy lives alongside the
+# files at assets/models/tenants/kenney_retro/LICENSE_Kenney_AnimatedCharactersRetro.txt.
+const MODEL_PATH  := "res://assets/models/tenants/kenney_retro/characterMedium.fbx"
+const SKIN_MALE   := "res://assets/models/tenants/kenney_retro/humanMaleA.png"
+const SKIN_FEMALE := "res://assets/models/tenants/kenney_retro/humanFemaleA.png"
+const ANIM_IDLE_PATH := "res://assets/models/tenants/kenney_retro/Animations/idle.fbx"
 const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 
-# The pack's own rest-pose height measures ~0.67m (a deliberately chibi/mini
-# scale meant for its own diorama-sized tiles) — next to this game's
-# real-world-scale furniture (a bed is ~2m long) that reads as "the tenant
-# is tiny," so the whole model is scaled up to a more normal ~1.5m standing
-# height. Uniform scale around the model root, which sits at floor level
-# (y=0 at the feet), so this doesn't need any extra vertical correction.
-const MODEL_SCALE := 2.2
+# Measured empirically (this model's own reported world-space AABB comes
+# out ~3.76m tall as imported — looks like an FBX unit-conversion artifact
+# baked into the source file rather than an intentional giant) and
+# corrected back down to a normal ~1.6m standing height, the same way
+# MODEL_SCALE corrected the previous model's too-SMALL scale in the other
+# direction.
+const MODEL_SCALE := 0.42
 
 enum Pose { STAND, SIT, LIE, CROUCH }
 
-# How each pose maps onto the pack's baked animation names, and how far to
-# sink the whole rig into the furniture (the pack's own anims don't know
-# about our specific bed/chair meshes, so a small manual offset still does
-# the "actually inside the furniture, not floating above it" work).
-#
-# LIE does NOT use the pack's "die" animation, even though that's the only
-# one that visually ends up flat on its back — "die" is a fall-over
-# animation with its own baked rotation carrying the torso backward over
-# time, and since our fixed stop position assumes the character is already
-# lying in place, that baked fall swings the body backward through
-# whatever's directly behind it (a wall, in the bed case). Using a static
-# pose plus our OWN rotation keeps the whole body pinned to one spot.
-const POSE_ANIM := {
-	Pose.STAND: "idle",
-	Pose.SIT: "sit",
-	Pose.LIE: "static",
-	Pose.CROUCH: "crouch",   # bathtub: "sit" spreads legs forward far enough to poke through the tub's raised sides
-}
+# This pack only ships "idle"/"run"/"jump" animations — no sit/lie/crouch
+# exists to play, unlike the previous model. Every seated/lying pose is
+# therefore the frozen idle frame plus our own whole-model rotation/offset
+# (the same trick already used for lying down before), which is an
+# approximation but doesn't depend on this pack having poses it simply
+# doesn't ship.
 const POSE_Y_OFFSET := {
 	Pose.STAND: 0.0,
-	Pose.SIT: -0.14,
-	Pose.LIE: 0.5,   # approx. mattress-top height — tune once seen in-game
-	Pose.CROUCH: -0.1,
+	Pose.SIT: -0.35,
+	Pose.LIE: 0.5,
+	Pose.CROUCH: -0.25,
+}
+const POSE_ROTATION_X_DEG := {
+	Pose.STAND: 0.0,
+	Pose.SIT: 0.0,
+	Pose.LIE: -90.0,
+	Pose.CROUCH: 0.0,
 }
 
 var _model: Node3D = null
-var _model_path: String = ""   # which of the two variants is currently loaded, so set_tint doesn't reload it every call
+var _model_loaded := false
 var _anim_player: AnimationPlayer = null
+var _body_mesh: MeshInstance3D = null
 var _pose: int = Pose.STAND
 
 
 func _ready() -> void:
-	pass   # model loads lazily on the first set_tint() call, once the body variant is known
+	pass   # model loads lazily on the first set_tint() call
 
 
-func _load_model(path: String) -> void:
-	if path == _model_path:
+func _load_model() -> void:
+	if _model_loaded:
 		return
-	if is_instance_valid(_model):
-		_model.queue_free()
-	var packed := load(path) as PackedScene
+	var packed := load(MODEL_PATH) as PackedScene
 	if packed == null:
 		return
 	_model = packed.instantiate()
 	add_child(_model)
 	_model.scale = Vector3.ONE * MODEL_SCALE
-	_model_path = path
-	_anim_player = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	_model_loaded = true
+	_body_mesh = _model.find_child("characterMedium", true, false) as MeshInstance3D
+	_anim_player = _build_anim_player()
 	_apply_outline(_model)
-	_add_happy_face()
-	_apply_pose()   # the new model starts at identity transform — reapply whatever pose was already set
+	_apply_pose()
+
+
+# The pack ships each animation as its own separate FBX sharing this same
+# skeleton, meant to be combined at import time — there's no single file
+# that already has a ready-made AnimationPlayer sitting on our model. This
+# pulls the "Idle" clip out of its own throwaway scene instance and
+# re-hosts it on an AnimationPlayer of our own under a plain name, since
+# the track paths ("Root/Skeleton3D:BoneName") match this model's own
+# hierarchy either way.
+func _build_anim_player() -> AnimationPlayer:
+	var ap := AnimationPlayer.new()
+	_model.add_child(ap)
+	var lib := AnimationLibrary.new()
+	var idle_packed := load(ANIM_IDLE_PATH) as PackedScene
+	if idle_packed:
+		var idle_inst := idle_packed.instantiate()
+		var idle_ap := idle_inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if idle_ap:
+			for lib_name in idle_ap.get_animation_library_list():
+				var src_lib := idle_ap.get_animation_library(lib_name)
+				for anim_key in src_lib.get_animation_list():
+					if anim_key.ends_with("|Idle"):
+						lib.add_animation("idle", src_lib.get_animation(anim_key))
+		idle_inst.free()
+	ap.add_animation_library("", lib)
+	return ap
 
 
 # Black rim around each part via a next-pass shader (cull_front + vertex push
@@ -119,119 +144,33 @@ func set_animated(enabled: bool) -> void:
 
 func _apply_pose() -> void:
 	if not is_instance_valid(_model):
-		return   # set_pose() called before the first set_tint() picked a body variant
+		return   # set_pose() called before the first set_tint() loaded the model
 	position.y = POSE_Y_OFFSET[_pose]
 	# Rotating the WHOLE model (not any one limb) around its own feet-level
-	# origin is what actually lays it down — since position.y above already
+	# origin is what lays it down for LIE — since position.y above already
 	# lifted that origin up to mattress height, the body swings out flat at
 	# that same height instead of describing an arc through the floor.
-	_model.rotation.x = deg_to_rad(-90.0) if _pose == Pose.LIE else 0.0
-	if is_instance_valid(_anim_player):
-		var anim_name: String = POSE_ANIM[_pose]
-		if _anim_player.has_animation(anim_name):
-			_anim_player.play(anim_name)
-			_anim_player.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
+	_model.rotation.x = deg_to_rad(POSE_ROTATION_X_DEG[_pose])
+	if is_instance_valid(_anim_player) and _anim_player.has_animation("idle"):
+		_anim_player.play("idle")
+		_anim_player.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
 
 
-# A tiny procedurally-drawn smiley (two dot eyes + a curved mouth) on a
-# billboarded quad in front of the head — the pack's own head mesh is a flat
-# skin-toned block with no baked face, same blank-slate situation as the
-# from-scratch model this replaced. Parented to a BoneAttachment3D tracking
-# the "head" bone (not the head-mesh node itself, which stays put at the
-# origin under GPU skinning — only its vertices move) so the face still
-# rides along with every animation.
-const FACE_TEX_SIZE := 64
-const FACE_WORLD_SIZE := 0.16
-
-func _add_happy_face() -> void:
-	var skel := _model.find_child("Skeleton3D", true, false) as Skeleton3D
-	if skel == null:
-		return
-	var bone_idx := skel.find_bone("head")
-	if bone_idx < 0:
-		return
-	var attach := BoneAttachment3D.new()
-	skel.add_child(attach)
-	attach.bone_name = "head"
-	var img := Image.create(FACE_TEX_SIZE, FACE_TEX_SIZE, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var ink := Color(0.14, 0.12, 0.11)
-	var eye_r := 3.0
-	_draw_dot(img, 22, 27, eye_r, ink)
-	_draw_dot(img, 42, 27, eye_r, ink)
-	_draw_dot(img, 20.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
-	_draw_dot(img, 40.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
-	for x in range(18, 47):
-		var t := float(x - 18) / 28.0
-		var y := 40 + int(round(6.0 * sin(PI * t)))
-		_draw_dot(img, x, y, 1.6, ink)
-	_draw_dot(img, 14, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
-	_draw_dot(img, 50, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
-	var sprite := Sprite3D.new()
-	sprite.texture = ImageTexture.create_from_image(img)
-	sprite.pixel_size = FACE_WORLD_SIZE / FACE_TEX_SIZE
-	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.shaded = false
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sprite.no_depth_test = true   # decal must never be clipped by the curved head surface it sits against
-	# The "head" bone's rest origin sits at the NECK (base of the head, per
-	# a measured bone-vs-mesh dump: bone at local y=0.343, head geometry
-	# spanning y=[0.343, 0.671] and z=[-0.172, 0.168], character facing +Z)
-	# — so the decal needs to be pushed up to head-center height and out to
-	# the front face, not left at the bone's own origin.
-	sprite.position = Vector3(0, 0.16, 0.19)
-	attach.add_child(sprite)
-
-
-# A soft 1px falloff at the rim (instead of a hard pixel edge) is the
-# difference between "small drawn dot" and "jagged blob" at this texture's
-# tiny 64x64 resolution — cheap alpha blend against whatever's already
-# there so overlapping dots (glint over eye) still look right.
-func _draw_dot(img: Image, cx: float, cy: float, r: float, color: Color = Color.BLACK) -> void:
-	var ri := int(ceil(r)) + 1
-	for x in range(int(cx) - ri, int(cx) + ri + 1):
-		for y in range(int(cy) - ri, int(cy) + ri + 1):
-			if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
-				continue
-			var d := Vector2(x - cx, y - cy).length()
-			if d > r + 1.0:
-				continue
-			var edge_alpha := clampf(r + 0.5 - d, 0.0, 1.0)
-			var blend_a := color.a * edge_alpha
-			if blend_a <= 0.0:
-				continue
-			# Proper "over" compositing (not a plain lerp) — needed so a
-			# translucent dot (the blush, or the glint over an eye already
-			# drawn) actually ends up at its own requested alpha instead of
-			# getting further diluted by whatever's already underneath.
-			var under := img.get_pixel(x, y)
-			var out_a := blend_a + under.a * (1.0 - blend_a)
-			var out_col := Color(0, 0, 0, 0)
-			if out_a > 0.0:
-				out_col = Color(
-					(color.r * blend_a + under.r * under.a * (1.0 - blend_a)) / out_a,
-					(color.g * blend_a + under.g * under.a * (1.0 - blend_a)) / out_a,
-					(color.b * blend_a + under.b * under.a * (1.0 - blend_a)) / out_a,
-					out_a)
-			img.set_pixel(x, y, out_col)
-
-
-# Recolors the body mesh (clothes/skin block) to the tenant's color, leaving
-# the head mesh (skin tone) and the black outline shells untouched. Also
-# picks which body variant to load — see the MODEL_PATH_* comment above —
-# from the color's hue, so it's deterministic per tenant without a separate
-# parameter.
+# Picks the tenant's skin (deterministic from the tint color's hue, so a
+# given tenant is consistently the same gender everywhere without a
+# separate parameter — every caller already derives this color as a hash of
+# the tenant's name) and applies it with a light color cast. Unlike the
+# previous model's blank color-block atlas, this skin is a fully painted
+# texture (face, shirt, shoes), so a strong tint would just muddy it —
+# mostly-white keeps some per-tenant variety without wrecking the art.
 func set_tint(color: Color) -> void:
-	_load_model(MODEL_PATH_FEMALE if int(color.h * 997.0) % 2 == 0 else MODEL_PATH_MALE)
-	if not is_instance_valid(_model):
+	_load_model()
+	if not is_instance_valid(_body_mesh):
 		return
-	var body := _model.find_child("body-mesh", true, false) as MeshInstance3D
-	if body == null:
-		return
-	# Duplicate the pack's own material (keeps its colormap texture/roughness
-	# intact) and multiply in the tenant's color via albedo_color rather than
-	# replacing the texture outright.
-	var base_mat := body.get_active_material(0) as StandardMaterial3D
-	var mat: StandardMaterial3D = base_mat.duplicate() if base_mat else StandardMaterial3D.new()
-	mat.albedo_color = color
-	body.set_surface_override_material(0, mat)
+	var is_female := int(color.h * 997.0) % 2 == 0
+	var tex := load(SKIN_FEMALE if is_female else SKIN_MALE) as Texture2D
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = tex
+	mat.albedo_color = color.lerp(Color.WHITE, 0.65)
+	mat.roughness = 1.0
+	_body_mesh.set_surface_override_material(0, mat)

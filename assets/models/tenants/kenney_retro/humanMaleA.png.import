@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvcdh7g0pjbju"
-path="res://.godot/imported/colormap.png-dfd16bc006abcc0a87b264c4ab73f84c.ctex"
+uid="uid://bp42j572q13yj"
+path="res://.godot/imported/humanMaleA.png-1cc0579b9a2273333022e871af10b506.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/models/tenants/kenney/Textures/colormap.png"
-dest_files=["res://.godot/imported/colormap.png-dfd16bc006abcc0a87b264c4ab73f84c.ctex"]
+source_file="res://assets/models/tenants/kenney_retro/humanMaleA.png"
+dest_files=["res://.godot/imported/humanMaleA.png-1cc0579b9a2273333022e871af10b506.ctex"]
 
 [params]
 
