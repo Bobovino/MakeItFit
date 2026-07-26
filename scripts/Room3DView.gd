@@ -590,7 +590,15 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		# "along_m - iw*0.5" convention below) rather than gluing its corner
 		# to the raw ground-hit tile — otherwise the ghost visibly sits off
 		# to one side of the cursor, worse the bigger the item is.
-		var cursor_tile := _room_local_to_tile(hit["pos"] as Vector3)
+		#
+		# Uses _ground_hit(vp_pos) directly rather than hit["pos"] — for a
+		# wall_flush_required item this branch also runs when the cursor is
+		# actually pointing AT a wall (that's the whole point: it forces the
+		# floor path even then), and in that case `hit` is the wall-shaped
+		# dict from _wall_hit_test (edge/along_m/height_m/t), which has no
+		# "pos" key at all. hit["pos"] only ever exists on a genuine
+		# {"mode": "floor", "pos": ...} result.
+		var cursor_tile := _room_local_to_tile(_ground_hit(vp_pos))
 		var tile := (cursor_tile - Vector2(iw, _buying_furniture.grid_h) * 0.5).round()
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
