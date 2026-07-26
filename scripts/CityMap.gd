@@ -285,11 +285,13 @@ func _build_ui() -> void:
 	_stars_label = Label.new()
 	_stars_label.add_theme_font_size_override("font_size", 12)
 	_stars_label.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	_stars_label.visible = false   # hidden for now, not needed yet
 	top_row.add_child(_stars_label)
 
 	_funds_label = Label.new()
 	_funds_label.add_theme_font_size_override("font_size", 13)
 	_funds_label.add_theme_color_override("font_color", Color(0.50, 0.78, 0.60))
+	_funds_label.visible = false   # hidden for now, not needed yet
 	top_row.add_child(_funds_label)
 
 	_update_top_bar_counters()
@@ -521,12 +523,16 @@ func _build_ui() -> void:
 	_info_reqs   = _make_info_label(vb, 11, GameTheme.C_MUTED)
 	_info_budget = _make_info_label(vb, 12, GameTheme.C_TEXT)
 	_info_rent   = _make_info_label(vb, 15, Color(0.50, 0.78, 0.60))
+	_info_reqs.visible   = false   # hidden for now, not needed yet
+	_info_rent.visible   = false   # hidden for now, not needed yet
 
 	var sep2 := HSeparator.new()
 	sep2.add_theme_color_override("color", Color(0.290, 0.245, 0.190))
+	sep2.visible = false   # hidden for now, not needed yet
 	vb.add_child(sep2)
 
 	_info_cost = _make_info_label(vb, 13, GameTheme.C_AMBER, true)
+	_info_cost.visible = false   # hidden for now, not needed yet
 
 	_action_btn = Button.new()
 	_action_btn.custom_minimum_size = Vector2(210, 44)
