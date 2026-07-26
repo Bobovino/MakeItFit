@@ -1242,6 +1242,7 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 	var box_size := (mi.mesh as BoxMesh).size
 	inst.position = Vector3(0, -box_size.y * 0.5, -box_size.z * 0.5)
 	_add_balcony_wall_gap(mi, box_size)
+	_hide_wall_behind_item(mi.position)
 	if not is_instance_valid(ap):
 		return
 	if is_extended:
@@ -1602,6 +1603,8 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	flat = flat.normalized()
 	_cam_flat_dir = flat
 	for wd in _wall_data:
+		if wd.get("force_hidden", false):
+			continue   # a balcony window replaced this wall outright — never fade it back in
 		var normal: Vector3 = wd["normal"]
 		# Positive dot = camera is on the outside of this wall, looking in —
 		# that's the wall we need out of the way.
@@ -1609,8 +1612,37 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 		wd["target_h"] = 0.0 if facing > 0.0 else 1.0
 
 
+# A balcony window is a permanent architectural opening, not furniture sitting
+# in front of the wall — leaving the wall solid behind it (visible whenever
+# the player looks from outside, or simply as an opaque backdrop with the
+# camera facing the room) contradicted the whole point of opening it. This
+# game has no real cutout system (see _add_wall_opening_overlay's comment)
+# and wall segments are single meshes spanning their whole run, so the
+# closest wall SEGMENT (not just the item's own span) is hidden outright,
+# matched by comparing the item's position against each wall's own fixed
+# plane coordinate (the axis its normal points along).
+func _hide_wall_behind_item(item_pos: Vector3) -> void:
+	var best_wd: Dictionary = {}
+	var best_dist := INF
+	for wd in _wall_data:
+		var mesh: MeshInstance3D = wd["mesh"]
+		var normal: Vector3 = wd["normal"]
+		var dist: float = absf(item_pos.x - mesh.position.x) if absf(normal.x) > 0.5 else absf(item_pos.z - mesh.position.z)
+		if dist < best_dist:
+			best_dist = dist
+			best_wd = wd
+	if best_wd.is_empty():
+		return
+	best_wd["force_hidden"] = true
+	best_wd["target_h"] = 0.0
+	best_wd["h"] = 0.0
+	(best_wd["mesh"] as MeshInstance3D).scale.y = 0.001
+
+
 func _update_wall_fade(delta: float) -> void:
 	for wd in _wall_data:
+		if wd.get("force_hidden", false):
+			continue
 		var target: float = wd.get("target_h", 1.0)
 		var h: float = wd.get("h", 1.0)
 		if h == target:
