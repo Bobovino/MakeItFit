@@ -237,6 +237,20 @@ func _build_ui() -> void:
 	tabs_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tabs_col.add_child(tabs_bg)
 
+	# A stepped shadow along the rail's right edge — same fading-ColorRect
+	# trick as the paper stack below — so the archivador reads as a raised
+	# strip sitting in front of the desk instead of a flat color swatch.
+	for i in range(4, 0, -1):
+		var rail_shadow := ColorRect.new()
+		rail_shadow.color = Color(0, 0, 0, 0.06 * i)
+		rail_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rail_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rail_shadow.offset_left  = TAB_W
+		rail_shadow.offset_right = TAB_W + i * 2.0
+		rail_shadow.z_index = 1   # drawn later (table_bg/paper) would otherwise paint over this
+		add_child(rail_shadow)
+	_tabs_col.z_index = 1
+
 	# Top bar — spans the map area only; the info sidebar owns the right edge,
 	# so the filter buttons never slide underneath it on wide windows.
 	var top_pc := PanelContainer.new()
@@ -249,7 +263,14 @@ func _build_ui() -> void:
 	ts.border_color = GameTheme.C_BORDER
 	ts.set_border_width(SIDE_BOTTOM, 1)
 	ts.set_content_margin_all(8)
+	# A real drop shadow, not just the 1px border — the desk/blueprint area
+	# sits underneath and is added later (drawn on top of tree order), so
+	# this needs z_index to actually show instead of being painted over.
+	ts.shadow_color  = Color(0, 0, 0, 0.35)
+	ts.shadow_size   = 8
+	ts.shadow_offset = Vector2(0, 3)
 	top_pc.add_theme_stylebox_override("panel", ts)
+	top_pc.z_index = 2
 	add_child(top_pc)
 
 	var top_row := HBoxContainer.new()
@@ -327,6 +348,19 @@ func _build_ui() -> void:
 		shadow.offset_right  = -(INFO_W + 1 + SCROLLBAR_W + PAPER_MARGIN) + off
 		shadow.offset_bottom = -(PAPER_MARGIN - off - 5.0)
 		add_child(shadow)
+
+	# Paper grain — a scatter of tiny specks over the kraft sheet so it reads
+	# as an actual textured material instead of a flat color fill. Purely
+	# decorative, drawn once at build time (not per-frame), sized to the
+	# table's own rect.
+	var grain := Control.new()
+	grain.set_anchors_preset(Control.PRESET_FULL_RECT)
+	grain.offset_left  = TAB_W
+	grain.offset_top   = TOP_H
+	grain.offset_right = -(INFO_W + 1 + SCROLLBAR_W)
+	grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grain.draw.connect(_draw_paper_grain.bind(grain))
+	add_child(grain)
 
 	# Clipped map viewport — cards scroll within this. Inset from the paper
 	# background by PAPER_MARGIN, and anchored to fill all space left of the
@@ -422,7 +456,11 @@ func _build_ui() -> void:
 	ip_s.set_content_margin(SIDE_RIGHT,  22)
 	ip_s.set_content_margin(SIDE_TOP,    60)
 	ip_s.set_content_margin(SIDE_BOTTOM, 24)
+	ip_s.shadow_color  = Color(0, 0, 0, 0.35)
+	ip_s.shadow_size   = 10
+	ip_s.shadow_offset = Vector2(-3, 0)
 	ip.add_theme_stylebox_override("panel", ip_s)
+	ip.z_index = 2
 	add_child(ip)
 
 	var vb := VBoxContainer.new()
@@ -652,10 +690,18 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	sn.corner_radius_top_right = 8
 	sn.corner_radius_bottom_right = 8
 	sn.set_content_margin_all(6)
+	# A real folder tab casts a shadow onto the page it protrudes over —
+	# same reasoning as the rail's own edge shadow, just per-tab so the
+	# active one (already offset +8px in _update_tab_styles) reads as
+	# physically sticking out further, not just brighter.
+	sn.shadow_color  = Color(0, 0, 0, 0.35)
+	sn.shadow_size   = 4
+	sn.shadow_offset = Vector2(2, 2)
 	btn.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
 	sh.bg_color = col.darkened(0.15)
+	sh.shadow_size = 6
 	btn.add_theme_stylebox_override("hover", sh)
 	btn.add_theme_stylebox_override("pressed", sh)
 
@@ -1003,8 +1049,23 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 
 
 func _decor_base(root: Control, fill: Color, border: Color, corner_radius: int = 2) -> void:
+	# A thin darker rim peeking out at the bottom-right (same base+face idea
+	# as the apartment "keycap", just much shallower) so decorations read as
+	# having a hair of thickness too, instead of being the only flat thing
+	# left on the page once the real buildings got their own depth.
+	var base := Panel.new()
+	base.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var base_sn := StyleBoxFlat.new()
+	base_sn.bg_color = fill.darkened(0.35)
+	base_sn.set_corner_radius_all(corner_radius)
+	base.add_theme_stylebox_override("panel", base_sn)
+	root.add_child(base)
+
 	var p := Panel.new()
-	p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	p.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	p.position = Vector2.ZERO
+	p.size = root.custom_minimum_size - Vector2(2, 2)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sn := StyleBoxFlat.new()
 	sn.bg_color = fill
@@ -1704,6 +1765,22 @@ func _on_funds_changed(_amount: int) -> void:
 # opaque background of its own — is the only place this actually shows
 # through. That's deliberate: it's what makes the map read as a blueprint
 # sheet instead of plain dark UI.
+# A cheap procedural "paper texture" — a scatter of tiny specks at a fixed
+# seed (so it doesn't flicker/reshuffle on redraw), some ink-dark, some
+# highlight-light, mimicking flecked kraft paper fiber instead of a flat
+# color swatch.
+func _draw_paper_grain(node: Control) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 91827
+	var count := int(node.size.x * node.size.y / 900.0)
+	for i in range(count):
+		var p := Vector2(rng.randf_range(0.0, node.size.x), rng.randf_range(0.0, node.size.y))
+		var dark := rng.randf() < 0.5
+		var col := Color(0, 0, 0, rng.randf_range(0.04, 0.09)) if dark \
+			else Color(1, 1, 1, rng.randf_range(0.05, 0.10))
+		node.draw_circle(p, rng.randf_range(0.6, 1.4), col)
+
+
 func _draw_blueprint_grid(node: Control) -> void:
 	var vw := int(node.size.x) + 1
 	var vh := int(node.size.y) + 1
