@@ -611,16 +611,6 @@ func _build_ui() -> void:
 	quit_btn.pressed.connect(func(): get_tree().quit())
 	vb.add_child(quit_btn)
 
-	# Cinematic vignette — corners fall off into shadow instead of the whole
-	# screen reading as one evenly-lit flat plane. Mouse-transparent, drawn
-	# on top of every other layer built above.
-	var vignette := Control.new()
-	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vignette.z_index = 20
-	vignette.draw.connect(_draw_vignette.bind(vignette))
-	add_child(vignette)
-
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
 	var lbl := Label.new()
@@ -1877,26 +1867,6 @@ func _draw_title_motif(node: Control) -> void:
 	var mid_x := inset.position.x + inset.size.x * 0.55
 	node.draw_line(Vector2(mid_x, inset.position.y), Vector2(mid_x, inset.position.y + inset.size.y * 0.35), GameTheme.BP_INK, 1.3)
 	node.draw_line(Vector2(mid_x, inset.position.y + inset.size.y * 0.65), Vector2(mid_x, inset.position.y + inset.size.y), GameTheme.BP_INK, 1.3)
-
-
-var _vignette_tex: GradientTexture2D = null
-
-# Radial darkening toward the corners — built once (GradientTexture2D is
-# cheap to render but wasteful to rebuild every redraw) and stretched to
-# whatever size the viewport is at draw time.
-func _draw_vignette(node: Control) -> void:
-	if not _vignette_tex:
-		var grad := Gradient.new()
-		grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.38)])
-		grad.offsets = PackedFloat32Array([0.55, 1.0])
-		_vignette_tex = GradientTexture2D.new()
-		_vignette_tex.gradient = grad
-		_vignette_tex.fill = GradientTexture2D.FILL_RADIAL
-		_vignette_tex.fill_from = Vector2(0.5, 0.5)
-		_vignette_tex.fill_to = Vector2(1.0, 1.0)
-		_vignette_tex.width = 512
-		_vignette_tex.height = 512
-	node.draw_texture_rect(_vignette_tex, Rect2(Vector2.ZERO, node.size), false)
 
 
 # A cheap procedural "paper texture" — a scatter of tiny specks at a fixed
