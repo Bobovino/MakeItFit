@@ -109,15 +109,28 @@ func _add_happy_face() -> void:
 		return
 	var img := Image.create(FACE_TEX_SIZE, FACE_TEX_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	_draw_dot(img, 22, 26, 4.2)
-	_draw_dot(img, 42, 26, 4.2)
+	# Soft near-black instead of pure black, and noticeably smaller than the
+	# original 4.2px discs — those read as big blank holes punched in the
+	# head. A small white glint offset toward the upper-left of each eye is
+	# what actually kills the "dead stare" look, same trick any simple
+	# cartoon face uses to fake a catch-light.
+	var ink := Color(0.14, 0.12, 0.11)
+	var eye_r := 3.0
+	_draw_dot(img, 22, 27, eye_r, ink)
+	_draw_dot(img, 42, 27, eye_r, ink)
+	_draw_dot(img, 20.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
+	_draw_dot(img, 40.7, 25.6, 0.9, Color(1, 1, 1, 0.85))
 	# Smile arc: corners (t=0,1) sit HIGHER (smaller y) than the middle
 	# (t=0.5, larger y) — a "cup" shape, which is what a smiling mouth looks
 	# like in image coordinates where y increases downward.
 	for x in range(18, 47):
 		var t := float(x - 18) / 28.0
 		var y := 40 + int(round(6.0 * sin(PI * t)))
-		_draw_dot(img, x, y, 1.8)
+		_draw_dot(img, x, y, 1.6, ink)
+	# Faint blush — reads as "friendly" rather than "blank," and costs
+	# nothing extra to draw.
+	_draw_dot(img, 14, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
+	_draw_dot(img, 50, 34, 3.0, Color(0.95, 0.55, 0.55, 0.22))
 	var sprite := Sprite3D.new()
 	sprite.texture = ImageTexture.create_from_image(img)
 	sprite.pixel_size = FACE_WORLD_SIZE / FACE_TEX_SIZE
@@ -129,14 +142,37 @@ func _add_happy_face() -> void:
 	head.add_child(sprite)
 
 
-func _draw_dot(img: Image, cx: int, cy: int, r: float) -> void:
-	var ri := int(ceil(r))
-	for x in range(cx - ri, cx + ri + 1):
-		for y in range(cy - ri, cy + ri + 1):
+# A soft 1px falloff at the rim (instead of a hard pixel edge) is the
+# difference between "small drawn dot" and "jagged blob" at this texture's
+# tiny 64x64 resolution — cheap alpha blend against whatever's already
+# there so overlapping dots (glint over eye) still look right.
+func _draw_dot(img: Image, cx: float, cy: float, r: float, color: Color = Color.BLACK) -> void:
+	var ri := int(ceil(r)) + 1
+	for x in range(int(cx) - ri, int(cx) + ri + 1):
+		for y in range(int(cy) - ri, int(cy) + ri + 1):
 			if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
 				continue
-			if Vector2(x - cx, y - cy).length() <= r:
-				img.set_pixel(x, y, Color.BLACK)
+			var d := Vector2(x - cx, y - cy).length()
+			if d > r + 1.0:
+				continue
+			var edge_alpha := clampf(r + 0.5 - d, 0.0, 1.0)
+			var blend_a := color.a * edge_alpha
+			if blend_a <= 0.0:
+				continue
+			# Proper "over" compositing (not a plain lerp) — needed so a
+			# translucent dot (the blush, or the glint over an eye already
+			# drawn) actually ends up at its own requested alpha instead of
+			# getting further diluted by whatever's already underneath.
+			var under := img.get_pixel(x, y)
+			var out_a := blend_a + under.a * (1.0 - blend_a)
+			var out_col := Color(0, 0, 0, 0)
+			if out_a > 0.0:
+				out_col = Color(
+					(color.r * blend_a + under.r * under.a * (1.0 - blend_a)) / out_a,
+					(color.g * blend_a + under.g * under.a * (1.0 - blend_a)) / out_a,
+					(color.b * blend_a + under.b * under.a * (1.0 - blend_a)) / out_a,
+					out_a)
+			img.set_pixel(x, y, out_col)
 
 
 # Recolors the body (torso/feet) to the tenant's color, leaving the skin-toned
