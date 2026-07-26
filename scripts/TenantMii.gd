@@ -16,6 +16,14 @@ const MODEL_PATH_MALE   := "res://assets/models/tenants/kenney/character-male-a.
 const MODEL_PATH_FEMALE := "res://assets/models/tenants/kenney/character-female-a.glb"
 const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 
+# The pack's own rest-pose height measures ~0.67m (a deliberately chibi/mini
+# scale meant for its own diorama-sized tiles) — next to this game's
+# real-world-scale furniture (a bed is ~2m long) that reads as "the tenant
+# is tiny," so the whole model is scaled up to a more normal ~1.5m standing
+# height. Uniform scale around the model root, which sits at floor level
+# (y=0 at the feet), so this doesn't need any extra vertical correction.
+const MODEL_SCALE := 2.2
+
 enum Pose { STAND, SIT, LIE }
 
 # How each pose maps onto the pack's baked animation names, and how far to
@@ -53,6 +61,7 @@ func _load_model(path: String) -> void:
 		return
 	_model = packed.instantiate()
 	add_child(_model)
+	_model.scale = Vector3.ONE * MODEL_SCALE
 	_model_path = path
 	_anim_player = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_apply_outline(_model)
@@ -142,7 +151,12 @@ func _add_happy_face() -> void:
 	sprite.shaded = false
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sprite.no_depth_test = true   # decal must never be clipped by the curved head surface it sits against
-	sprite.position = Vector3(0, 0.03, 0.075)
+	# The "head" bone's rest origin sits at the NECK (base of the head, per
+	# a measured bone-vs-mesh dump: bone at local y=0.343, head geometry
+	# spanning y=[0.343, 0.671] and z=[-0.172, 0.168], character facing +Z)
+	# — so the decal needs to be pushed up to head-center height and out to
+	# the front face, not left at the bone's own origin.
+	sprite.position = Vector3(0, 0.16, 0.19)
 	attach.add_child(sprite)
 
 

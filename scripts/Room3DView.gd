@@ -1337,13 +1337,25 @@ const TenantMiiScript := preload("res://scripts/TenantMii.gd")
 const TENANT_STOP_SECONDS := 3.0
 
 # Which pose the tenant strikes for a given furniture function — anything not
-# listed here (hygiene, storage, toilet, shower, cook, laundry, ...) just
-# gets the default standing idle.
+# listed here (storage, cook, laundry, ...) just gets the default standing
+# idle.
 const FUNCTION_POSES := {
 	"sleep": "lie",
 	"sit": "sit",
 	"work": "sit",
 	"dine": "sit",
+}
+
+# "hygiene" covers bathtub/toilet/sink/shower/towel_rack alike, but standing
+# idle only actually looks right for the ones you use on your feet — a
+# bathtub or toilet needs the sit pose (the pack has no dedicated
+# bathing/crouching animation) so the tenant doesn't stand there stiffly
+# next to a bathtub it's supposedly using. Keyed by furniture id rather than
+# function since sink/shower/towel_rack share the same "hygiene" function
+# but should stay standing.
+const ID_POSES := {
+	"bathtub": "sit",
+	"toilet": "sit",
 }
 
 var _tenant: Node3D = null
@@ -1378,7 +1390,9 @@ func stop_tenant_showcase() -> void:
 	_tenant_stop_t = 0.0
 
 
-func _pose_for_functions(fns: Array) -> String:
+func _pose_for_functions(fns: Array, furniture_id: String = "") -> String:
+	if ID_POSES.has(furniture_id):
+		return ID_POSES[furniture_id]
 	for fn in fns:
 		if FUNCTION_POSES.has(fn):
 			return FUNCTION_POSES[fn]
@@ -1401,7 +1415,7 @@ func _collect_tenant_stops(moments: Array) -> Array:
 				continue
 			var pos: Vector3 = entry["pos"]
 			if not stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
-				stops.append({"pos": pos, "pose": _pose_for_functions(f.functions)})
+				stops.append({"pos": pos, "pose": _pose_for_functions(f.functions, f.furniture_id)})
 		return stops
 	for m in moments:
 		var moment_id: String = (m as Dictionary).get("id", "")
@@ -1420,7 +1434,7 @@ func _find_stop_for_needs(moment_id: String, needs: Array) -> Variant:
 		var fns := f.functions_for_moment(moment_id)
 		for n in needs:
 			if n in fns:
-				return {"pos": entry["pos"] as Vector3, "pose": _pose_for_functions(fns)}
+				return {"pos": entry["pos"] as Vector3, "pose": _pose_for_functions(fns, f.furniture_id)}
 	return null
 
 

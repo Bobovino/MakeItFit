@@ -616,9 +616,14 @@ func _setup_portrait_viewport() -> void:
 	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_portrait_viewport)
 
+	# Framed for TenantMii's Kenney-pack body (head center ~1.12m up at the
+	# model's current MODEL_SCALE, facing +Z) — tuned by measuring the
+	# model's own bone/mesh bounds rather than eyeballing it, since the old
+	# from-scratch model's proportions (and this camera rig) don't carry
+	# over to a differently-scaled replacement model.
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 0.83, 0.42)
-	cam.fov = 35.0
+	cam.fov = 25.0
+	cam.look_at_from_position(Vector3(0, 1.12, 0.85), Vector3(0, 1.08, 0), Vector3.UP)
 	_portrait_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()
