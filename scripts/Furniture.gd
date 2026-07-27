@@ -84,6 +84,8 @@ static var test_mode_active: bool = false
 # placeable anywhere in the 2D views. Mirrors Room3DView.read_only.
 static var read_only: bool = false
 var _extended_conflict: bool = false
+var _rail_flash_t: float = 0.0            # 1.0 -> 0.0 over RAIL_FLASH_DURATION, driven by a Tween
+var _rail_flash_color: Color = Color.WHITE
 
 var _dragging: bool = false
 var _placement_mode: bool = false   # true while waiting for initial click-to-place
@@ -364,6 +366,17 @@ func _draw() -> void:
 			draw_string(ThemeDB.fallback_font, Vector2(3, h + 9),
 				"▼ CLICK TO UNFOLD", HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
 				Color(ec_bd.r, ec_bd.g, ec_bd.b, 0.70))
+
+	# Rail attach/detach flash — a brief expanding, fading ring at the moment
+	# the state actually changes (see _flash_rail), separate from the
+	# small persistent arrow glyphs below which only show the CURRENT state
+	# and were too easy to miss changing.
+	if _rail_flash_t > 0.0:
+		var grow := 1.0 + (1.0 - _rail_flash_t) * 0.6
+		var fc := Color(_rail_flash_color.r, _rail_flash_color.g, _rail_flash_color.b, _rail_flash_color.a * _rail_flash_t)
+		var fw := w * grow
+		var fh := h * grow
+		draw_rect(Rect2((w - fw) * 0.5, (h - fh) * 0.5, fw, fh), fc, false, 2.5)
 
 	# Rail axis indicators (small arrows at edges)
 	if rail_axis == "h":
@@ -1209,6 +1222,21 @@ func _find_rail_snap(axis: String, along: float, cross: float) -> float:
 	return -1.0
 
 
+const RAIL_FLASH_DURATION := 0.4
+
+# Distinct sound per direction (attach reuses "place" — something clicking
+# into position — detach uses "click", a plainer neutral sound) plus a
+# brief expanding-ring flash drawn in _draw() below, since the persistent
+# outline alone (added/removed silently) turned out too easy to miss at the
+# actual moment the state changed.
+func _flash_rail(attached: bool) -> void:
+	Audio.play("place" if attached else "click")
+	_rail_flash_color = Color(0.22, 0.70, 0.78, 1.0) if attached else Color(0.85, 0.55, 0.20, 1.0)
+	_rail_flash_t = 1.0
+	var tw := create_tween()
+	tw.tween_method(func(t: float) -> void: _rail_flash_t = t; queue_redraw(), 1.0, 0.0, RAIL_FLASH_DURATION)
+
+
 func _drag(mouse_pos: Vector2) -> void:
 	if not _wall_ref:
 		return
@@ -1235,7 +1263,7 @@ func _drag(mouse_pos: Vector2) -> void:
 	# just trying to slide it; Ctrl makes it a deliberate choice.
 	if rail_axis != "" and _rail_lock >= 0 and Input.is_key_pressed(KEY_CTRL):
 		rail_axis = ""
-		Audio.play("place")
+		_flash_rail(false)
 	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
 	# rail's own line (from the level's Floor.rails, not just wherever the
 	# piece happened to be sitting) re-engages it. _home_rail_* survives a
@@ -1247,7 +1275,7 @@ func _drag(mouse_pos: Vector2) -> void:
 			rail_start = _home_rail_start
 			rail_end   = _home_rail_end
 			_rail_lock = line
-			Audio.play("place")
+			_flash_rail(true)
 	if rail_axis == "h" and _rail_lock >= 0:
 		ty = _rail_lock
 		var mn_x := 0.0                              if rail_start < 0 else float(rail_start)

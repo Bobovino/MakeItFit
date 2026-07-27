@@ -463,10 +463,10 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# a piece off its rail by accident just sliding it). rail_axis is
 	# cleared on this instance only.
 	var rail_state_changed := false
+	var rail_attached := false
 	if f.rail_axis != "" and _drag_rail_lock >= 0.0 and Input.is_key_pressed(KEY_CTRL):
 		f.rail_axis = ""
 		rail_state_changed = true
-		Audio.play("place")
 	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
 	# rail's own line re-engages it — mirrors Furniture.gd's 2D _drag(), see
 	# its own comment for the reasoning. _home_rail_* (set once at setup(),
@@ -479,7 +479,7 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 			f.rail_end   = f._home_rail_end
 			_drag_rail_lock = line
 			rail_state_changed = true
-			Audio.play("place")
+			rail_attached = true
 	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
 		tile.y = _drag_rail_lock
 		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)
@@ -495,6 +495,7 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	var item_size: Vector3 = _drag_target["size"]
 	if rail_state_changed:
 		_set_rail_indicator(mesh, f, Vector2(item_size.x, item_size.z))
+		_flash_rail(mesh, Vector2(item_size.x, item_size.z), rail_attached)
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	_drag_target["pos"] = mesh.position
@@ -2398,6 +2399,35 @@ func _build_outline_group(footprint: Vector2, col: Color, y: float) -> Node3D:
 # itself) as a child of the item's own placeholder mesh, so it moves/rotates
 # with it automatically and gets freed for free when the mesh does (sold).
 const RAIL_INDICATOR_COLOR := Color(0.22, 0.70, 0.78, 0.9)
+
+const RAIL_FLASH_DURATION := 0.4
+
+# A brief expanding, fading ring at the moment a rail attach/detach actually
+# happens, plus a distinct sound per direction — the persistent indicator
+# above only shows the CURRENT state and turned out too easy to miss
+# changing, same issue _flash_rail solves on the 2D side (Furniture.gd).
+# Parented to `mesh` so it's cleaned up automatically if the piece gets
+# sold/re-dragged mid-flash.
+func _flash_rail(mesh: MeshInstance3D, footprint: Vector2, attached: bool) -> void:
+	Audio.play("place" if attached else "click")
+	var col := RAIL_INDICATOR_COLOR if attached else Color(0.85, 0.55, 0.20, 1.0)
+	var group := _build_outline_group(footprint, col, 0.014)
+	group.position.x -= footprint.x * 0.5
+	group.position.z -= footprint.y * 0.5
+	mesh.add_child(group)
+	var mats: Array = []
+	for child in group.get_children():
+		var m := (child as MeshInstance3D).material_override as StandardMaterial3D
+		if m:
+			mats.append(m)
+	var tw := create_tween()
+	tw.tween_method(func(t: float) -> void:
+		group.scale = Vector3(1.0 + (1.0 - t) * 0.6, 1.0, 1.0 + (1.0 - t) * 0.6)
+		for m in mats:
+			(m as StandardMaterial3D).albedo_color.a = col.a * t
+	, 1.0, 0.0, RAIL_FLASH_DURATION)
+	tw.tween_callback(group.queue_free)
+
 
 func _set_rail_indicator(mesh: MeshInstance3D, f: Furniture, footprint: Vector2) -> void:
 	if mesh.has_meta("rail_indicator"):
