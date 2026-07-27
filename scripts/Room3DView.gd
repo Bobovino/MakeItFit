@@ -403,6 +403,7 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	_drag_orig_pos       = hit["pos"]
 	var f: Furniture     = hit["furniture"]
 	_restore_wall_hole(f)   # picking up a balcony window to move it opens the wall back up until it's dropped somewhere new
+	f._rail_ctrl_latch = false
 	var tile             := _room_local_to_tile(_ground_hit(vp_pos))
 	_drag_offset         = Vector2(f.grid_pos.x, f.grid_pos.y) - tile
 	_drag_last_tile      = f.grid_pos
@@ -457,29 +458,40 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# relative to everything else's hitbox.
 	var tile := (_room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset).round()
 	var f: Furniture = _drag_target["furniture"]
-	# Holding Ctrl while dragging detaches the piece from its rail for good,
-	# mirroring Furniture.gd's 2D _drag() — see its own comment for why this
-	# is Ctrl-only rather than triggered by drag distance (too easy to lose
-	# a piece off its rail by accident just sliding it). rail_axis is
-	# cleared on this instance only.
+	# Holding Ctrl while dragging detaches the piece from its rail for good
+	# (or back on, see below) — mirroring Furniture.gd's 2D _drag(). Reuses
+	# that same script's f._rail_ctrl_latch (an instance var on the
+	# Furniture itself, not something Room3DView needs its own copy of) to
+	# make this an EDGE trigger firing once per Ctrl press rather than every
+	# single frame it's held — without it, detaching immediately put the
+	# cursor back inside the reattach snap zone (still right next to the
+	# rail it just left), reattaching the very next frame, which re-detached
+	# the frame after, flickering for as long as Ctrl and the mouse both
+	# stayed put with no way to tell which state it landed on.
 	var rail_state_changed := false
 	var rail_attached := false
-	if f.rail_axis != "" and _drag_rail_lock >= 0.0 and Input.is_key_pressed(KEY_CTRL):
-		f.rail_axis = ""
-		rail_state_changed = true
-	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
-	# rail's own line re-engages it — mirrors Furniture.gd's 2D _drag(), see
-	# its own comment for the reasoning. _home_rail_* (set once at setup(),
-	# never cleared) is what makes a detach reversible instead of one-way.
-	elif f.rail_axis == "" and f._home_rail_axis != "" and Input.is_key_pressed(KEY_CTRL):
-		var line := _find_rail_snap(f._home_rail_axis, tile.x if f._home_rail_axis == "h" else tile.y, tile.y if f._home_rail_axis == "h" else tile.x)
-		if line >= 0.0:
-			f.rail_axis  = f._home_rail_axis
-			f.rail_start = f._home_rail_start
-			f.rail_end   = f._home_rail_end
-			_drag_rail_lock = line
+	var ctrl_down := Input.is_key_pressed(KEY_CTRL)
+	if not ctrl_down:
+		f._rail_ctrl_latch = false
+	elif not f._rail_ctrl_latch:
+		if f.rail_axis != "" and _drag_rail_lock >= 0.0:
+			f.rail_axis = ""
+			f._rail_ctrl_latch = true
 			rail_state_changed = true
-			rail_attached = true
+		# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
+		# rail's own line re-engages it. _home_rail_* (set once at setup(),
+		# never cleared) is what makes a detach reversible instead of
+		# one-way.
+		elif f.rail_axis == "" and f._home_rail_axis != "":
+			var line := _find_rail_snap(f._home_rail_axis, tile.x if f._home_rail_axis == "h" else tile.y, tile.y if f._home_rail_axis == "h" else tile.x)
+			if line >= 0.0:
+				f.rail_axis  = f._home_rail_axis
+				f.rail_start = f._home_rail_start
+				f.rail_end   = f._home_rail_end
+				_drag_rail_lock = line
+				f._rail_ctrl_latch = true
+				rail_state_changed = true
+				rail_attached = true
 	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
 		tile.y = _drag_rail_lock
 		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)

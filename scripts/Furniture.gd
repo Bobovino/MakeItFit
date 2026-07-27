@@ -67,6 +67,7 @@ var _rail_lock: float  = -1.0   # locked row (h) or column (v) set on drag start
 var _home_rail_axis:  String = ""
 var _home_rail_start: int    = -1
 var _home_rail_end:   int    = -1
+var _rail_ctrl_latch: bool   = false   # true while Ctrl has already triggered one attach/detach this press — see _drag()
 
 # Rail + moments: a rail piece can be slid into a "reveal zone" (a sub-range
 # along its own rail) to grant extra functions while it sits there — e.g. a
@@ -1193,6 +1194,7 @@ func _start_drag(mouse_pos: Vector2) -> void:
 		_rail_lock = grid_pos.y
 	elif rail_axis == "v":
 		_rail_lock = grid_pos.x
+	_rail_ctrl_latch = false
 	queue_redraw()
 
 
@@ -1254,28 +1256,37 @@ func _drag(mouse_pos: Vector2) -> void:
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var tx := target.x / TILE_SIZE
 	var ty := target.y / TILE_SIZE
-	# Holding Ctrl while dragging pops the piece off its rail for good —
-	# rail_axis is cleared on this instance only, so it falls through to the
-	# ordinary free-placement clamp below for the rest of this drag and every
-	# future one. Deliberately NOT triggered by drag distance alone anymore
-	# (an earlier version popped it off just by dragging far enough away) —
-	# that made it too easy to lose a piece off its rail by accident while
-	# just trying to slide it; Ctrl makes it a deliberate choice.
-	if rail_axis != "" and _rail_lock >= 0 and Input.is_key_pressed(KEY_CTRL):
-		rail_axis = ""
-		_flash_rail(false)
-	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
-	# rail's own line (from the level's Floor.rails, not just wherever the
-	# piece happened to be sitting) re-engages it. _home_rail_* survives a
-	# detach specifically so this is always possible, not a one-way trip.
-	elif rail_axis == "" and _home_rail_axis != "" and Input.is_key_pressed(KEY_CTRL):
-		var line := _find_rail_snap(_home_rail_axis, tx if _home_rail_axis == "h" else ty, ty if _home_rail_axis == "h" else tx)
-		if line >= 0.0:
-			rail_axis  = _home_rail_axis
-			rail_start = _home_rail_start
-			rail_end   = _home_rail_end
-			_rail_lock = line
-			_flash_rail(true)
+	# Holding Ctrl while dragging pops the piece off its rail for good (or
+	# back on, see below) — rail_axis is cleared/restored on this instance
+	# only. _rail_ctrl_latch makes this an EDGE trigger (fires once per
+	# Ctrl press, not every single frame it's held): without it, detaching
+	# immediately put the cursor back inside the reattach snap zone (it's
+	# still right next to the rail it just left), which reattached on the
+	# very next frame, which then re-detached the frame after that, and so
+	# on for as long as Ctrl and the mouse both stayed put — a rapid
+	# flicker that left no way to tell which state it actually ended up in.
+	var ctrl_down := Input.is_key_pressed(KEY_CTRL)
+	if not ctrl_down:
+		_rail_ctrl_latch = false
+	elif not _rail_ctrl_latch:
+		if rail_axis != "" and _rail_lock >= 0:
+			rail_axis = ""
+			_rail_ctrl_latch = true
+			_flash_rail(false)
+		# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
+		# rail's own line (from the level's Floor.rails, not just wherever
+		# the piece happened to be sitting) re-engages it. _home_rail_*
+		# survives a detach specifically so this is always possible, not a
+		# one-way trip.
+		elif rail_axis == "" and _home_rail_axis != "":
+			var line := _find_rail_snap(_home_rail_axis, tx if _home_rail_axis == "h" else ty, ty if _home_rail_axis == "h" else tx)
+			if line >= 0.0:
+				rail_axis  = _home_rail_axis
+				rail_start = _home_rail_start
+				rail_end   = _home_rail_end
+				_rail_lock = line
+				_rail_ctrl_latch = true
+				_flash_rail(true)
 	if rail_axis == "h" and _rail_lock >= 0:
 		ty = _rail_lock
 		var mn_x := 0.0                              if rail_start < 0 else float(rail_start)
