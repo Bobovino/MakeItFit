@@ -41,7 +41,6 @@ var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
 var _orbit_press_pos: Vector2 = Vector2.ZERO   # separate from _press_pos so a MMB click-to-recenter doesn't fight LMB click tracking
 const CLICK_MOVE_THRESHOLD := 10.0   # px; was 6 — tight enough that an ordinary click's natural hand jitter routinely misfired as "dragged it", especially when the intent was just to fold/unfold a piece
-const RAIL_POP_OFF_TILES := 1.5      # dragging this far off the rail's own line detaches the piece from it for good
 
 # "Home" framing captured whenever a real apartment room is built — lets a
 # plain middle-click (no drag) snap the camera back after free panning, since
@@ -435,15 +434,16 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# relative to everything else's hitbox.
 	var tile := (_room_local_to_tile(_ground_hit(vp_pos)) + _drag_offset).round()
 	var f: Furniture = _drag_target["furniture"]
-	# Dragging clearly away from the rail line (or holding Ctrl as an
-	# explicit override) detaches the piece from it for good, mirroring the
-	# same behavior in Furniture.gd's 2D _drag() — see its own comment for
-	# the reasoning. rail_axis is cleared on this instance only.
-	if f.rail_axis != "" and _drag_rail_lock >= 0.0:
-		var off_axis := absf(tile.y - _drag_rail_lock) if f.rail_axis == "h" else absf(tile.x - _drag_rail_lock)
-		if off_axis > RAIL_POP_OFF_TILES or Input.is_key_pressed(KEY_CTRL):
-			f.rail_axis = ""
-			Audio.play("place")
+	# Holding Ctrl while dragging detaches the piece from its rail for good,
+	# mirroring Furniture.gd's 2D _drag() — see its own comment for why this
+	# is Ctrl-only rather than triggered by drag distance (too easy to lose
+	# a piece off its rail by accident just sliding it). rail_axis is
+	# cleared on this instance only.
+	var just_detached := false
+	if f.rail_axis != "" and _drag_rail_lock >= 0.0 and Input.is_key_pressed(KEY_CTRL):
+		f.rail_axis = ""
+		just_detached = true
+		Audio.play("place")
 	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
 		tile.y = _drag_rail_lock
 		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)
@@ -457,6 +457,8 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
+	if just_detached:
+		_set_rail_indicator(mesh, f, Vector2(item_size.x, item_size.z))
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	_drag_target["pos"] = mesh.position
@@ -702,6 +704,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
+	_set_rail_indicator(_buying_mesh, f, Vector2(item_size.x, item_size.z))
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
@@ -1145,6 +1148,13 @@ func _finish_furniture_drag() -> void:
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
 	if _apt_floor and _apt_floor.can_place(f, snap_pos):
 		_apt_floor.place_furniture(f, snap_pos)
+		# Mirrors Furniture.gd's own 2D drag-end (the only place this used to
+		# happen) — without it, sliding a rail piece in the 3D view moved it
+		# for every moment at once instead of just the one currently being
+		# tested, since set_moment_view() only ever restores a position it
+		# finds recorded in moment_rail_pos.
+		if f.rail_axis != "" and Furniture.test_mode_active:
+			f.moment_rail_pos[Furniture.active_moment_id] = f.grid_pos
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 		for h in _hitbox_highlights:
@@ -2345,6 +2355,28 @@ func _build_outline_group(footprint: Vector2, col: Color, y: float) -> Node3D:
 	return group
 
 
+# A rail-bound piece had no persistent 3D indication that it's actually
+# constrained to a rail at all — only the rail itself (_add_rails) and the
+# 2D view's own small arrow glyphs (Furniture.gd's _draw()) ever showed it.
+# Adds/removes a small always-visible teal outline (same color as the rail
+# itself) as a child of the item's own placeholder mesh, so it moves/rotates
+# with it automatically and gets freed for free when the mesh does (sold).
+const RAIL_INDICATOR_COLOR := Color(0.22, 0.70, 0.78, 0.9)
+
+func _set_rail_indicator(mesh: MeshInstance3D, f: Furniture, footprint: Vector2) -> void:
+	var old = mesh.get_meta("rail_indicator", null)
+	if is_instance_valid(old):
+		old.queue_free()
+		mesh.set_meta("rail_indicator", null)
+	if f.rail_axis == "":
+		return
+	var group := _build_outline_group(footprint, RAIL_INDICATOR_COLOR, 0.01)
+	group.position.x -= footprint.x * 0.5
+	group.position.z -= footprint.y * 0.5
+	mesh.add_child(group)
+	mesh.set_meta("rail_indicator", group)
+
+
 const HITBOX_Y := 0.006   # just above the grid overlay's own 0.002 offset
 const HITBOX_COLOR := Color(0.95, 0.25, 0.2, 0.85)     # red — where an item currently sits
 const DRAG_HITBOX_COLOR := Color(0.3, 0.9, 0.35, 0.9)  # green — where the dragged item would land
@@ -2895,6 +2927,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 		_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
+	_set_rail_indicator(mi, f, Vector2(fw, fd))
 
 
 # `origin` is wall-local: origin.x along the wall, origin.y from the TOP of
