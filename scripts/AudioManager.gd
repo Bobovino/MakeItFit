@@ -4,13 +4,20 @@ extends Node
 # packs; see assets/audio/LICENSE_kenney_*.txt. Paths are checked with
 # ResourceLoader.exists() so a missing file fails silently instead of erroring.
 const SOUNDS := {
-	"click":    "res://assets/audio/click.ogg",
-	"place":    "res://assets/audio/place.ogg",
-	"rotate":   "res://assets/audio/rotate.ogg",
-	"error":    "res://assets/audio/error.ogg",
-	"sell":     "res://assets/audio/sell.ogg",
-	"success":  "res://assets/audio/success.ogg",
-	"demolish": "res://assets/audio/demolish.ogg",
+	"click":        "res://assets/audio/click.ogg",
+	"place":        "res://assets/audio/place.ogg",
+	"rotate":       "res://assets/audio/rotate.ogg",
+	"error":        "res://assets/audio/error.ogg",
+	"sell":         "res://assets/audio/sell.ogg",
+	"success":      "res://assets/audio/success.ogg",
+	"demolish":     "res://assets/audio/demolish.ogg",
+	# Previously unused files from the same CC0 packs — dedicated to the
+	# rail attach/detach cue specifically, instead of reusing "place"/
+	# "click" (both already mean something else elsewhere: buying/placing
+	# furniture, generic UI clicks), so this interaction gets its own
+	# distinct, consistent sound identity.
+	"rail_attach":  "res://assets/audio/place_furniture.wav",
+	"rail_detach":  "res://assets/audio/ui_click.wav",
 }
 const AMBIENT_PATH := "res://assets/audio/ambient_rain.wav"
 

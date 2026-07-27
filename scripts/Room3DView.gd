@@ -2421,9 +2421,15 @@ const RAIL_FLASH_DURATION := 0.4
 # Parented to `mesh` so it's cleaned up automatically if the piece gets
 # sold/re-dragged mid-flash.
 func _flash_rail(mesh: MeshInstance3D, footprint: Vector2, attached: bool) -> void:
-	Audio.play("place" if attached else "click")
+	Audio.play("rail_attach" if attached else "rail_detach")
 	var col := RAIL_INDICATOR_COLOR if attached else Color(0.85, 0.55, 0.20, 1.0)
-	var group := _build_outline_group(footprint, col, 0.014)
+	# `mesh` is centered on its OWN vertical middle (its box's Y size * 0.5,
+	# per _add_furniture_box/_confirm_buy), not its base — a plain small
+	# constant y here (as a previous version used) put the ring at the
+	# item's mid-height instead of the floor it's meant to read as coming
+	# from. Subtracting half the box's own height re-grounds it.
+	var half_h := (mesh.mesh as BoxMesh).size.y * 0.5
+	var group := _build_outline_group(footprint, col, -half_h + 0.014)
 	group.position.x -= footprint.x * 0.5
 	group.position.z -= footprint.y * 0.5
 	mesh.add_child(group)
@@ -2449,7 +2455,10 @@ func _set_rail_indicator(mesh: MeshInstance3D, f: Furniture, footprint: Vector2)
 		mesh.set_meta("rail_indicator", null)
 	if f.rail_axis == "":
 		return
-	var group := _build_outline_group(footprint, RAIL_INDICATOR_COLOR, 0.01)
+	# Same re-grounding as _flash_rail above — `mesh` is centered on its own
+	# mid-height, not its base.
+	var half_h := (mesh.mesh as BoxMesh).size.y * 0.5
+	var group := _build_outline_group(footprint, RAIL_INDICATOR_COLOR, -half_h + 0.01)
 	group.position.x -= footprint.x * 0.5
 	group.position.z -= footprint.y * 0.5
 	mesh.add_child(group)

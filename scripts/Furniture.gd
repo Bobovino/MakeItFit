@@ -1232,7 +1232,7 @@ const RAIL_FLASH_DURATION := 0.4
 # outline alone (added/removed silently) turned out too easy to miss at the
 # actual moment the state changed.
 func _flash_rail(attached: bool) -> void:
-	Audio.play("place" if attached else "click")
+	Audio.play("rail_attach" if attached else "rail_detach")
 	_rail_flash_color = Color(0.22, 0.70, 0.78, 1.0) if attached else Color(0.85, 0.55, 0.20, 1.0)
 	_rail_flash_t = 1.0
 	var tw := create_tween()
