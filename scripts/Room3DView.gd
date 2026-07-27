@@ -427,6 +427,29 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	_update_drag_highlight_pos(_drag_orig_pos.x, _drag_orig_pos.z, Vector2(item_size.x, item_size.z))
 
 
+const RAIL_REATTACH_SNAP := 1.0   # tiles; how close to a rail's own line (Floor.rails) counts as close enough to Ctrl-reattach
+
+# Mirrors Furniture.gd's own _find_rail_snap exactly — see its comment.
+func _find_rail_snap(axis: String, along: float, cross: float) -> float:
+	if not _apt_floor:
+		return -1.0
+	for rail in _apt_floor.rails:
+		var rd := rail as Dictionary
+		var x1: int = rd.get("x1", 0) as int
+		var y1: int = rd.get("y1", 0) as int
+		var x2: int = rd.get("x2", 0) as int
+		var y2: int = rd.get("y2", 0) as int
+		var is_h := (y1 == y2)
+		if (axis == "h") != is_h:
+			continue
+		var line: float = float(y1) if is_h else float(x1)
+		var lo: float = float(mini(x1, x2)) if is_h else float(mini(y1, y2))
+		var hi: float = float(maxi(x1, x2)) if is_h else float(maxi(y1, y2))
+		if absf(cross - line) <= RAIL_REATTACH_SNAP and along >= lo - RAIL_REATTACH_SNAP and along <= hi + RAIL_REATTACH_SNAP:
+			return line
+	return -1.0
+
+
 func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# Snapped to the tile grid (1 tile = TILE_M = 0.1m) as it's dragged, so
 	# placement reads as grid-locked rather than free-floating — matches the
@@ -439,11 +462,24 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	# is Ctrl-only rather than triggered by drag distance (too easy to lose
 	# a piece off its rail by accident just sliding it). rail_axis is
 	# cleared on this instance only.
-	var just_detached := false
+	var rail_state_changed := false
 	if f.rail_axis != "" and _drag_rail_lock >= 0.0 and Input.is_key_pressed(KEY_CTRL):
 		f.rail_axis = ""
-		just_detached = true
+		rail_state_changed = true
 		Audio.play("place")
+	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
+	# rail's own line re-engages it — mirrors Furniture.gd's 2D _drag(), see
+	# its own comment for the reasoning. _home_rail_* (set once at setup(),
+	# never cleared) is what makes a detach reversible instead of one-way.
+	elif f.rail_axis == "" and f._home_rail_axis != "" and Input.is_key_pressed(KEY_CTRL):
+		var line := _find_rail_snap(f._home_rail_axis, tile.x if f._home_rail_axis == "h" else tile.y, tile.y if f._home_rail_axis == "h" else tile.x)
+		if line >= 0.0:
+			f.rail_axis  = f._home_rail_axis
+			f.rail_start = f._home_rail_start
+			f.rail_end   = f._home_rail_end
+			_drag_rail_lock = line
+			rail_state_changed = true
+			Audio.play("place")
 	if f.rail_axis == "h" and _drag_rail_lock >= 0.0:
 		tile.y = _drag_rail_lock
 		var mn_x := 0.0 if f.rail_start < 0 else float(f.rail_start)
@@ -457,7 +493,7 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	_drag_last_tile = tile
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
-	if just_detached:
+	if rail_state_changed:
 		_set_rail_indicator(mesh, f, Vector2(item_size.x, item_size.z))
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
@@ -2364,9 +2400,10 @@ func _build_outline_group(footprint: Vector2, col: Color, y: float) -> Node3D:
 const RAIL_INDICATOR_COLOR := Color(0.22, 0.70, 0.78, 0.9)
 
 func _set_rail_indicator(mesh: MeshInstance3D, f: Furniture, footprint: Vector2) -> void:
-	var old = mesh.get_meta("rail_indicator", null)
-	if is_instance_valid(old):
-		old.queue_free()
+	if mesh.has_meta("rail_indicator"):
+		var old = mesh.get_meta("rail_indicator")
+		if is_instance_valid(old):
+			old.queue_free()
 		mesh.set_meta("rail_indicator", null)
 	if f.rail_axis == "":
 		return

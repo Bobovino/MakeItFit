@@ -55,11 +55,18 @@ var wall_flush_required: bool = false   # must end up snapped flush against a wa
 var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
-# Rail: constrains dragging to one axis within a defined extent
+# Rail: constrains dragging to one axis within a defined extent. rail_axis
+# itself is LIVE (Ctrl-drag clears it to detach) — _home_rail_* is the
+# catalog's original value, kept around forever so a detached piece can
+# still be Ctrl-dragged back onto its rail later instead of losing the
+# ability for good.
 var rail_axis:  String = ""   # "h" | "v" | "" = free
 var rail_start: int    = -1   # first valid tile offset along the rail (-1 = unclamped)
 var rail_end:   int    = -1   # last valid tile offset along the rail
 var _rail_lock: float  = -1.0   # locked row (h) or column (v) set on drag start
+var _home_rail_axis:  String = ""
+var _home_rail_start: int    = -1
+var _home_rail_end:   int    = -1
 
 # Rail + moments: a rail piece can be slid into a "reveal zone" (a sub-range
 # along its own rail) to grant extra functions while it sits there — e.g. a
@@ -140,6 +147,9 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	rail_axis             = data.get("rail_axis",         "")       as String
 	rail_start            = data.get("rail_start",        -1)       as int
 	rail_end              = data.get("rail_end",          -1)       as int
+	_home_rail_axis       = rail_axis
+	_home_rail_start      = rail_start
+	_home_rail_end        = rail_end
 	reveal_start          = data.get("reveal_start",      -1)       as int
 	reveal_end            = data.get("reveal_end",        -1)       as int
 	reveal_functions      = (data.get("reveal_functions", []) as Array).duplicate()
@@ -1173,6 +1183,32 @@ func _start_drag(mouse_pos: Vector2) -> void:
 	queue_redraw()
 
 
+const RAIL_REATTACH_SNAP := 1.0   # tiles; how close to a rail's own line (Floor.rails) counts as close enough to Ctrl-reattach
+
+# Looks up whether `along`/`cross` (in the given axis's own frame — for "h",
+# along=x/cross=y; for "v", along=y/cross=x) sits near enough to one of the
+# level's actual rail lines to re-engage it, returning that rail's fixed
+# line coordinate, or -1 if none match closely enough.
+func _find_rail_snap(axis: String, along: float, cross: float) -> float:
+	if not _wall_ref:
+		return -1.0
+	for rail in _wall_ref.rails:
+		var rd := rail as Dictionary
+		var x1: int = rd.get("x1", 0) as int
+		var y1: int = rd.get("y1", 0) as int
+		var x2: int = rd.get("x2", 0) as int
+		var y2: int = rd.get("y2", 0) as int
+		var is_h := (y1 == y2)
+		if (axis == "h") != is_h:
+			continue
+		var line: float = float(y1) if is_h else float(x1)
+		var lo: float = float(mini(x1, x2)) if is_h else float(mini(y1, y2))
+		var hi: float = float(maxi(x1, x2)) if is_h else float(maxi(y1, y2))
+		if absf(cross - line) <= RAIL_REATTACH_SNAP and along >= lo - RAIL_REATTACH_SNAP and along <= hi + RAIL_REATTACH_SNAP:
+			return line
+	return -1.0
+
+
 func _drag(mouse_pos: Vector2) -> void:
 	if not _wall_ref:
 		return
@@ -1200,6 +1236,18 @@ func _drag(mouse_pos: Vector2) -> void:
 	if rail_axis != "" and _rail_lock >= 0 and Input.is_key_pressed(KEY_CTRL):
 		rail_axis = ""
 		Audio.play("place")
+	# The reverse: Ctrl-dragging a detached piece back near its ORIGINAL
+	# rail's own line (from the level's Floor.rails, not just wherever the
+	# piece happened to be sitting) re-engages it. _home_rail_* survives a
+	# detach specifically so this is always possible, not a one-way trip.
+	elif rail_axis == "" and _home_rail_axis != "" and Input.is_key_pressed(KEY_CTRL):
+		var line := _find_rail_snap(_home_rail_axis, tx if _home_rail_axis == "h" else ty, ty if _home_rail_axis == "h" else tx)
+		if line >= 0.0:
+			rail_axis  = _home_rail_axis
+			rail_start = _home_rail_start
+			rail_end   = _home_rail_end
+			_rail_lock = line
+			Audio.play("place")
 	if rail_axis == "h" and _rail_lock >= 0:
 		ty = _rail_lock
 		var mn_x := 0.0                              if rail_start < 0 else float(rail_start)
