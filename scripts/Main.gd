@@ -1148,7 +1148,18 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.anchor_bottom = 0.0
 		if _mode3d_view.has_node("CloseBtn"):
 			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
-		_mode3d_view.furniture_moved.connect(func(_f): _on_furniture_action_changed())
+		_mode3d_view.furniture_moved.connect(func(f: Furniture):
+			_on_furniture_action_changed()
+			# Mirrors the 2D drag-end path (f.placed above, gated the same way):
+			# a rail-mounted piece's functions can depend on exactly where it
+			# sits (the day/night "dress" reveal wardrobe), so moving one in 3D
+			# has to re-run the needs check same as it does in 2D. This was
+			# missing entirely for 3D -- sliding a reveal wardrobe into its zone
+			# there correctly recorded the new moment_rail_pos, but nothing ever
+			# re-checked whether that satisfied the moment, so the level could
+			# never actually be won that way.
+			if f.rail_axis != "":
+				_refresh_functions())
 	# sell_requested/wall_sell_requested are bound to a specific Floor via
 	# .bind(fl) — but _mode3d_view is a persistent node reused across floor
 	# switches AND level restarts, while the Floor it was last bound to gets
