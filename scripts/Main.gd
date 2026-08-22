@@ -1160,6 +1160,11 @@ func _ensure_mode3d_view() -> void:
 			# never actually be won that way.
 			if f.rail_axis != "":
 				_refresh_functions())
+		_mode3d_view.showcase_stop_changed.connect(func(moment_id: String, needs: Array):
+			if moment_id == "":
+				tenant_card.clear_showcase_highlight()
+			else:
+				tenant_card.highlight_showcase_need(moment_id, needs))
 	# sell_requested/wall_sell_requested are bound to a specific Floor via
 	# .bind(fl) — but _mode3d_view is a persistent node reused across floor
 	# switches AND level restarts, while the Floor it was last bound to gets

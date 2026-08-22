@@ -28,6 +28,7 @@ var _moment_rows: Dictionary = {}         # moment_id -> HFlowContainer (its chi
 # the TopBar doesn't need its own separate Day/Night strip.
 var _moment_header_btns: Dictionary = {}  # moment_id -> Button
 var _moment_group := ButtonGroup.new()
+var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
 
 
 # Blueprint drafting-table palette — matches GridDraw.gd's corner title block
@@ -143,6 +144,7 @@ func _clear_checklist() -> void:
 	_moment_header_btns.clear()
 	_moment_rows.clear()
 	_moment_group = ButtonGroup.new()
+	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
 
 
 func _build_checklist(required: Array) -> void:
@@ -298,8 +300,8 @@ func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	return chip
 
 
-func _paint_need_chip(chip: PanelContainer, satisfied: bool) -> void:
-	chip.add_theme_stylebox_override("panel", _chip_style(satisfied))
+func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = false) -> void:
+	chip.add_theme_stylebox_override("panel", _chip_style(satisfied, showcased))
 	var badge := chip.get_node("Badge") as Label
 	if satisfied:
 		badge.text = "✓"
@@ -311,7 +313,10 @@ func _paint_need_chip(chip: PanelContainer, satisfied: bool) -> void:
 
 # Objective tiles: a filled green tile when solved, a dim red-outline tile
 # when pending — the puzzle "goal list" reads at a glance instead of as text.
-static func _chip_style(satisfied: bool) -> StyleBoxFlat:
+# `showcased` (the 3D post-win showcase currently posing the tenant at this
+# need's furniture) rings the tile in gold on top of whichever fill applies —
+# an independent "look here" cue layered over, not instead of, done/pending.
+static func _chip_style(satisfied: bool, showcased: bool = false) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	if satisfied:
 		# Sage fill on cream paper — a highlighted, done line item
@@ -321,7 +326,11 @@ static func _chip_style(satisfied: bool) -> StyleBoxFlat:
 		# Blank cream tile with a terracotta pen outline — still to do
 		s.bg_color     = Color(0.930, 0.895, 0.820)
 		s.border_color = Color(0.800, 0.470, 0.390)
-	s.set_border_width_all(1)
+	if showcased:
+		s.border_color = Color(1.0, 0.85, 0.30)
+		s.set_border_width_all(3)
+	else:
+		s.set_border_width_all(1)
 	s.set_corner_radius_all(7)
 	s.anti_aliasing = true
 	return s
@@ -330,9 +339,40 @@ static func _chip_style(satisfied: bool) -> StyleBoxFlat:
 func _set_need_chip(chip: PanelContainer, satisfied: bool) -> void:
 	var was_satisfied := chip.get_meta("satisfied", false) as bool
 	chip.set_meta("satisfied", satisfied)
-	_paint_need_chip(chip, satisfied)
+	_paint_need_chip(chip, satisfied, chip.get_meta("showcased", false) as bool)
 	if satisfied and not was_satisfied and Time.get_ticks_msec() - _setup_ticks > 800:
 		_pop_chip(chip)
+
+
+# Called by Main whenever the post-win 3D showcase moves the tenant to a new
+# stop, so the checklist visibly points at whichever need it's currently
+# demonstrating instead of just leaving the player to guess from the 3D
+# camera alone. Switches to that stop's own moment tab too (matching
+# highlight_moment) since the relevant chip might be on a row that isn't
+# the one currently showing.
+func highlight_showcase_need(moment_id: String, needs: Array) -> void:
+	for chip in _showcased_chips:
+		if is_instance_valid(chip):
+			chip.set_meta("showcased", false)
+			_paint_need_chip(chip, chip.get_meta("satisfied", false) as bool, false)
+	_showcased_chips.clear()
+	if not _moment_check_chips.has(moment_id):
+		return
+	highlight_moment(moment_id)
+	var chips := _moment_check_chips[moment_id] as Dictionary
+	for need in needs:
+		if not chips.has(need):
+			continue
+		var chip := chips[need] as PanelContainer
+		chip.set_meta("showcased", true)
+		_paint_need_chip(chip, chip.get_meta("satisfied", false) as bool, true)
+		_showcased_chips.append(chip)
+
+
+# Called when the showcase stops (post-win view exited) so no chip is left
+# permanently ringed in gold once there's nothing left demonstrating it.
+func clear_showcase_highlight() -> void:
+	highlight_showcase_need("", [])
 
 
 # Little scale-pop when an objective flips to solved — the classic bit of

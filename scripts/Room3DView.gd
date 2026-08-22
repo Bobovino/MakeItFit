@@ -17,6 +17,7 @@ signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was b
 signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a wall piece
 signal furniture_moved(furniture: Furniture)   # an existing piece was dragged to a new spot and committed
 signal reveal_finished   # a play_reveal() flythrough finished its scripted camera move
+signal showcase_stop_changed(moment_id: String, needs: Array)   # tenant showcase moved to a new stop — Main.gd rings the matching TenantCard chip(s)
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -159,6 +160,7 @@ func _process(delta: float) -> void:
 			_tenant.position = stop["pos"]
 			_tenant.rotation.y = stop["rot_y"]
 			_tenant.set_pose(stop["pose"])
+			showcase_stop_changed.emit(moment_id, stop.get("needs", []))
 	if _reason_flash_t > 0.0:
 		_reason_flash_t -= delta
 		if is_instance_valid(_reason_label):
@@ -1654,6 +1656,7 @@ func start_tenant_showcase(moments: Array, tenant_color: Color = Color(0.20, 0.4
 	_tenant.position = first["pos"]
 	_tenant.rotation.y = first["rot_y"]
 	_tenant.set_pose(first["pose"])
+	showcase_stop_changed.emit(first.get("moment_id", ""), first.get("needs", []))
 
 
 func stop_tenant_showcase() -> void:
@@ -1663,6 +1666,7 @@ func stop_tenant_showcase() -> void:
 	_tenant_stops.clear()
 	_tenant_stop_idx = 0
 	_tenant_stop_t = 0.0
+	showcase_stop_changed.emit("", [])   # so TenantCard un-rings whatever chip was last highlighted
 
 
 func _pose_for_functions(fns: Array) -> String:
@@ -1769,10 +1773,17 @@ func _collect_tenant_stops(moments: Array) -> Array:
 			var pos: Vector3 = stop["pos"]
 			# Same furniture piece can satisfy more than one need (a desk with
 			# both "work" and "storage", say) -- dedupe by position so it isn't
-			# visited twice back to back with the same pose.
-			if not moment_stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
+			# visited twice back to back with the same pose, but keep BOTH
+			# needs on the one stop that remains (used to just drop the second
+			# need entirely, which would silently skip ringing its TenantCard
+			# chip during the showcase even though this stop genuinely covers it).
+			var existing := moment_stops.filter(func(s): return (s["pos"] as Vector3).is_equal_approx(pos))
+			if existing.is_empty():
 				stop["moment_id"] = moment_id
+				stop["needs"] = [need]
 				moment_stops.append(stop)
+			else:
+				(existing[0]["needs"] as Array).append(need)
 		# All of THIS moment's stops in a row before moving to the next moment
 		# (Day's 5 needs, then Night's 2, then back to Day) rather than
 		# interleaving -- each stop's own moment_id is what the cycling logic
