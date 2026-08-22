@@ -150,8 +150,12 @@ func _process(delta: float) -> void:
 		_tenant_stop_t += delta
 		if _tenant_stop_t >= TENANT_STOP_SECONDS:
 			_tenant_stop_t = 0.0
+			var prev_moment: String = (_tenant_stops[_tenant_stop_idx] as Dictionary).get("moment_id", "")
 			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
 			var stop: Dictionary = _tenant_stops[_tenant_stop_idx]
+			var moment_id: String = stop.get("moment_id", "")
+			if moment_id != prev_moment:
+				_apply_moment_to_scene(moment_id)
 			_tenant.position = stop["pos"]
 			_tenant.rotation.y = stop["rot_y"]
 			_tenant.set_pose(stop["pose"])
@@ -1646,6 +1650,7 @@ func start_tenant_showcase(moments: Array, tenant_color: Color = Color(0.20, 0.4
 	_tenant_stop_idx = 0
 	_tenant_stop_t = 0.0
 	var first: Dictionary = _tenant_stops[0]
+	_apply_moment_to_scene(first.get("moment_id", ""))
 	_tenant.position = first["pos"]
 	_tenant.rotation.y = first["rot_y"]
 	_tenant.set_pose(first["pose"])
@@ -1756,6 +1761,7 @@ func _collect_tenant_stops(moments: Array) -> Array:
 	for m in moments:
 		var moment_id: String = (m as Dictionary).get("id", "")
 		var needs: Array = (m as Dictionary).get("needs", [])
+		var moment_stops: Array = []
 		for need in needs:
 			var stop = _find_stop_for_need(moment_id, need)
 			if stop == null:
@@ -1764,8 +1770,16 @@ func _collect_tenant_stops(moments: Array) -> Array:
 			# Same furniture piece can satisfy more than one need (a desk with
 			# both "work" and "storage", say) -- dedupe by position so it isn't
 			# visited twice back to back with the same pose.
-			if not stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
-				stops.append(stop)
+			if not moment_stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
+				stop["moment_id"] = moment_id
+				moment_stops.append(stop)
+		# All of THIS moment's stops in a row before moving to the next moment
+		# (Day's 5 needs, then Night's 2, then back to Day) rather than
+		# interleaving -- each stop's own moment_id is what the cycling logic
+		# in _process() watches to know when to switch the whole scene's
+		# fold/rail state and lighting over, so grouping them is what makes
+		# that switch happen once per moment instead of on every single stop.
+		stops += moment_stops
 	return stops
 
 
@@ -1778,6 +1792,21 @@ func _find_stop_for_need(moment_id: String, need: String) -> Variant:
 		if need in fns:
 			return _tenant_anchor_for(entry, _pose_for_functions(fns))
 	return null
+
+
+# Switches every placed piece (fold state, rail position -- Furniture.
+# set_moment_view, same as the editor's own moment-tab click does) plus the
+# day/night sky over to the given moment. The showcase previously only ever
+# moved the TENANT between poses; a foldable sofa bed or the rail wardrobe
+# would just stay in whatever state they last happened to be in, regardless
+# of which moment's furniture the tenant was currently supposed to be using.
+func _apply_moment_to_scene(moment_id: String) -> void:
+	if moment_id == "" or not is_instance_valid(_apt_floor):
+		return
+	Furniture.active_moment_id = moment_id
+	for f in _apt_floor.get_all_furniture():
+		(f as Furniture).set_moment_view(moment_id)
+	_apply_moment_lighting()
 
 
 # Shrinks whichever wall(s) sit between the camera and the room down to a
