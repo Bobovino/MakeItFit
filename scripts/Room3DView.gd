@@ -153,6 +153,7 @@ func _process(delta: float) -> void:
 			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
 			var stop: Dictionary = _tenant_stops[_tenant_stop_idx]
 			_tenant.position = stop["pos"]
+			_tenant.rotation.y = stop["rot_y"]
 			_tenant.set_pose(stop["pose"])
 	if _reason_flash_t > 0.0:
 		_reason_flash_t -= delta
@@ -1600,18 +1601,31 @@ func play_reveal(duration: float = 3.5) -> void:
 const TenantMiiScript := preload("res://scripts/TenantMii.gd")
 const TENANT_STOP_SECONDS := 3.0
 
-# Which pose the tenant strikes for a given furniture function — anything not
-# listed here (hygiene, storage, toilet, shower, cook, laundry, ...) just
-# gets the default standing idle.
+# Which pose the tenant strikes for a given furniture function. "reach" is a
+# standing pose (ReachFwd1H) for anything used from in front while upright —
+# a sink, stove, counter — as opposed to "stand", which is just idling near
+# it with empty hands. Anything not listed here falls back to "stand".
 const FUNCTION_POSES := {
 	"sleep": "lie",
 	"sit": "sit",
 	"work": "sit",
 	"dine": "sit",
+	"hygiene": "reach",
+	"cook": "reach",
 }
 
+# Which poses are struck AT the furniture's own position/facing (sit in a
+# chair, lie in a bed) versus STANDING IN FRONT of it, offset clear of its
+# footprint and turned to face it (wash at a sink, cook at a stove). Without
+# this distinction every pose was placed dead-center on the furniture's own
+# origin with zero rotation, regardless of the piece's facing -- so a
+# standing pose landed floating inside a sink's own volume, and a bed rotated
+# by the player left the tenant lying unrotated beside it rather than on it.
+const POSES_AT_FURNITURE := ["sit", "lie"]
+const USE_STANDOFF_M := 0.34   # clearance in front of the footprint edge
+
 var _tenant: Node3D = null
-var _tenant_stops: Array = []   # [{pos: Vector3, pose: String}], one per moment (or one per furniture piece, if no moments)
+var _tenant_stops: Array = []   # [{pos, rot_y, pose}], one per moment (or one per furniture piece, if no moments)
 var _tenant_stop_idx: int = 0
 var _tenant_stop_t: float = 0.0
 
@@ -1630,6 +1644,7 @@ func start_tenant_showcase(moments: Array, tenant_color: Color = Color(0.20, 0.4
 	_tenant_stop_t = 0.0
 	var first: Dictionary = _tenant_stops[0]
 	_tenant.position = first["pos"]
+	_tenant.rotation.y = first["rot_y"]
 	_tenant.set_pose(first["pose"])
 
 
@@ -1649,6 +1664,42 @@ func _pose_for_functions(fns: Array) -> String:
 	return "stand"
 
 
+# Turns a raw _furniture_entries entry into where the tenant should actually
+# stand/sit/lie and which way they should face, given the item's real
+# rotation (Furniture.rot_steps, applied to the mesh as mesh.rotation.y) and
+# real world-space footprint (entry["size"], already rotation-swapped -- see
+# _add_furniture_box). entry["pos"] alone is the item's own CENTER at
+# half its height, which is why a bare position-only stop floats a standing
+# pose through a sink's volume and never turns to face anything.
+func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
+	var f: Furniture = entry["furniture"]
+	var center: Vector3 = entry["pos"]
+	var size: Vector3 = entry["size"]
+	var rot_y: float = deg_to_rad(f.rot_steps * 90.0) if is_instance_valid(f) else 0.0
+
+	if pose in POSES_AT_FURNITURE:
+		# On top of it, floor-level, facing the same way the item itself faces
+		# (a chair's occupant faces the same direction as the chair; a
+		# sleeper's long axis follows the bed's own rotation) rather than
+		# always facing the world's default -Z regardless of how it was placed.
+		return {"pos": Vector3(center.x, 0.0, center.z), "rot_y": rot_y, "pose": pose}
+
+	# Standing-in-front poses: step out from the footprint edge facing the
+	# item's front, then turn around to face back at it. The item's front is
+	# local +Z rotated by rot_y (Vector3.BACK, not the more common -Z/FORWARD
+	# convention -- FORWARD sent the tenant out the wall behind items like a
+	# sink instead of into the room in front of them, confirmed by playtest).
+	# Since rot_y is always a multiple of 90 deg that vector's components are
+	# always 0/±1, so dotting the footprint size against its absolute value
+	# picks the correct half-extent to clear (the X half-width when front
+	# points along X, the Z half-depth when it points
+	# along Z) without needing to special-case each of the 4 facings by hand.
+	var front := Vector3.BACK.rotated(Vector3.UP, rot_y)
+	var half_extent := absf(front.x) * size.x * 0.5 + absf(front.z) * size.z * 0.5
+	var stand_pos := center + front * (half_extent + USE_STANDOFF_M)
+	return {"pos": Vector3(stand_pos.x, 0.0, stand_pos.z), "rot_y": rot_y + PI, "pose": pose}
+
+
 # One stop per moment — whichever placed furniture piece currently provides
 # one of that moment's needs (functions_for_moment covers foldable items like
 # a Sofa Bed, which only counts as "sleep" once actually unfolded). Most
@@ -1663,9 +1714,10 @@ func _collect_tenant_stops(moments: Array) -> Array:
 			var f: Furniture = entry["furniture"]
 			if not is_instance_valid(f):
 				continue
-			var pos: Vector3 = entry["pos"]
+			var anchor := _tenant_anchor_for(entry, _pose_for_functions(f.functions))
+			var pos: Vector3 = anchor["pos"]
 			if not stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
-				stops.append({"pos": pos, "pose": _pose_for_functions(f.functions)})
+				stops.append(anchor)
 		return stops
 	for m in moments:
 		var moment_id: String = (m as Dictionary).get("id", "")
@@ -1684,7 +1736,7 @@ func _find_stop_for_needs(moment_id: String, needs: Array) -> Variant:
 		var fns := f.functions_for_moment(moment_id)
 		for n in needs:
 			if n in fns:
-				return {"pos": entry["pos"] as Vector3, "pose": _pose_for_functions(fns)}
+				return _tenant_anchor_for(entry, _pose_for_functions(fns))
 	return null
 
 

@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://sirnq0vx6naq"
-path="res://.godot/imported/mii_tenant.glb-3f53c905ce7d58f978d80cc150b28309.scn"
+uid="uid://crarrox884fbj"
+path="res://.godot/imported/tenant_adult_masc.glb-8d43b40179d18e4a52af27897494deff.scn"
 
 [deps]
 
-source_file="res://assets/models/tenants/mii_tenant.glb"
-dest_files=["res://.godot/imported/mii_tenant.glb-3f53c905ce7d58f978d80cc150b28309.scn"]
+source_file="res://assets/models/tenants/tenant_adult_masc.glb"
+dest_files=["res://.godot/imported/tenant_adult_masc.glb-8d43b40179d18e4a52af27897494deff.scn"]
 
 [params]
 

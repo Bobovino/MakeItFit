@@ -3,41 +3,75 @@ class_name TenantMii
 
 # Low-poly tenant avatar shown only in the post-win 3D showcase
 # (Room3DView.start_tenant_showcase) — teleports between the furniture that
-# satisfies each moment's needs and plays a single cheerful bounce loop the
-# whole time. No pathfinding, no rigging: the target position is always a
-# furniture tile we already know from _furniture_entries. Limbs are real
-# connected geometry (arms/legs joined to the torso), not floating parts, so
-# poses are done by moving/rotating the WHOLE model rather than individual
-# limbs — repositioning one limb without the others would visibly pull it
-# apart at the joint.
+# satisfies each moment's needs. Rigged (18-bone armature) and animated via a
+# baked AnimationPlayer that ships inside each .glb, rather than the earlier
+# whole-body-transform pose hack: real Walk/Sit/Lie/etc. clips instead of
+# rotating and offsetting the whole model.
 
-# Two body variants — a male figure with a short cap of hair, and a female
-# one with fuller hair plus a ponytail (both built/exported in Blender by
-# hand, not swapped textures). Which one a given tenant gets is decided in
-# set_tint() below, from the same color every caller already derives from
-# the tenant's name — that keeps a given tenant consistently the same body
-# everywhere without needing their name threaded through as a separate
-# parameter.
-const MODEL_PATH_MALE   := "res://assets/models/tenants/mii_tenant.glb"
-const MODEL_PATH_FEMALE := "res://assets/models/tenants/mii_tenant_female.glb"
+# Two body variants — a male figure and a female one, each with their own
+# baked palette, face, and animation set (built/exported in Blender, not
+# swapped textures or runtime tints). Which one a given tenant gets is
+# decided in set_tint() below, from the same color every caller already
+# derives from the tenant's name — that keeps a given tenant consistently the
+# same body everywhere without needing their name threaded through as a
+# separate parameter. Teen/child variants exist on disk (assets/models/
+# tenants/tenant_{teen,child}_{masc,fem}.glb) for whenever the game wants a
+# body-size distinction; nothing currently selects them.
+const MODEL_PATH_MALE   := "res://assets/models/tenants/tenant_adult_masc.glb"
+const MODEL_PATH_FEMALE := "res://assets/models/tenants/tenant_adult_fem.glb"
 const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
-const TINTED_PARTS := ["Torso", "Arm_L", "Arm_R", "Leg_L", "Leg_R", "Foot_L", "Foot_R"]
 
 const BOB_SPEED  := 3.2   # radians/sec
 const BOB_AMOUNT := 0.035 # metres
 const SQUASH_AMOUNT := 0.06
 
-enum Pose { STAND, SIT, LIE }
+enum Pose { STAND, SIT, LIE, REACH }
+
+# Clip name for each pose's steady-state loop, and the one-shot transition
+# clips either side of it. Every .glb ships all of these; STAND/REACH have no
+# transition clips because the root never moves for them -- they blend
+# straight off of Idle.
+const LOOP_CLIP := {
+	Pose.STAND: "Idle",
+	Pose.SIT:   "Sit",
+	Pose.LIE:   "Lie",
+	Pose.REACH: "ReachFwd1H",
+}
+const DOWN_CLIP := { Pose.SIT: "SitDown", Pose.LIE: "LieDown" }
+const UP_CLIP   := { Pose.SIT: "StandUp", Pose.LIE: "LieUp" }
+
+# Clips that should loop forever once reached (everything else -- the
+# transitions -- stops on its last frame, which is what lets queue() advance
+# to the next queued clip via animation_finished).
+const LOOPING_CLIPS := ["Idle", "Walk", "Sit", "SitRelaxed", "Lie", "Crouch",
+	"ReachFwd", "ReachFwd1H", "ReachUp", "ReachUp1H"]
 
 var _model: Node3D = null
+var _anim: AnimationPlayer = null
 var _model_path: String = ""   # which of the two variants is currently loaded, so set_tint doesn't reload it every call
 var _t: float = randf() * TAU   # random phase so multiple instances don't sync
 var _pose: int = Pose.STAND
 var _pose_y_offset: float = 0.0
+var _animate: bool = true   # mirrors set_process() below, applied to _anim once it exists
 
 
 func _ready() -> void:
 	pass   # model loads lazily on the first set_tint() call, once the body variant is known
+
+
+# CityMap's static city-map portrait wants a frozen figure, called BEFORE the
+# model (and its AnimationPlayer) even exists yet. Plain Node.set_process only
+# stops OUR OWN _process (the manual bounce/breathing) -- it does nothing to a
+# child AnimationPlayer's independent internal playback, so the baked Idle
+# sway would keep animating in every portrait regardless. Named separately
+# rather than overriding set_process() itself: Godot's GDScript parser treats
+# shadowing a native Node method as an error ("won't be called by the
+# engine"), since only explicit script-side calls would ever reach it.
+func set_animating(enable: bool) -> void:
+	set_process(enable)
+	_animate = enable
+	if _anim:
+		_anim.active = enable
 
 
 func _load_model(path: String) -> void:
@@ -52,8 +86,23 @@ func _load_model(path: String) -> void:
 	add_child(_model)
 	_model_path = path
 	_apply_outline(_model)
-	_add_happy_face()
-	_apply_pose()   # the new model starts at identity transform — reapply whatever pose was already set
+	_anim = _find_animation_player(_model)
+	if _anim:
+		_anim.active = _animate
+		for clip_name in LOOPING_CLIPS:
+			if _anim.has_animation(clip_name):
+				_anim.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
+	_goto_pose(_pose, true)   # the new model starts at bind pose -- jump straight to whatever pose was already set, no transition
+
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for child in node.get_children():
+		var found := _find_animation_player(child)
+		if found:
+			return found
+	return null
 
 
 # Black rim around each part via a next-pass shader (cull_front + vertex push
@@ -75,6 +124,8 @@ func _process(delta: float) -> void:
 	var bounce := (sin(_t) + 1.0) * 0.5   # 0..1, so it only ever bounces up
 	if _pose == Pose.LIE:
 		# No hopping while lying down — a slow breathing scale pulse instead.
+		# The skeletal animation only drives bone poses inside the armature,
+		# so scaling/offsetting _model itself on top of it is still safe.
 		_model.position.y = _pose_y_offset
 		var breathe := 1.0 + sin(_t * 0.6) * 0.025
 		_model.scale = Vector3(1.0, breathe, breathe)
@@ -85,148 +136,77 @@ func _process(delta: float) -> void:
 		_model.scale = Vector3(stretch, squash, stretch)
 
 
-# "stand" (default) / "sit" / "lie" — called by Room3DView alongside each
-# teleport so the tenant visibly uses whatever furniture it just landed on.
-func set_pose(pose_name: String) -> void:
+# "stand" (default) / "sit" / "lie" / "reach" — called by Room3DView
+# alongside each teleport so the tenant visibly uses whatever furniture it
+# just landed on.
+#
+# `instant` defaults to true because every caller today is a TELEPORT
+# between two different, unrelated pieces of furniture, not a tenant walking
+# up to and using the SAME one -- so there is nothing to transition FROM.
+# Passing false (still supported for whenever a tenant actually walks up to
+# furniture in view) previously ran unconditionally, which is what made a
+# teleport to the sink play the "getting up out of bed" animation right there
+# at the sink: the position had already jumped, so LieUp's baked motion
+# played in the new spot instead of the bed it was meant to leave.
+func set_pose(pose_name: String, instant: bool = true) -> void:
+	var pose: int
 	match pose_name:
 		"lie":
-			_pose = Pose.LIE
+			pose = Pose.LIE
 		"sit":
-			_pose = Pose.SIT
+			pose = Pose.SIT
+		"reach":
+			pose = Pose.REACH
 		_:
-			_pose = Pose.STAND
-	_apply_pose()
-
-
-func _apply_pose() -> void:
-	if not is_instance_valid(_model):
-		return   # set_pose() called before the first set_tint() picked a body variant
-	match _pose:
-		Pose.STAND:
-			_model.rotation = Vector3.ZERO
-			_pose_y_offset = 0.0
-		Pose.SIT:
-			# Whole-body crouch — a lowered stance reads as "sitting at this
-			# piece of furniture" without needing to bend any one connected
-			# limb (which would visibly pull it away from its joint).
-			_model.rotation = Vector3.ZERO
-			_pose_y_offset = -0.14
-		Pose.LIE:
-			_model.rotation.x = deg_to_rad(-90.0)
-			_pose_y_offset = -0.5
-
-
-# A procedurally-drawn face (eyebrows + round eyes with a catch-light +
-# a thick smile stroke + blush) on a billboarded quad in front of the head —
-# went back to a flat decal after real 3D eyeball geometry turned out
-# uncanny at this model's tiny scale (pupil vs. sclera proportions are very
-# hard to tune blind, and the result read as empty eye sockets). Drawn at
-# 128px (doubled from an earlier 64px pass) purely for smoother edges on the
-# curves — same layout, just less jaggy up close. Eyebrows are the one new
-# feature: without them the eyes read as two flat dots with nothing framing
-# them, which is most of what was still making the plain-dot version feel
-# "off" rather than actually expressive.
-const FACE_TEX_SIZE := 128
-const FACE_WORLD_SIZE := 0.16
-
-func _add_happy_face() -> void:
-	var head := _model.find_child("Head", true, false) as MeshInstance3D
-	if head == null:
+			pose = Pose.STAND
+	if pose == _pose:
 		return
-	var img := Image.create(FACE_TEX_SIZE, FACE_TEX_SIZE, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	# Soft near-black instead of pure black — pure black eyes on a small
-	# head read as punched-out holes. A small white glint offset toward the
-	# upper-left of each eye is what actually kills the "dead stare" look,
-	# same trick any simple cartoon face uses to fake a catch-light.
-	var ink := Color(0.14, 0.12, 0.11)
-	var eye_r := 6.5
-	var eye_l := Vector2(44, 54)
-	var eye_r_pos := Vector2(84, 54)
-	_draw_dot(img, eye_l.x, eye_l.y, eye_r, ink)
-	_draw_dot(img, eye_r_pos.x, eye_r_pos.y, eye_r, ink)
-	_draw_dot(img, eye_l.x - 2.6, eye_l.y - 2.8, 1.8, Color(1, 1, 1, 0.85))
-	_draw_dot(img, eye_r_pos.x - 2.6, eye_r_pos.y - 2.8, 1.8, Color(1, 1, 1, 0.85))
-	# Eyebrows: a gentle upward arch (apex HIGHER, i.e. smaller y, in the
-	# middle) sitting just above each eye — this single addition is what
-	# turns "two dots and a mouth" into an actual expressive face instead of
-	# a blank stare with a smile stapled under it.
-	for cx_v in [eye_l.x, eye_r_pos.x]:
-		var cx: float = cx_v
-		for x in range(int(cx - 8), int(cx + 9)):
-			var t: float = (float(x) - (cx - 8)) / 16.0
-			var y := 40 - int(round(3.5 * sin(PI * t)))
-			_draw_dot(img, x, y, 1.4, ink)
-	# Smile: corners (t=0,1) sit HIGHER (smaller y) than the middle (t=0.5,
-	# larger y) — a "cup" shape, which is what a smiling mouth looks like in
-	# image coordinates where y increases downward. Drawn as two overlapping
-	# passes offset a couple pixels apart so the stroke actually has
-	# visible thickness instead of reading as a thin scratch.
-	for x in range(36, 95):
-		var t := float(x - 36) / 58.0
-		var y := 80 + int(round(12.0 * sin(PI * t)))
-		_draw_dot(img, x, y, 3.0, ink)
-		_draw_dot(img, x, y + 3, 2.6, ink)
-	# Faint blush — reads as "friendly" rather than "blank," and costs
-	# nothing extra to draw.
-	_draw_dot(img, 28, 68, 6.0, Color(0.95, 0.55, 0.55, 0.22))
-	_draw_dot(img, 100, 68, 6.0, Color(0.95, 0.55, 0.55, 0.22))
-	var sprite := Sprite3D.new()
-	sprite.texture = ImageTexture.create_from_image(img)
-	sprite.pixel_size = FACE_WORLD_SIZE / FACE_TEX_SIZE
-	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	sprite.shaded = false
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sprite.no_depth_test = true   # decal must never be clipped by the curved head surface it sits against
-	sprite.position = Vector3(0, 0, 0.19)
-	head.add_child(sprite)
+	_goto_pose(pose, instant)
 
 
-# A soft 1px falloff at the rim (instead of a hard pixel edge) is the
-# difference between "small drawn dot" and "jagged blob" at this texture's
-# tiny 64x64 resolution — cheap alpha blend against whatever's already
-# there so overlapping dots (glint over eye) still look right.
-func _draw_dot(img: Image, cx: float, cy: float, r: float, color: Color = Color.BLACK) -> void:
-	var ri := int(ceil(r)) + 1
-	for x in range(int(cx) - ri, int(cx) + ri + 1):
-		for y in range(int(cy) - ri, int(cy) + ri + 1):
-			if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
-				continue
-			var d := Vector2(x - cx, y - cy).length()
-			if d > r + 1.0:
-				continue
-			var edge_alpha := clampf(r + 0.5 - d, 0.0, 1.0)
-			var blend_a := color.a * edge_alpha
-			if blend_a <= 0.0:
-				continue
-			# Proper "over" compositing (not a plain lerp) — needed so a
-			# translucent dot (the blush, or the glint over an eye already
-			# drawn) actually ends up at its own requested alpha instead of
-			# getting further diluted by whatever's already underneath.
-			var under := img.get_pixel(x, y)
-			var out_a := blend_a + under.a * (1.0 - blend_a)
-			var out_col := Color(0, 0, 0, 0)
-			if out_a > 0.0:
-				out_col = Color(
-					(color.r * blend_a + under.r * under.a * (1.0 - blend_a)) / out_a,
-					(color.g * blend_a + under.g * under.a * (1.0 - blend_a)) / out_a,
-					(color.b * blend_a + under.b * under.a * (1.0 - blend_a)) / out_a,
-					out_a)
-			img.set_pixel(x, y, out_col)
+# Plays whatever one-shot transition clips get the rig from the current pose
+# to the target pose, then hands off to the target's looping clip. Any
+# sit<->lie jump routes through the shared STAND-adjacent "up" clip first
+# (there's no direct sit-to-lie clip) -- two short transitions back to back
+# rather than teaching every pose pair its own animation.
+func _goto_pose(pose: int, instant: bool) -> void:
+	var old_pose := _pose
+	_pose = pose
+	_pose_y_offset = 0.0
+
+	if not _anim:
+		return
+
+	if instant:
+		var loop: String = LOOP_CLIP[pose]
+		if _anim.has_animation(loop):
+			_anim.stop()
+			_anim.play(loop)
+		return
+
+	var chain: Array[String] = []
+	if UP_CLIP.has(old_pose):
+		chain.append(UP_CLIP[old_pose])
+	if DOWN_CLIP.has(pose):
+		chain.append(DOWN_CLIP[pose])
+	chain.append(LOOP_CLIP[pose])
+
+	var first := true
+	for clip_name in chain:
+		if not _anim.has_animation(clip_name):
+			continue
+		if first:
+			_anim.play(clip_name)
+			first = false
+		else:
+			_anim.queue(clip_name)
 
 
-# Recolors the body (torso/feet) to the tenant's color, leaving the skin-toned
-# head/hands and the black outline shells untouched. Also picks which body
-# variant to load — see the MODEL_PATH_* comment above — from the color's
-# hue, so it's deterministic per tenant without a separate parameter.
+# Picks which body variant to load — a male figure or a female one, each
+# with its own baked palette/face/animations (see the MODEL_PATH_* comment
+# above) — deterministically from the color's hue, so a given tenant is
+# consistently the same body everywhere without a separate parameter. Both
+# variants ship their own fixed palette now, so this no longer recolors
+# anything at runtime the way the old flat-tint mii did.
 func set_tint(color: Color) -> void:
 	_load_model(MODEL_PATH_FEMALE if int(color.h * 997.0) % 2 == 0 else MODEL_PATH_MALE)
-	if not is_instance_valid(_model):
-		return
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 1.0
-	for part_name in TINTED_PARTS:
-		var mi := _model.find_child(part_name, true, false) as MeshInstance3D
-		if mi:
-			mi.set_surface_override_material(0, mat)

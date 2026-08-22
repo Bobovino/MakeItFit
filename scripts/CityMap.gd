@@ -617,13 +617,16 @@ func _setup_portrait_viewport() -> void:
 	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_portrait_viewport)
 
-	# Model's full-body world AABB measures ~0.975m tall, feet at y=0 — pulled
-	# back to ~1.13m of visible height at fov 35 (some headroom above/below)
-	# instead of the old tight crop on just the head.
+	# Model's full-body world AABB measures ~1.72m tall (real-world scale
+	# now, not the old ~0.975m stylised mii), feet at y=0 — this was still
+	# calibrated for the shorter model until an actual playthrough showed the
+	# portrait cropped off at the shoulders. Pulled back to keep the same
+	# ~1.16x headroom ratio the old framing used, aimed at mid-height rather
+	# than the old fixed 0.49m (which sat at shin height on this taller rig).
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 0.49, 1.8)
+	cam.position = Vector3(0, 0.86, 3.18)
 	cam.fov = 35.0
-	cam.look_at_from_position(Vector3(0, 0.49, 1.8), Vector3(0, 0.49, 0), Vector3.UP)
+	cam.look_at_from_position(Vector3(0, 0.86, 3.18), Vector3(0, 0.86, 0), Vector3.UP)
 	_portrait_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()
@@ -643,7 +646,7 @@ func _setup_portrait_viewport() -> void:
 
 	_portrait_mii = TenantMiiScript.new()
 	_portrait_viewport.add_child(_portrait_mii)
-	_portrait_mii.set_process(false)   # static portrait — no idle bounce needed here
+	_portrait_mii.set_animating(false)   # static portrait — no idle bounce/animation needed here
 
 	# A soft contact shadow right under the feet — with transparent_bg and no
 	# floor mesh, the full-body framing above left the figure looking like it
