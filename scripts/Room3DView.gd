@@ -1727,13 +1727,20 @@ func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
 	return {"pos": Vector3(stand_pos.x, 0.0, stand_pos.z), "rot_y": rot_y + PI, "pose": pose}
 
 
-# One stop per moment — whichever placed furniture piece currently provides
-# one of that moment's needs (functions_for_moment covers foldable items like
-# a Sofa Bed, which only counts as "sleep" once actually unfolded). Most
-# levels don't define moments at all (the tutorials just use a flat
+# One stop per NEED (not per moment) — whichever placed furniture piece
+# currently provides that specific need (functions_for_moment covers foldable
+# items like a Sofa Bed, which only counts as "sleep" once actually unfolded).
+# Most levels don't define moments at all (the tutorials just use a flat
 # required_functions list), so with no moments the tenant instead cycles
 # through every distinct placed furniture piece one at a time — otherwise it
 # would resolve to a single stop and never move.
+#
+# Previously this returned the FIRST furniture piece matching ANY of a
+# moment's needs and stopped there -- one stop per MOMENT, not per need, so a
+# 5-need "Day" moment only ever showed one arbitrary piece (whichever
+# satisfied the first-checked need), and the whole showcase collapsed to just
+# two stops total (one per moment) instead of visiting every relevant piece
+# with its own correct pose.
 func _collect_tenant_stops(moments: Array) -> Array:
 	var stops: Array = []
 	if moments.is_empty():
@@ -1749,21 +1756,27 @@ func _collect_tenant_stops(moments: Array) -> Array:
 	for m in moments:
 		var moment_id: String = (m as Dictionary).get("id", "")
 		var needs: Array = (m as Dictionary).get("needs", [])
-		var stop = _find_stop_for_needs(moment_id, needs)
-		if stop != null:
-			stops.append(stop)
+		for need in needs:
+			var stop = _find_stop_for_need(moment_id, need)
+			if stop == null:
+				continue
+			var pos: Vector3 = stop["pos"]
+			# Same furniture piece can satisfy more than one need (a desk with
+			# both "work" and "storage", say) -- dedupe by position so it isn't
+			# visited twice back to back with the same pose.
+			if not stops.any(func(s): return (s["pos"] as Vector3).is_equal_approx(pos)):
+				stops.append(stop)
 	return stops
 
 
-func _find_stop_for_needs(moment_id: String, needs: Array) -> Variant:
+func _find_stop_for_need(moment_id: String, need: String) -> Variant:
 	for entry in _furniture_entries:
 		var f: Furniture = entry["furniture"]
 		if not is_instance_valid(f):
 			continue
 		var fns := f.functions_for_moment(moment_id)
-		for n in needs:
-			if n in fns:
-				return _tenant_anchor_for(entry, _pose_for_functions(fns))
+		if need in fns:
+			return _tenant_anchor_for(entry, _pose_for_functions(fns))
 	return null
 
 
