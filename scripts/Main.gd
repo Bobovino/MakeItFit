@@ -1183,6 +1183,14 @@ func _ensure_mode3d_view() -> void:
 	# post-win "View Apartment".
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
+	# _teardown_mode3d_view() (see the comment above) frees the whole node,
+	# tenant and all, whenever the player steps out to the Floor Plan -- so
+	# during "Watch Again" (_post_win_view), tabbing over and back silently
+	# lost the tenant showcase loop with no way back short of re-opening
+	# Watch Again from the results screen. Restart it here too, the same way
+	# _on_watch_again_reveal() starts it the first time.
+	if _post_win_view:
+		_start_tenant_showcase()
 	# The 3D view's rect fully contains TenantCard's corner (both are direct
 	# UI children), so appending it here — same CanvasLayer, later sibling —
 	# would otherwise draw over the card and hide it completely. Re-assert
