@@ -1621,8 +1621,11 @@ const FUNCTION_POSES := {
 # origin with zero rotation, regardless of the piece's facing -- so a
 # standing pose landed floating inside a sink's own volume, and a bed rotated
 # by the player left the tenant lying unrotated beside it rather than on it.
-const POSES_AT_FURNITURE := ["sit", "lie"]
 const USE_STANDOFF_M := 0.34   # clearance in front of the footprint edge
+# Measured (headless, bone positions): in the Lie pose's own unrotated rest
+# frame, the head/foot midpoint sits this far from the root bone -- see the
+# "lie" branch of _tenant_anchor_for for why this is needed at all.
+const LIE_ROOT_TO_MID := Vector3(0.0, 0.0, -0.873)
 
 var _tenant: Node3D = null
 var _tenant_stops: Array = []   # [{pos, rot_y, pose}], one per moment (or one per furniture piece, if no moments)
@@ -1677,11 +1680,35 @@ func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
 	var size: Vector3 = entry["size"]
 	var rot_y: float = deg_to_rad(f.rot_steps * 90.0) if is_instance_valid(f) else 0.0
 
-	if pose in POSES_AT_FURNITURE:
-		# On top of it, floor-level, facing the same way the item itself faces
-		# (a chair's occupant faces the same direction as the chair; a
-		# sleeper's long axis follows the bed's own rotation) rather than
-		# always facing the world's default -Z regardless of how it was placed.
+	if pose == "lie":
+		# The Lie clip's body extends along world Z by default (measured via
+		# bone positions: head/foot are ~1.35m apart in Z, ~0m in X), but an
+		# unrotated item's long axis in this game is X (fw = grid_w*TILE_M
+		# along world X, see _add_furniture_box) -- both then get the SAME
+		# rot_steps*90 applied on top, so at every rotation the body ends up
+		# 90 deg crossed against the bed instead of lying along it. A fixed
+		# quarter turn reconciles the two conventions before rot_y is applied.
+		var lie_rot := rot_y + PI * 0.5
+
+		# The root bone is NOT at the body's own center-of-length -- it sits
+		# ~0.87m toward the feet from the head/foot midpoint (measured via
+		# bone positions at rest). Anchoring the raw root at the bed's center
+		# left the head hanging almost 0.9m past the pillow end. Shifting the
+		# anchor by that same offset, rotated the same way the body is,
+		# brings the body's actual MIDPOINT to the bed's center instead.
+		var mid_offset := LIE_ROOT_TO_MID.rotated(Vector3.UP, lie_rot)
+
+		# Rests on the mattress top (entry["size"].y, the item's real modeled
+		# height), not the literal floor -- unlike Sit, whose baked hip-drop
+		# already accounts for a normal seat height while keeping the root at
+		# floor level, Lie assumes it's starting flat at y=0, so a bed's real
+		# elevation above the floor has to be added back in here.
+		var lie_pos := Vector3(center.x, size.y, center.z) - mid_offset
+		return {"pos": lie_pos, "rot_y": lie_rot, "pose": pose}
+
+	if pose == "sit":
+		# Facing the same way the chair itself faces, rather than always the
+		# world's default -Z regardless of how it was placed.
 		return {"pos": Vector3(center.x, 0.0, center.z), "rot_y": rot_y, "pose": pose}
 
 	# Standing-in-front poses: step out from the footprint edge facing the

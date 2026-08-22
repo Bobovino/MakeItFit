@@ -198,12 +198,55 @@ func _render_ortho(model_path: String, mode: String, span_a: float, span_b: floa
 		return null
 	_holder.add_child(inst)
 
-	var box := _combined_aabb(inst)
-	if box.size.length() < 0.0001:
+	# Was: center the model at its OWN native size and just frame a camera
+	# around the declared span -- fine when the two happen to match, but nothing
+	# here enforces that they do. bedSingle.glb's real body is 0.57m x 1.13m
+	# while its catalog entry declares 1.9m x 0.9m (a leftover native-Kenney-
+	# scale model, never fit to its tile footprint) so the floor-plan icon
+	# rendered it shrunk into a fraction of its own box. Room3DView's real 3D
+	# view never has this problem because _refit_item_model() always rescales
+	# every model onto its declared box_size -- ported the same fit here
+	# instead of inventing a second, inconsistent way to size furniture.
+	var native := _first_mesh_aabb(inst, Transform3D.IDENTITY)
+	if native.size.length() < 0.0001:
 		inst.queue_free()
 		return null
-	var center := box.get_center()
-	inst.position -= center
+
+	if mode == "top":
+		# span_a = declared width (X), span_b = declared depth (Z). Some
+		# models are authored with their long side along local Z instead of X
+		# (again, bedSingle.glb: ~1.13m long on Z, ~0.57m on X) -- fitting X-
+		# to-X/Z-to-Z directly would then stretch the short side into the long
+		# one. Detect that mismatch the same way _refit_item_model does: if
+		# the "long" axis disagrees between the declared box and the native
+		# model, swap which declared dimension each native axis targets and
+		# yaw 90 degrees to match.
+		var box_x_is_long := span_a >= span_b
+		var native_x_is_long := native.size.x >= native.size.z
+		var swapped := box_x_is_long != native_x_is_long
+		var scale_v: Vector3
+		if swapped:
+			scale_v = Vector3(span_b / native.size.x, 1.0, span_a / native.size.z)
+			inst.rotation.y = PI * 0.5
+		else:
+			scale_v = Vector3(span_a / native.size.x, 1.0, span_b / native.size.z)
+			inst.rotation.y = 0.0
+		inst.scale = scale_v
+		var local_center := Vector3(
+			(native.position.x + native.size.x * 0.5) * scale_v.x, 0.0,
+			(native.position.z + native.size.z * 0.5) * scale_v.z)
+		var world_center := Basis(Vector3.UP, inst.rotation.y) * local_center
+		inst.position = Vector3(-world_center.x, 0.0, -world_center.z)
+	else:
+		# Front elevation has no X/Z ambiguity to resolve (Y is always up) --
+		# just scale onto the declared width x wall-height and center.
+		var scale_v := Vector3(span_a / native.size.x, span_b / native.size.y, 1.0)
+		scale_v.z = minf(scale_v.x, scale_v.y)   # keep depth from stretching oddly
+		inst.scale = scale_v
+		inst.position = Vector3(
+			-(native.position.x + native.size.x * 0.5) * scale_v.x,
+			-(native.position.y + native.size.y * 0.5) * scale_v.y,
+			0.0)
 
 	var w_px := clampi(int(round(maxf(span_a, 0.05) * ORTHO_PX_PER_M)), 8, ORTHO_MAX_PX)
 	var h_px := clampi(int(round(maxf(span_b, 0.05) * ORTHO_PX_PER_M)), 8, ORTHO_MAX_PX)
@@ -215,7 +258,11 @@ func _render_ortho(model_path: String, mode: String, span_a: float, span_b: floa
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var dist := maxf(box.size.length(), 1.0) * 4.0
+	# Orthographic projection: distance doesn't affect framing at all (only
+	# `_cam.size` below does), it only has to clear the near/far clip planes --
+	# so this just needs a generous margin over the declared (now-authoritative,
+	# post-fit) real-world spans rather than the model's native pre-scale size.
+	var dist := maxf(span_a, span_b) * 3.0 + 2.0
 	_cam.size = span_b * 1.06   # vertical extent; horizontal follows from the viewport's own w:h aspect
 	if mode == "top":
 		_cam.position = Vector3(0.0, dist, 0.0)
@@ -235,9 +282,28 @@ func _render_ortho(model_path: String, mode: String, span_a: float, span_b: floa
 	return ImageTexture.create_from_image(img)
 
 
+# Depth-first, first-match only, in `node`'s local space -- mirrors
+# Room3DView._first_mesh_aabb()/_node_aabb(). Some Kenney kit files bundle
+# small accessory sub-meshes (a toilet lid "cover", a bed "cover"/"pillow")
+# with bizarre baked scale/rotation values left over from whatever rig they
+# were authored against; merging them in inflates the AABB, so this is what
+# the real 3D view's own model-fitting uses as the item's true footprint.
+func _first_mesh_aabb(node: Node3D, accumulated: Transform3D) -> AABB:
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh:
+		return accumulated * (node as MeshInstance3D).mesh.get_aabb()
+	for child in node.get_children():
+		if child is Node3D:
+			var result := _first_mesh_aabb(child as Node3D, accumulated * (child as Node3D).transform)
+			if result.size.length() > 0.0001:
+				return result
+	return AABB()
+
+
 # Combined AABB (in `node`'s local space) across every MeshInstance3D
-# descendant — more robust than "first mesh found" for multi-mesh models
-# (e.g. a bed with a separate pillow mesh).
+# descendant — used only by the angled catalog-photo render above, which
+# frames its camera to whatever the model actually measures rather than
+# fitting the model to a declared box, so accessory-mesh inflation there is
+# just a slightly wider shot, not a wrong-scale one.
 func _combined_aabb(node: Node3D) -> AABB:
 	var box := AABB()
 	var have_box := false
