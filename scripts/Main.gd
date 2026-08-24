@@ -469,6 +469,11 @@ func _restart_level() -> void:
 func _load_level(level_id: String) -> void:
 	_level_load_id += 1
 	var _load_gen := _level_load_id
+	# GDScript has no try/finally, so an error thrown partway through a
+	# nested transition would leave this stuck true and silently swallow
+	# every later mini-plan click. Any completed level load means no
+	# transition is in flight any more, so it's safe to clear here.
+	_nested_transition_busy = false
 	_current_level_id  = level_id
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
@@ -973,13 +978,21 @@ func _ensure_nested_plan_row() -> void:
 	_nested_plan_row.name = "NestedPlanRow"
 	_nested_plan_row.add_theme_constant_override("separation", 6)
 	_nested_plan_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Explicit z_index instead of relying purely on "last child = on top" —
-	# switching to the 3D view (e.g. the post-completion "View Apartment"
-	# flow's _set_view_mode(VIEW3D) call) re-adds/raises _mode3d_view to the
-	# front of ui_layer afterward, which otherwise buried this row behind its
-	# full-screen input-capturing viewport and made every card unclickable.
-	_nested_plan_row.z_index = 10
-	ui_layer.add_child(_nested_plan_row)
+	# Own CanvasLayer, above ui_layer's, rather than living in ui_layer and
+	# fighting for sibling order there. Several things in ui_layer re-raise
+	# THEMSELVES to the end after this row is positioned (_mode3d_view's
+	# full-screen input-capturing viewport, _show_watch_done_button, the
+	# Inventory...), and whichever ran last won — which is why neither a
+	# z_index (Control input picking goes by tree order, not z_index) nor
+	# re-raising the row at load time kept these cards clickable in the
+	# post-completion "Revisar Plano Actual" view. CanvasLayer order IS
+	# authoritative for both drawing and input picking, so a higher layer
+	# wins outright no matter what any ui_layer sibling does afterward.
+	var canvas := CanvasLayer.new()
+	canvas.name  = "NestedPlanLayer"
+	canvas.layer = 5   # ui_layer / ResultScreen are both the default layer 1
+	add_child(canvas)
+	canvas.add_child(_nested_plan_row)
 
 
 # mode/index identify what THIS card does at click time (re-resolved fresh,
@@ -1087,7 +1100,6 @@ func _position_nested_plan_panel() -> void:
 		top_of_stack = tenant_card.offset_top
 	_nested_plan_row.offset_bottom = top_of_stack - 8.0
 	_nested_plan_row.offset_top    = _nested_plan_row.offset_bottom - content_h
-	ui_layer.move_child(_nested_plan_row, ui_layer.get_child_count() - 1)
 
 
 # Total walkable floor area (m²) of a level's "floor"/"loft" floors, WITHOUT
@@ -1620,16 +1632,6 @@ func _ensure_mode3d_view() -> void:
 	if not is_instance_valid(_mode3d_view):
 		_mode3d_view = Room3DViewScene.instantiate()
 		ui_layer.add_child(_mode3d_view)
-		# Godot's Control gui_input routing picks by tree/sibling order, NOT
-		# CanvasItem.z_index — a z_index alone (see _ensure_nested_plan_row())
-		# doesn't win against a later-added sibling that also stops the mouse.
-		# _mode3d_view is only ever added here, once, and never re-raised
-		# afterward, so re-raise the nested-plan row right now to guarantee it
-		# stays on top of this full-screen view for input, not just for
-		# drawing — every other place that re-raises it can't run before this
-		# node exists yet.
-		if is_instance_valid(_nested_plan_row):
-			ui_layer.move_child(_nested_plan_row, ui_layer.get_child_count() - 1)
 		_mode3d_view.anchor_left   = 0.0
 		_mode3d_view.anchor_top    = 0.0
 		_mode3d_view.anchor_right  = 0.0
