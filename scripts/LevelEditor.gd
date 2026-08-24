@@ -1972,6 +1972,16 @@ func _input(event: InputEvent) -> void:
 							if is_instance_valid(_floor):
 								_floor.grid_draw.queue_redraw()
 							_auto_add_loft()
+						# Nested/parabox box: give it a real (empty) interior the
+						# moment it's placed, instead of leaving child_level_id
+						# unset until someone remembers to press a separate
+						# button — a placed box with nowhere to go isn't useful
+						# for anything.
+						if _pfdata.get("is_nested_box", false) as bool:
+							var _new_child_id := _create_nested_child_level()
+							if _new_child_id != "":
+								var _placed_last := _placed_furniture[_placed_furniture.size() - 1] as Dictionary
+								_placed_last["child_level_id"] = _new_child_id
 						_cancel_placement()
 						_update_placed_furniture_overlay()
 						_fill_placed_list()
@@ -2947,17 +2957,6 @@ func _fill_placed_list() -> void:
 				else:
 					pf["child_level_id"] = t)
 			child_row.add_child(child_edit)
-
-			var new_btn := Button.new()
-			new_btn.text = "＋ New"
-			new_btn.tooltip_text = "Create a fresh nested-apartment level, save it, and link this box to it"
-			new_btn.add_theme_font_size_override("font_size", 8)
-			new_btn.pressed.connect(func():
-				var new_id := _create_nested_child_level()
-				if new_id != "":
-					pf["child_level_id"] = new_id
-					_fill_placed_list())
-			child_row.add_child(new_btn)
 
 			var edit_btn := Button.new()
 			edit_btn.text = "✎ Edit"
@@ -4531,8 +4530,73 @@ func _test_level() -> void:
 		_set_status("Grid too small"); return
 	var d := _build_dict()
 	var gs: Node = get_node("/root/GameState")
-	gs.set("custom_level_data", d)
-	gs.set("editor_test_snapshot", d)   # see GameState.gd's comment — consumed by _ready() below on the way back
+
+	# Test Level always starts from the TOP of the nested tree, not whatever
+	# level happens to be open in the editor — testing a box's interior in
+	# isolation meant navigating between nested apartments (the whole point
+	# of the feature) was never actually exercisable from "✎ Edit". Saves
+	# the level actually being edited first (so its child_level_id links are
+	# current), finds the root, and hands THAT to gameplay; a nested level
+	# is then reached the normal way, through its parent's mini-plan.
+	if not _lname.strip_edges().is_empty() and _lname != "Untitled Apartment":
+		_save_level()
+	var root_id := _find_root_level_id()
+	var root_dict := d
+	if root_id != "" and root_id != _loaded_level_id:
+		var found := _find_saved_level(root_id)
+		if not found.is_empty():
+			root_dict = found
+	gs.set("custom_level_data", root_dict)
+	# Deep-duplicated, NOT the same Dictionary as custom_level_data (even
+	# when root_dict == d): GameManager aliases current_level straight to
+	# custom_level_data with no copy, and gameplay mutates fields on it
+	# directly while testing (moment state, etc.) — sharing the object meant
+	# playing the test session silently corrupted/emptied this snapshot too,
+	# so "← Back to Editor" landed on a blank level instead of what was
+	# tested. This one deliberately stays the level actually being edited
+	# (not root_dict) — "Back to Editor" resumes editing THAT, the test
+	# session reaches the root's tree separately via the in-game mini-plan.
+	gs.set("editor_test_snapshot", d.duplicate(true))
 	gs.set("pending_level_id",  "_custom")
 	gs.call("own_level", "_custom")
 	Transition.change_scene("res://scenes/Main.tscn")
+
+
+# Climbs from whatever level is currently loaded (_loaded_level_id) up
+# through whichever OTHER level's starting_furniture links to it via
+# child_level_id, repeating until nothing links any further — that's the
+# top of the nested tree. Deliberately NOT just _editor_nav_stack[0]: that
+# only reflects levels actually visited via "✎ Edit" THIS session, so
+# opening a nested level directly (Load Level) or editing one two "✎ Edit"
+# hops removed from where the session started would stop short of the real
+# root. A full reverse search over levels.json is cheap enough for this to
+# only ever run once per Test Level click. Capped so a malformed cycle
+# can't loop forever.
+func _find_root_level_id() -> String:
+	if _loaded_level_id.is_empty():
+		return ""
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		return _loaded_level_id
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close()
+		return _loaded_level_id
+	lf.close()
+	var levels := (lj.get_data() as Dictionary).get("levels", []) as Array
+
+	var current_id := _loaded_level_id
+	for _i in range(20):
+		var parent_id := ""
+		for lv in levels:
+			var ld := lv as Dictionary
+			for sf in (ld.get("starting_furniture", []) as Array):
+				if (sf as Dictionary).get("child_level_id", "") == current_id:
+					parent_id = ld.get("id", "") as String
+					break
+			if parent_id != "":
+				break
+		if parent_id == "" or parent_id == current_id:
+			return current_id
+		current_id = parent_id
+	return current_id
