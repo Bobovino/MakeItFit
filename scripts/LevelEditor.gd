@@ -63,6 +63,13 @@ var _stair_target:     String = "loft"   # "loft" → mezzanine; "floor" → flo
 var _window_painting:  bool = false
 var _window_erase:     bool = false
 
+# Stack of parent level ids to return to — pushed by _edit_nested_child_level()
+# right before it jumps into a box's interior, popped by _nav_back_to_parent().
+# Cleared whenever a level is loaded through any OTHER path (the Load Level
+# dialog), since that abandons whatever nested-editing context was in progress.
+var _editor_nav_stack: Array[String] = []
+var _nav_back_btn: Button = null
+
 # ── Metadata ──────────────────────────────────────────────────────────────────
 var _lname:  String = "Untitled Apartment"
 var _dist:   String = "Mitte"
@@ -543,6 +550,13 @@ func _build_right(ui: Node) -> void:
 	_fill_placed_list()
 
 	_sect(vb, "ACTIONS")
+	_nav_back_btn = Button.new()
+	_nav_back_btn.clip_text = true
+	_nav_back_btn.add_theme_font_size_override("font_size", 11)
+	_nav_back_btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	_nav_back_btn.pressed.connect(_nav_back_to_parent)
+	vb.add_child(_nav_back_btn)
+	_refresh_nav_back_btn()
 	_actbtn(vb, "▶  Test Level",  Color(0.28, 0.80, 0.52), _test_level)
 	_actbtn(vb, "💾  Save Level", GameTheme.C_AMBER,        _save_level)
 	_actbtn(vb, "📂  Load Level", GameTheme.C_MUTED,        _load_dialog)
@@ -4099,31 +4113,81 @@ func _create_nested_child_level() -> String:
 	return new_id
 
 
+# Reads levels.json and hands back the dict for `id`, or {} if not found/
+# on any I/O error (status message already set in that case).
+func _find_saved_level(id: String) -> Dictionary:
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		_set_status("Cannot open levels.json")
+		return {}
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close()
+		_set_status("levels.json parse error")
+		return {}
+	lf.close()
+	for lv in (lj.get_data() as Dictionary).get("levels", []) as Array:
+		if (lv as Dictionary).get("id", "") == id:
+			return lv as Dictionary
+	return {}
+
+
 # Saves the CURRENT level first (so the link just created/edited isn't lost),
-# then opens the linked level for editing in this same session — round-trip
-# back via Load Level when done, same as opening any other saved level.
+# pushes it onto _editor_nav_stack, then opens the linked level for editing
+# in this same session — "← Back to ..." (_nav_back_to_parent) is the way
+# back, not Load Level.
 func _edit_nested_child_level(target_id: String) -> void:
 	if target_id.strip_edges().is_empty():
 		_set_status("Set a child level id first")
 		return
-	if not _lname.strip_edges().is_empty() and _lname != "Untitled Apartment":
+	var parent_id := (_build_dict().get("id", "") as String)
+	var have_parent := not _lname.strip_edges().is_empty() and _lname != "Untitled Apartment"
+	if have_parent:
 		_save_level()
-	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
-	if not lf:
-		_set_status("Couldn't open the linked level — cannot open levels.json")
+	var target := _find_saved_level(target_id)
+	if target.is_empty():
+		_set_status("No saved level with id \"%s\" — use ＋ New, or save one with that id first" % target_id)
 		return
-	var lj := JSON.new()
-	if lj.parse(lf.get_as_text()) != OK:
-		lf.close()
-		_set_status("Couldn't open the linked level — levels.json parse error")
+	if have_parent:
+		_editor_nav_stack.append(parent_id)
+	_load_from_dict(target)
+	_refresh_nav_back_btn()
+	_set_status("Editing \"%s\"" % target_id)
+
+
+# "← Back to ..." — saves the current (child) level, pops the nav stack, and
+# reopens whichever level was being edited before "✎ Edit" was pressed.
+func _nav_back_to_parent() -> void:
+	if _editor_nav_stack.is_empty():
 		return
-	lf.close()
-	for lv in (lj.get_data() as Dictionary).get("levels", []) as Array:
-		if (lv as Dictionary).get("id", "") == target_id:
-			_load_from_dict(lv as Dictionary)
-			_set_status("Editing \"%s\"" % target_id)
-			return
-	_set_status("No saved level with id \"%s\" — use ＋ New, or save one with that id first" % target_id)
+	_save_level()
+	var parent_id := _editor_nav_stack.pop_back() as String
+	var parent := _find_saved_level(parent_id)
+	if parent.is_empty():
+		_set_status("Couldn't find parent level \"%s\" to go back to" % parent_id)
+		_refresh_nav_back_btn()
+		return
+	_load_from_dict(parent)
+	_refresh_nav_back_btn()
+	_set_status("Back in \"%s\"" % parent_id)
+
+
+func _refresh_nav_back_btn() -> void:
+	if not is_instance_valid(_nav_back_btn):
+		return
+	if _editor_nav_stack.is_empty():
+		_nav_back_btn.visible = false
+		return
+	_nav_back_btn.visible = true
+	_nav_back_btn.text = "← Back to \"%s\"" % (_nav_back_stack_top_name())
+
+
+# Best-effort display name for the level _nav_back_to_parent() would return
+# to — falls back to the raw id if it can't be looked up for some reason.
+func _nav_back_stack_top_name() -> String:
+	var id := _editor_nav_stack.back() as String
+	var lv := _find_saved_level(id)
+	return (lv.get("name", id) as String) if not lv.is_empty() else id
 
 
 func _load_dialog() -> void:
@@ -4223,7 +4287,9 @@ func _build_load_rows(list: VBoxContainer, cl: CanvasLayer) -> void:
 		load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		load_btn.add_theme_font_size_override("font_size", 11)
 		load_btn.pressed.connect(func():
+			_editor_nav_stack.clear()   # manually loading a level abandons any nested-editing "← Back" context
 			_load_from_dict(item["data"] as Dictionary)
+			_refresh_nav_back_btn()
 			cl.queue_free())
 		row.add_child(load_btn)
 		var del_btn := Button.new()
