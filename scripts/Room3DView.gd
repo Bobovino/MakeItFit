@@ -1202,15 +1202,22 @@ func _finish_furniture_drag() -> void:
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
-	if _apt_floor and _apt_floor.can_place(f, snap_pos):
+	# Mirrors Furniture.gd's own 2D drag-end (see there for the full
+	# rationale): a red (heavy), non-rail piece shares ONE position across
+	# every Moment, so a move also has to clear every OTHER Moment's layout,
+	# not just whichever one is being previewed in 3D right now.
+	var ok := _apt_floor != null and _apt_floor.can_place(f, snap_pos)
+	if ok and f.mobility_tier == "red" and f.rail_axis == "" and Furniture.test_mode_active \
+			and Furniture.all_moment_ids.size() > 1:
+		ok = _apt_floor.can_place_across_moments(f, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+	if ok:
 		_apt_floor.place_furniture(f, snap_pos)
-		# Mirrors Furniture.gd's own 2D drag-end (the only place this used to
-		# happen) — without it, sliding a rail piece in the 3D view moved it
-		# for every moment at once instead of just the one currently being
-		# tested, since set_moment_view() only ever restores a position it
-		# finds recorded in moment_rail_pos.
-		if f.rail_axis != "" and Furniture.test_mode_active:
-			f.moment_rail_pos[Furniture.active_moment_id] = f.grid_pos
+		# Without this, moving a piece in the 3D view moved it for every
+		# moment at once instead of just the one currently being tested,
+		# since set_moment_view() only ever restores a position it finds
+		# recorded in moment_positions.
+		if f.has_own_moment_position() and Furniture.test_mode_active:
+			f.moment_positions[Furniture.active_moment_id] = f.grid_pos
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 		for h in _hitbox_highlights:

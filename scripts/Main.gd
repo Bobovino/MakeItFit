@@ -2,6 +2,7 @@ extends Node
 
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
+const ComfortMeterScript := preload("res://scripts/ComfortMeter.gd")
 
 @onready var gm:           GameManager  = $GameManager
 @onready var room:         Node2D       = $Room
@@ -66,6 +67,7 @@ var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wh
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
 var _breadcrumb_lbl: Label = null     # "Root > Shoebox > Shoebox Interior" — which apartment we're actually in, since nested boxes are otherwise only inferable from the mini-plan cards
+var _comfort_meter: Control = null   # live gm.comfort_pct fill bar (ComfortMeter.gd) — only shown when the level actually has yellow-tier furniture placed
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
@@ -481,6 +483,58 @@ func _position_budget_label() -> void:
 	budget_label.offset_bottom = tenant_card.offset_top - gap
 	budget_label.offset_top    = budget_label.offset_bottom - h
 	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
+	_position_comfort_meter()
+
+
+const COMFORT_METER_SIZE := Vector2(120.0, 22.0)
+
+func _ensure_comfort_meter() -> void:
+	if is_instance_valid(_comfort_meter):
+		return
+	_comfort_meter = ComfortMeterScript.new()
+	_comfort_meter.name = "ComfortMeter"
+	_comfort_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_comfort_meter.custom_minimum_size = COMFORT_METER_SIZE
+	_comfort_meter.size = COMFORT_METER_SIZE
+	ui_layer.add_child(_comfort_meter)
+
+
+# Stacks directly above the Budget pill, same "gap above whatever's below it"
+# approach _position_budget_label() itself uses against tenant_card.
+func _position_comfort_meter() -> void:
+	if not is_instance_valid(_comfort_meter) or not _comfort_meter.visible:
+		return
+	if not is_instance_valid(budget_label):
+		return
+	var gap := 6.0
+	_comfort_meter.offset_left   = 8.0
+	_comfort_meter.offset_right  = 8.0 + COMFORT_METER_SIZE.x
+	_comfort_meter.offset_bottom = budget_label.offset_top - gap
+	_comfort_meter.offset_top    = _comfort_meter.offset_bottom - COMFORT_METER_SIZE.y
+	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
+
+
+# Only worth showing on a level that actually uses the mechanic — a level
+# with no yellow-tier furniture at all would just show a permanent, mute
+# "Comfort 100%" that explains nothing. Called from _refresh_functions()
+# alongside every other post-move recompute.
+func _update_comfort_meter() -> void:
+	var has_yellow := false
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			if (f as Furniture).mobility_tier == "yellow":
+				has_yellow = true
+				break
+		if has_yellow:
+			break
+	if not has_yellow:
+		if is_instance_valid(_comfort_meter):
+			_comfort_meter.visible = false
+		return
+	_ensure_comfort_meter()
+	_comfort_meter.visible = true
+	_comfort_meter.set_value(gm.comfort_pct, gm.COMFORT_WARN_THRESHOLD)
+	_position_comfort_meter()
 
 
 static func _segment_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
@@ -708,6 +762,7 @@ func _load_level(level_id: String) -> void:
 	_active_moment_id = ""
 	Furniture.test_mode_active = false
 	Furniture.active_moment_id = ""
+	Furniture.all_moment_ids = gm.moments.map(func(m): return (m as Dictionary)["id"] as String)
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
 	if not gm.moments.is_empty():
@@ -926,11 +981,14 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	# furniture lands exactly where the designer placed it regardless of floor-tile
 	# bounds checks (the editor validated the position visually).
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
+	# The level's authored starting position — the reference comfort scoring
+	# compares a yellow piece's current position against (see mobility_tier).
+	f._home_grid_pos = Vector2(gx, gy)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
 	f.placed.connect(func(_n): _on_furniture_action_changed())
-	if f.rail_axis != "":
+	if f.has_own_moment_position():
 		f.placed.connect(func(_n): _refresh_functions())
 	if fdata.get("creates_loft", false):
 		_promote_to_loft(f, apt_floor)
@@ -1822,14 +1880,16 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.furniture_moved.connect(func(f: Furniture):
 			_on_furniture_action_changed()
 			# Mirrors the 2D drag-end path (f.placed above, gated the same way):
-			# a rail-mounted piece's functions can depend on exactly where it
-			# sits (the day/night "dress" reveal wardrobe), so moving one in 3D
-			# has to re-run the needs check same as it does in 2D. This was
-			# missing entirely for 3D -- sliding a reveal wardrobe into its zone
-			# there correctly recorded the new moment_rail_pos, but nothing ever
-			# re-checked whether that satisfied the moment, so the level could
-			# never actually be won that way.
-			if f.rail_axis != "":
+			# a piece with its own per-Moment position (rail-mounted, or any
+			# green/yellow piece) can depend on exactly where it sits (the
+			# day/night "dress" reveal wardrobe, or zone membership for a
+			# repositioned piece), so moving one in 3D has to re-run the needs
+			# check same as it does in 2D. This was missing entirely for 3D --
+			# sliding a reveal wardrobe into its zone there correctly recorded
+			# the new moment_positions entry, but nothing ever re-checked
+			# whether that satisfied the moment, so the level could never
+			# actually be won that way.
+			if f.has_own_moment_position():
 				_refresh_functions())
 		_mode3d_view.showcase_stop_changed.connect(func(moment_id: String, needs: Array):
 			if moment_id == "":
@@ -2297,7 +2357,14 @@ func _on_buy_requested(furniture_id: String) -> void:
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
 	f.placed.connect(func(_n): _on_furniture_action_changed())   # repositioning-drag commits
-	if f.rail_axis != "":
+	# A freshly bought item has no authored starting position — its "home"
+	# for comfort-scoring purposes is simply wherever the player first sets
+	# it down, so it starts fully comfortable and only costs comfort if
+	# dragged away from there afterward.
+	f.placed.connect(func(_n):
+		if f._home_grid_pos == Vector2(-1, -1):
+			f._home_grid_pos = f.grid_pos)
+	if f.has_own_moment_position():
 		f.placed.connect(func(_n): _refresh_functions())
 
 	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
@@ -2432,6 +2499,15 @@ func _refresh_functions() -> void:
 		gm.update_zones(apt_floor.zones)
 		gm.update_sightlines(apt_floor)
 		gm.update_external_zone(apt_floor, all_entries, _active_moment_id)
+		# Zone separations/sightlines are level-wide checks against whatever's
+		# CURRENTLY on screen — with per-moment furniture positions now
+		# possible, that's only valid for _active_moment_id specifically. Every
+		# call site that repositions furniture for a moment (_on_moment_selected,
+		# _load_level's initial spawn) already runs _refresh_functions()
+		# afterward, so this always sees a freshly-correct layout for whichever
+		# moment is active right now.
+		gm.record_moment_geometry(_active_moment_id)
+	_update_comfort_meter()
 
 
 func _on_budget_changed(new_budget: int) -> void:
@@ -2487,7 +2563,10 @@ func _all_furniture_accessible() -> bool:
 func _on_rent_pressed() -> void:
 	if not gm.check_win():
 		Audio.play("error")
-		result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
+		if gm.comfort_pct < gm.COMFORT_WARN_THRESHOLD:
+			result_screen.show_failure("The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started.")
+		else:
+			result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
 		_refresh_undo_redo_buttons()
 		return
 	if not _all_furniture_accessible():
@@ -2567,11 +2646,13 @@ func _on_moment_selected(moment_id: String) -> void:
 		var fl := _floors[fid] as Floor
 		for f in fl.get_all_furniture():
 			var fur := f as Furniture
-			if fur.foldable or fur.rail_axis != "":
-				# Re-apply THIS moment's own remembered fold state / rail position —
-				# a sofa bed unfolded for Night stays unfolded there even if Day has
-				# it folded; a wardrobe pulled out on its rail for one moment stays
-				# out there even if another moment has it tucked away.
+			if fur.foldable or fur.has_own_moment_position():
+				# Re-apply THIS moment's own remembered fold state / position —
+				# a sofa bed unfolded for Night stays unfolded there even if Day
+				# has it folded; a wardrobe pulled out on its rail for one moment
+				# stays out there even if another moment has it tucked away; a
+				# green/yellow chair left by the window for one moment stays
+				# there even if another moment has it back at the desk.
 				fur.set_moment_view(moment_id)
 			if fur.foldable:
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
@@ -3268,6 +3349,13 @@ func _snapshot_all_furniture() -> Dictionary:
 			# default (see _restore_spawn_furniture()).
 			if f.is_nested_box:
 				entry["child_level_id"] = f.child_level_id
+			# _home_grid_pos is the level's TRUE authored starting position,
+			# not whatever (x,y) this particular undo step happens to restore
+			# to — capture it explicitly so comfort scoring (which compares
+			# current position against home) doesn't get silently reset to
+			# "comfortable" by an unrelated undo/redo on this floor.
+			entry["home_x"] = f._home_grid_pos.x
+			entry["home_y"] = f._home_grid_pos.y
 			furn.append(entry)
 		floors_data[fid] = {
 			"furniture":   furn,
@@ -3355,11 +3443,15 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
+	# home_x/home_y (see _snapshot_all_furniture()) is the level's true
+	# authored starting position — fall back to (gx,gy) only for snapshots
+	# taken before this field existed.
+	f._home_grid_pos = Vector2(override_data.get("home_x", gx) as float, override_data.get("home_y", gy) as float)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
 	f.placed.connect(func(_n): _on_furniture_action_changed())
-	if f.rail_axis != "":
+	if f.has_own_moment_position():
 		f.placed.connect(func(_n): _refresh_functions())
 	return f
 

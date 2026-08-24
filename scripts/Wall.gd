@@ -1093,6 +1093,30 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	return true
 
 
+# Extra check for a red-tier, non-rail piece — it shares ONE position across
+# every Moment (see Furniture.has_own_moment_position()), so moving it isn't
+# just a local edit: the new spot has to be free in every OTHER Moment too,
+# not just whichever one is on screen right now (can_place() alone only ever
+# validates against the live/current layout). `active_moment_id` is skipped
+# since can_place() already covers it.
+func can_place_across_moments(furniture: Furniture, at: Vector2, all_moments: Array, active_moment_id: String) -> bool:
+	var new_rect := Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))
+	for mid in all_moments:
+		var mid_s := mid as String
+		if mid_s == active_moment_id:
+			continue
+		for f in get_all_furniture():
+			var other := f as Furniture
+			if other == furniture:
+				continue
+			if furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top:
+				continue
+			if new_rect.intersects(other.get_moment_rect(mid_s)):
+				_block_reason = "Would overlap %s during \"%s\"" % [other.furniture_name, mid_s]
+				return false
+	return true
+
+
 # The reason the most recent can_place() call returned false ("" if it
 # returned true, or if nothing has called it yet) — read right after
 # can_place() by whatever's showing the player feedback.

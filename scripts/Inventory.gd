@@ -615,6 +615,26 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	dims.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	vb.add_child(dims)
 
+	# Mobility tier — how hard the tenant finds this piece to reposition (see
+	# Furniture.mobility_tier). "red" is the catalog default (most furniture:
+	# sofas, beds, wardrobes, appliances) so it's still worth showing even
+	# without an explicit tag, unlike the other tags above which only appear
+	# when actually set.
+	var tier := f.get("mobility_tier", "red") as String
+	var tier_lbl := Label.new()
+	match tier:
+		"green":
+			tier_lbl.text = "🪶 Light — freely movable"
+			tier_lbl.add_theme_color_override("font_color", GameTheme.C_GOOD)
+		"yellow":
+			tier_lbl.text = "🪶🪶 Medium — uncomfortable to move"
+			tier_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+		_:
+			tier_lbl.text = "🪶🪶🪶 Heavy — fixed in place"
+			tier_lbl.add_theme_color_override("font_color", GameTheme.C_BAD)
+	tier_lbl.add_theme_font_size_override("font_size", 10)
+	vb.add_child(tier_lbl)
+
 	var funcs := f.get("functions", []) as Array
 	if not funcs.is_empty():
 		var func_lbl := Label.new()

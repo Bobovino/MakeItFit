@@ -42,6 +42,11 @@ var folded_functions_arr:   Array = []
 var extended_functions_arr: Array = []
 var moment_fold_state: Dictionary = {}   # moment_id -> bool; each moment remembers its OWN fold state
 static var active_moment_id: String = "" # "" for levels without moments
+# Every moment id in the currently-loaded level, set by Main._load_level()
+# alongside active_moment_id — needed by the cross-moment collision check for
+# red-tier (non-rail) moves, which has to look at every OTHER moment, not
+# just whichever one is currently on screen.
+static var all_moment_ids: Array = []
 var _base_grid_h: int = 1             # grid_h when folded
 
 var height_category: String = "medium"  # "low" | "medium" | "tall"
@@ -65,6 +70,23 @@ var weight: float = 1.0
 var is_surface: bool = false
 var max_support_weight: float = 0.0
 var requires_surface: bool = false
+
+# Mobility tier — how hard THIS piece is for the tenant to reposition, an
+# entirely separate concept from the structural `weight` above (that one
+# gates mezzanine/surface load, this one gates comfort/per-moment movement).
+# "green" = freely movable, no penalty. "yellow" = movable but uncomfortable
+# (see GameManager.comfort_pct). "red" = default for most furniture (sofas,
+# beds, wardrobes, appliances) — shares ONE position across every Moment
+# instead of getting its own per-Moment slot, exactly like ordinary furniture
+# already behaves today; the exception is a red piece that's ALSO on a rail,
+# which keeps sliding per-Moment same as rails always have (see moment_positions).
+var mobility_tier: String = "red"
+# Authored spawn position — set once in Main._spawn_furniture(), re-derived
+# every time a piece is spawned (initial load, undo/redo, nested-level
+# snapshot restore) so it needs no snapshot/persistence plumbing of its own.
+# Comfort is current-state based: a yellow piece sitting away from this
+# position costs comfort; moved back, comfort recovers.
+var _home_grid_pos: Vector2 = Vector2(-1, -1)
 
 # Nested/parabox levels: this piece is a "box" whose interior is a whole
 # other apartment (see docs/design_nested_levels.md). Deliberately NOT
@@ -98,7 +120,13 @@ var _rail_ctrl_latch: bool   = false   # true while Ctrl has already triggered o
 var reveal_start:     int    = -1   # rail-local coord where the reveal zone begins (-1 = none)
 var reveal_end:       int    = -1   # rail-local coord where the reveal zone ends
 var reveal_functions: Array  = []   # extra functions granted while inside the reveal zone
-var moment_rail_pos:  Dictionary = {}   # moment_id -> Vector2 grid_pos left by the player
+# moment_id -> Vector2 grid_pos left by the player for that specific moment.
+# Originally rail-only; now written for ANY non-red-tier piece too (see
+# mobility_tier) — a green/yellow piece can sit somewhere different in "Day"
+# than in "Night", same mechanism a rail piece already used to slide per
+# moment, just without the axis clamp for non-rail pieces. A red, non-rail
+# piece never gets an entry here — it keeps exactly one shared grid_pos.
+var moment_positions: Dictionary = {}
 
 static var test_mode_active: bool = false
 # Set by Main.gd for the post-win "View Apartment" free-look mode — the level
@@ -133,6 +161,14 @@ var _topdown_icon: Texture2D = null
 var _error_reason: String = ""
 var _error_flash_t: float = 0.0
 const ERROR_FLASH_DURATION := 1.4
+
+# Same fading bubble, but for a neutral heads-up rather than a rejection —
+# used when a red (heavy) piece is successfully moved, to remind the player
+# that move applies to every Moment at once (it has no per-Moment slot of
+# its own, see mobility_tier/has_own_moment_position()).
+var _notice_reason: String = ""
+var _notice_flash_t: float = 0.0
+const NOTICE_FLASH_DURATION := 1.8
 
 # Keep rect reference for mouse-over size lookup; hidden visually.
 @onready var rect: ColorRect = $ColorRect
@@ -188,6 +224,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	is_surface            = data.get("is_surface",        false)    as bool
 	max_support_weight    = data.get("max_support_weight", 0.0)     as float
 	requires_surface      = data.get("requires_surface",  false)    as bool
+	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
 	child_level_id        = data.get("child_level_id",    "")       as String
 	_base_grid_h          = grid_h
@@ -235,19 +272,28 @@ func toggle_fold() -> bool:
 	return true
 
 
+# A red (heavy) piece shares ONE position across every Moment, exactly like
+# ordinary furniture always has — UNLESS it's also on a rail, which keeps
+# sliding per-Moment same as rails always have. Every other tier (green/
+# yellow) always gets its own per-Moment slot. See `moment_positions`.
+func has_own_moment_position() -> bool:
+	return mobility_tier != "red" or rail_axis != ""
+
+
 # Re-applies whatever fold state THIS moment remembers (independent from
-# whatever other moments are currently set to) — called when the player
-# switches which moment they're viewing.
+# whatever other moments are currently set to), and — for any piece that
+# has_own_moment_position() — snaps it back to wherever the player left it
+# for THIS moment specifically. Called when the player switches which moment
+# they're viewing.
 func set_moment_view(moment_id: String) -> void:
 	if foldable and not folded_functions_arr.is_empty():
 		var want_extended: bool = moment_fold_state.get(moment_id, false) as bool
 		if want_extended != is_extended:
 			if not _apply_fold_state(want_extended):
 				_apply_fold_state(false)  # doesn't fit here anymore — fall back to folded
-	# Rail furniture: snap back to wherever the player left it FOR this moment
-	# (defaults to its current/spawn position the first time a moment is seen).
-	if rail_axis != "" and moment_rail_pos.has(moment_id):
-		var target: Vector2 = moment_rail_pos[moment_id]
+	# Defaults to its current/spawn position the first time a moment is seen.
+	if has_own_moment_position() and moment_positions.has(moment_id):
+		var target: Vector2 = moment_positions[moment_id]
 		if target != grid_pos and _wall_ref:
 			_wall_ref.place_furniture(self, target)
 			position = target * TILE_SIZE
@@ -271,7 +317,7 @@ func functions_for_moment(moment_id: String) -> Array:
 		var extended: bool = moment_fold_state.get(moment_id, false) as bool
 		return extended_functions_arr if extended else folded_functions_arr
 	if rail_axis != "" and not reveal_functions.is_empty():
-		var pos: Vector2 = moment_rail_pos.get(moment_id, grid_pos) as Vector2
+		var pos: Vector2 = moment_positions.get(moment_id, grid_pos) as Vector2
 		if _is_revealed_at(pos):
 			var out := functions.duplicate()
 			for fn in reveal_functions:
@@ -311,6 +357,12 @@ func _process(delta: float) -> void:
 		if _error_flash_t <= 0.0:
 			_error_flash_t = 0.0
 			_error_reason = ""
+		queue_redraw()
+	if _notice_flash_t > 0.0:
+		_notice_flash_t -= delta
+		if _notice_flash_t <= 0.0:
+			_notice_flash_t = 0.0
+			_notice_reason = ""
 		queue_redraw()
 
 
@@ -500,6 +552,15 @@ func _draw() -> void:
 		draw_rect(Rect2(0, h + 3, etw + 8, ERSIZE + 6), Color(0.08, 0.04, 0.03, 0.88 * fade))
 		draw_string(efont, Vector2(4, h + 3 + ERSIZE + 1), _error_reason,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, ERSIZE, Color(1.0, 0.85, 0.80, 0.95 * fade))
+
+	elif _notice_flash_t > 0.0 and _notice_reason != "":
+		var nfont := ThemeDB.fallback_font
+		const NSIZE := 10
+		var nfade := clampf(_notice_flash_t / 0.5, 0.0, 1.0)   # fade out over the last 0.5s
+		var ntw := nfont.get_string_size(_notice_reason, HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE).x
+		draw_rect(Rect2(0, h + 3, ntw + 8, NSIZE + 6), Color(0.05, 0.06, 0.09, 0.88 * nfade))
+		draw_string(nfont, Vector2(4, h + 3 + NSIZE + 1), _notice_reason,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE, Color(0.78, 0.86, 0.97, 0.95 * nfade))
 
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:
@@ -1119,18 +1180,38 @@ func get_occupied_tiles() -> Array:
 	return tiles
 
 
-# Footprint this piece would have for a given moment's OWN stored fold state,
-# without touching its real current grid_h/position. Used for free-space
-# checks (e.g. "sport" needs enough open floor) that must account for a
-# foldable piece being unfolded in one moment but folded in another.
+# Where this piece sits for a given moment — its own moment_positions entry
+# if it has_own_moment_position() and one's been recorded, else its single
+# shared grid_pos (the correct fallback for both "never moved for this
+# moment yet" and "red, non-rail — always shares one position").
+func get_moment_position(moment_id: String) -> Vector2:
+	if has_own_moment_position() and moment_positions.has(moment_id):
+		return moment_positions[moment_id]
+	return grid_pos
+
+
+# Rect2 footprint for a given moment — cheap pairwise-overlap form of
+# get_occupied_tiles_for_moment(), used by cross-moment collision checks
+# (see Wall.can_place_across_moments()) that don't need individual tiles.
+func get_moment_rect(moment_id: String) -> Rect2:
+	var h := grid_h
+	if foldable and extended_add_h > 0:
+		var extended: bool = moment_fold_state.get(moment_id, false) as bool
+		h = (_base_grid_h + extended_add_h) if extended else _base_grid_h
+	return Rect2(get_moment_position(moment_id), Vector2(grid_w, h))
+
+
+# Footprint this piece would have for a given moment's OWN stored fold state
+# and position, without touching its real current grid_h/position. Used for
+# free-space checks (e.g. "sport" needs enough open floor) that must account
+# for a foldable piece being unfolded in one moment but folded in another,
+# or a movable piece sitting somewhere different per moment.
 func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 	var h := grid_h
 	if foldable and extended_add_h > 0:
 		var extended: bool = moment_fold_state.get(moment_id, false) as bool
 		h = (_base_grid_h + extended_add_h) if extended else _base_grid_h
-	var pos: Vector2 = grid_pos
-	if rail_axis != "" and moment_rail_pos.has(moment_id):
-		pos = moment_rail_pos[moment_id]
+	var pos: Vector2 = get_moment_position(moment_id)
 	var origin := Vector2i(floori(pos.x), floori(pos.y))
 	var tiles: Array = []
 	for x in range(grid_w):
@@ -1396,10 +1477,24 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	var snapped_y := position.y / TILE_SIZE
 	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(snapped_x, snapped_y)) if _wall_ref else Vector2(snapped_x, snapped_y)
 
-	if _wall_ref and _wall_ref.can_place(self, snap_pos):
+	# A red (heavy), non-rail piece shares ONE position across every Moment
+	# (see mobility_tier/has_own_moment_position()) — moving it is a global
+	# edit, so on top of the ordinary can_place() check it also has to stay
+	# clear of wherever any OTHER piece sits during every OTHER Moment, not
+	# just whichever one is currently on screen.
+	var ok := _wall_ref != null and _wall_ref.can_place(self, snap_pos)
+	if ok and mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
+			and Furniture.all_moment_ids.size() > 1:
+		ok = _wall_ref.can_place_across_moments(self, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+
+	if ok:
 		_wall_ref.place_furniture(self, snap_pos)
-		if rail_axis != "" and Furniture.test_mode_active:
-			moment_rail_pos[Furniture.active_moment_id] = grid_pos
+		if has_own_moment_position() and Furniture.test_mode_active:
+			moment_positions[Furniture.active_moment_id] = grid_pos
+		elif mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
+				and Furniture.all_moment_ids.size() > 1:
+			_notice_reason = "Moved for every moment"
+			_notice_flash_t = NOTICE_FLASH_DURATION
 		_play("place")
 		_pop_on_place()
 		placed.emit(self)

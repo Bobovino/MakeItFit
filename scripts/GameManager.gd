@@ -12,6 +12,27 @@ var fulfilled_functions: Array = []
 var moments: Array = []
 var moment_results: Dictionary = {}  # moment_id -> {fulfilled:[], required:[]}
 var moment_verified: Dictionary = {}  # moment_id -> bool; true once its needs were met with the real furniture state
+# Zone-separation and sightline checks are level-wide, single-layout checks
+# (see Floor._recalculate_zones()/has_sightline()) — with movable-tier
+# furniture now able to sit somewhere different per Moment, a check run while
+# "Day" is on screen says nothing about whether "Night"'s arrangement also
+# satisfies them. Sticky per-moment, same philosophy as moment_verified —
+# recorded by Main._refresh_functions() (the only place with a Floor
+# reference) right after that Moment's furniture has been repositioned into
+# place, via GameManager.record_moment_geometry(). external_zone_ok stays a
+# global, non-per-moment check — external-zone + moments is a rare enough
+# combination that folding it in too isn't worth the extra complexity yet.
+var moment_zone_ok: Dictionary = {}       # moment_id -> bool, sticky
+var moment_sightline_ok: Dictionary = {}  # moment_id -> bool, sticky
+
+# Mobility/comfort — see Furniture.mobility_tier. A "yellow" piece sitting
+# away from its authored starting position (Furniture._home_grid_pos) costs
+# comfort; current-state based, so moving it back recovers it. comfort_pct
+# always reflects whichever moment is currently on screen (or the single
+# global layout, for a level with no moments) — for the live UI meter.
+const COMFORT_COST_PER_ITEM  := 25.0
+const COMFORT_WARN_THRESHOLD := 50.0
+var comfort_pct: float = 100.0
 var zone_separations: Array = []     # [[ [fnsA], [fnsB] ], ...] — groups that must be in separate zones
 var current_zones: Array = []        # latest zone snapshot from the active floor
 
@@ -68,6 +89,9 @@ func load_level(level_id: String) -> void:
 		moments = current_level.get("moments", []) as Array
 		moment_results = {}
 		moment_verified = {}
+		moment_zone_ok = {}
+		moment_sightline_ok = {}
+		comfort_pct = 100.0
 		var _tenant := (current_level.get("tenant", {}) as Dictionary)
 		required_functions = _tenant.get("required_functions", []).duplicate() as Array
 		zone_separations   = _tenant.get("zone_separations",   []).duplicate(true) as Array
@@ -93,6 +117,9 @@ func load_level(level_id: String) -> void:
 			moments = level.get("moments", [])
 			moment_results = {}
 			moment_verified = {}
+			moment_zone_ok = {}
+			moment_sightline_ok = {}
+			comfort_pct = 100.0
 			required_functions = level["tenant"]["required_functions"].duplicate()
 			zone_separations   = (level.get("tenant", {}) as Dictionary).get("zone_separations", []).duplicate(true) as Array
 			sightline_requirements = (level.get("tenant", {}) as Dictionary).get("sightline_requirements", []).duplicate(true) as Array
@@ -201,6 +228,40 @@ func _functions_of(entry, moment_id: String = "") -> Array:
 	return (f.get("functions", []) as Array) if not f.is_empty() else []
 
 
+# Comfort for a given moment (or the single global layout when moment_id is
+# "") — 100 minus COMFORT_COST_PER_ITEM for every yellow-tier piece currently
+# sitting away from its authored home position. get_moment_position() already
+# degrades to the plain shared grid_pos when moment_id is "" or the piece has
+# no per-moment entry, so this needs no separate no-moments branch.
+func compute_comfort(placed_furniture: Array, moment_id: String) -> float:
+	var pct := 100.0
+	for entry in placed_furniture:
+		if not (entry is Furniture):
+			continue
+		var fur := entry as Furniture
+		if fur.mobility_tier != "yellow":
+			continue
+		if fur._home_grid_pos == Vector2(-1, -1):
+			continue   # never had a home recorded — don't penalize
+		if fur.get_moment_position(moment_id) != fur._home_grid_pos:
+			pct -= COMFORT_COST_PER_ITEM
+	return clampf(pct, 0.0, 100.0)
+
+
+# Called by Main._refresh_functions() right after `moment_id`'s furniture has
+# been repositioned into place (see Furniture.set_moment_view()) — the one
+# instant a level-wide geometry check (zone separations, sightlines) is
+# actually valid for THAT specific moment, not whichever one happened to be
+# on screen last. Sticky, same as moment_verified.
+func record_moment_geometry(moment_id: String) -> void:
+	if moment_id == "":
+		return
+	if check_zone_separations():
+		moment_zone_ok[moment_id] = true
+	if sightline_ok:
+		moment_sightline_ok[moment_id] = true
+
+
 func update_functions(placed_furniture: Array, extra_functions: Array = [], active_moment_id: String = "",
 		free_tiles_by_moment: Dictionary = {}, free_window_tiles_by_moment: Dictionary = {}) -> void:
 	fulfilled_functions = []
@@ -211,6 +272,9 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 	for fn in extra_functions:
 		if fn not in fulfilled_functions:
 			fulfilled_functions.append(fn)
+
+	if moments.is_empty():
+		comfort_pct = compute_comfort(placed_furniture, "")
 
 	if not moments.is_empty():
 		moment_results.clear()
@@ -258,12 +322,16 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 				if need not in m_fulfilled:
 					currently_met = false
 					break
-			if currently_met:
+			var m_comfort := compute_comfort(placed_furniture, mid)
+			if mid == active_moment_id:
+				comfort_pct = m_comfort
+			if currently_met and m_comfort >= COMFORT_WARN_THRESHOLD:
 				moment_verified[mid] = true
 			moment_results[mid] = {
 				"fulfilled": m_fulfilled,
 				"required": m_needs,
 				"verified": moment_verified.get(mid, false),
+				"comfort": m_comfort,
 			}
 		moments_updated.emit(moment_results)
 
@@ -367,24 +435,32 @@ func check_zone_separations() -> bool:
 
 
 func check_win() -> bool:
-	if not check_zone_separations():
-		return false
-	if not sightline_ok:
-		return false
 	if not external_zone_ok:
 		return false
 	if moments.is_empty():
+		if not check_zone_separations():
+			return false
+		if not sightline_ok:
+			return false
 		for req in required_functions:
 			if req not in fulfilled_functions:
 				return false
 		return true
 	# Each moment must have been genuinely satisfied at some point — the player
 	# actually set the furniture correctly for it (folded for Day, unfolded for
-	# Night, etc). Since a shared foldable piece can't be in two states at
-	# once, this checks "was ever verified", not "is true right now".
+	# Night, etc), with zone separations and sightlines ALSO valid for that
+	# moment's own arrangement (see record_moment_geometry() — a movable-tier
+	# piece can sit in a different zone per moment, so a single global check
+	# can't stand in for every moment the way it can when there are none).
+	# Since a shared foldable/movable piece can't be in two states at once,
+	# this checks "was ever verified", not "is true right now".
 	for m in moments:
 		var mid := m["id"] as String
 		if not moment_verified.get(mid, false):
+			return false
+		if not moment_zone_ok.get(mid, false):
+			return false
+		if not moment_sightline_ok.get(mid, false):
 			return false
 	return true
 
