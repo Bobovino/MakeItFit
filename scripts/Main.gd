@@ -102,6 +102,15 @@ var _current_nested_daylight_factor: float = 1.0
 # comments) — reset on exit exactly like daylight, same known simplification
 # (doesn't re-derive what an intermediate level's own entry conditions were).
 var _current_nested_noisy_from_outside: bool = false
+# Same transient-var pattern again: which of the PARENT's external_zone
+# "by_wall" restriction profiles (if any) applies inside the box, based on
+# which of the room's 4 sides the box sat closest to when entered — moving
+# the same box against a different wall of the parent (the "noisy street"
+# side vs. a quiet interior wall) can subject its interior to different
+# restrictions. Merged into the child's own external_restrictions in
+# _load_level(), not replacing them, so a child level can still author its
+# own baseline restrictions independent of where its box happens to sit.
+var _current_nested_external_override: Dictionary = {}
 # State cache — see _snapshot_level_state()/_apply_level_state_snapshot().
 # level_id -> {budget:int, floors:{floor_id:[{id,x,y,rot_steps,is_extended}]}}
 # — captured every time a nested-level transition leaves a level, so coming
@@ -599,6 +608,22 @@ func _load_level(level_id: String) -> void:
 		# into/out of any number of nested boxes in between.
 		_editor_back_btn.visible = GameState.testing_from_editor
 	gm.load_level(level_id)
+	# Nested/parabox: merge in whatever external_zone profile the PARENT
+	# assigns to the wall this box sat closest to (see _closest_wall_side()
+	# and _on_box_entered()) — additive on top of the child's OWN authored
+	# external_zone, not replacing it, so moving the same box to a different
+	# wall changes what applies without erasing the level's own baseline.
+	if not _nested_stack.is_empty() and not _current_nested_external_override.is_empty():
+		var ov := _current_nested_external_override
+		var ff: Array = (gm.external_restrictions.get("forbidden_functions", []) as Array).duplicate()
+		for fn in ov.get("forbidden_functions", []) as Array:
+			if fn not in ff:
+				ff.append(fn)
+		gm.external_restrictions["forbidden_functions"] = ff
+		var mbd: Dictionary = (gm.external_restrictions.get("min_boundary_distance", {}) as Dictionary).duplicate()
+		for fn in (ov.get("min_boundary_distance", {}) as Dictionary):
+			mbd[fn] = maxi(mbd.get(fn, 0) as int, (ov["min_boundary_distance"] as Dictionary)[fn] as int)
+		gm.external_restrictions["min_boundary_distance"] = mbd
 	tenant_card.set_rented(false)
 	_post_win_view   = false
 	_rent_auto_armed = false
@@ -1050,6 +1075,8 @@ func _on_box_entered(box: Furniture) -> void:
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
 	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
+	var wall_side := _closest_wall_side(box._wall_ref, box)
+	var wall_override: Dictionary = (gm.external_restrictions.get("by_wall", {}) as Dictionary).get(wall_side, {}) as Dictionary
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	# Remembers whether the level being left was in post-win "Watch Again"
 	# (tenant showcase looping in read-only 3D) so stepping back out of the
@@ -1065,6 +1092,7 @@ func _on_box_entered(box: Furniture) -> void:
 	})
 	_current_nested_daylight_factor = factor
 	_current_nested_noisy_from_outside = noisy_outside
+	_current_nested_external_override = wall_override
 	_load_level(box.child_level_id)
 	if _level_state_cache.has(box.child_level_id):
 		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
@@ -1367,6 +1395,7 @@ func _exit_nested_level_to(index: int) -> void:
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	_current_nested_daylight_factor = 1.0
 	_current_nested_noisy_from_outside = false
+	_current_nested_external_override = {}
 	_load_level(target_id)
 	if _level_state_cache.has(target_id):
 		_apply_level_state_snapshot(_level_state_cache[target_id])
@@ -1509,6 +1538,32 @@ func _compute_box_occlusion(box: Furniture) -> float:
 # against the PARENT's fl before entering), and a box's own noisy interior
 # affecting the PARENT's furniture around it (checked against the PARENT's
 # fl using the box's own position, from the outside).
+# Which of the room's 4 sides `box` currently sits closest to, by centre
+# distance to each wall of the room's bounding rect — used to look up a
+# per-wall external_zone restriction profile for a nested box (see
+# _current_nested_external_override's comment). A real building's noisy
+# street side / quiet courtyard side / smelly-alley side are usually
+# specific WALLS, not a uniform ring around the whole apartment the way
+# light/noise occlusion are, so this measures against one side at a time
+# rather than reusing the ring-scan shape those two use.
+func _closest_wall_side(fl: Floor, box: Furniture) -> String:
+	var b := fl.get_room_bounds()
+	var cx := box.grid_pos.x + box.grid_w * 0.5
+	var cy := box.grid_pos.y + box.grid_h * 0.5
+	var d_west  := cx - b.position.x
+	var d_east  := (b.position.x + b.size.x) - cx
+	var d_north := cy - b.position.y
+	var d_south := (b.position.y + b.size.y) - cy
+	var m := minf(minf(d_west, d_east), minf(d_north, d_south))
+	if m == d_west:
+		return "west"
+	if m == d_east:
+		return "east"
+	if m == d_north:
+		return "north"
+	return "south"
+
+
 func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
 	if not is_instance_valid(fl):
 		return false
