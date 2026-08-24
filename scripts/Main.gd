@@ -1046,16 +1046,38 @@ func _make_nested_plan_card(level_id: String, label: String, mode: String, index
 	vb.add_child(lbl)
 
 	var preview := BlueprintPreview.new()
-	preview.custom_minimum_size = Vector2(88, 66)
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(preview)
 
 	var level := _lookup_level_dict(level_id)
 	if not level.is_empty():
 		var plan := _floor_plan_data(level)
+		preview.custom_minimum_size = _nested_plan_card_size(plan["bounds"] as Rect2)
 		preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2,
 			_furniture_preview_rects_for(level_id, level))
+	else:
+		preview.custom_minimum_size = Vector2(88, 66)
 	return card
+
+
+# Scales the card's blueprint preview to the level's actual floor area (in
+# tiles, 10 tiles = 1m — same convention as everywhere else) so a big
+# apartment reads as a bigger card than a small one, instead of every level
+# getting the same fixed-size thumbnail regardless of how large it actually
+# is. Sized by sqrt(area) (a linear "how big does this room feel" measure,
+# not raw area) and clamped so neither a tiny nor a huge level breaks the
+# floating row's layout.
+const NESTED_CARD_MIN_DIM := 56.0
+const NESTED_CARD_MAX_DIM := 150.0
+const NESTED_CARD_PX_PER_SQRT_TILE := 2.4
+
+func _nested_plan_card_size(bounds: Rect2) -> Vector2:
+	var area := maxf(bounds.size.x * bounds.size.y, 1.0)
+	var dim := clampf(sqrt(area) * NESTED_CARD_PX_PER_SQRT_TILE, NESTED_CARD_MIN_DIM, NESTED_CARD_MAX_DIM)
+	var aspect := bounds.size.y / maxf(bounds.size.x, 1.0)
+	if aspect >= 1.0:
+		return Vector2(dim / aspect, dim)
+	return Vector2(dim, dim * aspect)
 
 
 func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
@@ -1063,7 +1085,8 @@ func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
 		return
 	var mode := card.get_meta("mode", "") as String
 	if mode == "exit":
-		_exit_nested_level()
+		var idx := card.get_meta("index", -1) as int
+		_exit_nested_level_to(idx)
 	elif mode == "enter":
 		var idx := card.get_meta("index", -1) as int
 		var boxes := _collect_nested_boxes()
@@ -1071,18 +1094,23 @@ func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
 			_on_box_entered(boxes[idx])
 
 
-# Rebuilds every card in the row from scratch: an "exit to parent" card when
-# inside a box, plus one "enter" card per is_nested_box in the current level
-# — both can appear together (a box's interior containing its own box).
+# Rebuilds every card in the row from scratch: one "exit to" card per level
+# currently above this one on _nested_stack — not just the immediate parent,
+# so two levels deep in a box shows a way back to EITHER the box one level up
+# OR the top-level apartment directly, instead of forcing one click per level
+# — plus one "enter" card per is_nested_box in the current level. Both sides
+# can appear together (a box's interior containing its own box).
 func _refresh_nested_plan_panel() -> void:
 	_ensure_nested_plan_row()
 	for c in _nested_plan_row.get_children():
 		c.queue_free()
 
-	if not _nested_stack.is_empty():
-		var parent_id := (_nested_stack.back() as Dictionary)["parent_level_id"] as String
+	# Nearest ancestor first (leftmost) — the immediate parent is the most
+	# likely destination, furthest ones (e.g. the top apartment) trail after.
+	for i in range(_nested_stack.size() - 1, -1, -1):
+		var target_id := (_nested_stack[i] as Dictionary)["parent_level_id"] as String
 		_nested_plan_row.add_child(
-			_make_nested_plan_card(parent_id, "↩ " + _level_display_name(parent_id), "exit", -1))
+			_make_nested_plan_card(target_id, "↩ " + _level_display_name(target_id), "exit", i))
 
 	var boxes := _collect_nested_boxes()
 	for i in boxes.size():
@@ -1141,18 +1169,29 @@ func _level_floor_area_m2(level_id: String) -> float:
 	return total_tiles * TILE_M2
 
 
-func _exit_nested_level() -> void:
-	if _nested_transition_busy or _nested_stack.is_empty():
+# Pops the stack all the way down to (and including) _nested_stack[index],
+# landing on that ancestor directly — index doesn't have to be the last
+# entry, so this also covers jumping straight from two levels deep to the
+# top apartment in one click, skipping the level(s) in between.
+func _exit_nested_level_to(index: int) -> void:
+	if _nested_transition_busy or index < 0 or index >= _nested_stack.size():
 		return
 	_nested_transition_busy = true
-	var ctx := _nested_stack.pop_back() as Dictionary
+	var target_id := (_nested_stack[index] as Dictionary)["parent_level_id"] as String
+	_nested_stack.resize(index)
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	_current_nested_daylight_factor = 1.0
-	var parent_id := ctx["parent_level_id"] as String
-	_load_level(parent_id)
-	if _level_state_cache.has(parent_id):
-		_apply_level_state_snapshot(_level_state_cache[parent_id])
+	_load_level(target_id)
+	if _level_state_cache.has(target_id):
+		_apply_level_state_snapshot(_level_state_cache[target_id])
 	_nested_transition_busy = false
+
+
+# Convenience for the common single-level case (used nowhere critical
+# anymore now the cards each carry their own target index, kept for clarity
+# at call sites that only ever mean "one level up").
+func _exit_nested_level() -> void:
+	_exit_nested_level_to(_nested_stack.size() - 1)
 
 
 # Captures every real (Furniture-backed) floor item across every floor of the
