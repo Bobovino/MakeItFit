@@ -486,7 +486,7 @@ func _position_budget_label() -> void:
 	_position_comfort_meter()
 
 
-const COMFORT_METER_SIZE := Vector2(120.0, 22.0)
+const COMFORT_METER_SIZE := Vector2(210.0, 22.0)  # wide enough for "Comfort 100% — can't rent like this"
 
 func _ensure_comfort_meter() -> void:
 	if is_instance_valid(_comfort_meter):

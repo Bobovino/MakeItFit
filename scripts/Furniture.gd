@@ -173,7 +173,7 @@ const ERROR_FLASH_DURATION := 1.4
 # its own, see mobility_tier/has_own_moment_position()).
 var _notice_reason: String = ""
 var _notice_flash_t: float = 0.0
-const NOTICE_FLASH_DURATION := 1.8
+const NOTICE_FLASH_DURATION := 3.0
 
 # Keep rect reference for mouse-over size lookup; hidden visually.
 @onready var rect: ColorRect = $ColorRect
@@ -578,14 +578,23 @@ func _draw() -> void:
 		draw_string(efont, Vector2(4, h + 3 + ERSIZE + 1), _error_reason,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, ERSIZE, Color(1.0, 0.85, 0.80, 0.95 * fade))
 
+	# Deliberately more prominent than the error bubble above (bigger text,
+	# a border, an icon prefix) — this fires on a SUCCESSFUL move, so there's
+	# no red tint or ✗ glyph drawing attention to it the way a rejection
+	# gets; without something to make it stand out on its own, "this move
+	# quietly affects every Moment" was easy to miss entirely.
 	elif _notice_flash_t > 0.0 and _notice_reason != "":
 		var nfont := ThemeDB.fallback_font
-		const NSIZE := 10
-		var nfade := clampf(_notice_flash_t / 0.5, 0.0, 1.0)   # fade out over the last 0.5s
-		var ntw := nfont.get_string_size(_notice_reason, HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE).x
-		draw_rect(Rect2(0, h + 3, ntw + 8, NSIZE + 6), Color(0.05, 0.06, 0.09, 0.88 * nfade))
-		draw_string(nfont, Vector2(4, h + 3 + NSIZE + 1), _notice_reason,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE, Color(0.78, 0.86, 0.97, 0.95 * nfade))
+		const NSIZE := 13
+		var nfade := clampf(_notice_flash_t / 0.6, 0.0, 1.0)   # fade out over the last 0.6s
+		var ntext := "🔄 " + _notice_reason
+		var ntw := nfont.get_string_size(ntext, HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE).x
+		var nbg := Color(0.10, 0.12, 0.20, 0.92 * nfade)
+		var nrect := Rect2(0, h + 3, ntw + 12, NSIZE + 10)
+		draw_rect(nrect, nbg)
+		draw_rect(nrect, Color(0.55, 0.72, 0.98, 0.85 * nfade), false, 1.5)
+		draw_string(nfont, Vector2(6, h + 3 + NSIZE + 3), ntext,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE, Color(0.85, 0.92, 1.0, 0.98 * nfade))
 
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:
