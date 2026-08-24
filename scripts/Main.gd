@@ -106,15 +106,18 @@ var _level_state_cache: Dictionary = {}
 # _refresh_nested_links() list an "enter this box" link for each of them (not
 # just the first one found), rebuilt fresh on every _load_level().
 var _current_level_boxes: Array[Furniture] = []
-# Small clickable blueprint-style mini-plan of "the other level" — the box's
-# interior while looking at its parent, or the parent while inside a box —
-# floating next to the Minimap floor tabs. See _refresh_nested_plan_panel().
-var _nested_plan_panel:   PanelContainer  = null
-var _nested_plan_preview: BlueprintPreview = null
-var _nested_plan_lbl:     Label           = null
-# Reentrancy guard — see _on_nested_plan_clicked()'s comment for why a stale
-# closure was possible before; this additionally blocks a second transition
-# from starting while one is already tearing down/rebuilding the level.
+# Row of small clickable blueprint-style mini-plan cards for every reachable
+# "other space" — an exit-to-parent card while inside a box, plus one
+# enter-this-box card per is_nested_box in the current level (both can
+# appear together for arbitrary nesting depth) — floating next to the
+# Minimap floor tabs. See _refresh_nested_plan_panel().
+var _nested_plan_row: HBoxContainer = null
+# Reentrancy guard — a card's click handler always re-resolves what to do
+# from _nested_stack/_current_level_boxes at click time rather than baking a
+# specific action into a closure ahead of time (a captured Furniture
+# reference could go stale once a transition freed it); this additionally
+# blocks a second transition from starting while one is already tearing
+# down/rebuilding the level.
 var _nested_transition_busy: bool = false
 
 # ── Builder tab tools (free-form geometry editing during play) ────────────
@@ -957,88 +960,101 @@ func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
 	return out
 
 
-func _ensure_nested_plan_panel() -> void:
-	if is_instance_valid(_nested_plan_panel):
+# The row holding one "mini-plan card" per reachable space — an "exit to
+# parent" card when inside a box (_nested_stack non-empty), plus one "enter
+# this box" card for every is_nested_box in the CURRENT level
+# (_current_level_boxes). Both can be true at once (a box's interior can
+# itself contain another box — arbitrary nesting depth, see
+# docs/design_nested_levels.md), so this is a row, not a single panel.
+func _ensure_nested_plan_row() -> void:
+	if is_instance_valid(_nested_plan_row):
 		return
-	_nested_plan_panel = PanelContainer.new()
-	_nested_plan_panel.name = "NestedPlanPanel"
-	_nested_plan_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_nested_plan_panel.tooltip_text = "Click to step into/out of this space"
-	_nested_plan_panel.visible = false
-	_nested_plan_panel.gui_input.connect(func(event: InputEvent):
+	_nested_plan_row = HBoxContainer.new()
+	_nested_plan_row.name = "NestedPlanRow"
+	_nested_plan_row.add_theme_constant_override("separation", 6)
+	_nested_plan_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(_nested_plan_row)
+
+
+# mode/index identify what THIS card does at click time (re-resolved fresh,
+# never a baked closure — see the stale-lambda-capture bug this replaced):
+# mode "exit" always calls _exit_nested_level(); mode "enter" looks up
+# _current_level_boxes[index] and calls _on_box_entered() on whatever is
+# there right now, re-checked for validity first.
+func _make_nested_plan_card(level_id: String, label: String, mode: String, index: int) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = "NestedPlanCard"
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.tooltip_text = "Click to step into/out of this space"
+	card.set_meta("mode", mode)
+	card.set_meta("index", index)
+	card.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
 				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			_on_nested_plan_clicked()
+			_on_nested_plan_card_clicked(card)
 			get_viewport().set_input_as_handled())
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 2)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_nested_plan_panel.add_child(vb)
+	card.add_child(vb)
 
-	_nested_plan_lbl = Label.new()
-	_nested_plan_lbl.add_theme_font_size_override("font_size", 9)
-	_nested_plan_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	_nested_plan_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_nested_plan_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_nested_plan_lbl.custom_minimum_size = Vector2(96, 0)
-	vb.add_child(_nested_plan_lbl)
+	var lbl := Label.new()
+	lbl.text = label
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.custom_minimum_size = Vector2(88, 0)
+	vb.add_child(lbl)
 
-	_nested_plan_preview = BlueprintPreview.new()
-	_nested_plan_preview.custom_minimum_size = Vector2(96, 72)
-	_nested_plan_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(_nested_plan_preview)
+	var preview := BlueprintPreview.new()
+	preview.custom_minimum_size = Vector2(88, 66)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(preview)
 
-	ui_layer.add_child(_nested_plan_panel)
-
-
-func _show_nested_plan_for(level_id: String, label: String) -> void:
-	_ensure_nested_plan_panel()
 	var level := _lookup_level_dict(level_id)
-	if level.is_empty():
-		_nested_plan_panel.visible = false
-		return
-	var plan := _floor_plan_data(level)
-	_nested_plan_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2,
-		_furniture_preview_rects_for(level_id, level))
-	_nested_plan_lbl.text = label
-	_nested_plan_panel.visible = true
+	if not level.is_empty():
+		var plan := _floor_plan_data(level)
+		preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2,
+			_furniture_preview_rects_for(level_id, level))
+	return card
 
 
-# Resolves what a click on the panel should do RIGHT NOW, instead of baking a
-# specific action (and a specific box reference) into a closure ahead of
-# time — a closure captured at the last _refresh_nested_plan_panel() could
-# outlive the Furniture node it closed over once a transition freed it,
-# producing a "lambda capture was freed" engine warning and a stuck panel on
-# repeated clicks. Re-deriving from _nested_stack/_current_level_boxes here
-# means there's never a stale reference to go stale in the first place.
-func _on_nested_plan_clicked() -> void:
-	if _nested_transition_busy:
+func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
+	if _nested_transition_busy or not is_instance_valid(card):
 		return
-	if not _nested_stack.is_empty():
+	var mode := card.get_meta("mode", "") as String
+	if mode == "exit":
 		_exit_nested_level()
-	elif not _current_level_boxes.is_empty():
-		var box := _current_level_boxes[0]
-		if is_instance_valid(box):
-			_on_box_entered(box)
+	elif mode == "enter":
+		var idx := card.get_meta("index", -1) as int
+		if idx >= 0 and idx < _current_level_boxes.size():
+			var box := _current_level_boxes[idx]
+			if is_instance_valid(box):
+				_on_box_entered(box)
 
 
-# Rebuilds the mini-plan panel's content for whatever "other space" is
-# reachable from here: the parent apartment's plan (click to leave a box), or
-# a box's own interior plan (click to step into it) — mutually exclusive,
-# matching how you can only be doing one of those two things at a time.
+# Rebuilds every card in the row from scratch: an "exit to parent" card when
+# inside a box, plus one "enter" card per is_nested_box in the current level
+# — both can appear together (a box's interior containing its own box).
 func _refresh_nested_plan_panel() -> void:
+	_ensure_nested_plan_row()
+	for c in _nested_plan_row.get_children():
+		c.queue_free()
+
 	if not _nested_stack.is_empty():
 		var parent_id := (_nested_stack.back() as Dictionary)["parent_level_id"] as String
-		_show_nested_plan_for(parent_id, "↩ " + _level_display_name(parent_id))
-	elif not _current_level_boxes.is_empty():
-		var box := _current_level_boxes[0]
+		_nested_plan_row.add_child(
+			_make_nested_plan_card(parent_id, "↩ " + _level_display_name(parent_id), "exit", -1))
+
+	for i in _current_level_boxes.size():
+		var box := _current_level_boxes[i]
 		if is_instance_valid(box) and not box.child_level_id.is_empty():
-			_show_nested_plan_for(box.child_level_id, "↪ " + _level_display_name(box.child_level_id))
-		elif is_instance_valid(_nested_plan_panel):
-			_nested_plan_panel.visible = false
-	elif is_instance_valid(_nested_plan_panel):
-		_nested_plan_panel.visible = false
+			_nested_plan_row.add_child(_make_nested_plan_card(
+				box.child_level_id, "↪ " + _level_display_name(box.child_level_id), "enter", i))
+
+	_nested_plan_row.visible = _nested_plan_row.get_child_count() > 0
 	_position_nested_plan_panel()
 
 
@@ -1047,13 +1063,15 @@ func _refresh_nested_plan_panel() -> void:
 # TenantCard bar itself as a last resort) — same approach _position_view_mode_box()
 # and _position_minimap() already use for each other.
 func _position_nested_plan_panel() -> void:
-	if not is_instance_valid(_nested_plan_panel) or not _nested_plan_panel.visible:
+	if not is_instance_valid(_nested_plan_row) or not _nested_plan_row.visible:
 		return
 	var right_edge := RIGHT_X - 8.0
-	_nested_plan_panel.offset_right = right_edge
-	_nested_plan_panel.offset_left  = right_edge - 110.0
-	_nested_plan_panel.reset_size()
-	var content_h := maxf(_nested_plan_panel.size.y, 90.0)
+	_nested_plan_row.offset_right = right_edge
+	_nested_plan_row.offset_left  = right_edge - 230.0   # room for two cards side by side
+	_nested_plan_row.reset_size()
+	var content_w := maxf(_nested_plan_row.size.x, 90.0)
+	_nested_plan_row.offset_left = right_edge - content_w
+	var content_h := maxf(_nested_plan_row.size.y, 90.0)
 	var top_of_stack: float
 	if is_instance_valid(_view_mode_box) and _view_mode_box.visible:
 		top_of_stack = _view_mode_box.offset_top
@@ -1061,9 +1079,9 @@ func _position_nested_plan_panel() -> void:
 		top_of_stack = minimap.offset_top
 	else:
 		top_of_stack = tenant_card.offset_top
-	_nested_plan_panel.offset_bottom = top_of_stack - 8.0
-	_nested_plan_panel.offset_top    = _nested_plan_panel.offset_bottom - content_h
-	ui_layer.move_child(_nested_plan_panel, ui_layer.get_child_count() - 1)
+	_nested_plan_row.offset_bottom = top_of_stack - 8.0
+	_nested_plan_row.offset_top    = _nested_plan_row.offset_bottom - content_h
+	ui_layer.move_child(_nested_plan_row, ui_layer.get_child_count() - 1)
 
 
 # Total walkable floor area (m²) of a level's "floor"/"loft" floors, WITHOUT

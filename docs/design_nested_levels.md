@@ -200,6 +200,19 @@ and `_on_box_entered()` refuses entry below that, so an under-sized custom
 level a player authors as a box interior is silently rejected (audio-only
 feedback) rather than crashing or half-loading.
 
+Recursion (§5.5's open question) needed no special-casing: `Main._nested_stack`
+is a plain stack (push on entry, pop on exit) and `_current_level_boxes` is
+rebuilt fresh for whatever level is currently loaded, so a box's interior
+containing its own box "just works" — entering it pushes a second frame onto
+the same stack. The one thing that DID need rework for this: the mini-plan
+UI was originally a single panel (`_nested_plan_panel`), which could only
+show one link at a time — replaced with `_nested_plan_row`, a row of
+"cards" (`_make_nested_plan_card`), so a level can show BOTH an
+"exit to parent" card and an "enter this box" card simultaneously (the case
+where you're standing inside a box that itself contains another box). No
+artificial depth cap was added; `debug:_nested_child` → `debug:_nested_grandchild`
+demonstrates two levels of nesting.
+
 Known gap: `Wall.wall_items` entries (furniture hung via the 2D wall-drop
 flow — a plain Dictionary with no live Furniture node, see this doc's
 original "two placement systems" framing) aren't captured by the snapshot,

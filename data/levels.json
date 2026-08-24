@@ -81704,14 +81704,77 @@
 					"id": "normal_bed",
 					"x": 12.0,
 					"y": 3.0
+				},
+				{
+					"id": "shoebox_apartment",
+					"x": 35.0,
+					"y": 35.0,
+					"child_level_id": "debug:_nested_grandchild"
 				}
 			],
 			"starting_inventory": [],
 			"tenant": {
 				"age": "—",
-				"flavor": "Tiny apartment inside a shoebox, inside another apartment. Its window's daylight depends on what the OUTER apartment placed in front of the box.",
+				"flavor": "Tiny apartment inside a shoebox, inside another apartment. Its window's daylight depends on what the OUTER apartment placed in front of the box. It also has its OWN shoebox — a second level of nesting, to prove the recursion works.",
 				"monthly_rent": 0.0,
 				"name": "(nested)",
+				"required_functions": []
+			}
+		},
+		{
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [
+							{ "demolished": false, "primary": true, "x1": 1, "x2": 51, "y1": 1, "y2": 1, "has_window": true, "window_pos": 10, "window_len": 12 },
+							{ "demolished": false, "primary": true, "x1": 51, "x2": 51, "y1": 1, "y2": 51 },
+							{ "demolished": false, "primary": true, "x1": 51, "x2": 1, "y1": 51, "y2": 51 },
+							{ "demolished": false, "primary": true, "x1": 1, "x2": 1, "y1": 51, "y2": 1 }
+						],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [], "floor_tiles": [], "id": "fl_0_ceil", "label": "Ground Floor Ceiling",
+						"mezzanine_tiles": [], "parent_id": "fl_0", "rails": [], "segments": [], "stair_tiles": [], "stairs": [], "type": "ceiling"
+					},
+					{
+						"columns": [], "floor_tiles": [], "id": "roof", "label": "Roof / Techo",
+						"mezzanine_tiles": [], "rails": [], "segments": [], "stair_tiles": [], "stairs": [], "type": "roof"
+					}
+				],
+				"grid_h": 55,
+				"grid_w": 55,
+				"hidden_floors": ["fl_0_ceil", "roof"]
+			},
+			"block": 0,
+			"district": "Debug",
+			"funds_base_reward": 0,
+			"id": "debug:_nested_grandchild",
+			"is_tutorial": true,
+			"is_nested": true,
+			"map_col": 9,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Debug: Nested Box Interior (Depth 2)",
+			"starting_budget": 500,
+			"starting_furniture": [
+				{ "id": "desk", "x": 20, "y": 4 }
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "—",
+				"flavor": "A shoebox inside a shoebox inside an apartment. If you can see this, recursive nesting works.",
+				"monthly_rent": 0,
+				"name": "(nested x2)",
 				"required_functions": []
 			}
 		},
