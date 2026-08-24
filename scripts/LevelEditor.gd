@@ -4147,7 +4147,7 @@ func _create_nested_child_level() -> String:
 			"required_functions": [], "monthly_rent": 0},
 		"allowed_furniture": [], "starting_inventory": [], "starting_furniture": [], "moments": [],
 		"apartment": {
-			"grid_w": 55, "grid_h": 55, "hidden_floors": ["fl_0_ceil", "roof"],
+			"grid_w": 55, "grid_h": 55, "active_floor": 0, "hidden_floors": ["fl_0_ceil", "roof"],
 			"floors": [
 				{
 					"id": "fl_0", "label": "Ground Floor", "type": "floor",
