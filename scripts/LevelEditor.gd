@@ -4157,16 +4157,28 @@ func _edit_nested_child_level(target_id: String) -> void:
 	if target_id.strip_edges().is_empty():
 		_set_status("Set a child level id first")
 		return
+	# Used to skip saving an unnamed parent entirely ("have_parent" false),
+	# which meant an apartment still called "Untitled Apartment" (the
+	# default state, easy to forget to rename before placing a box) never
+	# wrote its own box->child link to levels.json at all — the box worked
+	# fine for the CURRENT editing session, but the moment you left it or
+	# tried to climb back to it from a level below (_find_root_level_id(),
+	# Test Level), the chain just stopped there because that link never
+	# existed on disk. Always save now — _save_level() already prompts for
+	# a real name first if it's still "Untitled Apartment", it just never
+	# used to be reached from here.
+	if _lname.strip_edges().is_empty() or _lname == "Untitled Apartment":
+		_prompt_level_name(func(new_name: String):
+			_lname = new_name
+			_edit_nested_child_level(target_id))
+		return
 	var parent_id := (_build_dict().get("id", "") as String)
-	var have_parent := not _lname.strip_edges().is_empty() and _lname != "Untitled Apartment"
-	if have_parent:
-		_save_level()
+	_save_level()
 	var target := _find_saved_level(target_id)
 	if target.is_empty():
-		_set_status("No saved level with id \"%s\" — use ＋ New, or save one with that id first" % target_id)
+		_set_status("No saved level with id \"%s\" — place a box to create one" % target_id)
 		return
-	if have_parent:
-		_editor_nav_stack.append(parent_id)
+	_editor_nav_stack.append(parent_id)
 	_load_from_dict(target)
 	_refresh_nav_back_btn()
 	_set_status("Editing \"%s\"" % target_id)
