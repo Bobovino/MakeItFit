@@ -383,7 +383,10 @@ func _apply_ui_theme() -> void:
 		_editor_back_btn.visible = false
 		_editor_back_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_editor_back_btn.offset_left = 8.0
-		_editor_back_btn.offset_top  = 8.0
+		# TOP_Y (10) + the Furniture button's own ~34px height + a gap —
+		# this used to sit at the exact same (8, 8) spot as "🛋 Furniture",
+		# fully overlapping it (that button's own position is LEFT_X+8, TOP_Y).
+		_editor_back_btn.offset_top = TOP_Y + 34.0 + 8.0
 		_editor_back_btn.pressed.connect(func():
 			GameState.testing_from_editor = false
 			Transition.change_scene("res://scenes/LevelEditor.tscn"))
