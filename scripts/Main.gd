@@ -564,7 +564,20 @@ func _load_level(level_id: String) -> void:
 	_paint_status_lbl = null
 
 	for fid in _floors:
-		(_floors[fid] as Floor).queue_free()
+		var _old_floor := _floors[fid] as Floor
+		# remove_child() first (immediate) — queue_free() alone is deferred to
+		# end-of-frame, so the old Floor node (e.g. "fl_0" from whatever level
+		# we're leaving) was still a child of `room` when the new level's own
+		# "fl_0" got add_child()'d moments later in the same frame. Godot
+		# auto-uniquifies the name to avoid the collision (e.g. "fl_0@2"),
+		# which silently broke _fit_floor()'s `fid := apt_floor.name` lookup
+		# into _floor_tile_bounds (keyed by the clean id) — falling back to
+		# fitting the whole apartment grid instead of the actual room. Only
+		# reproduced on a direct multi-level nested jump (skipping levels in
+		# one call, fast enough that the deferred free hadn't run yet); a
+		# normal single-hop transition already had enough frames in between.
+		room.remove_child(_old_floor)
+		_old_floor.queue_free()
 	_floors.clear()
 	_loft_floors.clear()
 	_floor_below_id.clear()
