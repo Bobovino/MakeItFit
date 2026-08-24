@@ -70,6 +70,10 @@ var _window_erase:     bool = false
 var _editor_nav_stack: Array[String] = []
 var _nav_back_btn: Button = null
 
+# See _load_from_dict()'s comment — the id a level keeps saving to, once
+# it's been loaded/saved at least once, regardless of later name edits.
+var _loaded_level_id: String = ""
+
 # ── Metadata ──────────────────────────────────────────────────────────────────
 var _lname:  String = "Untitled Apartment"
 var _dist:   String = "Mitte"
@@ -232,6 +236,13 @@ func _ready() -> void:
 	_build_scene()
 	_rebuild_floor()
 	_set_status("Floor Paint: LMB pintasuelos · RMB borra  |  Dibuja paredes encima del suelo")
+
+	# Coming back from Main.gd's "← Back to Editor" (only shown while testing
+	# a level launched from here) — resume exactly the level that was being
+	# tested instead of starting from the blank default editor state.
+	if not GameState.editor_test_snapshot.is_empty():
+		_load_from_dict(GameState.editor_test_snapshot)
+		GameState.editor_test_snapshot = {}
 
 	# The very first _fit_camera() call above can land before the viewport's
 	# layout has fully settled for one frame (anchors resolve immediately, but
@@ -3820,7 +3831,10 @@ func _build_dict() -> Dictionary:
 	for fn: String in _funcs:
 		if _funcs[fn]:
 			req.append(fn)
-	var lvl_id := _lname.to_lower().replace(" ", "_")
+	# Keep saving to the id this level was loaded/created under, if it has
+	# one — see _load_from_dict()'s comment on why re-deriving from the name
+	# every time silently forked duplicate entries.
+	var lvl_id := _loaded_level_id if not _loaded_level_id.is_empty() else _lname.to_lower().replace(" ", "_")
 	var bounds := _compute_content_bounds()
 	var saved_gw := maxi(bounds.x + SAVE_CROP_MARGIN, MIN_SAVED_GRID)
 	var saved_gh := maxi(bounds.y + SAVE_CROP_MARGIN, MIN_SAVED_GRID)
@@ -3889,6 +3903,10 @@ func _save_level() -> void:
 
 	var d := _build_dict()
 	var lvl_id := d["id"] as String
+	# First save of a brand-new level: lock in this id for the rest of the
+	# session so a later name edit doesn't fork a duplicate entry on the
+	# next save (see _build_dict()'s comment).
+	_loaded_level_id = lvl_id
 
 	# Read the current levels.json
 	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
@@ -4344,6 +4362,17 @@ func _load_file(path: String) -> void:
 
 
 func _load_from_dict(d: Dictionary) -> void:
+	# _build_dict() used to always regenerate the id from _lname, which is
+	# fine for a brand-new level but silently forked a DUPLICATE entry the
+	# instant a loaded level's name didn't happen to slugify back to its own
+	# id (e.g. debug:_nested_child's display name is "Debug: Nested Box
+	# Interior" — saving it re-derived "debug:_nested_box_interior" and
+	# created a second, separate level instead of updating the one that was
+	# actually loaded). Remember the id this dict was loaded under so saving
+	# keeps updating THIS level even if the name gets edited afterward; only
+	# a level that's never been saved/loaded (no id yet) still derives one
+	# from its name.
+	_loaded_level_id = d.get("id", "") as String
 	var apt := d.get("apartment", {}) as Dictionary
 	var saved_floors: Array = apt.get("floors", []) as Array
 	_camera_fitted = false
@@ -4503,6 +4532,7 @@ func _test_level() -> void:
 	var d := _build_dict()
 	var gs: Node = get_node("/root/GameState")
 	gs.set("custom_level_data", d)
+	gs.set("editor_test_snapshot", d)   # see GameState.gd's comment — consumed by _ready() below on the way back
 	gs.set("pending_level_id",  "_custom")
 	gs.call("own_level", "_custom")
 	Transition.change_scene("res://scenes/Main.tscn")

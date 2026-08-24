@@ -16,7 +16,6 @@
       "sell_price": 0,
       "color": "d8c8a0",
       "is_nested_box": true,
-      "child_level_id": "debug:_nested_child",
       "model": "res://assets/models/furniture/cardboardBoxOpen.glb"
     },
     {

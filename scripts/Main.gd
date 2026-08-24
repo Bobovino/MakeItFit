@@ -43,6 +43,7 @@ var _undo_btn: Button = null   # floating corner button over the floor plan, top
 var _redo_btn: Button = null   # sits directly left of _undo_btn, same floating row
 var _test_btn: Button = null   # floating "Test Layout" toggle, top-left — only shown for levels with foldable furniture and no moments
 var _settings_btn: Button = null   # floating gear-only menu button, top-right corner
+var _editor_back_btn: Button = null   # "← Back to Editor" — only visible while testing a "_custom" level from the Level Editor
 var _view_mode_box: HBoxContainer = null   # floating Floor Plan/3D segmented toggle, stacked directly above the floor-tabs Minimap
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
@@ -358,6 +359,34 @@ func _apply_ui_theme() -> void:
 		_settings_btn.pressed.connect(_on_settings_btn_pressed)
 		ui_layer.add_child(_settings_btn)
 
+	# Only ever relevant for a level launched via the Level Editor's own
+	# "▶ Test Level" (level_id == "_custom") — _go_back() deliberately always
+	# routes to CityMap regardless (a real player never reaches Main via the
+	# editor), so without this a designer testing a level had no way back
+	# short of the Ctrl+Shift+Alt+E shortcut from CityMap, losing whatever
+	# unsaved editing context they had. Visibility kept in sync in
+	# _load_level(). See GameState.editor_test_snapshot for the round trip.
+	if not is_instance_valid(_editor_back_btn):
+		# Own CanvasLayer, same reasoning as the nested-plan row: ui_layer
+		# sibling order isn't reliable once _mode3d_view's full-screen
+		# viewport (or anything else) re-raises itself later — CanvasLayer
+		# order IS authoritative for both drawing and input picking.
+		var canvas := CanvasLayer.new()
+		canvas.name  = "EditorBackLayer"
+		canvas.layer = 5
+		add_child(canvas)
+		_editor_back_btn = Button.new()
+		_editor_back_btn.name = "EditorBackBtn"
+		_editor_back_btn.text = "← Back to Editor"
+		_editor_back_btn.tooltip_text = "Return to the Level Editor, resuming the level you were testing"
+		_editor_back_btn.add_theme_font_size_override("font_size", 12)
+		_editor_back_btn.visible = false
+		_editor_back_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_editor_back_btn.offset_left = 8.0
+		_editor_back_btn.offset_top  = 8.0
+		_editor_back_btn.pressed.connect(func(): Transition.change_scene("res://scenes/LevelEditor.tscn"))
+		canvas.add_child(_editor_back_btn)
+
 	if not is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn = Button.new()
 		_furniture_menu_btn.name = "FurnitureMenuBtn"
@@ -492,6 +521,8 @@ func _load_level(level_id: String) -> void:
 	# transition is in flight any more, so it's safe to clear here.
 	_nested_transition_busy = false
 	_current_level_id  = level_id
+	if is_instance_valid(_editor_back_btn):
+		_editor_back_btn.visible = (level_id == "_custom")
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
 	_post_win_view   = false

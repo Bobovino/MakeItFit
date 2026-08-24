@@ -43,6 +43,14 @@ var undo_keycode: int = KEY_Z
 
 var custom_level_data: Dictionary = {}
 
+# Separate from custom_level_data on purpose — that slot is also used by
+# CityMap's own "play a custom level" flow, unrelated to the Level Editor's
+# own Test Level round trip. Set by LevelEditor._test_level() right before
+# switching to Main.tscn; consumed (and cleared) by LevelEditor._ready() when
+# the player uses Main.gd's "← Back to Editor" button to come back, so
+# testing a level doesn't lose the in-progress edit session.
+var editor_test_snapshot: Dictionary = {}
+
 # Player/debug mode toggle (Ctrl+Shift+Alt+D in CityMap) — deliberately not
 # persisted to the save file, resets to off on every launch. In debug mode
 # the "Debug" district's levels show up in CityMap (hidden otherwise) and
