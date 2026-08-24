@@ -896,6 +896,19 @@ const TILE_M2 := 0.01
 func _on_box_entered(box: Furniture) -> void:
 	if _nested_transition_busy or not is_instance_valid(box) or box.child_level_id.is_empty():
 		return
+	# Defensive: a box pointing at the level it's already sitting in (self-
+	# reference, or a cycle further back up _nested_stack) would push onto
+	# the stack forever without ever actually changing level, growing an
+	# extra "exit" card on every single click. Shouldn't happen now that
+	# child_level_id survives every snapshot/restore path, but refuse
+	# outright rather than let it happen silently if it ever does again.
+	if box.child_level_id == _current_level_id:
+		push_warning("Nested box points at its own level (%s) — refusing to enter" % box.child_level_id)
+		return
+	for ctx in _nested_stack:
+		if (ctx as Dictionary)["parent_level_id"] == box.child_level_id:
+			push_warning("Nested box would create a cycle back to %s — refusing to enter" % box.child_level_id)
+			return
 	var area := _level_floor_area_m2(box.child_level_id)
 	if area < MIN_NESTED_INTERIOR_M2:
 		Audio.play("error")
@@ -910,15 +923,23 @@ func _on_box_entered(box: Furniture) -> void:
 	# box can resume it — _load_level() unconditionally resets
 	# _post_win_view to false for the level it's loading, which otherwise
 	# silently killed the showcase the moment you stepped into any box.
+	var was_showcasing := _post_win_view
 	_nested_stack.append({
 		"parent_level_id": _current_level_id,
 		"daylight_factor": factor,
-		"was_post_win_view": _post_win_view,
+		"was_post_win_view": was_showcasing,
 	})
 	_current_nested_daylight_factor = factor
 	_load_level(box.child_level_id)
 	if _level_state_cache.has(box.child_level_id):
 		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
+	# The box's own interior gets its own tenant too — if you were watching
+	# the parent's tenant use its furniture, stepping into a box shouldn't
+	# just make tenants vanish. Only if the child level is itself actually
+	# won (gm.check_win()) — an unfinished nested apartment has no tenant to
+	# showcase yet, same as any other not-yet-completed level.
+	if was_showcasing and gm.check_win():
+		_on_watch_again_reveal()
 	_nested_transition_busy = false
 
 
@@ -1228,13 +1249,24 @@ func _snapshot_level_state() -> Dictionary:
 		var items: Array = []
 		for entry in fl.get_all_furniture():
 			var fur := entry as Furniture
-			items.append({
+			var item := {
 				"id": fur.furniture_id,
 				"x": fur.grid_pos.x,
 				"y": fur.grid_pos.y,
 				"rot_steps": fur.rot_steps,
 				"is_extended": fur.is_extended,
-			})
+			}
+			# A nested box's child_level_id is a per-instance override (set in
+			# the level editor, or hand-authored like debug:_nested_child's
+			# second shoebox pointing at debug:_nested_grandchild) — it lives
+			# on the Furniture instance, not the catalog entry, so it has to
+			# be captured here too or a restore below reverts it to the
+			# catalog default, silently repointing the box at the wrong
+			# level (or, worse, at itself if the catalog default happens to
+			# be this same level).
+			if fur.is_nested_box:
+				item["child_level_id"] = fur.child_level_id
+			items.append(item)
 		floors_snap[fid] = items
 	return {"budget": gm.budget, "floors": floors_snap}
 
@@ -1268,7 +1300,12 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 			fur.queue_free()
 		for item in (floors_snap.get(fid, []) as Array):
 			var d := item as Dictionary
-			var f := _spawn_furniture(d["id"] as String, fl, roundi(d["x"] as float), roundi(d["y"] as float))
+			# d itself doubles as the override dict _spawn_furniture already
+			# supports for rail_axis/etc — child_level_id (see
+			# _snapshot_level_state()) rides along the same mechanism so a
+			# restored box keeps pointing at whatever level it was actually
+			# linked to, not the catalog's default.
+			var f := _spawn_furniture(d["id"] as String, fl, roundi(d["x"] as float), roundi(d["y"] as float), d)
 			if not is_instance_valid(f):
 				continue
 			var rs := d.get("rot_steps", 0) as int
@@ -3123,10 +3160,18 @@ func _snapshot_all_furniture() -> Dictionary:
 		var furn := []
 		for item in fl.get_all_furniture():
 			var f := item as Furniture
-			furn.append({
+			var entry := {
 				"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y,
 				"extended": f.is_extended,
-			})
+			}
+			# Same reasoning as _snapshot_level_state(): a nested box's
+			# child_level_id is a per-instance override, not part of the
+			# catalog entry — undoing/redoing past a step that touched this
+			# floor would otherwise silently repoint the box at its catalog
+			# default (see _restore_spawn_furniture()).
+			if f.is_nested_box:
+				entry["child_level_id"] = f.child_level_id
+			furn.append(entry)
 		floors_data[fid] = {
 			"furniture":   furn,
 			"wall_items": (fl.wall_items as Dictionary).duplicate(true),
@@ -3165,7 +3210,7 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 		fl.wall_items.clear()
 		for e in (fd["furniture"] as Array):
 			var ed := e as Dictionary
-			var f := _restore_spawn_furniture(ed["id"] as String, fl, int(ed["x"]), int(ed["y"]))
+			var f := _restore_spawn_furniture(ed["id"] as String, fl, int(ed["x"]), int(ed["y"]), ed)
 			if f and (ed.get("extended", false) as bool) and f.foldable:
 				f._apply_fold_state(true)
 		var wall_items := fd["wall_items"] as Dictionary
@@ -3188,7 +3233,10 @@ func _floor_matches_furniture_snapshot(fl: Floor, fd: Dictionary) -> bool:
 	var furn := []
 	for item in fl.get_all_furniture():
 		var f := item as Furniture
-		furn.append({"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y, "extended": f.is_extended})
+		var entry := {"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y, "extended": f.is_extended}
+		if f.is_nested_box:
+			entry["child_level_id"] = f.child_level_id
+		furn.append(entry)
 	return furn == (fd["furniture"] as Array) and (fl.wall_items as Dictionary) == (fd["wall_items"] as Dictionary)
 
 
@@ -3196,10 +3244,16 @@ func _floor_matches_furniture_snapshot(fl: Floor, fd: Dictionary) -> bool:
 # during undo restore, where the snapshot already records each piece on
 # whichever floor (base or loft) it actually ended up on, so re-triggering
 # the auto-promotion would try to move it a second time.
-func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int) -> Furniture:
+func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, override_data: Dictionary = {}) -> Furniture:
 	var fdata := gm.get_furniture_by_id(furniture_id)
 	if fdata.is_empty():
 		return null
+	# child_level_id is a per-instance override (see _snapshot_all_furniture())
+	# — without re-applying it here, undoing/redoing past a step touching
+	# this floor silently repointed a nested box at its catalog default.
+	if override_data.has("child_level_id"):
+		fdata = fdata.duplicate()
+		fdata["child_level_id"] = override_data["child_level_id"]
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
