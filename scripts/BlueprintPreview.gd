@@ -18,6 +18,18 @@ var _bounds: Rect2 = Rect2()
 var _furniture: Array = []   # [{x,y,w,h,color}], tile-space — see CityMap._furniture_preview_rects
 
 
+func _ready() -> void:
+	# _draw() scales against the Control's actual laid-out `size`, which is
+	# still (0,0) the instant a fresh card is add_child()'d — a container
+	# only assigns it a real size on the next layout pass. If set_data() (and
+	# the queue_redraw() it triggers) lands before that pass, _draw() bails
+	# out on a zero-size `avail` and paints nothing but blank paper, and
+	# nothing ever asks it to redraw again — the card stays permanently
+	# blank even though its data was correct all along. Re-drawing on every
+	# actual resize closes that race regardless of call order.
+	resized.connect(queue_redraw)
+
+
 func set_data(segments: Array, bounds: Rect2, furniture: Array = []) -> void:
 	_segments = segments
 	_bounds = bounds
