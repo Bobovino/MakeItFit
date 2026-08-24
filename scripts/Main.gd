@@ -1015,17 +1015,29 @@ func _floor_plan_data(ld: Dictionary) -> Dictionary:
 		if f.get("type", "") != "floor":
 			continue
 		var segs := f.get("segments", []) as Array
-		if segs.is_empty():
-			continue
-		var min_x := INF; var max_x := -INF
-		var min_y := INF; var max_y := -INF
-		for sg in segs:
-			var s := sg as Dictionary
-			min_x = minf(min_x, minf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
-			max_x = maxf(max_x, maxf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
-			min_y = minf(min_y, minf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
-			max_y = maxf(max_y, maxf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
-		return {"segments": segs, "bounds": Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))}
+		if not segs.is_empty():
+			var min_x := INF; var max_x := -INF
+			var min_y := INF; var max_y := -INF
+			for sg in segs:
+				var s := sg as Dictionary
+				min_x = minf(min_x, minf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
+				max_x = maxf(max_x, maxf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
+				min_y = minf(min_y, minf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
+				max_y = maxf(max_y, maxf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
+			return {"segments": segs, "bounds": Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))}
+		# No wall segments (a floor painted with just the Floor Paint tool,
+		# never given real walls via Primary Wall) — fall back to the painted
+		# tiles themselves so the room still reads as something on the
+		# sketch instead of going completely blank.
+		var tiles := f.get("floor_tiles", []) as Array
+		if not tiles.is_empty():
+			var tmin_x := INF; var tmax_x := -INF
+			var tmin_y := INF; var tmax_y := -INF
+			for t in tiles:
+				var tx := (t as Array)[0] as float; var ty := (t as Array)[1] as float
+				tmin_x = minf(tmin_x, tx); tmax_x = maxf(tmax_x, tx + 1.0)
+				tmin_y = minf(tmin_y, ty); tmax_y = maxf(tmax_y, ty + 1.0)
+			return {"segments": [], "bounds": Rect2(Vector2(tmin_x, tmin_y), Vector2(tmax_x - tmin_x, tmax_y - tmin_y))}
 	return {"segments": [], "bounds": Rect2()}
 
 

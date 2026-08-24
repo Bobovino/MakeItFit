@@ -39,7 +39,7 @@ func set_data(segments: Array, bounds: Rect2, furniture: Array = []) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BP_PAPER)
-	if _bounds.size.x <= 0.0 or _bounds.size.y <= 0.0 or _segments.is_empty():
+	if _bounds.size.x <= 0.0 or _bounds.size.y <= 0.0:
 		return
 	var pad := 8.0
 	var avail := size - Vector2(pad, pad) * 2.0
