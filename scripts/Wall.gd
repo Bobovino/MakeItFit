@@ -1126,7 +1126,8 @@ func can_place_across_moments(furniture: Furniture, at: Vector2, all_moments: Ar
 			if furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top:
 				continue
 			if new_rect.intersects(other.get_moment_rect(mid_s)):
-				_block_reason = "Would overlap %s during \"%s\"" % [other.furniture_name, mid_s]
+				var mid_label: String = Furniture.moment_labels.get(mid_s, mid_s)
+				_block_reason = "Would overlap %s during \"%s\"" % [other.furniture_name, mid_label]
 				return false
 	return true
 

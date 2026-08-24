@@ -763,6 +763,10 @@ func _load_level(level_id: String) -> void:
 	Furniture.test_mode_active = false
 	Furniture.active_moment_id = ""
 	Furniture.all_moment_ids = gm.moments.map(func(m): return (m as Dictionary)["id"] as String)
+	Furniture.moment_labels = {}
+	for m in gm.moments:
+		var md := m as Dictionary
+		Furniture.moment_labels[md["id"] as String] = md.get("label", md["id"]) as String
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
 	if not gm.moments.is_empty():

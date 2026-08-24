@@ -47,6 +47,11 @@ static var active_moment_id: String = "" # "" for levels without moments
 # red-tier (non-rail) moves, which has to look at every OTHER moment, not
 # just whichever one is currently on screen.
 static var all_moment_ids: Array = []
+# moment_id -> display label ("day" -> "Day"), set alongside all_moment_ids —
+# Wall.gd's cross-moment block-reason message reads this so the player sees
+# "during 'Night'" instead of the raw id, which wouldn't always read cleanly
+# for every level's own id conventions.
+static var moment_labels: Dictionary = {}
 var _base_grid_h: int = 1             # grid_h when folded
 
 var height_category: String = "medium"  # "low" | "medium" | "tall"
@@ -414,6 +419,26 @@ func _draw() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7,
 		Color(ink.r, ink.g, ink.b, 0.90))
+
+	# Mobility tier badge — a small always-visible dot in the corner (color
+	# alone reads at any size) plus the feather-count text once there's room
+	# for it to actually be legible. Without this, a placed piece's tier was
+	# only ever shown in the shop tooltip before buying it — once on the
+	# floor, there was no way to tell why moving it behaves the way it does.
+	var tier_col: Color
+	match mobility_tier:
+		"green":  tier_col = GameTheme.C_GOOD
+		"yellow": tier_col = GameTheme.C_AMBER
+		_:        tier_col = GameTheme.C_BAD
+	const BADGE_R := 3.0
+	draw_circle(Vector2(w - BADGE_R - 3.0, BADGE_R + 3.0), BADGE_R, tier_col)
+	if w >= 40.0:
+		var feathers := "🪶" if mobility_tier == "green" else ("🪶🪶" if mobility_tier == "yellow" else "🪶🪶🪶")
+		var ffont := ThemeDB.fallback_font
+		const FSIZE := 8
+		var ftw := ffont.get_string_size(feathers, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
+		draw_string(ffont, Vector2(w - BADGE_R * 2 - 6.0 - ftw, BADGE_R * 2 + 6.0), feathers,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, tier_col)
 
 	# Ghost interaction zone — dashed amber outline shown while dragging
 	if _dragging and ghost_radius > 0:
