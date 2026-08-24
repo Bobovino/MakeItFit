@@ -1620,6 +1620,16 @@ func _ensure_mode3d_view() -> void:
 	if not is_instance_valid(_mode3d_view):
 		_mode3d_view = Room3DViewScene.instantiate()
 		ui_layer.add_child(_mode3d_view)
+		# Godot's Control gui_input routing picks by tree/sibling order, NOT
+		# CanvasItem.z_index — a z_index alone (see _ensure_nested_plan_row())
+		# doesn't win against a later-added sibling that also stops the mouse.
+		# _mode3d_view is only ever added here, once, and never re-raised
+		# afterward, so re-raise the nested-plan row right now to guarantee it
+		# stays on top of this full-screen view for input, not just for
+		# drawing — every other place that re-raises it can't run before this
+		# node exists yet.
+		if is_instance_valid(_nested_plan_row):
+			ui_layer.move_child(_nested_plan_row, ui_layer.get_child_count() - 1)
 		_mode3d_view.anchor_left   = 0.0
 		_mode3d_view.anchor_top    = 0.0
 		_mode3d_view.anchor_right  = 0.0
