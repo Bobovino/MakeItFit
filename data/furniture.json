@@ -16,7 +16,8 @@
 			"sell_price": 0,
 			"color": "d8c8a0",
 			"is_nested_box": true,
-			"model": "res://assets/models/furniture/cardboardBoxOpen.glb"
+			"model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+			"mobility_tier": "green"
 		},
 		{
 			"id": "normal_bed",
@@ -34,7 +35,8 @@
 			"buy_price": 300,
 			"sell_price": 150,
 			"color": "7a9ec0",
-			"model": "res://assets/models/furniture/bedSingle.glb"
+			"model": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"id": "storage_bed",
@@ -53,7 +55,8 @@
 			"buy_price": 420,
 			"sell_price": 180,
 			"color": "5888b0",
-			"model": "res://assets/models/furniture/bedSingle.glb"
+			"model": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"id": "high_bed",
@@ -79,7 +82,8 @@
 			"hide_nodes": [
 				"coverBottom",
 				"pillowBottom"
-			]
+			],
+			"needs_quiet": true
 		},
 		{
 			"id": "bunk_bed",
@@ -100,7 +104,8 @@
 			"buy_price": 550,
 			"sell_price": 220,
 			"color": "6a8ea8",
-			"model": "res://assets/models/furniture/bedBunk.glb"
+			"model": "res://assets/models/furniture/bedBunk.glb",
+			"needs_quiet": true
 		},
 		{
 			"id": "murphy_bed",
@@ -126,7 +131,8 @@
 			],
 			"model": "res://assets/models/furniture/murphyBedAnimated.glb",
 			"animated_fold": true,
-			"wall_flush_required": true
+			"wall_flush_required": true,
+			"needs_quiet": true
 		},
 		{
 			"id": "balcony_window",
@@ -180,7 +186,8 @@
 			"sell_price": 100,
 			"color": "c8a870",
 			"model": "res://assets/models/furniture/futonAnimated.glb",
-			"animated_fold": true
+			"animated_fold": true,
+			"needs_quiet": true
 		},
 		{
 			"id": "sofa",
@@ -228,7 +235,8 @@
 			"sell_price": 200,
 			"color": "b86838",
 			"model": "res://assets/models/furniture/sofaBedAnimated.glb",
-			"animated_fold": true
+			"animated_fold": true,
+			"needs_quiet": true
 		},
 		{
 			"id": "lounge_chair",
@@ -705,7 +713,8 @@
 			"buy_price": 350,
 			"sell_price": 150,
 			"color": "303028",
-			"model": "res://assets/models/furniture/televisionModern.glb"
+			"model": "res://assets/models/furniture/televisionModern.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "mirror",
@@ -1402,7 +1411,8 @@
 			"buy_price": 480,
 			"sell_price": 220,
 			"color": "7a9ec0",
-			"model": "res://assets/models/furniture/bedDouble.glb"
+			"model": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"id": "bench",
@@ -1728,7 +1738,8 @@
 			"buy_price": 260,
 			"sell_price": 100,
 			"color": "d0d0d0",
-			"model": "res://assets/models/furniture/dryer.glb"
+			"model": "res://assets/models/furniture/dryer.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "range_hood_large",
@@ -1799,7 +1810,8 @@
 			"buy_price": 30,
 			"sell_price": 10,
 			"color": "606870",
-			"model": "res://assets/models/furniture/kitchenBlender.glb"
+			"model": "res://assets/models/furniture/kitchenBlender.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "kitchen_corner_cabinet_inner",
@@ -1909,7 +1921,8 @@
 			"buy_price": 60,
 			"sell_price": 20,
 			"color": "303030",
-			"model": "res://assets/models/furniture/kitchenCoffeeMachine.glb"
+			"model": "res://assets/models/furniture/kitchenCoffeeMachine.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "fridge_builtin",
@@ -1982,7 +1995,8 @@
 			"buy_price": 70,
 			"sell_price": 25,
 			"color": "303030",
-			"model": "res://assets/models/furniture/kitchenMicrowave.glb"
+			"model": "res://assets/models/furniture/kitchenMicrowave.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "kitchen_sink",
@@ -2020,7 +2034,8 @@
 			"buy_price": 260,
 			"sell_price": 100,
 			"color": "303030",
-			"model": "res://assets/models/furniture/kitchenStove.glb"
+			"model": "res://assets/models/furniture/kitchenStove.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "stove_electric",
@@ -2039,7 +2054,8 @@
 			"buy_price": 280,
 			"sell_price": 110,
 			"color": "383838",
-			"model": "res://assets/models/furniture/kitchenStoveElectric.glb"
+			"model": "res://assets/models/furniture/kitchenStoveElectric.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "ceiling_lamp",
@@ -2290,7 +2306,8 @@
 			"sell_price": 15,
 			"color": "886858",
 			"model": "res://assets/models/furniture/radio.glb",
-			"mobility_tier": "green"
+			"mobility_tier": "green",
+			"is_noisy": true
 		},
 		{
 			"id": "round_rug",
@@ -2378,7 +2395,8 @@
 			"sell_price": 30,
 			"color": "202020",
 			"model": "res://assets/models/furniture/speaker.glb",
-			"mobility_tier": "green"
+			"mobility_tier": "green",
+			"is_noisy": true
 		},
 		{
 			"id": "small_speaker",
@@ -2396,7 +2414,8 @@
 			"sell_price": 15,
 			"color": "282828",
 			"model": "res://assets/models/furniture/speakerSmall.glb",
-			"mobility_tier": "green"
+			"mobility_tier": "green",
+			"is_noisy": true
 		},
 		{
 			"id": "square_bar_stool",
@@ -2568,7 +2587,8 @@
 			"buy_price": 150,
 			"sell_price": 60,
 			"color": "504840",
-			"model": "res://assets/models/furniture/televisionAntenna.glb"
+			"model": "res://assets/models/furniture/televisionAntenna.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "vintage_tv",
@@ -2584,7 +2604,8 @@
 			"buy_price": 180,
 			"sell_price": 70,
 			"color": "584c3c",
-			"model": "res://assets/models/furniture/televisionVintage.glb"
+			"model": "res://assets/models/furniture/televisionVintage.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "toaster",
@@ -2602,7 +2623,8 @@
 			"sell_price": 8,
 			"color": "c8c8c8",
 			"model": "res://assets/models/furniture/toaster.glb",
-			"mobility_tier": "green"
+			"mobility_tier": "green",
+			"is_noisy": true
 		},
 		{
 			"id": "square_toilet",
@@ -2658,7 +2680,8 @@
 			"buy_price": 300,
 			"sell_price": 120,
 			"color": "d0d0d0",
-			"model": "res://assets/models/furniture/washer.glb"
+			"model": "res://assets/models/furniture/washer.glb",
+			"is_noisy": true
 		},
 		{
 			"id": "washer_dryer_stack",
@@ -2679,7 +2702,8 @@
 			"buy_price": 480,
 			"sell_price": 190,
 			"color": "c8c8c8",
-			"model": "res://assets/models/furniture/washerDryerStacked.glb"
+			"model": "res://assets/models/furniture/washerDryerStacked.glb",
+			"is_noisy": true
 		},
 		{
 			"placement": "wall",
@@ -2704,7 +2728,8 @@
 			"sell_price": 430,
 			"color": "5a7ea0",
 			"model": "res://assets/models/furniture/cabinetBed.glb",
-			"model_extended": "res://assets/models/furniture/bedDouble.glb"
+			"model_extended": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "wall",
@@ -2732,7 +2757,8 @@
 			"sell_price": 560,
 			"color": "6a86a8",
 			"model": "res://assets/models/furniture/cabinetBed.glb",
-			"model_extended": "res://assets/models/furniture/bedDouble.glb"
+			"model_extended": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2760,7 +2786,8 @@
 			"sell_price": 150,
 			"color": "a87050",
 			"model": "res://assets/models/furniture/loungeChair.glb",
-			"model_extended": "res://assets/models/furniture/bedSingle.glb"
+			"model_extended": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2788,7 +2815,8 @@
 			"sell_price": 130,
 			"color": "c8a060",
 			"model": "res://assets/models/furniture/loungeSofaOttoman.glb",
-			"model_extended": "res://assets/models/furniture/bedSingle.glb"
+			"model_extended": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2817,7 +2845,8 @@
 			"sell_price": 330,
 			"color": "384048",
 			"model": "res://assets/models/furniture/loungeDesignSofa.glb",
-			"model_extended": "res://assets/models/furniture/bedDouble.glb"
+			"model_extended": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2846,7 +2875,8 @@
 			"sell_price": 360,
 			"color": "b86838",
 			"model": "res://assets/models/furniture/loungeSofaCorner.glb",
-			"model_extended": "res://assets/models/furniture/bedDouble.glb"
+			"model_extended": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2873,7 +2903,8 @@
 			"sell_price": 210,
 			"color": "7a9ec0",
 			"model": "res://assets/models/furniture/bedSingle.glb",
-			"model_extended": "res://assets/models/furniture/bedDouble.glb"
+			"model_extended": "res://assets/models/furniture/bedDouble.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2902,7 +2933,8 @@
 			"sell_price": 340,
 			"color": "887050",
 			"model": "res://assets/models/furniture/cabinetBedDrawer.glb",
-			"model_extended": "res://assets/models/furniture/bedSingle.glb"
+			"model_extended": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2930,7 +2962,8 @@
 			"sell_price": 170,
 			"color": "9a7858",
 			"model": "res://assets/models/furniture/benchCushion.glb",
-			"model_extended": "res://assets/models/furniture/bedSingle.glb"
+			"model_extended": "res://assets/models/furniture/bedSingle.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",
@@ -2959,7 +2992,8 @@
 			"sell_price": 400,
 			"color": "5a8e68",
 			"model": "res://assets/models/furniture/cabinetBedDrawerTable.glb",
-			"model_extended": "res://assets/models/furniture/bedBunk.glb"
+			"model_extended": "res://assets/models/furniture/bedBunk.glb",
+			"needs_quiet": true
 		},
 		{
 			"placement": "floor",

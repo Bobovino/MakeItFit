@@ -96,6 +96,12 @@ var _current_level_id:  String = ""
 # either side of a box survives round-trips, not just the authored JSON state.
 var _nested_stack: Array = []
 var _current_nested_daylight_factor: float = 1.0
+# Same transient-var pattern as daylight above: set in _on_box_entered() from
+# the PARENT's own furniture around the box, consumed once in _load_level()
+# to mute needs_quiet pieces inside the child (see Furniture.gd's noise
+# comments) — reset on exit exactly like daylight, same known simplification
+# (doesn't re-derive what an intermediate level's own entry conditions were).
+var _current_nested_noisy_from_outside: bool = false
 # State cache — see _snapshot_level_state()/_apply_level_state_snapshot().
 # level_id -> {budget:int, floors:{floor_id:[{id,x,y,rot_steps,is_extended}]}}
 # — captured every time a nested-level transition leaves a level, so coming
@@ -720,7 +726,11 @@ func _load_level(level_id: String) -> void:
 	# Nested/parabox: if this level was reached by entering a box, dim its
 	# daylight by however much the parent's furniture was blocking the box
 	# from outside (see _compute_box_occlusion()) — a real cross-frame effect,
-	# not just cosmetic on the child's own window rendering.
+	# not just cosmetic on the child's own window rendering. The noise
+	# equivalent (_current_nested_noisy_from_outside) is applied inside
+	# _recompute_box_effects() instead, since that's the one place already
+	# resetting/reapplying _noise_muted every refresh — setting it here too
+	# would just get immediately wiped by the _refresh_functions() call below.
 	if first_floor_node and not _nested_stack.is_empty():
 		first_floor_node.set_external_daylight_factor(_current_nested_daylight_factor)
 	_refresh_nested_plan_panel()
@@ -1039,6 +1049,7 @@ func _on_box_entered(box: Furniture) -> void:
 		return
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
+	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	# Remembers whether the level being left was in post-win "Watch Again"
 	# (tenant showcase looping in read-only 3D) so stepping back out of the
@@ -1049,9 +1060,11 @@ func _on_box_entered(box: Furniture) -> void:
 	_nested_stack.append({
 		"parent_level_id": _current_level_id,
 		"daylight_factor": factor,
+		"noisy_from_outside": noisy_outside,
 		"was_post_win_view": was_showcasing,
 	})
 	_current_nested_daylight_factor = factor
+	_current_nested_noisy_from_outside = noisy_outside
 	_load_level(box.child_level_id)
 	if _level_state_cache.has(box.child_level_id):
 		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
@@ -1353,6 +1366,7 @@ func _exit_nested_level_to(index: int) -> void:
 	_nested_stack.resize(index)
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	_current_nested_daylight_factor = 1.0
+	_current_nested_noisy_from_outside = false
 	_load_level(target_id)
 	if _level_state_cache.has(target_id):
 		_apply_level_state_snapshot(_level_state_cache[target_id])
@@ -1486,6 +1500,119 @@ func _compute_box_occlusion(box: Furniture) -> float:
 		"tall":   return 0.15
 		"medium": return 0.55
 		_:        return 1.0
+
+
+# True if any is_noisy piece sits in the 1-tile ring immediately around
+# `pos`/`gw`x`gh` on `fl` (excluding `exclude` itself) — same ring-scan shape
+# as _compute_box_occlusion() above, just checking for noise instead of
+# height. Used both directions: parent furniture around a box (checked
+# against the PARENT's fl before entering), and a box's own noisy interior
+# affecting the PARENT's furniture around it (checked against the PARENT's
+# fl using the box's own position, from the outside).
+func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
+	if not is_instance_valid(fl):
+		return false
+	var x0 := floori(pos.x) - 1
+	var y0 := floori(pos.y) - 1
+	var x1 := x0 + gw + 2
+	var y1 := y0 + gh + 2
+	for x in range(x0, x1):
+		for y in range(y0, y1):
+			var inside := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
+			if inside:
+				continue
+			for f in fl._placed_list(Vector2i(x, y)):
+				var fur := f as Furniture
+				if fur != exclude and fur.is_noisy:
+					return true
+	return false
+
+
+# Everything currently in a child level's floors — the live per-session
+# cache if we've visited it this session, else its authored
+# starting_furniture straight from disk. Shared by the interior-weight and
+# interior-noise computations below, since both just need "what's in there
+# right now" without caring which source it came from.
+func _child_furniture_items(child_level_id: String) -> Array:
+	if _level_state_cache.has(child_level_id):
+		var out: Array = []
+		var snap := _level_state_cache[child_level_id] as Dictionary
+		for fid in snap.get("floors", {}) as Dictionary:
+			out.append_array((snap["floors"] as Dictionary)[fid] as Array)
+		return out
+	var child_dict := _lookup_level_dict(child_level_id)
+	var out2: Array = []
+	out2.append_array(child_dict.get("starting_furniture", []) as Array)
+	for fd in (child_dict.get("apartment", {}) as Dictionary).get("floors", []) as Array:
+		out2.append_array((fd as Dictionary).get("starting_furniture", []) as Array)
+	return out2
+
+
+func _compute_child_interior_weight(child_level_id: String) -> float:
+	var total := 0.0
+	for item in _child_furniture_items(child_level_id):
+		var fdata := gm.get_furniture_by_id((item as Dictionary).get("id", "") as String)
+		if fdata.is_empty():
+			continue
+		var sz := fdata.get("size", {}) as Dictionary
+		total += fdata.get("weight", float((sz.get("w", 4) as int) * (sz.get("h", 4) as int))) as float
+	return total
+
+
+func _compute_child_is_noisy(child_level_id: String) -> bool:
+	for item in _child_furniture_items(child_level_id):
+		var fdata := gm.get_furniture_by_id((item as Dictionary).get("id", "") as String)
+		if fdata.get("is_noisy", false) as bool:
+			return true
+	return false
+
+
+# Keeps every is_nested_box on the CURRENT floor's weight/tier and noise
+# effects current — called from the top of _refresh_functions(), so it runs
+# on every furniture change (moving the box itself, or moving furniture near
+# it) as well as on level load/exit, without needing its own separate set of
+# call sites. Resets mutes first each pass (current-state based, same
+# philosophy as comfort: a box that's no longer noisy shouldn't leave stale
+# mutes behind on furniture that's since moved away or was never really its
+# fault to begin with).
+func _recompute_box_effects() -> void:
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			(f as Furniture)._noise_muted = false
+	# Direction 1 (parent noise -> child): if we're currently INSIDE a box
+	# that had a noisy neighbor outside it when we entered, every needs_quiet
+	# piece in here is muted — set once at entry (_on_box_entered), applied
+	# fresh on every recompute same as everything else in this function.
+	if not _nested_stack.is_empty() and _current_nested_noisy_from_outside:
+		for fid in _floors:
+			for f in (_floors[fid] as Floor).get_all_furniture():
+				if (f as Furniture).needs_quiet:
+					(f as Furniture)._noise_muted = true
+	# Direction 2 (child noise -> parent): a box whose OWN interior is noisy
+	# mutes needs_quiet furniture near it in THIS (parent) room.
+	for box in _collect_nested_boxes():
+		if box.child_level_id.is_empty():
+			continue
+		box.apply_interior_weight(_compute_child_interior_weight(box.child_level_id))
+		box.is_noisy = _compute_child_is_noisy(box.child_level_id)
+		if box.is_noisy and is_instance_valid(box._wall_ref):
+			_mute_quiet_neighbors(box._wall_ref, box)
+
+
+func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:
+	var x0 := floori(box.grid_pos.x) - 1
+	var y0 := floori(box.grid_pos.y) - 1
+	var x1 := x0 + box.grid_w + 2
+	var y1 := y0 + box.grid_h + 2
+	for x in range(x0, x1):
+		for y in range(y0, y1):
+			var inside := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
+			if inside:
+				continue
+			for f in fl._placed_list(Vector2i(x, y)):
+				var fur := f as Furniture
+				if fur != box and fur.needs_quiet:
+					fur._noise_muted = true
 
 
 # ─── Runtime loft/mezzanine floors ────────────────────────────────────────────
@@ -2465,6 +2592,12 @@ func _on_furniture_changed() -> void:
 
 
 func _refresh_functions() -> void:
+	# Keeps every box's weight/tier/noise effects current before anything
+	# below reads functions or weight — covers level load, entering/exiting a
+	# box, AND every ordinary furniture move, since this already runs on all
+	# of those (see _recompute_box_effects()'s own comment for why it lives
+	# here instead of its own separate call sites).
+	_recompute_box_effects()
 	# Floor items are passed as live Furniture nodes so foldable pieces report
 	# their REAL current state (folded/extended), not just what they're capable
 	# of. Wall items have no live node, so they stay id-based.

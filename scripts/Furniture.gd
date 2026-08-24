@@ -102,6 +102,52 @@ var _home_grid_pos: Vector2 = Vector2(-1, -1)
 # through the separate mini-plan panel (_refresh_nested_plan_panel()).
 var is_nested_box: bool = false
 var child_level_id: String = ""
+# How much everything currently inside this box's child level weighs,
+# combined — Main._recompute_box_effects() keeps this current whenever the
+# child level's contents change (or are first read from disk, if never
+# visited this session). A heavily-furnished shoebox gets harder to move
+# (mobility_tier escalates) and harder to stack elsewhere (weight rises)
+# than an empty one — current-state, not permanent: empty it back out and
+# both recover, same philosophy as comfort.
+var interior_weight: float = 0.0
+const BOX_WEIGHT_YELLOW_MIN := 50.0
+const BOX_WEIGHT_RED_MIN    := 150.0
+# Catalog-authored baseline, captured once in setup() so apply_interior_weight()
+# can always recompute from a stable starting point instead of compounding
+# onto whatever the previous recompute already left behind.
+var _base_weight: float = 1.0
+var _base_mobility_tier: String = "red"
+
+# Noise — a separate cross-level coupling from the light/occlusion one above.
+# is_noisy (TVs, radios, kitchen appliances) and needs_quiet (beds) are
+# catalog-authored; _noise_muted is live, computed-only state Main.gd sets:
+# true while a needs_quiet piece sits near a noisy neighbor (an is_noisy
+# piece in the same room, OR — for a piece just inside a box — an is_noisy
+# piece in the PARENT room near the box's own position; symmetrically, a
+# noisy box interior can mute a needs_quiet piece sitting near the box in
+# the PARENT). A muted piece simply stops contributing its functions (see
+# GameManager._functions_of()) until it's no longer near the source.
+var is_noisy: bool = false
+var needs_quiet: bool = false
+var _noise_muted: bool = false
+
+
+# Applies this box's current interior weight — combines it with the box's
+# OWN catalog weight for anything that reads `weight` (stacking capacity,
+# mezzanine load), and escalates mobility_tier as interior weight climbs
+# past the thresholds above. Only meaningful for is_nested_box pieces;
+# harmless no-op otherwise.
+func apply_interior_weight(w: float) -> void:
+	interior_weight = w
+	weight = _base_weight + w
+	if not is_nested_box:
+		return
+	if w >= BOX_WEIGHT_RED_MIN:
+		mobility_tier = "red"
+	elif w >= BOX_WEIGHT_YELLOW_MIN:
+		mobility_tier = "yellow"
+	else:
+		mobility_tier = _base_mobility_tier
 
 # Rail: constrains dragging to one axis within a defined extent. rail_axis
 # itself is LIVE (Ctrl-drag clears it to detach) — _home_rail_* is the
@@ -232,6 +278,10 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
 	child_level_id        = data.get("child_level_id",    "")       as String
+	is_noisy              = data.get("is_noisy",          false)    as bool
+	needs_quiet           = data.get("needs_quiet",       false)    as bool
+	_base_weight          = weight
+	_base_mobility_tier   = mobility_tier
 	_base_grid_h          = grid_h
 	_wall_ref = apt_floor
 	_color = Color("#" + data.get("color", "888888"))

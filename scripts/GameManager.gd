@@ -221,6 +221,13 @@ func sell_starting_item(furniture_id: String) -> bool:
 func _functions_of(entry, moment_id: String = "") -> Array:
 	if entry is Furniture:
 		var fur := entry as Furniture
+		# Noise coupling (see Furniture.gd's is_noisy/needs_quiet/_noise_muted
+		# comments) — a bed too close to a noisy neighbor (inside a box, from
+		# the parent's furniture around it; or in the parent, from a noisy
+		# box's own interior) simply stops contributing its functions until
+		# it's no longer near the source.
+		if fur.needs_quiet and fur._noise_muted:
+			return []
 		if moment_id != "":
 			return fur.functions_for_moment(moment_id)
 		return fur.functions
