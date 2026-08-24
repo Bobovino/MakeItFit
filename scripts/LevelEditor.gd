@@ -2923,6 +2923,26 @@ func _fill_placed_list() -> void:
 					pf["child_level_id"] = t)
 			child_row.add_child(child_edit)
 
+			var new_btn := Button.new()
+			new_btn.text = "＋ New"
+			new_btn.tooltip_text = "Create a fresh nested-apartment level, save it, and link this box to it"
+			new_btn.add_theme_font_size_override("font_size", 8)
+			new_btn.pressed.connect(func():
+				var new_id := _create_nested_child_level()
+				if new_id != "":
+					pf["child_level_id"] = new_id
+					_fill_placed_list())
+			child_row.add_child(new_btn)
+
+			var edit_btn := Button.new()
+			edit_btn.text = "✎ Edit"
+			edit_btn.tooltip_text = "Save this level, then open the linked level's interior for editing"
+			edit_btn.add_theme_font_size_override("font_size", 8)
+			edit_btn.pressed.connect(func():
+				var target_id := pf.get("child_level_id", pfdata.get("child_level_id", "") as String) as String
+				_edit_nested_child_level(target_id))
+			child_row.add_child(edit_btn)
+
 
 # ── Catalog filter modal ──────────────────────────────────────────────────────
 
@@ -3977,6 +3997,133 @@ func _prompt_level_name(on_confirm: Callable) -> void:
 	ok.pressed.connect(_do_confirm)
 	line.text_submitted.connect(func(_t: String): _do_confirm.call())
 	cancel.pressed.connect(cl.queue_free)
+
+
+# ── Nested/parabox levels ──────────────────────────────────────────────────
+# "＋ New" / "✎ Edit" next to a placed box's child_level_id field (see
+# _fill_placed_list()) — lets a designer author a whole tree of nested
+# levels without ever hand-writing a levels.json id. See
+# docs/design_nested_levels.md and Main.gd's MIN_NESTED_INTERIOR_M2 (a
+# nested apartment still has to be a livable ≥20 m² space, even though the
+# box itself reads as tiny from outside).
+
+# Builds a fresh, already-valid nested-level dict: a 50×50-tile (25 m²) room
+# with one window — same shape as debug:_nested_child, comfortably over the
+# 20 m² minimum — and appends it to levels.json under a fresh id derived
+# from the CURRENT level's name, so a tree of nested interiors reads
+# recognizably ("mitte_apartment_interior", "..._interior_2", ...) instead
+# of anonymous ids. Returns the new id, or "" on failure.
+func _create_nested_child_level() -> String:
+	var base_name := (_lname.strip_edges() if not _lname.strip_edges().is_empty() else "Untitled") + " Interior"
+	var base_id := base_name.to_lower().replace(" ", "_")
+
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		_set_status("Couldn't create nested level — cannot open levels.json")
+		return ""
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close()
+		_set_status("Couldn't create nested level — levels.json parse error")
+		return ""
+	lf.close()
+	var root := lj.get_data() as Dictionary
+	var levels := root.get("levels", []) as Array
+
+	var existing_ids: Dictionary = {}
+	for lv in levels:
+		existing_ids[(lv as Dictionary).get("id", "")] = true
+	var new_id := base_id
+	var new_name := base_name
+	var suffix := 2
+	while existing_ids.has(new_id):
+		new_id = base_id + "_" + str(suffix)
+		new_name = base_name + " " + str(suffix)
+		suffix += 1
+
+	var used_slots: Dictionary = {}
+	for lv in levels:
+		var k := "%d,%d" % [(lv as Dictionary).get("map_col", 0), (lv as Dictionary).get("map_row", 0)]
+		used_slots[k] = true
+	var col := 0
+	var row := 0
+	var slot_found := false
+	for r in range(100):
+		if slot_found:
+			break
+		for c in range(5):
+			if not used_slots.has("%d,%d" % [c, r]):
+				col = c; row = r
+				slot_found = true
+				break
+
+	var new_level := {
+		"id": new_id, "name": new_name, "district": "Nested",
+		"acquisition_cost": 0, "map_col": col, "map_row": row, "min_stars": 0,
+		"block": _block, "funds_base_reward": 0, "starting_budget": 500,
+		"is_nested": true,
+		"tenant": {"name": "(nested)", "age": "—", "flavor": "A nested apartment.",
+			"required_functions": [], "monthly_rent": 0},
+		"allowed_furniture": [], "starting_inventory": [], "starting_furniture": [], "moments": [],
+		"apartment": {
+			"grid_w": 55, "grid_h": 55, "hidden_floors": ["fl_0_ceil", "roof"],
+			"floors": [
+				{
+					"id": "fl_0", "label": "Ground Floor", "type": "floor",
+					"columns": [], "floor_tiles": [], "mezzanine_tiles": [], "rails": [], "stair_tiles": [], "stairs": [],
+					"segments": [
+						{"demolished": false, "primary": true, "x1": 1, "x2": 51, "y1": 1, "y2": 1,
+							"has_window": true, "window_pos": 10, "window_len": 12},
+						{"demolished": false, "primary": true, "x1": 51, "x2": 51, "y1": 1, "y2": 51},
+						{"demolished": false, "primary": true, "x1": 51, "x2": 1, "y1": 51, "y2": 51},
+						{"demolished": false, "primary": true, "x1": 1, "x2": 1, "y1": 51, "y2": 1},
+					],
+				},
+				{"id": "fl_0_ceil", "label": "Ground Floor Ceiling", "type": "ceiling", "parent_id": "fl_0",
+					"columns": [], "floor_tiles": [], "mezzanine_tiles": [], "rails": [], "segments": [], "stair_tiles": [], "stairs": []},
+				{"id": "roof", "label": "Roof / Techo", "type": "roof",
+					"columns": [], "floor_tiles": [], "mezzanine_tiles": [], "rails": [], "segments": [], "stair_tiles": [], "stairs": []},
+			],
+		},
+	}
+	levels.append(new_level)
+	root["levels"] = levels
+
+	var wf := FileAccess.open("res://data/levels.json", FileAccess.WRITE)
+	if not wf:
+		_set_status("Couldn't create nested level — cannot write levels.json")
+		return ""
+	wf.store_string(JSON.stringify(root, "\t"))
+	wf.close()
+	_set_status("Created nested level \"%s\" (%s)" % [new_name, new_id])
+	return new_id
+
+
+# Saves the CURRENT level first (so the link just created/edited isn't lost),
+# then opens the linked level for editing in this same session — round-trip
+# back via Load Level when done, same as opening any other saved level.
+func _edit_nested_child_level(target_id: String) -> void:
+	if target_id.strip_edges().is_empty():
+		_set_status("Set a child level id first")
+		return
+	if not _lname.strip_edges().is_empty() and _lname != "Untitled Apartment":
+		_save_level()
+	var lf := FileAccess.open("res://data/levels.json", FileAccess.READ)
+	if not lf:
+		_set_status("Couldn't open the linked level — cannot open levels.json")
+		return
+	var lj := JSON.new()
+	if lj.parse(lf.get_as_text()) != OK:
+		lf.close()
+		_set_status("Couldn't open the linked level — levels.json parse error")
+		return
+	lf.close()
+	for lv in (lj.get_data() as Dictionary).get("levels", []) as Array:
+		if (lv as Dictionary).get("id", "") == target_id:
+			_load_from_dict(lv as Dictionary)
+			_set_status("Editing \"%s\"" % target_id)
+			return
+	_set_status("No saved level with id \"%s\" — use ＋ New, or save one with that id first" % target_id)
 
 
 func _load_dialog() -> void:
