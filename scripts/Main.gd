@@ -905,7 +905,16 @@ func _on_box_entered(box: Furniture) -> void:
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
-	_nested_stack.append({"parent_level_id": _current_level_id, "daylight_factor": factor})
+	# Remembers whether the level being left was in post-win "Watch Again"
+	# (tenant showcase looping in read-only 3D) so stepping back out of the
+	# box can resume it — _load_level() unconditionally resets
+	# _post_win_view to false for the level it's loading, which otherwise
+	# silently killed the showcase the moment you stepped into any box.
+	_nested_stack.append({
+		"parent_level_id": _current_level_id,
+		"daylight_factor": factor,
+		"was_post_win_view": _post_win_view,
+	})
 	_current_nested_daylight_factor = factor
 	_load_level(box.child_level_id)
 	if _level_state_cache.has(box.child_level_id):
@@ -1102,7 +1111,13 @@ func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
 # can appear together (a box's interior containing its own box).
 func _refresh_nested_plan_panel() -> void:
 	_ensure_nested_plan_row()
+	# remove_child (not just queue_free, which is deferred) so the old cards
+	# are actually gone from get_children() before the fresh ones below are
+	# added — otherwise every refresh call left the previous set still
+	# parented until end of frame and the row just kept accumulating cards,
+	# shifting everything left on each click instead of replacing them.
 	for c in _nested_plan_row.get_children():
+		_nested_plan_row.remove_child(c)
 		c.queue_free()
 
 	# Nearest ancestor first (leftmost) — the immediate parent is the most
@@ -1177,13 +1192,22 @@ func _exit_nested_level_to(index: int) -> void:
 	if _nested_transition_busy or index < 0 or index >= _nested_stack.size():
 		return
 	_nested_transition_busy = true
-	var target_id := (_nested_stack[index] as Dictionary)["parent_level_id"] as String
+	var ctx := _nested_stack[index] as Dictionary
+	var target_id := ctx["parent_level_id"] as String
+	var resume_post_win := ctx.get("was_post_win_view", false) as bool
 	_nested_stack.resize(index)
 	_level_state_cache[_current_level_id] = _snapshot_level_state()
 	_current_nested_daylight_factor = 1.0
 	_load_level(target_id)
 	if _level_state_cache.has(target_id):
 		_apply_level_state_snapshot(_level_state_cache[target_id])
+	# _load_level() always resets _post_win_view to false — if the level
+	# we're landing back on was in "Watch Again" (tenant showcase looping in
+	# read-only 3D) before we stepped into the box, resume that exactly the
+	# way _on_watch_again_reveal() first starts it, instead of leaving the
+	# player looking at a silently-reset, editable, showcase-less level.
+	if resume_post_win:
+		_on_watch_again_reveal()
 	_nested_transition_busy = false
 
 
