@@ -130674,6 +130674,277 @@
 				"name": "(nested)",
 				"required_functions": []
 			}
+		},
+		{
+			"id": "debug:_mobility_tiers",
+			"name": "Debug: Mobility Tiers",
+			"district": "Debug",
+			"is_tutorial": true,
+			"block": 0,
+			"map_col": 6,
+			"map_row": 0,
+			"min_stars": 0,
+			"funds_base_reward": 0,
+			"acquisition_cost": 0,
+			"starting_budget": 1500,
+			"allowed_furniture": [],
+			"starting_inventory": [],
+			"apartment": {
+				"grid_w": 36,
+				"grid_h": 36,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				],
+				"floors": [
+					{
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"type": "floor",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": [
+							{
+								"x1": 1,
+								"x2": 33,
+								"y1": 1,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 33,
+								"x2": 33,
+								"y1": 1,
+								"y2": 33,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 33,
+								"x2": 1,
+								"y1": 33,
+								"y2": 33,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 1,
+								"x2": 1,
+								"y1": 33,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							}
+						]
+					},
+					{
+						"id": "fl_0_ceil",
+						"label": "Ground Floor Ceiling",
+						"type": "ceiling",
+						"parent_id": "fl_0",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					},
+					{
+						"id": "roof",
+						"label": "Roof / Techo",
+						"type": "roof",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					}
+				]
+			},
+			"moments": [
+				{
+					"id": "day",
+					"label": "Day",
+					"needs": [
+						"work",
+						"sit"
+					]
+				},
+				{
+					"id": "night",
+					"label": "Night",
+					"needs": [
+						"storage",
+						"sit"
+					]
+				}
+			],
+			"starting_furniture": [
+				{
+					"id": "sofa",
+					"x": 2,
+					"y": 2
+				},
+				{
+					"id": "wardrobe",
+					"x": 2,
+					"y": 14
+				},
+				{
+					"id": "dresser",
+					"x": 17,
+					"y": 14
+				},
+				{
+					"id": "desk",
+					"x": 2,
+					"y": 25
+				},
+				{
+					"id": "dining_chair",
+					"x": 17,
+					"y": 25
+				},
+				{
+					"id": "stool",
+					"x": 25,
+					"y": 25
+				}
+			],
+			"tenant": {
+				"name": "Debug Tenant",
+				"age": "30",
+				"flavor": "Debug level for the 3 mobility tiers + Moments. Sofa = red (shares one position across every Moment — try dragging it, watch the notice, then try dragging it onto wherever the chair sits in the OTHER moment to see it get blocked). Wardrobe = red but on a rail (still slides per-Moment, the exception). Desk & Dresser = yellow (watch the comfort meter appear/drop as you move them away from their starting spot, and recover if you move them back — move both far enough to see the 'can't be solved' warning). Chair & Stool = green (freely movable, can sit somewhere different in each Moment, no comfort cost).",
+				"required_functions": [
+					"work",
+					"sit",
+					"storage"
+				],
+				"monthly_rent": 0
+			}
+		},
+		{
+			"id": "debug:_stacking",
+			"name": "Debug: Furniture Stacking",
+			"district": "Debug",
+			"is_tutorial": true,
+			"block": 0,
+			"map_col": 10,
+			"map_row": 0,
+			"min_stars": 0,
+			"funds_base_reward": 0,
+			"acquisition_cost": 0,
+			"starting_budget": 1000,
+			"allowed_furniture": [],
+			"starting_inventory": [],
+			"apartment": {
+				"grid_w": 30,
+				"grid_h": 30,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				],
+				"floors": [
+					{
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"type": "floor",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": [
+							{
+								"x1": 1,
+								"x2": 27,
+								"y1": 1,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 27,
+								"x2": 27,
+								"y1": 1,
+								"y2": 27,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 27,
+								"x2": 1,
+								"y1": 27,
+								"y2": 27,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 1,
+								"x2": 1,
+								"y1": 27,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							}
+						]
+					},
+					{
+						"id": "fl_0_ceil",
+						"label": "Ground Floor Ceiling",
+						"type": "ceiling",
+						"parent_id": "fl_0",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					},
+					{
+						"id": "roof",
+						"label": "Roof / Techo",
+						"type": "roof",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					}
+				]
+			},
+			"moments": [],
+			"starting_furniture": [
+				{
+					"id": "desk",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "nightstand",
+					"x": 18,
+					"y": 3
+				}
+			],
+			"tenant": {
+				"name": "Debug Tenant",
+				"age": "30",
+				"flavor": "Debug level for furniture stacking. The Desk (capacity 6) and Nightstand (capacity 8) are both valid surfaces. Buy small items (Desk Lamp, Square Table Lamp, Book Stack, weight ~1) from the shop and stack a few on either surface — they should fit and the surface's remaining capacity goes down each time. Then try stacking something heavier (a Stool, weight 9, or anything bigger) — it should be rejected with a 'would break' message and the exact numbers. Bare floor placement is unaffected either way.",
+				"required_functions": [],
+				"monthly_rent": 0
+			}
 		}
 	]
 }
