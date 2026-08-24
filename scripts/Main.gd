@@ -1150,6 +1150,17 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 		return
 	gm.budget = snapshot.get("budget", gm.budget) as int
 	gm.budget_changed.emit(gm.budget)
+	# Freeing then respawning furniture one-by-one below fires
+	# furniture_changed → _refresh_functions() → _update_rent_btn() on every
+	# single step, and an in-between state (partway through respawning) can
+	# spuriously look "complete" for a moment even when the final state
+	# won't be — with _rent_auto_armed already true (set at the end of the
+	# _load_level() call that happens right before this one runs), that edge
+	# was firing the completion reveal on ordinary nested-level navigation.
+	# Disarm for the duration of the rebuild, same as _load_level() already
+	# does for its own initial spawn, and only re-evaluate once at the end.
+	var _was_armed := _rent_auto_armed
+	_rent_auto_armed = false
 	var floors_snap := snapshot.get("floors", {}) as Dictionary
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
@@ -1176,6 +1187,8 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 			if d.get("is_extended", false) as bool and f.foldable:
 				f.toggle_fold()
 	_refresh_functions()
+	_rent_auto_armed = _was_armed
+	_update_rent_btn()
 
 
 # How much daylight reaches the box's interior from outside, given the
