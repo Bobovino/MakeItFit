@@ -1840,7 +1840,50 @@ func _content_bounds_tiles() -> Rect2i:
 		and _segments.is_empty() and _rails.is_empty() and _reveal_zones.is_empty() and _cols.is_empty()
 	if empty:
 		return Rect2i(_gw / 2 - EMPTY_VIEW_TILES / 2, _gh / 2 - EMPTY_VIEW_TILES / 2, EMPTY_VIEW_TILES, EMPTY_VIEW_TILES)
-	return Rect2i(0, 0, _gw, _gh)
+	# Tight bounds around the actual occupied tiles, not the whole _gw x _gh
+	# canvas — content isn't necessarily near the origin (a brand new level's
+	# default empty view is centred in the middle of the canvas, so a room's
+	# first walls end up drawn around there, not at (0,0)), and _gw/_gh on a
+	# freshly loaded level reflect the SAVED grid size, which measures from
+	# (0,0) to the furthest painted tile without re-centring content. Fitting
+	# to the literal whole canvas in that case made a normal-sized room look
+	# like an invisible speck off in a far corner.
+	const BOUNDS_MARGIN := 3
+	var mnx := 1 << 30; var mny := 1 << 30
+	var mxx := -(1 << 30); var mxy := -(1 << 30)
+	for p: Vector2i in _floor_mask.keys():
+		mnx = mini(mnx, p.x); mny = mini(mny, p.y)
+		mxx = maxi(mxx, p.x); mxy = maxi(mxy, p.y)
+	for p: Vector2i in _mezzanine_mask.keys():
+		mnx = mini(mnx, p.x); mny = mini(mny, p.y)
+		mxx = maxi(mxx, p.x); mxy = maxi(mxy, p.y)
+	for p: Vector2i in _stair_mask.keys():
+		mnx = mini(mnx, p.x); mny = mini(mny, p.y)
+		mxx = maxi(mxx, p.x); mxy = maxi(mxy, p.y)
+	for seg in _segments:
+		var sd := seg as Dictionary
+		for xy in [[sd["x1"], sd["y1"]], [sd["x2"], sd["y2"]]]:
+			mnx = mini(mnx, xy[0] as int); mny = mini(mny, xy[1] as int)
+			mxx = maxi(mxx, xy[0] as int); mxy = maxi(mxy, xy[1] as int)
+	for r in _rails:
+		var rd := r as Dictionary
+		mnx = mini(mnx, mini(rd["x1"] as int, rd["x2"] as int)); mny = mini(mny, mini(rd["y1"] as int, rd["y2"] as int))
+		mxx = maxi(mxx, maxi(rd["x1"] as int, rd["x2"] as int)); mxy = maxi(mxy, maxi(rd["y1"] as int, rd["y2"] as int))
+	for rz in _reveal_zones:
+		var zd := rz as Dictionary
+		mnx = mini(mnx, mini(zd["x1"] as int, zd["x2"] as int)); mny = mini(mny, mini(zd["y1"] as int, zd["y2"] as int))
+		mxx = maxi(mxx, maxi(zd["x1"] as int, zd["x2"] as int)); mxy = maxi(mxy, maxi(zd["y1"] as int, zd["y2"] as int))
+	for c in _cols:
+		var cd := c as Dictionary
+		mnx = mini(mnx, cd["x"] as int); mny = mini(mny, cd["y"] as int)
+		mxx = maxi(mxx, cd["x"] as int); mxy = maxi(mxy, cd["y"] as int)
+	for pf in _placed_furniture:
+		var pfd := pf as Dictionary
+		var px := pfd.get("x", 0) as int; var py := pfd.get("y", 0) as int
+		mnx = mini(mnx, px); mny = mini(mny, py)
+		mxx = maxi(mxx, px); mxy = maxi(mxy, py)
+	return Rect2i(mnx - BOUNDS_MARGIN, mny - BOUNDS_MARGIN,
+		(mxx - mnx) + BOUNDS_MARGIN * 2 + 1, (mxy - mny) + BOUNDS_MARGIN * 2 + 1)
 
 
 # Tight bounds around just the wall segments actually drawn, padded by a
