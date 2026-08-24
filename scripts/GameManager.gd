@@ -15,6 +15,27 @@ var moment_verified: Dictionary = {}  # moment_id -> bool; true once its needs w
 var zone_separations: Array = []     # [[ [fnsA], [fnsB] ], ...] — groups that must be in separate zones
 var current_zones: Array = []        # latest zone snapshot from the active floor
 
+# Sightline requirements: [{from:[x,y], to:[x,y], must_be_clear:bool, label:String}].
+# must_be_clear=true means the tenant's win condition needs a clear line
+# ("ver el amanecer" from the bed to a sunrise-facing window); false means it
+# must stay BLOCKED (the "overprotective parents" case — a supervision point
+# must NOT have a direct line into a teen's private zone). Checked against
+# Floor.has_sightline() — see Main.gd's _refresh_functions(), which is the
+# only place that actually has a Floor reference to evaluate these against.
+var sightline_requirements: Array = []
+var sightline_ok: bool = true
+
+# External zones & restrictions — noise/smells/birds/municipal ordinances
+# from outside the apartment. Two concrete effects, kept simple on purpose:
+#  - "forbidden_functions": functions an ordinance bans outright for this
+#    level (e.g. a heritage-protected building forbidding "balcony").
+#  - "min_boundary_distance": {function: tiles} — a function's furniture must
+#    sit at least that many tiles from the outer wall (a bedroom needing
+#    setback from a noisy/smelly street, or bird nests putting the kitchen
+#    window off-limits for anything requiring it to be flush against a wall).
+var external_restrictions: Dictionary = {}
+var external_zone_ok: bool = true
+
 var furniture_data: Dictionary = {}
 var levels_data: Dictionary = {}
 
@@ -50,6 +71,10 @@ func load_level(level_id: String) -> void:
 		var _tenant := (current_level.get("tenant", {}) as Dictionary)
 		required_functions = _tenant.get("required_functions", []).duplicate() as Array
 		zone_separations   = _tenant.get("zone_separations",   []).duplicate(true) as Array
+		sightline_requirements = _tenant.get("sightline_requirements", []).duplicate(true) as Array
+		sightline_ok = true
+		external_restrictions = (current_level.get("external_zone", {}) as Dictionary).duplicate(true)
+		external_zone_ok = true
 		fulfilled_functions = []
 		current_zones = []
 		allowed_furniture  = (current_level.get("allowed_furniture",  []) as Array).duplicate()
@@ -70,6 +95,10 @@ func load_level(level_id: String) -> void:
 			moment_verified = {}
 			required_functions = level["tenant"]["required_functions"].duplicate()
 			zone_separations   = (level.get("tenant", {}) as Dictionary).get("zone_separations", []).duplicate(true) as Array
+			sightline_requirements = (level.get("tenant", {}) as Dictionary).get("sightline_requirements", []).duplicate(true) as Array
+			sightline_ok = true
+			external_restrictions = (level.get("external_zone", {}) as Dictionary).duplicate(true)
+			external_zone_ok = true
 			fulfilled_functions = []
 			current_zones = []
 			allowed_furniture  = (level.get("allowed_furniture",  []) as Array).duplicate()
@@ -112,6 +141,11 @@ func buy_furniture(furniture_id: String) -> bool:
 	var f := get_furniture_by_id(furniture_id)
 	if f.is_empty() or budget < f["buy_price"]:
 		return false
+	var forbidden := external_restrictions.get("forbidden_functions", []) as Array
+	if not forbidden.is_empty():
+		for fn in (f.get("functions", []) as Array):
+			if fn in forbidden:
+				return false
 	budget -= f["buy_price"]
 	budget_changed.emit(budget)
 	return true
@@ -168,7 +202,7 @@ func _functions_of(entry, moment_id: String = "") -> Array:
 
 
 func update_functions(placed_furniture: Array, extra_functions: Array = [], active_moment_id: String = "",
-		free_tiles_by_moment: Dictionary = {}) -> void:
+		free_tiles_by_moment: Dictionary = {}, free_window_tiles_by_moment: Dictionary = {}) -> void:
 	fulfilled_functions = []
 	for entry in placed_furniture:
 		for fn in _functions_of(entry, active_moment_id):
@@ -201,10 +235,23 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 			# up more room than unfolded ones).
 			var space_needs := m.get("space_needs", {}) as Dictionary
 			if not space_needs.is_empty():
-				var free := free_tiles_by_moment.get(mid, 0) as int
+				var free        := free_tiles_by_moment.get(mid, 0) as int
+				var free_window := free_window_tiles_by_moment.get(mid, 0) as int
 				for fn in space_needs:
-					var min_free := space_needs[fn] as int
-					if free >= min_free and fn not in m_fulfilled:
+					var need_val = space_needs[fn]
+					var min_free: int
+					var near_window := false
+					# Backward-compatible: a plain int means "N free tiles
+					# anywhere" (e.g. "sport"); a dict opts into requiring
+					# those free tiles be near a window (e.g. "ventilation",
+					# "light" — a clear tile in a windowless closet shouldn't count).
+					if need_val is Dictionary:
+						min_free    = (need_val as Dictionary).get("min_free", 0) as int
+						near_window = (need_val as Dictionary).get("near_window", false) as bool
+					else:
+						min_free = need_val as int
+					var available := free_window if near_window else free
+					if available >= min_free and fn not in m_fulfilled:
 						m_fulfilled.append(fn)
 			var currently_met := true
 			for need in m_needs:
@@ -225,6 +272,51 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 
 func update_zones(zones: Array) -> void:
 	current_zones = zones
+
+
+# Checks the "min_boundary_distance" side of external_restrictions: any piece
+# providing a restricted function must sit far enough from the outer wall.
+# Called alongside update_functions/update_sightlines from Main.gd's
+# _refresh_functions(), which has both the live Furniture list and Floor ref.
+func update_external_zone(apt_floor, placed_furniture: Array, active_moment_id: String) -> void:
+	var min_dist := external_restrictions.get("min_boundary_distance", {}) as Dictionary
+	if min_dist.is_empty():
+		external_zone_ok = true
+		return
+	for entry in placed_furniture:
+		if not (entry is Furniture):
+			continue
+		var fur := entry as Furniture
+		for fn in _functions_of(fur, active_moment_id):
+			if not min_dist.has(fn):
+				continue
+			var need := min_dist[fn] as int
+			for t in fur.get_occupied_tiles_for_moment(active_moment_id):
+				if apt_floor.min_distance_to_wall(t) < need:
+					external_zone_ok = false
+					return
+	external_zone_ok = true
+
+
+# Re-evaluates every sightline_requirements entry against the live floor
+# layout. Called from Main.gd's _refresh_functions() (the only place holding
+# a real Floor reference) every time furniture changes.
+func update_sightlines(apt_floor) -> void:
+	if sightline_requirements.is_empty():
+		sightline_ok = true
+		return
+	for req in sightline_requirements:
+		var r := req as Dictionary
+		var from_arr := r.get("from", [0, 0]) as Array
+		var to_arr   := r.get("to",   [0, 0]) as Array
+		var from_tile := Vector2i(from_arr[0] as int, from_arr[1] as int)
+		var to_tile   := Vector2i(to_arr[0]   as int, to_arr[1]   as int)
+		var clear: bool = apt_floor.has_sightline(from_tile, to_tile)
+		var must_be_clear := r.get("must_be_clear", true) as bool
+		if clear != must_be_clear:
+			sightline_ok = false
+			return
+	sightline_ok = true
 
 
 func _zone_fns_for_moment(zone: Dictionary, m_needs: Array) -> Array:
@@ -276,6 +368,10 @@ func check_zone_separations() -> bool:
 
 func check_win() -> bool:
 	if not check_zone_separations():
+		return false
+	if not sightline_ok:
+		return false
+	if not external_zone_ok:
 		return false
 	if moments.is_empty():
 		for req in required_functions:

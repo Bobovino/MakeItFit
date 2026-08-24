@@ -40,6 +40,7 @@ var _owned_catalog: Array = []
 @onready var item_list: VBoxContainer   = $ScrollContainer/ItemList
 
 var _filter_box: HBoxContainer = null
+var _category_buttons: Dictionary = {}     # Category enum value -> Button
 var _sub_filter_box: Container = null
 var _sub_filter_separator: HSeparator = null
 var _sub_filter_buttons: Dictionary = {}   # category name -> Button
@@ -94,6 +95,7 @@ func _ensure_filter_box() -> void:
 		btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
 		btn.pressed.connect(_set_category.bind(cat))
 		_filter_box.add_child(btn)
+		_category_buttons[cat] = btn
 
 	# Fixed 2-column grid — same column count as the item cell grid below, so
 	# the icon rows line up with the furniture grid instead of a flowing wrap
@@ -151,6 +153,31 @@ func _ensure_filter_box() -> void:
 	root.add_child(_sub_filter_box)
 	root.add_child(scroll)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+
+# Opens the catalog pre-filtered to the category/sub-category the player just
+# picked on CategoryWheel — the wheel only ever navigates, it never touches
+# _full_list or _render() itself, so this just drives the same state the
+# existing tab buttons already drive and reuses _render() unchanged.
+func open_for_category(category: int, sub_category: String) -> void:
+	_category = category
+	_sub_category = sub_category if sub_category != "" else "All"
+	if _category != Category.BUILDER:
+		_builder_tool = ""
+	if is_instance_valid(_sub_filter_box):
+		_sub_filter_box.visible = (_category == Category.FURNITURE)
+	if is_instance_valid(_sub_filter_separator):
+		_sub_filter_separator.visible = (_category == Category.FURNITURE)
+	_sync_filter_buttons()
+	visible = true
+	_render()
+
+
+func _sync_filter_buttons() -> void:
+	for cat in _category_buttons:
+		(_category_buttons[cat] as Button).button_pressed = (cat == _category)
+	for sub in _sub_filter_buttons:
+		(_sub_filter_buttons[sub] as Button).button_pressed = (sub == _sub_category)
 
 
 func _set_category(cat: int) -> void:

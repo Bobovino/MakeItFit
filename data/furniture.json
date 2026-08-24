@@ -1,6 +1,25 @@
 {
   "furniture": [
     {
+      "id": "shoebox_apartment",
+      "name": "Nested Apartment (Shoebox)",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 5,
+      "floor_depth": 6,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": 0,
+      "sell_price": 0,
+      "color": "d8c8a0",
+      "is_nested_box": true,
+      "child_level_id": "debug:_nested_child",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb"
+    },
+    {
       "id": "normal_bed",
       "name": "Bed",
       "placement": "floor",
@@ -87,7 +106,7 @@
     {
       "id": "murphy_bed",
       "name": "Murphy Bed",
-      "placement": "wall",
+      "placement": "floor",
       "size": {
         "w": 9,
         "h": 3
@@ -106,8 +125,9 @@
       "extended_functions": [
         "sleep"
       ],
-      "model": "res://assets/models/furniture/cabinetBed.glb",
-      "model_extended": "res://assets/models/furniture/murphyBedUnfolded.glb"
+      "model": "res://assets/models/furniture/murphyBedAnimated.glb",
+      "animated_fold": true,
+      "wall_flush_required": true
     },
     {
       "id": "balcony_window",
@@ -132,7 +152,8 @@
         "balcony"
       ],
       "model": "res://assets/models/furniture/balconyWindow.glb",
-      "animated_fold": true
+      "animated_fold": true,
+      "wall_flush_required": true
     },
     {
       "id": "futon",
@@ -159,8 +180,8 @@
       "buy_price": 280,
       "sell_price": 100,
       "color": "c8a870",
-      "model": "res://assets/models/furniture/loungeSofa.glb",
-      "model_extended": "res://assets/models/furniture/bedSingle.glb"
+      "model": "res://assets/models/furniture/futonAnimated.glb",
+      "animated_fold": true
     },
     {
       "id": "sofa",
@@ -207,8 +228,8 @@
       "buy_price": 450,
       "sell_price": 200,
       "color": "b86838",
-      "model": "res://assets/models/furniture/loungeSofaLong.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb"
+      "model": "res://assets/models/furniture/sofaBedAnimated.glb",
+      "animated_fold": true
     },
     {
       "id": "lounge_chair",
@@ -320,7 +341,9 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "6a9e78",
-      "model": "res://assets/models/furniture/desk.glb"
+      "model": "res://assets/models/furniture/desk.glb",
+      "is_surface": true,
+      "max_support_weight": 6
     },
     {
       "id": "small_desk",
@@ -383,7 +406,9 @@
       "buy_price": 250,
       "sell_price": 100,
       "color": "b09060",
-      "model": "res://assets/models/furniture/table.glb"
+      "model": "res://assets/models/furniture/table.glb",
+      "is_surface": true,
+      "max_support_weight": 10
     },
     {
       "id": "coffee_table",
@@ -395,6 +420,8 @@
       },
       "wall_h": 4,
       "floor_depth": 5,
+      "is_surface": true,
+      "max_support_weight": 5,
       "functions": [
         "sit"
       ],
@@ -1014,6 +1041,8 @@
       "buy_price": 40,
       "sell_price": 15,
       "color": "d4b060",
+      "weight": 1,
+      "requires_surface": true,
       "model": "res://assets/models/furniture/lampRoundTable.glb"
     },
     {
@@ -1985,6 +2014,8 @@
       "buy_price": 45,
       "sell_price": 15,
       "color": "d4b060",
+      "weight": 1,
+      "requires_surface": true,
       "model": "res://assets/models/furniture/lampSquareTable.glb"
     },
     {

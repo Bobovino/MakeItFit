@@ -34,6 +34,10 @@ var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
 var floor_mask:     Dictionary = {}   # Vector2i -> true; empty = whole grid is floor
 var floor_kind:     Dictionary = {}   # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 var mezzanine_mask: Dictionary = {}   # Vector2i -> true; mezzanine/loft tiles
+# Total furniture weight (Furniture.weight) the mezzanine structure can carry
+# before it's considered overloaded — see can_place()'s mezzanine load check.
+# Scales with mezzanine area so a bigger loft can carry more, by default.
+var mezzanine_max_load: float = 0.0
 var stair_mask:     Dictionary = {}   # Vector2i -> true; stair tiles
 var shadow_mask:    Dictionary = {}   # Vector2i -> true; parent floor ghost (LevelEditor loft view only)
 var below_floor:    Floor      = null # the "floor"-type floor stacked directly below this one, if any (gameplay 2D/3D ghost-below reference — see Main.gd's _floor_below_id)
@@ -53,6 +57,13 @@ var floor_z_offset: int = 0       # global Z of this floor's floor level (tiles)
 var zones: Array = []             # [{tiles:Dictionary, functions:Array[String]}] — recalculated on furniture change
 var wall_items: Dictionary = {}   # "north" -> { Vector2i origin -> fid }
 var _light_map: Dictionary = {}   # Vector2i -> float  (0.0 dark … 1.0 full sunlight)
+# For a nested/parabox apartment (this Floor is the interior of a "box" prop
+# placed inside another, bigger apartment): how much of the outside daylight
+# actually reaches this floor's own windows, 1.0 = unobstructed. Set from
+# outside (see Main.gd's _update_nested_box_occlusion()) by checking whether
+# the parent apartment has tall/medium furniture sitting in front of the box
+# in the parent's own grid — a real cross-frame interaction, not just cosmetic.
+var external_daylight_factor: float = 1.0
 
 # Live drag previews so the floor plan and Wall Inspector mirror each other
 # while a piece is being dragged, not just after it's dropped.
@@ -365,6 +376,16 @@ func get_light(tile: Vector2i) -> float:
 	return _light_map.get(tile, 0.0)
 
 
+func set_external_daylight_factor(factor: float) -> void:
+	factor = clampf(factor, 0.0, 1.0)
+	if is_equal_approx(factor, external_daylight_factor):
+		return
+	external_daylight_factor = factor
+	_compute_light_map()
+	if grid_draw:
+		grid_draw.queue_redraw()
+
+
 func _compute_light_map() -> void:
 	_light_map.clear()
 	var blocked := _partition_tile_set()
@@ -390,7 +411,7 @@ func _compute_light_map() -> void:
 					else:
 						tile = Vector2i(x1 + side, mn_y + wp + i)
 					if is_floor_tile(tile) and tile not in _light_map:
-						_light_map[tile] = 1.0
+						_light_map[tile] = external_daylight_factor
 						queue.append(tile)
 	else:
 		# Seed every window tile at full intensity (old format)
@@ -408,7 +429,7 @@ func _compute_light_map() -> void:
 					"west":  tile = Vector2i(0, wx + i)
 					"east":  tile = Vector2i(grid_w - 1, wx + i)
 				if not (tile in _light_map):
-					_light_map[tile] = 1.0
+					_light_map[tile] = external_daylight_factor
 					queue.append(tile)
 
 	# BFS — propagate maximum intensity, skip already-higher tiles
@@ -470,6 +491,11 @@ func setup(floor_data: Dictionary) -> void:
 		mezzanine_mask.clear()
 		for t in floor_data.get("mezzanine_tiles", []):
 			mezzanine_mask[Vector2i(t[0] as int, t[1] as int)] = true
+		# 6.0 weight units per tile of mezzanine structure is an arbitrary but
+		# workable default (roughly "a couple of medium pieces per tile" given
+		# Furniture.weight's own footprint-area default) — authored floors can
+		# override it explicitly via "mezzanine_max_load" for a sturdier/flimsier loft.
+		mezzanine_max_load = floor_data.get("mezzanine_max_load", mezzanine_mask.size() * 6.0) as float
 		stair_mask.clear()
 		stairs_data.clear()
 		# New format: structured stairs array with rect + direction
@@ -976,6 +1002,35 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = "Must be placed against a wall"
 			return false
 
+	# Weight & structural support (see Furniture.gd's weight/is_surface/
+	# requires_surface fields). Two independent checks:
+	#  - a piece landing on mezzanine tiles must not push the loft's total
+	#    carried weight past what it can structurally support;
+	#  - a piece that needs a supporting surface (a lamp, a small decorative
+	#    item) must land fully on top of a furniture piece flagged is_surface,
+	#    with enough spare capacity for its own weight.
+	var target_tiles := _rect_tiles(at, furniture.grid_w, furniture.grid_h)
+	var on_mezzanine := false
+	for tile in target_tiles:
+		if mezzanine_mask.get(tile, false):
+			on_mezzanine = true
+			break
+	if on_mezzanine and mezzanine_max_load > 0.0:
+		var projected_load := _mezzanine_load(furniture) + furniture.weight
+		if projected_load > mezzanine_max_load:
+			_block_reason = "Too heavy for this loft (%.0f / %.0f)" % [projected_load, mezzanine_max_load]
+			return false
+
+	if furniture.requires_surface:
+		var support := _surface_support_at(target_tiles, furniture)
+		if support == null:
+			_block_reason = "Needs a table or shelf underneath"
+			return false
+		var spare: float = (support.max_support_weight) - _surface_load(support, furniture)
+		if furniture.weight > spare:
+			_block_reason = support.furniture_name + " can't hold any more weight"
+			return false
+
 	# Furniture-vs-furniture overlap: precise continuous rects + Z-range test,
 	# not tile-quantized — two pieces can sit flush at a fractional boundary
 	# without a false collision from tile rounding.
@@ -1385,6 +1440,87 @@ func get_all_furniture() -> Array:
 	return _get_all_placed_unique()
 
 
+# Straight-line-of-sight test between two tiles, e.g. "can this bed see the
+# sunrise through that window" or "can someone standing at the front door see
+# into the bedroom" (the overprotective-parent case). Walks a Bresenham line
+# tile-by-tile; a wall or a "tall" piece of furniture fully blocks the line
+# (same height rule _compute_light_map() uses for light), "medium"/"low"
+# furniture doesn't block a sightline (you can see over/around it even if it
+# dims ambient light) — sightline blocking is specifically about eye-level
+# obstruction, not the softer light-falloff model.
+func has_sightline(from: Vector2i, to: Vector2i) -> bool:
+	var blocked := _partition_tile_set()
+	var x0 := from.x; var y0 := from.y
+	var x1 := to.x;   var y1 := to.y
+	var dx := absi(x1 - x0); var sx := 1 if x0 < x1 else -1
+	var dy := -absi(y1 - y0); var sy := 1 if y0 < y1 else -1
+	var err := dx + dy
+	while true:
+		var tile := Vector2i(x0, y0)
+		if tile != from and tile != to:
+			if tile in blocked:
+				return false
+			for f in _placed_list(tile):
+				if (f as Furniture).height_category == "tall":
+					return false
+		if x0 == x1 and y0 == y1:
+			break
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy; x0 += sx
+		if e2 <= dx:
+			err += dx; y0 += sy
+	return true
+
+
+# Total weight already resting on this floor's mezzanine tiles, excluding
+# `exclude` itself (the piece being moved/re-checked shouldn't count against
+# its own new placement).
+func _mezzanine_load(exclude: Furniture = null) -> float:
+	var counted: Dictionary = {}   # avoid double-counting a piece spanning multiple mezzanine tiles
+	var total := 0.0
+	for tile in mezzanine_mask:
+		for f in _placed_list(tile):
+			var fur := f as Furniture
+			if fur == exclude or counted.has(fur):
+				continue
+			counted[fur] = true
+			total += fur.weight
+	return total
+
+
+# Finds a furniture piece flagged is_surface whose footprint fully covers
+# `tiles` (so a small requires_surface item can't half-hang off the edge of
+# its support), or null if none does.
+func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		if fur == exclude or not fur.is_surface:
+			continue
+		var covers_all := true
+		for tile in tiles:
+			if not _placed_list(tile).has(fur):
+				covers_all = false
+				break
+		if covers_all:
+			return fur
+	return null
+
+
+# Combined weight of everything already resting on `support`, excluding `exclude`.
+func _surface_load(support: Furniture, exclude: Furniture = null) -> float:
+	var counted: Dictionary = {}
+	var total := 0.0
+	for tile in _rect_tiles(support.grid_pos, support.grid_w, support.grid_h):
+		for f in _placed_list(tile):
+			var fur := f as Furniture
+			if fur == support or fur == exclude or counted.has(fur) or not fur.requires_surface:
+				continue
+			counted[fur] = true
+			total += fur.weight
+	return total
+
+
 # Open floor tiles for a given moment — total walkable tiles minus whatever
 # every piece of furniture occupies UNDER THAT MOMENT's own fold state (a
 # sofa bed unfolded for Night blocks more floor than it does folded for Day).
@@ -1413,6 +1549,55 @@ func count_free_tiles_for_moment(moment_id: String) -> int:
 		if not occupied.has(t):
 			free += 1
 	return free
+
+
+# Same idea as count_free_tiles_for_moment, but only counts free tiles that
+# also receive real daylight (light map > threshold) — used for space_needs
+# like "ventilation"/"light" that specifically require open floor NEAR a
+# window, as opposed to "sport" which just needs open floor anywhere.
+func count_free_window_tiles_for_moment(moment_id: String, light_threshold: float = 0.15) -> int:
+	var floor_tiles_set: Dictionary
+	if not floor_mask.is_empty():
+		floor_tiles_set = floor_mask.duplicate()
+	else:
+		floor_tiles_set = {}
+		var b := get_room_bounds()
+		for x in range(b.position.x, b.position.x + b.size.x):
+			for y in range(b.position.y, b.position.y + b.size.y):
+				floor_tiles_set[Vector2i(x, y)] = true
+
+	var blocked := _partition_tile_set()
+	var occupied: Dictionary = {}
+	for item in get_all_furniture():
+		var f := item as Furniture
+		for t in f.get_occupied_tiles_for_moment(moment_id):
+			occupied[t] = true
+
+	var free := 0
+	for t in floor_tiles_set:
+		if t in blocked or occupied.has(t):
+			continue
+		if get_light(t) >= light_threshold:
+			free += 1
+	return free
+
+
+# Straight-line tile distance from `tile` to the nearest wall/room boundary
+# (an approximation of "how exposed is this spot to the street outside" —
+# used for external-zone restrictions like noise/smell/bird setbacks, see
+# GameManager.check_external_restrictions()). Cheap orthogonal-scan distance
+# rather than a true geodesic BFS — good enough for "is this near an edge".
+func min_distance_to_wall(tile: Vector2i) -> int:
+	var blocked := _partition_tile_set()
+	var best := 999
+	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var d := 0
+		var t := tile
+		while is_floor_tile(t) and t not in blocked:
+			d += 1
+			t += dir
+		best = mini(best, d - 1)
+	return maxi(best, 0)
 
 
 func get_inaccessible_furniture() -> Array:

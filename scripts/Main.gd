@@ -23,12 +23,13 @@ const BOT_Y     := 720.0      # bottom of the play area — full window height n
 							   # the furniture/tenant panels are side columns, not a bottom bar
 const FIT_PCT   := 0.95       # fraction of available area to fill
 
-# ── Left/right sidebars ─────────────────────────────────────────────────────
-# Furniture shop (left) and the compact tenant-needs tracker (right) are full-
-# height side columns now, so the floor plan / wall view / 3D view get the
-# entire remaining width instead of sharing it with a bottom strip.
-const LEFT_X  := 170.0    # furniture sidebar width — fits the 2-column item grid plus the panel's own margins and scrollbar
-const RIGHT_X := 1280.0   # play area now runs the full width — TenantCard floats as an overlay, not a reserved column
+# ── Play-area bounds ────────────────────────────────────────────────────────
+# The floor plan / wall view / 3D view get the entire window width — the old
+# always-docked Inventory sidebar that used to reserve LEFT_X's 170px is gone
+# (see the furniture wheel/catalog flow below); TenantCard and the furniture
+# menu button/wheel all float as overlays instead of reserved columns.
+const LEFT_X  := 0.0
+const RIGHT_X := 1280.0
 
 # ── Floor plan / docked-panel resizable split ──────────────────────────────
 # The docked panel (Wall Inspector or the 3D preview, depending on mode) is a
@@ -58,6 +59,9 @@ var _watch_done_btn: Button  = null   # floating "back to results" button shown 
 var _post_win_view: bool = false      # true during Watch Again — level is already rented out, so editing/shortcuts are locked out; only the camera works
 var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
+var _furniture_menu_btn: Button = null       # persistent "Furniture" trigger — replaces the old always-docked Inventory sidebar
+var _category_wheel: CategoryWheel = null    # Sims-style radial category picker, built lazily
+var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog, own node so it doesn't cross-wire with _modal_backdrop's WallInspector-specific dismiss callback
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
@@ -76,6 +80,42 @@ var _loft_floors:       Dictionary = {}  # base_floor_id -> dynamically created 
 var _floor_below_id:    Dictionary = {}  # floor id -> id of the "floor"-type floor stacked below it (for the 3D ghost-floor-below reference layer)
 var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
+# Nested/parabox levels: stack of {parent_level_id, daylight_factor}. Entering
+# a box (via the mini-plan panel, see _refresh_nested_plan_panel() — never by
+# clicking the box itself, which needs to stay a plain draggable piece of
+# furniture) pushes the CURRENT level id so leaving it can reload the parent;
+# the child level's own daylight is dimmed by daylight_factor to
+# model the parent's furniture blocking light into the box (see
+# _compute_box_occlusion()). Both directions snapshot the level being left
+# via _snapshot_level_state() and restore it on return via
+# _apply_level_state_snapshot(), so furniture placed/moved/folded/sold on
+# either side of a box survives round-trips, not just the authored JSON state.
+var _nested_stack: Array = []
+var _current_nested_daylight_factor: float = 1.0
+# State cache — see _snapshot_level_state()/_apply_level_state_snapshot().
+# level_id -> {budget:int, floors:{floor_id:[{id,x,y,rot_steps,is_extended}]}}
+# — captured every time a nested-level transition leaves a level, so coming
+# back to it (either popping out of a box, or re-entering the same box
+# later) restores exactly what the player left there instead of the level's
+# authored starting_furniture. Wall items (Wall.wall_items — furniture hung
+# via the 2D wall-drop flow, which has no live Furniture node at all, see
+# docs/design_nested_levels.md's "two placement systems" note) aren't
+# captured by this snapshot; only real Furniture-backed floor items are.
+var _level_state_cache: Dictionary = {}
+# Every is_nested_box Furniture spawned in the CURRENTLY loaded level — lets
+# _refresh_nested_links() list an "enter this box" link for each of them (not
+# just the first one found), rebuilt fresh on every _load_level().
+var _current_level_boxes: Array[Furniture] = []
+# Small clickable blueprint-style mini-plan of "the other level" — the box's
+# interior while looking at its parent, or the parent while inside a box —
+# floating next to the Minimap floor tabs. See _refresh_nested_plan_panel().
+var _nested_plan_panel:   PanelContainer  = null
+var _nested_plan_preview: BlueprintPreview = null
+var _nested_plan_lbl:     Label           = null
+# Reentrancy guard — see _on_nested_plan_clicked()'s comment for why a stale
+# closure was possible before; this additionally blocks a second transition
+# from starting while one is already tearing down/rebuilding the level.
+var _nested_transition_busy: bool = false
 
 # ── Builder tab tools (free-form geometry editing during play) ────────────
 var _active_builder_tool: String    = ""    # "", "wall", "column", "erase"
@@ -239,6 +279,12 @@ func _apply_ui_theme() -> void:
 		_test_btn.visible = false   # updated after level load
 		ui_layer.add_child(_test_btn)
 
+	# Nested/parabox levels: entering/leaving a box is now a link button
+	# living right in the Minimap floor-tab strip (see _refresh_nested_links())
+	# instead of a separate floating button — "which space am I looking at"
+	# reads as one row: this apartment's floors, plus any box you can step
+	# into, plus (if you're inside one) the way back out.
+
 	# View-mode switcher: two ways to look at the apartment (see the ViewMode
 	# enum comment). Mutually exclusive via a ButtonGroup. Floats stacked
 	# directly above the floor-tabs Minimap (see _position_view_mode_box).
@@ -292,6 +338,25 @@ func _apply_ui_theme() -> void:
 		_settings_btn.pressed.connect(_on_settings_btn_pressed)
 		ui_layer.add_child(_settings_btn)
 
+	if not is_instance_valid(_furniture_menu_btn):
+		_furniture_menu_btn = Button.new()
+		_furniture_menu_btn.name = "FurnitureMenuBtn"
+		_furniture_menu_btn.text = "🛋 Furniture (F)"
+		_furniture_menu_btn.tooltip_text = "Open the furniture menu (F)"
+		_furniture_menu_btn.add_theme_font_size_override("font_size", 14)
+		# Same prominent amber treatment as the Rent Out button — this is now
+		# the only way into buying furniture, so it needs to read as a clearly
+		# clickable primary action, not a small utility icon tucked in a corner.
+		var fs := GameTheme.make_rent_btn_style()
+		_furniture_menu_btn.add_theme_stylebox_override("normal",  fs[0])
+		_furniture_menu_btn.add_theme_stylebox_override("hover",   fs[1])
+		_furniture_menu_btn.add_theme_stylebox_override("pressed", fs[1])
+		_furniture_menu_btn.add_theme_color_override("font_color",         GameTheme.C_AMBER)
+		_furniture_menu_btn.add_theme_color_override("font_hover_color",   Color(1.0, 0.96, 0.72))
+		_furniture_menu_btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.96, 0.72))
+		_furniture_menu_btn.pressed.connect(_open_furniture_menu)
+		ui_layer.add_child(_furniture_menu_btn)
+
 	if not is_instance_valid(_undo_btn):
 		_undo_btn = Button.new()
 		_undo_btn.name = "UndoBtn"
@@ -312,6 +377,7 @@ func _apply_ui_theme() -> void:
 		_redo_btn.offset_top = TOP_Y + 8.0
 		_redo_btn.pressed.connect(_redo_builder_action)
 		ui_layer.add_child(_redo_btn)
+	_position_furniture_menu_btn()
 	_position_top_left_icons()
 	_position_undo_btn()
 	_position_minimap()
@@ -321,20 +387,26 @@ func _apply_ui_theme() -> void:
 
 # Floats Test Layout and the gear menu in the top-left/top-right corners —
 # all that's left up here now that Budget/view-mode/tenant info moved off the
-# old full-width TopBar.
+# old full-width TopBar. Test Layout stacks directly below the Furniture
+# button (see _position_furniture_menu_btn) instead of sharing its slot —
+# both only ever coexist on levels with foldable furniture and no moments.
 func _position_top_left_icons() -> void:
 	if is_instance_valid(_test_btn):
 		_test_btn.offset_left = LEFT_X + 8.0
 		_test_btn.offset_top  = TOP_Y
+		if is_instance_valid(_furniture_menu_btn):
+			_test_btn.offset_top = _furniture_menu_btn.offset_bottom + 8.0
 	if is_instance_valid(_settings_btn):
 		_settings_btn.offset_right = RIGHT_X - 8.0
 		_settings_btn.offset_left  = _settings_btn.offset_right - (_settings_btn.custom_minimum_size.x as float)
 		_settings_btn.offset_top   = TOP_Y
 
 
-# Floats Budget just below the furniture shop panel, out of the way of the
-# TenantCard bar (which fills up fast once a level has multiple moments or a
-# floor-tab stack sharing that same bottom-right corner). Unlike the
+# Floats just above the TenantCard bar, bottom-left — the mirror image of
+# Minimap/ViewModeBox stacking above the bar on the right. Used to sit pinned
+# to BOT_Y instead (from when TenantCard was a right-hand column starting at
+# the old LEFT_X sidebar edge), which put it directly on top of the bar's own
+# leftmost need icons once TenantCard started spanning from x=0. Unlike the
 # full-width bar or the shrink-wrapped Minimap/ViewModeBox, this one wants its
 # own natural (unstretched) size, so reset_size() is the right tool here —
 # it's only wrong when something else already fixed a wider offset_right
@@ -344,7 +416,15 @@ func _position_budget_label() -> void:
 		return
 	budget_label.offset_left = 8.0
 	budget_label.reset_size()
-	budget_label.offset_top = BOT_Y - 8.0 - budget_label.size.y
+	# Capture the real (small) minimum height BEFORE touching offset_top/
+	# offset_bottom below — Control's offset_top/offset_bottom/size are three
+	# views of the same live state, so writing offset_bottom first and then
+	# reading .size.y back out returns a value already corrupted by the still-
+	# stale offset_top, not the natural content height reset_size() just gave it.
+	var h := budget_label.size.y
+	var gap := 8.0
+	budget_label.offset_bottom = tenant_card.offset_top - gap
+	budget_label.offset_top    = budget_label.offset_bottom - h
 	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
 
 
@@ -396,7 +476,9 @@ func _load_level(level_id: String) -> void:
 	WallInspector.read_only = false
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
-	inventory.visible = true
+	_close_furniture_menu()
+	if is_instance_valid(_furniture_menu_btn):
+		_furniture_menu_btn.visible = true
 	_last_wall_click_by_floor.clear()
 	_builder_undo_stack.clear()
 	_last_furniture_state = {}
@@ -415,6 +497,7 @@ func _load_level(level_id: String) -> void:
 	_floors.clear()
 	_loft_floors.clear()
 	_floor_below_id.clear()
+	_current_level_boxes.clear()
 
 	var level: Dictionary = gm.current_level
 	var apt_data: Dictionary = level["apartment"] as Dictionary
@@ -496,6 +579,14 @@ func _load_level(level_id: String) -> void:
 				(sf as Dictionary)["x"] as int,
 				(sf as Dictionary)["y"] as int,
 				sf as Dictionary)
+
+	# Nested/parabox: if this level was reached by entering a box, dim its
+	# daylight by however much the parent's furniture was blocking the box
+	# from outside (see _compute_box_occlusion()) — a real cross-frame effect,
+	# not just cosmetic on the child's own window rendering.
+	if first_floor_node and not _nested_stack.is_empty():
+		first_floor_node.set_external_daylight_factor(_current_nested_daylight_factor)
+	_refresh_nested_plan_panel()
 
 	# Compute bounding box of painted tiles per floor for focused camera fit
 	_floor_tile_bounds.clear()
@@ -730,8 +821,9 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	var fdata := gm.get_furniture_by_id(furniture_id)
 	if fdata.is_empty():
 		return null
-	# Apply per-instance rail overrides (axis + extents set by level editor)
-	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions"]
+	# Apply per-instance overrides set by the level editor (rail axis/extents,
+	# or which level a nested/parabox box's interior points at).
+	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id"]
 	for key in rail_keys:
 		if rail_data.has(key):
 			fdata = fdata.duplicate()
@@ -754,7 +846,354 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 		f.placed.connect(func(_n): _refresh_functions())
 	if fdata.get("creates_loft", false):
 		_promote_to_loft(f, apt_floor)
+	if f.is_nested_box:
+		_current_level_boxes.append(f)
 	return f
+
+
+# ─── Nested / parabox levels ──────────────────────────────────────────────
+# A "box" is an ordinary placed Furniture (is_nested_box=true, see
+# furniture.json) whose child_level_id points at a full separate level. Its
+# interior is played as its own independent level session — a genuinely
+# separate grid/floor/camera, so the child apartment's own "down" is never
+# affected by the box's position/rotation in the parent (gravity preserved
+# by construction, not by any explicit compensation code). See
+# docs/design_nested_levels.md for the fuller design writeup and the
+# alternatives that were considered (real portal rendering, live miniatures).
+# A shoebox's whole point is being tiny on the outside — but its interior
+# still has to be a livable apartment, not a closet. Same tile→metres
+# convention as ThumbnailRenderer/Room3DView's TILE_M (10 tiles = 1m, so
+# 1 tile² = 0.01 m²).
+const MIN_NESTED_INTERIOR_M2 := 20.0
+const TILE_M2 := 0.01
+
+func _on_box_entered(box: Furniture) -> void:
+	if _nested_transition_busy or not is_instance_valid(box) or box.child_level_id.is_empty():
+		return
+	var area := _level_floor_area_m2(box.child_level_id)
+	if area < MIN_NESTED_INTERIOR_M2:
+		Audio.play("error")
+		push_warning("Nested level '%s' is only %.1f m² — needs at least %.0f m² to be enterable" %
+			[box.child_level_id, area, MIN_NESTED_INTERIOR_M2])
+		return
+	_nested_transition_busy = true
+	var factor := _compute_box_occlusion(box)
+	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	_nested_stack.append({"parent_level_id": _current_level_id, "daylight_factor": factor})
+	_current_nested_daylight_factor = factor
+	_load_level(box.child_level_id)
+	if _level_state_cache.has(box.child_level_id):
+		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
+	_nested_transition_busy = false
+
+
+# Looks up a level's full dict by id without loading it — "_custom" reads
+# GameState's in-progress editor/test level, anything else searches
+# gm.levels_data. Shared by the nested-plan panel and the min-area check.
+func _lookup_level_dict(level_id: String) -> Dictionary:
+	if level_id == "_custom":
+		return GameState.custom_level_data
+	for lv in gm.levels_data.get("levels", []) as Array:
+		if (lv as Dictionary).get("id", "") == level_id:
+			return lv as Dictionary
+	return {}
+
+
+func _level_display_name(level_id: String) -> String:
+	var ld := _lookup_level_dict(level_id)
+	return ld.get("name", level_id) as String
+
+
+# Same wall-segment bounding-box extraction CityMap.gd's own blueprint
+# preview uses (CityMap._floor_plan_data) — duplicated rather than shared
+# since CityMap isn't a node Main.gd has a reference to.
+func _floor_plan_data(ld: Dictionary) -> Dictionary:
+	var floors := (ld.get("apartment", {}) as Dictionary).get("floors", []) as Array
+	for fd in floors:
+		var f := fd as Dictionary
+		if f.get("type", "") != "floor":
+			continue
+		var segs := f.get("segments", []) as Array
+		if segs.is_empty():
+			continue
+		var min_x := INF; var max_x := -INF
+		var min_y := INF; var max_y := -INF
+		for sg in segs:
+			var s := sg as Dictionary
+			min_x = minf(min_x, minf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
+			max_x = maxf(max_x, maxf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
+			min_y = minf(min_y, minf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
+			max_y = maxf(max_y, maxf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
+		return {"segments": segs, "bounds": Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))}
+	return {"segments": [], "bounds": Rect2()}
+
+
+# Furniture rects for the blueprint preview — prefers a cached live-state
+# snapshot (see _snapshot_level_state()) over the level's authored
+# starting_furniture, so the mini-plan reflects what the player actually
+# built in there, not just how the level started out.
+func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
+	var items: Array = []
+	var cached := _level_state_cache.get(level_id, {}) as Dictionary
+	if not cached.is_empty():
+		for fid in (cached.get("floors", {}) as Dictionary):
+			items.append_array((cached["floors"] as Dictionary)[fid] as Array)
+	else:
+		items.append_array(ld.get("starting_furniture", []) as Array)
+		for fd in (ld.get("apartment", {}) as Dictionary).get("floors", []) as Array:
+			items.append_array((fd as Dictionary).get("starting_furniture", []) as Array)
+	var out: Array = []
+	for it in items:
+		var d := it as Dictionary
+		var fdata := gm.get_furniture_by_id(d.get("id", "") as String)
+		if fdata.is_empty():
+			continue
+		var sz := fdata.get("size", {}) as Dictionary
+		out.append({
+			"x": d.get("x", 0) as float, "y": d.get("y", 0) as float,
+			"w": float(sz.get("w", 4) as int), "h": float(sz.get("h", 4) as int),
+			"color": Color("#" + (fdata.get("color", "888888") as String)),
+		})
+	return out
+
+
+func _ensure_nested_plan_panel() -> void:
+	if is_instance_valid(_nested_plan_panel):
+		return
+	_nested_plan_panel = PanelContainer.new()
+	_nested_plan_panel.name = "NestedPlanPanel"
+	_nested_plan_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_nested_plan_panel.tooltip_text = "Click to step into/out of this space"
+	_nested_plan_panel.visible = false
+	_nested_plan_panel.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			_on_nested_plan_clicked()
+			get_viewport().set_input_as_handled())
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_nested_plan_panel.add_child(vb)
+
+	_nested_plan_lbl = Label.new()
+	_nested_plan_lbl.add_theme_font_size_override("font_size", 9)
+	_nested_plan_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	_nested_plan_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_nested_plan_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_nested_plan_lbl.custom_minimum_size = Vector2(96, 0)
+	vb.add_child(_nested_plan_lbl)
+
+	_nested_plan_preview = BlueprintPreview.new()
+	_nested_plan_preview.custom_minimum_size = Vector2(96, 72)
+	_nested_plan_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(_nested_plan_preview)
+
+	ui_layer.add_child(_nested_plan_panel)
+
+
+func _show_nested_plan_for(level_id: String, label: String) -> void:
+	_ensure_nested_plan_panel()
+	var level := _lookup_level_dict(level_id)
+	if level.is_empty():
+		_nested_plan_panel.visible = false
+		return
+	var plan := _floor_plan_data(level)
+	_nested_plan_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2,
+		_furniture_preview_rects_for(level_id, level))
+	_nested_plan_lbl.text = label
+	_nested_plan_panel.visible = true
+
+
+# Resolves what a click on the panel should do RIGHT NOW, instead of baking a
+# specific action (and a specific box reference) into a closure ahead of
+# time — a closure captured at the last _refresh_nested_plan_panel() could
+# outlive the Furniture node it closed over once a transition freed it,
+# producing a "lambda capture was freed" engine warning and a stuck panel on
+# repeated clicks. Re-deriving from _nested_stack/_current_level_boxes here
+# means there's never a stale reference to go stale in the first place.
+func _on_nested_plan_clicked() -> void:
+	if _nested_transition_busy:
+		return
+	if not _nested_stack.is_empty():
+		_exit_nested_level()
+	elif not _current_level_boxes.is_empty():
+		var box := _current_level_boxes[0]
+		if is_instance_valid(box):
+			_on_box_entered(box)
+
+
+# Rebuilds the mini-plan panel's content for whatever "other space" is
+# reachable from here: the parent apartment's plan (click to leave a box), or
+# a box's own interior plan (click to step into it) — mutually exclusive,
+# matching how you can only be doing one of those two things at a time.
+func _refresh_nested_plan_panel() -> void:
+	if not _nested_stack.is_empty():
+		var parent_id := (_nested_stack.back() as Dictionary)["parent_level_id"] as String
+		_show_nested_plan_for(parent_id, "↩ " + _level_display_name(parent_id))
+	elif not _current_level_boxes.is_empty():
+		var box := _current_level_boxes[0]
+		if is_instance_valid(box) and not box.child_level_id.is_empty():
+			_show_nested_plan_for(box.child_level_id, "↪ " + _level_display_name(box.child_level_id))
+		elif is_instance_valid(_nested_plan_panel):
+			_nested_plan_panel.visible = false
+	elif is_instance_valid(_nested_plan_panel):
+		_nested_plan_panel.visible = false
+	_position_nested_plan_panel()
+
+
+# Stacks directly above whatever's currently on top of the bottom-right
+# column (ViewModeBox, or Minimap if ViewModeBox is hidden, or the
+# TenantCard bar itself as a last resort) — same approach _position_view_mode_box()
+# and _position_minimap() already use for each other.
+func _position_nested_plan_panel() -> void:
+	if not is_instance_valid(_nested_plan_panel) or not _nested_plan_panel.visible:
+		return
+	var right_edge := RIGHT_X - 8.0
+	_nested_plan_panel.offset_right = right_edge
+	_nested_plan_panel.offset_left  = right_edge - 110.0
+	_nested_plan_panel.reset_size()
+	var content_h := maxf(_nested_plan_panel.size.y, 90.0)
+	var top_of_stack: float
+	if is_instance_valid(_view_mode_box) and _view_mode_box.visible:
+		top_of_stack = _view_mode_box.offset_top
+	elif is_instance_valid(minimap) and minimap.visible:
+		top_of_stack = minimap.offset_top
+	else:
+		top_of_stack = tenant_card.offset_top
+	_nested_plan_panel.offset_bottom = top_of_stack - 8.0
+	_nested_plan_panel.offset_top    = _nested_plan_panel.offset_bottom - content_h
+	ui_layer.move_child(_nested_plan_panel, ui_layer.get_child_count() - 1)
+
+
+# Total walkable floor area (m²) of a level's "floor"/"loft" floors, WITHOUT
+# actually loading it — same floor_tiles/grid_w/grid_h fallback convention as
+# Wall.gd's count_free_tiles_for_moment() (empty floor_tiles = whole grid is
+# floor). Used to reject entering a nested box whose interior is too small
+# before tearing down the current level to try.
+func _level_floor_area_m2(level_id: String) -> float:
+	var level := _lookup_level_dict(level_id)
+	if level.is_empty():
+		return 0.0
+	var apt := level.get("apartment", {}) as Dictionary
+	var gw := apt.get("grid_w", 0) as int
+	var gh := apt.get("grid_h", 0) as int
+	var total_tiles := 0
+	for fd in apt.get("floors", []) as Array:
+		var fdata := fd as Dictionary
+		if fdata.get("type", "floor") as String not in ["floor", "loft"]:
+			continue
+		var tiles := fdata.get("floor_tiles", []) as Array
+		total_tiles += tiles.size() if not tiles.is_empty() else gw * gh
+	return total_tiles * TILE_M2
+
+
+func _exit_nested_level() -> void:
+	if _nested_transition_busy or _nested_stack.is_empty():
+		return
+	_nested_transition_busy = true
+	var ctx := _nested_stack.pop_back() as Dictionary
+	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	_current_nested_daylight_factor = 1.0
+	var parent_id := ctx["parent_level_id"] as String
+	_load_level(parent_id)
+	if _level_state_cache.has(parent_id):
+		_apply_level_state_snapshot(_level_state_cache[parent_id])
+	_nested_transition_busy = false
+
+
+# Captures every real (Furniture-backed) floor item across every floor of the
+# CURRENT level, plus budget — enough to fully restore what the player left
+# behind when a nested-level transition is about to tear this level down.
+func _snapshot_level_state() -> Dictionary:
+	var floors_snap: Dictionary = {}
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var items: Array = []
+		for entry in fl.get_all_furniture():
+			var fur := entry as Furniture
+			items.append({
+				"id": fur.furniture_id,
+				"x": fur.grid_pos.x,
+				"y": fur.grid_pos.y,
+				"rot_steps": fur.rot_steps,
+				"is_extended": fur.is_extended,
+			})
+		floors_snap[fid] = items
+	return {"budget": gm.budget, "floors": floors_snap}
+
+
+# Wipes whatever the just-completed _load_level() spawned from the level's
+# authored starting_furniture and replaces it with a previously captured
+# _snapshot_level_state() — restoring the player's actual layout instead of
+# the level's default one.
+func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
+	if snapshot.is_empty():
+		return
+	gm.budget = snapshot.get("budget", gm.budget) as int
+	gm.budget_changed.emit(gm.budget)
+	var floors_snap := snapshot.get("floors", {}) as Dictionary
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		for entry in fl.get_all_furniture().duplicate():
+			var fur := entry as Furniture
+			fl.remove_furniture(fur)
+			fur.queue_free()
+			# fur's own queue_free() above is deferred — is_instance_valid()
+			# still reports true for it until the frame ends, so a stale
+			# reference left in _current_level_boxes here would still look
+			# "valid" to _refresh_nested_plan_panel() right after this
+			# function returns, ahead of the fresh one about to be spawned
+			# below. Every box on this floor is being wiped and respawned
+			# from the snapshot anyway, so drop it now instead of waiting.
+			_current_level_boxes.erase(fur)
+		for item in (floors_snap.get(fid, []) as Array):
+			var d := item as Dictionary
+			var f := _spawn_furniture(d["id"] as String, fl, roundi(d["x"] as float), roundi(d["y"] as float))
+			if not is_instance_valid(f):
+				continue
+			var rs := d.get("rot_steps", 0) as int
+			if rs != 0:
+				f.set_rot_steps(rs)
+			if d.get("is_extended", false) as bool and f.foldable:
+				f.toggle_fold()
+	_refresh_functions()
+
+
+# How much daylight reaches the box's interior from outside, given the
+# PARENT apartment's own furniture around the box's footprint — the concrete
+# form of "un mueble del apartamento grande puede tapar la luz al apartamento
+# pequeño de dentro". Scans a one-tile ring around the box for the tallest
+# nearby piece: a "tall" neighbor blocks most of the light (this is a closed
+# box after all, blocked doubly so), "medium" dims it partway, otherwise the
+# box gets full daylight.
+func _compute_box_occlusion(box: Furniture) -> float:
+	var fl := box._wall_ref
+	if not is_instance_valid(fl):
+		return 1.0
+	var x0 := floori(box.grid_pos.x) - 1
+	var y0 := floori(box.grid_pos.y) - 1
+	var x1 := x0 + box.grid_w + 2
+	var y1 := y0 + box.grid_h + 2
+	var worst := "low"
+	for x in range(x0, x1):
+		for y in range(y0, y1):
+			var tile := Vector2i(x, y)
+			var inside_box := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
+			if inside_box:
+				continue
+			for f in fl._placed_list(tile):
+				var fur := f as Furniture
+				if fur == box:
+					continue
+				if fur.height_category == "tall":
+					worst = "tall"
+				elif fur.height_category == "medium" and worst != "tall":
+					worst = "medium"
+	match worst:
+		"tall":   return 0.15
+		"medium": return 0.55
+		_:        return 1.0
 
 
 # ─── Runtime loft/mezzanine floors ────────────────────────────────────────────
@@ -994,26 +1433,28 @@ func _position_minimap() -> void:
 	minimap.offset_top    = minimap.offset_bottom - content_h
 	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
 	_position_view_mode_box()
+	_position_nested_plan_panel()
 
 
-# TenantCard is now a bottom status bar (moments/needs + Budget) spanning the
-# play area's width, instead of a floating right-hand column — sized to
+# TenantCard is now a bottom status bar (moments/needs + Budget), left-
+# anchored and capped well short of the full play-area width — sized to
 # whatever height its own content needs (like Minimap's shrink-wrap below).
 func _position_tenant_card() -> void:
 	if not is_instance_valid(tenant_card):
 		return
 	tenant_card.offset_left  = LEFT_X
-	tenant_card.offset_right = RIGHT_X
-	# NOT reset_size() here — unlike Minimap/ViewModeBox (which want to shrink
-	# to their natural content width), this bar's whole point is to STAY the
-	# full LEFT_X..RIGHT_X width. reset_size() calls size = Vector2(), and
-	# Control's size setter always recomputes offset_right from offset_left +
-	# minimum width — silently overwriting the RIGHT_X just set above and
-	# collapsing the bar down to a tiny shrink-wrapped cluster (which also
-	# forced the checklist to wrap into extra rows it then had no height
-	# budget for, clipping off the bottom of the screen).
+	# Capped instead of stretched all the way to RIGHT_X — spanning the full
+	# reclaimed width (once the docked Inventory sidebar went away) ran the
+	# bar's own background directly under the Minimap/ViewModeBox floating in
+	# the bottom-right corner, reading as visual clutter even though nothing
+	# was actually overlapping. NOT reset_size() here — unlike Minimap/
+	# ViewModeBox (which want to shrink to their natural content width), this
+	# bar's own HFlowContainer rows wrap to whatever width they're given, so
+	# reset_size() would collapse it to a single narrow column and force many
+	# extra wrapped rows instead of measuring a natural unwrapped width.
 	# get_combined_minimum_size() alone re-measures children at the CURRENT
 	# (already-fixed-width) rect without touching offsets.
+	tenant_card.offset_right = LEFT_X + minf(700.0, RIGHT_X - LEFT_X)
 	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 36.0)
 	# Flush with the true bottom edge, no margin — this is a HUD bar sitting
 	# on the screen's own edge (matching how the old TopBar sat flush at the
@@ -1214,13 +1655,15 @@ func _ensure_mode3d_view() -> void:
 	# regardless of which of this function's several callers triggered the
 	# (re)build.
 	ui_layer.move_child(tenant_card, ui_layer.get_child_count() - 1)
-	# Inventory's declared width (LEFT_X = 170px) is only its anchor offset —
-	# it actually grows past that to fit content (item tooltips, Builder-tab
-	# shop rows with a price pill + Buy button, ...), which the 3D view's
-	# rect (starting at LEFT_X) then overlapped and hid. Same fix as
-	# TenantCard above: keep Inventory the topmost sibling so its overflow —
-	# and the Buy button on it — stays visible and clickable in 3D mode.
+	# Inventory floats as a centered catalog modal now (see
+	# _position_furniture_catalog_modal), but it's still a same-CanvasLayer
+	# sibling added before the 3D view — same fix as TenantCard above: keep it
+	# (and the wheel/backdrop) the topmost siblings so the catalog and its Buy
+	# buttons stay visible and clickable in 3D mode.
 	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
+	if is_instance_valid(_furniture_menu_btn):
+		ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
+	_reraise_furniture_menu_nodes()
 	_position_undo_btn()
 	_position_minimap()
 
@@ -1279,6 +1722,136 @@ func _hide_modal_backdrop() -> void:
 		_modal_backdrop.visible = false
 
 
+# ── Sims-style furniture menu: wheel (categories) → Inventory (catalog) ────
+# Top-left corner, symmetric with Settings/Undo/Redo in the top-right —
+# Test Layout stacks below it (see _position_top_left_icons) instead of
+# sharing the slot, freeing the top-center band for the wall-edge hint
+# without the two competing for the same visual space. Also openable via the
+# F key (see _input) — same "click it or press a key" access The Sims itself
+# offers for its own build/buy mode; pressing F opens the wheel at the cursor
+# instead of this button's fixed position (see _open_furniture_menu).
+func _position_furniture_menu_btn() -> void:
+	if not is_instance_valid(_furniture_menu_btn):
+		return
+	var w := 150.0
+	_furniture_menu_btn.offset_left   = LEFT_X + 8.0
+	_furniture_menu_btn.offset_right  = LEFT_X + 8.0 + w
+	_furniture_menu_btn.offset_top    = TOP_Y
+	_furniture_menu_btn.offset_bottom = TOP_Y + 34.0
+
+
+# at_cursor: true opens the wheel centered on the mouse (used by the F-key
+# shortcut — the wheel appears wherever the player was already looking, like
+# The Sims' own build/buy mode); false (the "Furniture" button's own click)
+# keeps it at its usual fixed spot in the middle of the play area, since a
+# button click's "cursor position" is just wherever that button happens to be.
+func _open_furniture_menu(at_cursor: bool = false) -> void:
+	if _post_win_view:
+		return
+	_ensure_furniture_menu_backdrop()
+	_ensure_category_wheel()
+	var center := get_viewport().get_mouse_position() if at_cursor \
+		else Vector2((LEFT_X + RIGHT_X) * 0.5, (TOP_Y + BOT_Y) * 0.5)
+	_position_category_wheel(center)
+	_furniture_menu_backdrop.visible = true
+	_category_wheel.visible = true
+	inventory.visible = false
+	_reraise_furniture_menu_nodes()
+
+
+func _ensure_furniture_menu_backdrop() -> void:
+	if is_instance_valid(_furniture_menu_backdrop):
+		return
+	_furniture_menu_backdrop = ColorRect.new()
+	_furniture_menu_backdrop.name = "FurnitureMenuBackdrop"
+	_furniture_menu_backdrop.color = Color(0.0, 0.0, 0.0, 0.55)
+	_furniture_menu_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_furniture_menu_backdrop.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			_close_furniture_menu())
+	_furniture_menu_backdrop.offset_left   = 0.0
+	_furniture_menu_backdrop.offset_top    = 0.0
+	_furniture_menu_backdrop.offset_right  = SCREEN_W
+	_furniture_menu_backdrop.offset_bottom = BOT_Y
+	_furniture_menu_backdrop.visible = false
+	ui_layer.add_child(_furniture_menu_backdrop)
+
+
+func _ensure_category_wheel() -> void:
+	if is_instance_valid(_category_wheel):
+		return
+	_category_wheel = CategoryWheel.new()
+	_category_wheel.name = "CategoryWheel"
+	_category_wheel.category_chosen.connect(_on_wheel_category_chosen)
+	_category_wheel.cancelled.connect(_close_furniture_menu)
+	_category_wheel.visible = false
+	ui_layer.add_child(_category_wheel)
+
+
+const WHEEL_SIZE := 420.0
+
+# Centers the wheel on `center`, clamped so it never spills off the play area
+# — needed now that it can open at the cursor (see _open_furniture_menu)
+# instead of always at the same fixed, already-in-bounds spot.
+func _position_category_wheel(center: Vector2) -> void:
+	var half := WHEEL_SIZE * 0.5
+	var cx := clampf(center.x, LEFT_X + half, RIGHT_X - half)
+	var cy := clampf(center.y, TOP_Y + half, BOT_Y - half)
+	_category_wheel.offset_left   = cx - half
+	_category_wheel.offset_right  = cx + half
+	_category_wheel.offset_top    = cy - half
+	_category_wheel.offset_bottom = cy + half
+
+
+func _on_wheel_category_chosen(id: String) -> void:
+	_category_wheel.visible = false
+	if id == "Builder":
+		inventory.open_for_category(Inventory.Category.BUILDER, "All")
+	else:
+		inventory.open_for_category(Inventory.Category.FURNITURE, id)
+	_position_furniture_catalog_modal()
+	_reraise_furniture_menu_nodes()
+
+
+# Floating centered catalog — same centering approach as
+# _position_wall_inspector_modal() above, just without that function's
+# content-aspect-ratio sizing (Inventory's own ScrollContainer handles
+# overflow instead).
+func _position_furniture_catalog_modal() -> void:
+	var w := 340.0
+	var h := clampf(BOT_Y - TOP_Y - 40.0, 300.0, 640.0)
+	var center_x := (LEFT_X + RIGHT_X) * 0.5
+	inventory.offset_left   = center_x - w * 0.5
+	inventory.offset_right  = center_x + w * 0.5
+	inventory.offset_top    = TOP_Y + 20.0
+	inventory.offset_bottom = inventory.offset_top + h
+
+
+# True while either the radial category wheel or the filtered item grid
+# (Inventory) is showing — the two screens the "F" shortcut/Furniture button
+# cycle through. Used so pressing F again closes whichever of those is open
+# instead of only ever opening.
+func _is_furniture_menu_open() -> bool:
+	return (is_instance_valid(_category_wheel) and _category_wheel.visible) \
+		or (is_instance_valid(inventory) and inventory.visible)
+
+
+func _close_furniture_menu() -> void:
+	if is_instance_valid(_category_wheel):
+		_category_wheel.visible = false
+	if is_instance_valid(_furniture_menu_backdrop):
+		_furniture_menu_backdrop.visible = false
+	inventory.visible = false
+
+
+func _reraise_furniture_menu_nodes() -> void:
+	if is_instance_valid(_furniture_menu_backdrop):
+		ui_layer.move_child(_furniture_menu_backdrop, ui_layer.get_child_count() - 1)
+	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
+	if is_instance_valid(_category_wheel):
+		ui_layer.move_child(_category_wheel, ui_layer.get_child_count() - 1)
+
+
 # Neither mode has a permanent docked Wall Inspector to hint at wall access
 # — this small banner fills that gap. Empty text hides it (used whenever a
 # wall is already open, or in VIEW3D where the hint text says something else).
@@ -1327,6 +1900,7 @@ func _floor_pane_bottom_y() -> float:
 func _blocking_modal_open() -> bool:
 	return _intro_modal_open \
 		or (is_instance_valid(_modal_backdrop) and _modal_backdrop.visible) \
+		or (is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible) \
 		or result_screen.visible
 
 
@@ -1449,6 +2023,7 @@ func _on_wall_item_placed(furniture_id: String) -> void:
 
 
 func _on_buy_requested(furniture_id: String) -> void:
+	_close_furniture_menu()   # Sims-style flow: picking an item returns to the apartment view immediately
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
 		return
@@ -1581,9 +2156,11 @@ func _refresh_functions() -> void:
 					if fn not in extra_fns:
 						extra_fns.append(fn)
 	var free_tiles_by_moment: Dictionary = {}
+	var free_window_tiles_by_moment: Dictionary = {}
 	for m in gm.moments:
 		var mid := (m as Dictionary)["id"] as String
 		var total := 0
+		var total_window := 0
 		for fid in _floors:
 			var fl := _floors[fid] as Floor
 			# Only real navigable floors — skip ceiling/subfloor/roof layers,
@@ -1591,11 +2168,15 @@ func _refresh_functions() -> void:
 			# the full apartment grid size.
 			if fl.floor_type in ["floor", "loft"]:
 				total += fl.count_free_tiles_for_moment(mid)
+				total_window += fl.count_free_window_tiles_for_moment(mid)
 		free_tiles_by_moment[mid] = total
-	gm.update_functions(all_entries, extra_fns, _active_moment_id, free_tiles_by_moment)
+		free_window_tiles_by_moment[mid] = total_window
+	gm.update_functions(all_entries, extra_fns, _active_moment_id, free_tiles_by_moment, free_window_tiles_by_moment)
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if apt_floor:
 		gm.update_zones(apt_floor.zones)
+		gm.update_sightlines(apt_floor)
+		gm.update_external_zone(apt_floor, all_entries, _active_moment_id)
 
 
 func _on_budget_changed(new_budget: int) -> void:
@@ -1780,6 +2361,11 @@ func _has_foldable_furniture() -> bool:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var ke := event as InputEventKey
+		if ke.pressed and not ke.echo and ke.keycode == KEY_ESCAPE \
+				and is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible:
+			_close_furniture_menu()
+			get_viewport().set_input_as_handled()
+			return
 		# Undo key is remappable (Settings → Accessibility); Redo is always the
 		# same key + Shift, plus the fixed Ctrl+Y alias below.
 		if ke.pressed and not ke.echo and not _post_win_view and ke.keycode == GameState.undo_keycode and (ke.ctrl_pressed or ke.meta_pressed):
@@ -1806,6 +2392,13 @@ func _input(event: InputEvent) -> void:
 				return
 			if ke.keycode == KEY_Q:
 				_reopen_last_wall()
+				get_viewport().set_input_as_handled()
+				return
+			if ke.keycode == KEY_F and not _post_win_view:
+				if _is_furniture_menu_open():
+					_close_furniture_menu()
+				else:
+					_open_furniture_menu(true)
 				get_viewport().set_input_as_handled()
 				return
 			if ke.keycode >= KEY_1 and ke.keycode <= KEY_9:
@@ -1872,7 +2465,9 @@ func _on_watch_again_reveal() -> void:
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = true
 	_start_tenant_showcase()
-	inventory.visible = false
+	_close_furniture_menu()
+	if is_instance_valid(_furniture_menu_btn):
+		_furniture_menu_btn.visible = false
 	_refresh_undo_redo_buttons()
 	_show_watch_done_button()
 
@@ -1928,7 +2523,8 @@ func _close_watch_again() -> void:
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
 		_mode3d_view.stop_tenant_showcase()
-	inventory.visible = true
+	if is_instance_valid(_furniture_menu_btn):
+		_furniture_menu_btn.visible = true
 	result_screen.visible = true
 	_refresh_undo_redo_buttons()
 

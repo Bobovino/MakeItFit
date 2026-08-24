@@ -80,6 +80,33 @@ var _funcs: Dictionary = {
 	"sleep": false, "sit": false, "work": false, "cook": false, "storage": false, "dine": false, "dress": false
 }
 
+# ── External zone & sightlines ─────────────────────────────────────────────
+# Same function list as _funcs — forbidden_functions blocks buying furniture
+# with that function outright (municipal ordinance), min_boundary_distance
+# requires a piece providing that function to sit N tiles from the outer
+# wall (noise/smell/bird setback). See GameManager.gd's external_restrictions.
+var _ext_forbidden: Dictionary = {
+	"sleep": false, "sit": false, "work": false, "cook": false, "storage": false, "dine": false, "dress": false
+}
+var _ext_min_dist: Dictionary = {
+	"sleep": 0, "sit": 0, "work": 0, "cook": 0, "storage": 0, "dine": 0, "dress": 0
+}
+# Single sightline requirement — a real level could want several, but one is
+# enough to author the mechanic without a full repeating-row-list widget.
+# See GameManager.gd's sightline_requirements / Wall.has_sightline().
+var _sl_enabled:    bool = false
+var _sl_from:       Vector2i = Vector2i(2, 2)
+var _sl_to:         Vector2i = Vector2i(10, 2)
+var _sl_must_clear: bool = true
+var _sl_label:      String = ""
+
+# Per-moment space_needs — "sport"/"ventilation"/"light" are satisfied by
+# leaving enough floor open (optionally near a window), not by any placed
+# furniture's function list. mid -> {fn: {min_free:int, near_window:bool}}.
+# See GameManager.gd's update_functions() space_needs handling.
+var _moment_space_needs: Dictionary = {}
+const SPACE_FNS := ["sport", "ventilation", "light"]
+
 # ── Tool & interaction state ──────────────────────────────────────────────────
 var _tool: Tool = Tool.FLOOR
 var _tool_btns: Dictionary = {}   # Tool -> Button; for programmatic switching
@@ -140,6 +167,12 @@ var _clear_dlg: ConfirmationDialog = null
 
 # ── Furniture data (loaded once) ──────────────────────────────────────────────
 var _furn_catalog: Array = []   # full furniture array from furniture.json
+# Same radial category picker the in-game shop uses (CategoryWheel.gd),
+# reused here so browsing the catalog while building a level doesn't mean
+# scrolling the full ~90-item FLOOR ITEMS list every time.
+var _le_category: String = "All"
+var _cat_wheel_btn: Button = null
+var _category_wheel: CategoryWheel = null
 
 # ── Furniture restrictions + starting inventory ───────────────────────────────
 var _allowed_furniture:    Array   = []   # [] = all allowed; otherwise ID whitelist
@@ -482,6 +515,12 @@ func _build_right(ui: Node) -> void:
 	sc_btn.add_theme_font_size_override("font_size", 10)
 	sc_btn.pressed.connect(_open_sloped_ceiling_modal)
 	vb.add_child(sc_btn)
+	var ez_btn := Button.new()
+	ez_btn.text = "External Zone & Sightlines…"
+	ez_btn.clip_text = true
+	ez_btn.add_theme_font_size_override("font_size", 10)
+	ez_btn.pressed.connect(_open_external_zone_modal)
+	vb.add_child(ez_btn)
 
 	# ── Furniture (compact buttons → open modals) ─────────────────────────────
 	_sect(vb, "FURNITURE")
@@ -595,6 +634,125 @@ func _open_level_details_modal() -> void:
 		cb.add_theme_color_override("font_color", GameTheme.C_TEXT)
 		cb.toggled.connect(func(on: bool): _funcs[fn] = on; _refresh_level_summary())
 		vb.add_child(cb)
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.add_theme_font_size_override("font_size", 11)
+	close_btn.pressed.connect(win.queue_free)
+	vb.add_child(close_btn)
+
+	win.close_requested.connect(win.queue_free)
+	win.popup_centered()
+
+
+func _open_external_zone_modal() -> void:
+	var win := Window.new()
+	win.title = "External Zone & Sightlines"
+	win.size  = Vector2i(340, 620)
+	win.wrap_controls = true
+	add_child(win)
+
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	win.add_child(scroll)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	vb.custom_minimum_size = Vector2(320, 0)
+	scroll.add_child(vb)
+
+	_sect(vb, "FORBIDDEN FUNCTIONS (municipal ordinance)")
+	var hint1 := Label.new()
+	hint1.text = "Buying furniture with a checked function is blocked outright for this level."
+	hint1.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint1.add_theme_font_size_override("font_size", 9)
+	hint1.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(hint1)
+	for fn: String in _ext_forbidden.keys():
+		var cb := CheckBox.new()
+		cb.text = fn
+		cb.button_pressed = _ext_forbidden.get(fn, false) as bool
+		cb.add_theme_font_size_override("font_size", 11)
+		cb.toggled.connect(func(on: bool): _ext_forbidden[fn] = on)
+		vb.add_child(cb)
+
+	_sect(vb, "MIN. DISTANCE FROM OUTER WALL (tiles)")
+	var hint2 := Label.new()
+	hint2.text = "0 = no restriction. Furniture providing that function must sit at least this many tiles from the room's boundary (noise/smell/bird setback)."
+	hint2.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint2.add_theme_font_size_override("font_size", 9)
+	hint2.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(hint2)
+	for fn: String in _ext_min_dist.keys():
+		var sb := _spinbox(vb, fn, _ext_min_dist.get(fn, 0) as int, 0, 20, 1)
+		sb.value_changed.connect(func(v: float): _ext_min_dist[fn] = int(v))
+
+	_sect(vb, "SIGHTLINE REQUIREMENT")
+	var hint3 := Label.new()
+	hint3.text = "One line-of-sight check between two grid tiles (0,0 = top-left of the apartment grid) — e.g. bed to a sunrise-facing window, or a supervision point to a private zone that must stay blocked."
+	hint3.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint3.add_theme_font_size_override("font_size", 9)
+	hint3.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(hint3)
+
+	var sl_en := CheckBox.new()
+	sl_en.text = "Enabled"
+	sl_en.button_pressed = _sl_enabled
+	sl_en.add_theme_font_size_override("font_size", 11)
+	sl_en.toggled.connect(func(on: bool): _sl_enabled = on)
+	vb.add_child(sl_en)
+
+	var from_row := HBoxContainer.new()
+	from_row.add_theme_constant_override("separation", 4)
+	vb.add_child(from_row)
+	var from_lbl := Label.new()
+	from_lbl.text = "From:"
+	from_lbl.add_theme_font_size_override("font_size", 10)
+	from_lbl.custom_minimum_size = Vector2(54, 0)
+	from_row.add_child(from_lbl)
+	var fx := SpinBox.new(); fx.min_value = 0; fx.max_value = 500; fx.value = _sl_from.x
+	var fy := SpinBox.new(); fy.min_value = 0; fy.max_value = 500; fy.value = _sl_from.y
+	for s in [fx, fy]:
+		s.add_theme_font_size_override("font_size", 10)
+		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		from_row.add_child(s)
+	fx.value_changed.connect(func(v: float): _sl_from.x = int(v))
+	fy.value_changed.connect(func(v: float): _sl_from.y = int(v))
+
+	var to_row := HBoxContainer.new()
+	to_row.add_theme_constant_override("separation", 4)
+	vb.add_child(to_row)
+	var to_lbl := Label.new()
+	to_lbl.text = "To:"
+	to_lbl.add_theme_font_size_override("font_size", 10)
+	to_lbl.custom_minimum_size = Vector2(54, 0)
+	to_row.add_child(to_lbl)
+	var tx := SpinBox.new(); tx.min_value = 0; tx.max_value = 500; tx.value = _sl_to.x
+	var ty := SpinBox.new(); ty.min_value = 0; ty.max_value = 500; ty.value = _sl_to.y
+	for s in [tx, ty]:
+		s.add_theme_font_size_override("font_size", 10)
+		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		to_row.add_child(s)
+	tx.value_changed.connect(func(v: float): _sl_to.x = int(v))
+	ty.value_changed.connect(func(v: float): _sl_to.y = int(v))
+
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 4)
+	vb.add_child(mode_row)
+	var mode_group := ButtonGroup.new()
+	for mdef: Array in [[true, "Must stay CLEAR"], [false, "Must stay BLOCKED"]]:
+		var mbtn := Button.new()
+		mbtn.text = mdef[1] as String
+		mbtn.toggle_mode = true
+		mbtn.button_group = mode_group
+		mbtn.button_pressed = (_sl_must_clear == (mdef[0] as bool))
+		mbtn.add_theme_font_size_override("font_size", 10)
+		mbtn.pressed.connect(func(): _sl_must_clear = mdef[0] as bool)
+		mode_row.add_child(mbtn)
+
+	var lbl_field := _field(vb, "Label", _sl_label)
+	lbl_field.text_changed.connect(func(t: String): _sl_label = t)
 
 	var close_btn := Button.new()
 	close_btn.text = "Close"
@@ -832,6 +990,62 @@ func _rebuild_moments_list(vb: VBoxContainer, win: Window) -> void:
 			cb.toggled.connect(func(on: bool):
 				(_moment_funcs[mid_copy] as Dictionary)[fn_copy] = on)
 			fn_hb.add_child(cb)
+
+		# Space needs: "sport"/"ventilation"/"light" are satisfied by open
+		# floor (optionally near a window) instead of any furniture function —
+		# see GameManager.gd's space_needs handling. Checking one here both
+		# adds it to this moment's required needs AND configures how much
+		# free floor (and whether it must be near a window) satisfies it.
+		var sp_lbl := Label.new()
+		sp_lbl.text = "Space needs (open floor, not furniture):"
+		sp_lbl.add_theme_font_size_override("font_size", 9)
+		sp_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		vb.add_child(sp_lbl)
+
+		if not _moment_space_needs.has(mid):
+			_moment_space_needs[mid] = {}
+		var msn := _moment_space_needs[mid] as Dictionary
+
+		for fn: String in SPACE_FNS:
+			var sp_row := HBoxContainer.new()
+			sp_row.add_theme_constant_override("separation", 4)
+			vb.add_child(sp_row)
+			var has_need: bool = msn.has(fn)
+			var sp_cb := CheckBox.new()
+			sp_cb.text = fn
+			sp_cb.button_pressed = has_need
+			sp_cb.add_theme_font_size_override("font_size", 9)
+			sp_cb.custom_minimum_size = Vector2(84, 0)
+			sp_row.add_child(sp_cb)
+			var sp_free := SpinBox.new()
+			sp_free.min_value = 1; sp_free.max_value = 200; sp_free.step = 1
+			sp_free.value = (msn.get(fn, {}) as Dictionary).get("min_free", 4) as int
+			sp_free.add_theme_font_size_override("font_size", 9)
+			sp_free.custom_minimum_size = Vector2(64, 0)
+			sp_free.editable = has_need
+			sp_row.add_child(sp_free)
+			var sp_win := CheckBox.new()
+			sp_win.text = "near window"
+			sp_win.button_pressed = (msn.get(fn, {}) as Dictionary).get("near_window", fn != "sport") as bool
+			sp_win.add_theme_font_size_override("font_size", 9)
+			sp_win.disabled = not has_need
+			sp_row.add_child(sp_win)
+
+			var fn2 := fn
+			var mid2 := mid
+			var sync := func():
+				var d: Dictionary = _moment_space_needs[mid2]
+				if sp_cb.button_pressed:
+					d[fn2] = {"min_free": int(sp_free.value), "near_window": sp_win.button_pressed}
+					(_moment_funcs[mid2] as Dictionary)[fn2] = true
+				else:
+					d.erase(fn2)
+					(_moment_funcs[mid2] as Dictionary)[fn2] = false
+				sp_free.editable = sp_cb.button_pressed
+				sp_win.disabled  = not sp_cb.button_pressed
+			sp_cb.toggled.connect(func(_on: bool): sync.call())
+			sp_free.value_changed.connect(func(_v: float): sync.call())
+			sp_win.toggled.connect(func(_on: bool): sync.call())
 
 
 func _add_moment() -> void:
@@ -2503,11 +2717,21 @@ func _build_bottom(ui: Node) -> void:
 	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(outer)
 
+	var hdr_row := HBoxContainer.new()
+	hdr_row.add_theme_constant_override("separation", 6)
+	outer.add_child(hdr_row)
 	var hdr := Label.new()
 	hdr.text = "FLOOR ITEMS"
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	outer.add_child(hdr)
+	hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr_row.add_child(hdr)
+	_cat_wheel_btn = Button.new()
+	_cat_wheel_btn.text = "🎡 " + _le_category
+	_cat_wheel_btn.tooltip_text = "Pick a category with the same radial wheel the shop uses, instead of scrolling the full list"
+	_cat_wheel_btn.add_theme_font_size_override("font_size", 9)
+	_cat_wheel_btn.pressed.connect(_open_category_wheel)
+	hdr_row.add_child(_cat_wheel_btn)
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -2522,6 +2746,52 @@ func _build_bottom(ui: Node) -> void:
 	_refresh_editor_furn_panel()
 
 
+# Same classification Inventory.gd uses for the in-game shop's icon-grid
+# filter tabs — duplicated rather than shared since Inventory's version is an
+# instance method on a scene node the editor doesn't have one of.
+func _le_sub_category_of(f: Dictionary) -> String:
+	if (f.get("foldable", false) as bool) or (f.get("rail_axis", "") as String) != "":
+		return "Transformable"
+	var functions := f.get("functions", []) as Array
+	if "sleep" in functions:
+		return "Bedroom"
+	if "hygiene" in functions:
+		return "Bathroom"
+	if "cook" in functions:
+		return "Kitchen"
+	if "sit" in functions or "work" in functions:
+		return "Living"
+	if "storage" in functions:
+		return "Storage"
+	return "Living"
+
+
+func _open_category_wheel() -> void:
+	if not is_instance_valid(_category_wheel):
+		_category_wheel = CategoryWheel.new()
+		_category_wheel.name = "LevelEditorCategoryWheel"
+		_category_wheel.category_chosen.connect(_on_le_wheel_category_chosen)
+		_category_wheel.cancelled.connect(func(): _category_wheel.visible = false)
+		add_child(_category_wheel)
+	var vp_size := get_viewport().get_visible_rect().size
+	var side := minf(vp_size.x, vp_size.y) * 0.6
+	_category_wheel.set_anchors_preset(Control.PRESET_CENTER)
+	_category_wheel.offset_left   = -side * 0.5
+	_category_wheel.offset_right  =  side * 0.5
+	_category_wheel.offset_top    = -side * 0.5
+	_category_wheel.offset_bottom =  side * 0.5
+	_category_wheel.visible = true
+	_category_wheel.z_index = 100
+
+
+func _on_le_wheel_category_chosen(id: String) -> void:
+	_category_wheel.visible = false
+	_le_category = id
+	if is_instance_valid(_cat_wheel_btn):
+		_cat_wheel_btn.text = "🎡 " + id
+	_refresh_editor_furn_panel()
+
+
 func _refresh_editor_furn_panel() -> void:
 	if not is_instance_valid(_editor_furn_vb):
 		return
@@ -2532,6 +2802,11 @@ func _refresh_editor_furn_panel() -> void:
 	if not _allowed_furniture.is_empty():
 		catalog = catalog.filter(
 			func(f: Dictionary) -> bool: return f["id"] as String in _allowed_furniture)
+	if _le_category != "All" and _le_category != CategoryWheel.BUILDER_ID:
+		catalog = catalog.filter(
+			func(f: Dictionary) -> bool: return _le_sub_category_of(f) == _le_category)
+	elif _le_category == CategoryWheel.BUILDER_ID:
+		catalog = catalog.filter(func(f: Dictionary) -> bool: return f.get("is_stair", false) as bool)
 
 	for fraw in catalog:
 		var fdata := fraw as Dictionary
@@ -2609,6 +2884,32 @@ func _fill_placed_list() -> void:
 			_update_placed_furniture_overlay()
 			_fill_placed_list())
 		prow.add_child(del_btn)
+
+		# Nested/parabox box: let the designer point this specific instance at
+		# whichever level id should be its interior — per-instance override on
+		# the starting_furniture entry, same mechanism rail_axis/etc already
+		# use, read by Main.gd's _spawn_furniture(). See Furniture.gd's
+		# is_nested_box/child_level_id and docs/design_nested_levels.md.
+		if pfdata.get("is_nested_box", false) as bool:
+			var child_row := HBoxContainer.new()
+			child_row.add_theme_constant_override("separation", 2)
+			_placed_vb.add_child(child_row)
+			var child_lbl := Label.new()
+			child_lbl.text = "  ↳ child level id:"
+			child_lbl.add_theme_font_size_override("font_size", 8)
+			child_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+			child_row.add_child(child_lbl)
+			var child_edit := LineEdit.new()
+			child_edit.text = pf.get("child_level_id", pfdata.get("child_level_id", "") as String) as String
+			child_edit.placeholder_text = pfdata.get("child_level_id", "") as String
+			child_edit.add_theme_font_size_override("font_size", 8)
+			child_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			child_edit.text_changed.connect(func(t: String):
+				if t.strip_edges().is_empty():
+					pf.erase("child_level_id")
+				else:
+					pf["child_level_id"] = t)
+			child_row.add_child(child_edit)
 
 
 # ── Catalog filter modal ──────────────────────────────────────────────────────
@@ -3482,10 +3783,28 @@ func _build_dict() -> Dictionary:
 		"acquisition_cost": _cost,
 		"map_col": _map_col, "map_row": _map_row, "min_stars": 0, "block": _block,
 		"funds_base_reward": _reward, "starting_budget": _budget,
-		"tenant": {
-			"name": _tname, "age": _tage, "flavor": _tflav,
-			"required_functions": req, "monthly_rent": _rent
-		},
+		"tenant": (func() -> Dictionary:
+			var ten := {
+				"name": _tname, "age": _tage, "flavor": _tflav,
+				"required_functions": req, "monthly_rent": _rent
+			}
+			if _sl_enabled:
+				ten["sightline_requirements"] = [{
+					"from": [_sl_from.x, _sl_from.y], "to": [_sl_to.x, _sl_to.y],
+					"must_be_clear": _sl_must_clear, "label": _sl_label,
+				}]
+			return ten).call(),
+		"external_zone": (func() -> Dictionary:
+			var forb: Array = []
+			for fn: String in _ext_forbidden:
+				if _ext_forbidden[fn]: forb.append(fn)
+			var dist: Dictionary = {}
+			for fn: String in _ext_min_dist:
+				if (_ext_min_dist[fn] as int) > 0: dist[fn] = _ext_min_dist[fn]
+			var ez: Dictionary = {}
+			if not forb.is_empty(): ez["forbidden_functions"] = forb
+			if not dist.is_empty(): ez["min_boundary_distance"] = dist
+			return ez).call(),
 		"allowed_furniture":   _allowed_furniture.duplicate(),
 		"starting_inventory":  _starting_inventory.duplicate(true),
 		"starting_furniture":  _placed_furniture.duplicate(true),
@@ -3499,6 +3818,9 @@ func _build_dict() -> Dictionary:
 					if mf[fn]: needs.append(fn)
 				var entry := (m as Dictionary).duplicate()
 				entry["needs"] = needs
+				var msn := _moment_space_needs.get(mid, {}) as Dictionary
+				if not msn.is_empty():
+					entry["space_needs"] = msn.duplicate(true)
 				out.append(entry)
 			return out).call(),
 		"apartment": {
@@ -3887,6 +4209,27 @@ func _load_from_dict(d: Dictionary) -> void:
 	for fn: String in _funcs:
 		_funcs[fn] = (fn in req)
 
+	var sl_reqs := ten.get("sightline_requirements", []) as Array
+	if not sl_reqs.is_empty():
+		var sl0 := sl_reqs[0] as Dictionary
+		_sl_enabled    = true
+		var f_arr := sl0.get("from", [2, 2]) as Array
+		var t_arr := sl0.get("to",   [10, 2]) as Array
+		_sl_from       = Vector2i(f_arr[0] as int, f_arr[1] as int)
+		_sl_to         = Vector2i(t_arr[0] as int, t_arr[1] as int)
+		_sl_must_clear = sl0.get("must_be_clear", true) as bool
+		_sl_label      = sl0.get("label", "") as String
+	else:
+		_sl_enabled = false
+
+	var ext_zone := d.get("external_zone", {}) as Dictionary
+	var forb := ext_zone.get("forbidden_functions", []) as Array
+	for fn: String in _ext_forbidden:
+		_ext_forbidden[fn] = (fn in forb)
+	var dist := ext_zone.get("min_boundary_distance", {}) as Dictionary
+	for fn: String in _ext_min_dist:
+		_ext_min_dist[fn] = dist.get(fn, 0) as int
+
 	# Inline widgets are now modal-only — update summary label instead
 	_refresh_level_summary()
 	if _sw:       _sw.value       = _gw
@@ -3903,19 +4246,24 @@ func _load_from_dict(d: Dictionary) -> void:
 	_placed_furniture   = (d.get("starting_furniture", []) as Array).duplicate(true)
 	_update_inv_count_lbl()
 
-	# Moments — strip embedded needs back into _moment_funcs for the editor UI
+	# Moments — strip embedded needs/space_needs back into _moment_funcs /
+	# _moment_space_needs for the editor UI
 	_moments = []
 	_moment_funcs = {}
+	_moment_space_needs = {}
 	for m in (d.get("moments", []) as Array):
-		var md  := (m as Dictionary).duplicate()
+		var md  := (m as Dictionary).duplicate(true)
 		var mid := md["id"] as String
 		var needs := md.get("needs", []) as Array
+		var space_needs := md.get("space_needs", {}) as Dictionary
 		md.erase("needs")
+		md.erase("space_needs")
 		_moments.append(md)
 		var mf: Dictionary = {}
-		for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine", "dress"]:
+		for fn: String in ["sleep", "sit", "work", "cook", "storage", "dine", "dress"] + SPACE_FNS:
 			mf[fn] = fn in needs
 		_moment_funcs[mid] = mf
+		_moment_space_needs[mid] = space_needs.duplicate(true)
 	_active_moment = ""
 	_rebuild_moment_dropdown()
 

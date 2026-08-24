@@ -55,6 +55,27 @@ var wall_flush_required: bool = false   # must end up snapped flush against a wa
 var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
 
+# Weight & support — see Wall.can_place()'s mezzanine load check. Defaults to
+# footprint area (a bigger piece is assumed heavier) so every catalog item
+# gets a sane value without needing a manual "weight" entry; catalog data can
+# still override it explicitly for anything unusually light/heavy for its size.
+var weight: float = 1.0
+# Only "surface" furniture (tables, desks, shelves) can host requires_surface
+# items on the same tile; max_support_weight caps how much can rest on it.
+var is_surface: bool = false
+var max_support_weight: float = 0.0
+var requires_surface: bool = false
+
+# Nested/parabox levels: this piece is a "box" whose interior is a whole
+# other apartment (see docs/design_nested_levels.md). Deliberately NOT
+# entered by clicking the box itself — it needs to behave like any other
+# draggable/movable piece of furniture so the player can reposition it in
+# the parent apartment without accidentally stepping inside. Main.gd tracks
+# every is_nested_box instance (_current_level_boxes) and offers entry only
+# through the separate mini-plan panel (_refresh_nested_plan_panel()).
+var is_nested_box: bool = false
+var child_level_id: String = ""
+
 # Rail: constrains dragging to one axis within a defined extent. rail_axis
 # itself is LIVE (Ctrl-drag clears it to detach) — _home_rail_* is the
 # catalog's original value, kept around forever so a detached piece can
@@ -146,7 +167,12 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	needs_power           = data.get("needs_power",       false)    as bool
 	zone_divider          = data.get("zone_divider",      false)    as bool
 	floor_category        = data.get("floor_category",    "any")    as String
-	wall_flush_required   = data.get("animated_fold",     false)    as bool
+	# Was derived straight from "animated_fold" — fine while balcony_window
+	# was the only animated_fold item and also the only one that needed
+	# wall-adjacency, but a floor-standing animated piece (a sofa bed, say)
+	# must NOT require touching a wall just because it has a real animation
+	# instead of the swap-crossfade. Explicit field now.
+	wall_flush_required   = data.get("wall_flush_required", false)   as bool
 	rail_axis             = data.get("rail_axis",         "")       as String
 	rail_start            = data.get("rail_start",        -1)       as int
 	rail_end              = data.get("rail_end",          -1)       as int
@@ -158,6 +184,12 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	reveal_functions      = (data.get("reveal_functions", []) as Array).duplicate()
 	is_stair              = data.get("is_stair",          false)    as bool
 	stair_direction       = data.get("stair_direction",   "")       as String
+	weight                = data.get("weight", float(grid_w * grid_h)) as float
+	is_surface            = data.get("is_surface",        false)    as bool
+	max_support_weight    = data.get("max_support_weight", 0.0)     as float
+	requires_surface      = data.get("requires_surface",  false)    as bool
+	is_nested_box         = data.get("is_nested_box",     false)    as bool
+	child_level_id        = data.get("child_level_id",    "")       as String
 	_base_grid_h          = grid_h
 	_wall_ref = apt_floor
 	_color = Color("#" + data.get("color", "888888"))
@@ -1308,6 +1340,28 @@ func _drag(mouse_pos: Vector2) -> void:
 	ty = round(ty)
 	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
 	_wall_ref.set_floor_drag_ghost(self, tx, ty)
+	queue_redraw()
+
+
+# Silent variant of _rotate() — no sound, no re-placement against the wall —
+# used to restore a saved rot_steps value (see Main.gd's nested-level state
+# snapshot/restore) without replaying the rotate gesture's side effects.
+func set_rot_steps(n: int) -> void:
+	n = ((n % 4) + 4) % 4
+	var changed := false
+	while rot_steps != n:
+		rot_steps = (rot_steps + 1) % 4
+		var new_w := grid_h
+		var new_h := grid_w
+		grid_w = new_w
+		grid_h = new_h
+		rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
+		changed = true
+	# Dimensions just swapped under whatever footprint the floor already has
+	# registered at grid_pos (from the initial, un-rotated spawn) — re-place
+	# so the occupancy grid matches the new w/h, same as _rotate() does.
+	if changed and _wall_ref:
+		_wall_ref.place_furniture(self, grid_pos)
 	queue_redraw()
 
 
