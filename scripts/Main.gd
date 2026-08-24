@@ -105,7 +105,24 @@ var _level_state_cache: Dictionary = {}
 # Every is_nested_box Furniture spawned in the CURRENTLY loaded level — lets
 # _refresh_nested_links() list an "enter this box" link for each of them (not
 # just the first one found), rebuilt fresh on every _load_level().
-var _current_level_boxes: Array[Furniture] = []
+# NOTE: deliberately NOT a cached array. An earlier version tracked boxes in
+# one as they spawned, which silently desynced: "Revisar Plano Actual" builds
+# the cards from the starting_furniture spawn, then _restore_furniture_snapshot
+# frees all of that and respawns via _restore_spawn_furniture (a separate path
+# that never touched the cache) — leaving the card pointing at a freed node, so
+# every click failed its is_instance_valid() check and did nothing while the
+# hover tooltip still worked. Derived live from the floors instead.
+func _collect_nested_boxes() -> Array[Furniture]:
+	var out: Array[Furniture] = []
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		if not is_instance_valid(fl):
+			continue
+		for entry in fl.get_all_furniture():
+			var fur := entry as Furniture
+			if is_instance_valid(fur) and fur.is_nested_box and not fur.child_level_id.is_empty():
+				out.append(fur)
+	return out
 # Row of small clickable blueprint-style mini-plan cards for every reachable
 # "other space" — an exit-to-parent card while inside a box, plus one
 # enter-this-box card per is_nested_box in the current level (both can
@@ -113,7 +130,7 @@ var _current_level_boxes: Array[Furniture] = []
 # Minimap floor tabs. See _refresh_nested_plan_panel().
 var _nested_plan_row: HBoxContainer = null
 # Reentrancy guard — a card's click handler always re-resolves what to do
-# from _nested_stack/_current_level_boxes at click time rather than baking a
+# from _nested_stack/_collect_nested_boxes() at click time rather than baking a
 # specific action into a closure ahead of time (a captured Furniture
 # reference could go stale once a transition freed it); this additionally
 # blocks a second transition from starting while one is already tearing
@@ -505,7 +522,6 @@ func _load_level(level_id: String) -> void:
 	_floors.clear()
 	_loft_floors.clear()
 	_floor_below_id.clear()
-	_current_level_boxes.clear()
 
 	var level: Dictionary = gm.current_level
 	var apt_data: Dictionary = level["apartment"] as Dictionary
@@ -681,6 +697,10 @@ func _load_level(level_id: String) -> void:
 	GameState.pending_use_saved_layout = false
 	if _use_saved and GameState.has_level_layout(level_id):
 		_restore_furniture_snapshot(GameState.get_level_layout(level_id))
+		# The restore replaced every piece of furniture (including any nested
+		# box) after the cards above were built — rebuild them against what's
+		# actually on the floor now.
+		_refresh_nested_plan_panel()
 	else:
 		_restoring_furniture  = false
 		_last_furniture_state = _snapshot_all_furniture()
@@ -854,8 +874,6 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 		f.placed.connect(func(_n): _refresh_functions())
 	if fdata.get("creates_loft", false):
 		_promote_to_loft(f, apt_floor)
-	if f.is_nested_box:
-		_current_level_boxes.append(f)
 	return f
 
 
@@ -968,7 +986,7 @@ func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
 # The row holding one "mini-plan card" per reachable space — an "exit to
 # parent" card when inside a box (_nested_stack non-empty), plus one "enter
 # this box" card for every is_nested_box in the CURRENT level
-# (_current_level_boxes). Both can be true at once (a box's interior can
+# (_collect_nested_boxes()). Both can be true at once (a box's interior can
 # itself contain another box — arbitrary nesting depth, see
 # docs/design_nested_levels.md), so this is a row, not a single panel.
 func _ensure_nested_plan_row() -> void:
@@ -998,7 +1016,7 @@ func _ensure_nested_plan_row() -> void:
 # mode/index identify what THIS card does at click time (re-resolved fresh,
 # never a baked closure — see the stale-lambda-capture bug this replaced):
 # mode "exit" always calls _exit_nested_level(); mode "enter" looks up
-# _current_level_boxes[index] and calls _on_box_entered() on whatever is
+# _collect_nested_boxes()[index] and calls _on_box_entered() on whatever is
 # there right now, re-checked for validity first.
 func _make_nested_plan_card(level_id: String, label: String, mode: String, index: int) -> PanelContainer:
 	var card := PanelContainer.new()
@@ -1048,10 +1066,9 @@ func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
 		_exit_nested_level()
 	elif mode == "enter":
 		var idx := card.get_meta("index", -1) as int
-		if idx >= 0 and idx < _current_level_boxes.size():
-			var box := _current_level_boxes[idx]
-			if is_instance_valid(box):
-				_on_box_entered(box)
+		var boxes := _collect_nested_boxes()
+		if idx >= 0 and idx < boxes.size():
+			_on_box_entered(boxes[idx])
 
 
 # Rebuilds every card in the row from scratch: an "exit to parent" card when
@@ -1067,11 +1084,11 @@ func _refresh_nested_plan_panel() -> void:
 		_nested_plan_row.add_child(
 			_make_nested_plan_card(parent_id, "↩ " + _level_display_name(parent_id), "exit", -1))
 
-	for i in _current_level_boxes.size():
-		var box := _current_level_boxes[i]
-		if is_instance_valid(box) and not box.child_level_id.is_empty():
-			_nested_plan_row.add_child(_make_nested_plan_card(
-				box.child_level_id, "↪ " + _level_display_name(box.child_level_id), "enter", i))
+	var boxes := _collect_nested_boxes()
+	for i in boxes.size():
+		var box := boxes[i]
+		_nested_plan_row.add_child(_make_nested_plan_card(
+			box.child_level_id, "↪ " + _level_display_name(box.child_level_id), "enter", i))
 
 	_nested_plan_row.visible = _nested_plan_row.get_child_count() > 0
 	_position_nested_plan_panel()
@@ -1186,14 +1203,6 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 			var fur := entry as Furniture
 			fl.remove_furniture(fur)
 			fur.queue_free()
-			# fur's own queue_free() above is deferred — is_instance_valid()
-			# still reports true for it until the frame ends, so a stale
-			# reference left in _current_level_boxes here would still look
-			# "valid" to _refresh_nested_plan_panel() right after this
-			# function returns, ahead of the fresh one about to be spawned
-			# below. Every box on this floor is being wiped and respawned
-			# from the snapshot anyway, so drop it now instead of waiting.
-			_current_level_boxes.erase(fur)
 		for item in (floors_snap.get(fid, []) as Array):
 			var d := item as Dictionary
 			var f := _spawn_furniture(d["id"] as String, fl, roundi(d["x"] as float), roundi(d["y"] as float))
