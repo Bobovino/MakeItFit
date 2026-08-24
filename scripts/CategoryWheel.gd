@@ -54,6 +54,18 @@ func _inner_radius() -> float:
 	return _outer_radius() * 0.32
 
 
+# Radius from centre to a regular hexagon's EDGE (not vertex) at a given
+# angle, for a hexagon whose circumradius (centre-to-vertex distance) is
+# `circumradius` — used to draw the wheel's outer silhouette and hub as
+# hexagons (matching the game's hex motif, see the faceted eyes/mouths in
+# the tenant portraits) while every hit-test below stays purely circular/
+# angular and untouched: draw hexagon, detect circle.
+func _hex_edge_radius(circumradius: float, angle: float) -> float:
+	const SECTOR := TAU / 6.0
+	var a := fposmod(angle, SECTOR) - SECTOR * 0.5
+	return circumradius * cos(SECTOR * 0.5) / cos(a)
+
+
 func _draw() -> void:
 	var center := size * 0.5
 	var inner_r := _inner_radius()
@@ -66,10 +78,10 @@ func _draw() -> void:
 		var steps := 20
 		for s in steps + 1:
 			var a: float = lerp(w["start"] as float, w["end"] as float, float(s) / steps)
-			pts.append(center + Vector2(inner_r, 0).rotated(a))
+			pts.append(center + Vector2(_hex_edge_radius(inner_r, a), 0).rotated(a))
 		for s in steps + 1:
 			var a: float = lerp(w["end"] as float, w["start"] as float, float(s) / steps)
-			pts.append(center + Vector2(wedge_outer, 0).rotated(a))
+			pts.append(center + Vector2(_hex_edge_radius(wedge_outer, a), 0).rotated(a))
 		var col: Color = GameTheme.C_AMBER if hovered else Color(0.30, 0.26, 0.16, 0.95)
 		draw_colored_polygon(pts, col)
 		var outline := pts.duplicate()
@@ -87,8 +99,14 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, -1, fsize)
 
 	var hub_col: Color = GameTheme.C_AMBER if _hub_hover else Color(0.20, 0.18, 0.12, 0.95)
-	draw_circle(center, inner_r, hub_col)
-	draw_arc(center, inner_r, 0, TAU, 32, Color(0, 0, 0, 0.55), 2.0, true)
+	# Vertex-only hexagon (6 straight-line points, no angular sampling needed
+	# the way the wedges above do since the hub isn't a pie slice).
+	var hub_pts := PackedVector2Array()
+	for s in 7:
+		var a: float = TAU * float(s) / 6.0
+		hub_pts.append(center + Vector2(inner_r, 0).rotated(a))
+	draw_colored_polygon(hub_pts, hub_col)
+	draw_polyline(hub_pts, Color(0, 0, 0, 0.55), 2.0, true)
 	var hub_font := ThemeDB.fallback_font
 	# Longer names ("Transformable") need a smaller size to fit the hub's fixed
 	# diameter than short ones ("All", "Living") do.
