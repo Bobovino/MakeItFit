@@ -4569,6 +4569,7 @@ func _test_level() -> void:
 	# (not root_dict) — "Back to Editor" resumes editing THAT, the test
 	# session reaches the root's tree separately via the in-game mini-plan.
 	gs.set("editor_test_snapshot", d.duplicate(true))
+	gs.set("testing_from_editor", true)
 	gs.set("pending_level_id",  "_custom")
 	gs.call("own_level", "_custom")
 	Transition.change_scene("res://scenes/Main.tscn")

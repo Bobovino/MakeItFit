@@ -384,7 +384,9 @@ func _apply_ui_theme() -> void:
 		_editor_back_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_editor_back_btn.offset_left = 8.0
 		_editor_back_btn.offset_top  = 8.0
-		_editor_back_btn.pressed.connect(func(): Transition.change_scene("res://scenes/LevelEditor.tscn"))
+		_editor_back_btn.pressed.connect(func():
+			GameState.testing_from_editor = false
+			Transition.change_scene("res://scenes/LevelEditor.tscn"))
 		canvas.add_child(_editor_back_btn)
 
 	if not is_instance_valid(_furniture_menu_btn):
@@ -500,6 +502,10 @@ func _go_back() -> void:
 	# Always Projects — a real player only ever reaches Main via CityMap in
 	# the first place, and the menu shouldn't offer (or silently take) a path
 	# back into the Level Editor even during a designer's Test Level session.
+	# Leaving this way ends the test session outright, same as quitting the
+	# game mid-test would — "← Back to Editor" is the only path that resumes
+	# it (see GameState.testing_from_editor).
+	GameState.testing_from_editor = false
 	Transition.change_scene("res://scenes/CityMap.tscn")
 
 
@@ -522,7 +528,12 @@ func _load_level(level_id: String) -> void:
 	_nested_transition_busy = false
 	_current_level_id  = level_id
 	if is_instance_valid(_editor_back_btn):
-		_editor_back_btn.visible = (level_id == "_custom")
+		# Stays visible through the WHOLE test session, not just while on the
+		# root ("_custom") level — GameState.testing_from_editor is set once
+		# by LevelEditor._test_level() and only cleared by leaving to
+		# CityMap or actually using this button, so it survives navigating
+		# into/out of any number of nested boxes in between.
+		_editor_back_btn.visible = GameState.testing_from_editor
 	gm.load_level(level_id)
 	tenant_card.set_rented(false)
 	_post_win_view   = false

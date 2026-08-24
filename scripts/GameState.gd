@@ -51,6 +51,15 @@ var custom_level_data: Dictionary = {}
 # testing a level doesn't lose the in-progress edit session.
 var editor_test_snapshot: Dictionary = {}
 
+# Set true for the WHOLE test session (not just while on the root level) —
+# Main.gd's "← Back to Editor" button used to only show up while
+# _current_level_id == "_custom" (the root), so it vanished the instant you
+# stepped into any nested box, leaving no way back except quitting to
+# CityMap and reloading the level by hand. Reset to false by _go_back()
+# (leaving to CityMap ends the test session) and by LevelEditor consuming
+# editor_test_snapshot on the way back in.
+var testing_from_editor: bool = false
+
 # Player/debug mode toggle (Ctrl+Shift+Alt+D in CityMap) — deliberately not
 # persisted to the save file, resets to off on every launch. In debug mode
 # the "Debug" district's levels show up in CityMap (hidden otherwise) and
