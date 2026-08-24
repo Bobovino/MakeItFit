@@ -983,7 +983,11 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		if not is_floor_tile(tile):
 			_block_reason = "Outside the room"
 			return false
-		if not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
+		# Nested/parabox boxes are a structural container, not furniture with
+		# a real usage tied to floor type — a balcony or bathroom is exactly
+		# as valid a spot for one as any other room, so it's exempt from the
+		# balcony/bathroom flooring restriction below.
+		if not furniture.is_nested_box and not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
 			_block_reason = "Needs %s flooring" % furniture.floor_category
 			return false
 		if tile in blocked:
