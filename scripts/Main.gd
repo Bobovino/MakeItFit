@@ -973,6 +973,12 @@ func _ensure_nested_plan_row() -> void:
 	_nested_plan_row.name = "NestedPlanRow"
 	_nested_plan_row.add_theme_constant_override("separation", 6)
 	_nested_plan_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Explicit z_index instead of relying purely on "last child = on top" —
+	# switching to the 3D view (e.g. the post-completion "View Apartment"
+	# flow's _set_view_mode(VIEW3D) call) re-adds/raises _mode3d_view to the
+	# front of ui_layer afterward, which otherwise buried this row behind its
+	# full-screen input-capturing viewport and made every card unclickable.
+	_nested_plan_row.z_index = 10
 	ui_layer.add_child(_nested_plan_row)
 
 
