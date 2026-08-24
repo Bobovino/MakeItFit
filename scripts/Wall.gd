@@ -1010,9 +1010,13 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	# requires_surface fields). Two independent checks:
 	#  - a piece landing on mezzanine tiles must not push the loft's total
 	#    carried weight past what it can structurally support;
-	#  - a piece that needs a supporting surface (a lamp, a small decorative
-	#    item) must land fully on top of a furniture piece flagged is_surface,
-	#    with enough spare capacity for its own weight.
+	#  - stacking: ANY piece whose footprint lands fully on top of a furniture
+	#    piece flagged is_surface counts as being stacked there (not gated
+	#    behind requires_surface any more — a heavy item stacked on a flimsy
+	#    surface should be rejected regardless of whether the item itself was
+	#    specifically authored as "needs a surface"). requires_surface stays
+	#    as a stronger, separate constraint: THAT item can never sit on bare
+	#    floor at all, surface or no.
 	var target_tiles := _rect_tiles(at, furniture.grid_w, furniture.grid_h)
 	var on_mezzanine := false
 	for tile in target_tiles:
@@ -1025,14 +1029,15 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = "Too heavy for this loft (%.0f / %.0f)" % [projected_load, mezzanine_max_load]
 			return false
 
-	if furniture.requires_surface:
-		var support := _surface_support_at(target_tiles, furniture)
-		if support == null:
-			_block_reason = "Needs a table or shelf underneath"
-			return false
-		var spare: float = (support.max_support_weight) - _surface_load(support, furniture)
+	var stacked_on := _surface_support_at(target_tiles, furniture)
+	if furniture.requires_surface and stacked_on == null:
+		_block_reason = "Needs a table or shelf underneath"
+		return false
+	if stacked_on != null:
+		var spare: float = stacked_on.max_support_weight - _surface_load(stacked_on, furniture)
 		if furniture.weight > spare:
-			_block_reason = support.furniture_name + " can't hold any more weight"
+			_block_reason = "Too heavy for %s — it would break (%.0f / %.0f)" % [
+				stacked_on.furniture_name, furniture.weight, stacked_on.max_support_weight]
 			return false
 
 	# Furniture-vs-furniture overlap: precise continuous rects + Z-range test,
@@ -1041,7 +1046,13 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	var new_rect := Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))
 	for entry in _placed_continuous:
 		var f: Furniture = entry["furniture"]
-		if f == furniture:
+		# stacked_on is deliberately excluded here — a piece legitimately
+		# stacked on top of its support (already weight-checked above) sits at
+		# the SAME tiles as that support with the SAME z_bottom==0 (there's no
+		# real Z offset tracked for a stacked item, see Furniture.gd's z_top/
+		# z_bottom comments), so without this exemption it would always fail
+		# the ordinary overlap check right after passing the weight check.
+		if f == furniture or f == stacked_on:
 			continue
 		if furniture.z_top <= f.z_bottom or furniture.z_bottom >= f.z_top:
 			continue   # different Z layers (e.g. loft above, ground below) never collide
@@ -1077,9 +1088,12 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 					return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
+	# — except the piece THIS one is legitimately stacked on top of (already
+	# weight-checked above); its own clearance ring is about keeping OTHER
+	# furniture from blocking access to it, not about what sits on its surface.
 	for entry in _placed_continuous:
 		var f: Furniture = entry["furniture"]
-		if f == furniture or f.ghost_radius <= 0:
+		if f == furniture or f == stacked_on or f.ghost_radius <= 0:
 			continue
 		var fpos: Vector2 = entry["pos"]
 		var ghost := Rect2(
@@ -1518,8 +1532,8 @@ func _mezzanine_load(exclude: Furniture = null) -> float:
 
 
 # Finds a furniture piece flagged is_surface whose footprint fully covers
-# `tiles` (so a small requires_surface item can't half-hang off the edge of
-# its support), or null if none does.
+# `tiles` (so a stacked item can't half-hang off the edge of its support), or
+# null if none does — null means "bare floor", not "no support needed".
 func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
 	for f in get_all_furniture():
 		var fur := f as Furniture
@@ -1535,14 +1549,16 @@ func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
 	return null
 
 
-# Combined weight of everything already resting on `support`, excluding `exclude`.
+# Combined weight of everything already resting on `support` (any piece
+# stacked there, not just requires_surface-flagged ones — see can_place()'s
+# generalized stacking check), excluding `exclude`.
 func _surface_load(support: Furniture, exclude: Furniture = null) -> float:
 	var counted: Dictionary = {}
 	var total := 0.0
 	for tile in _rect_tiles(support.grid_pos, support.grid_w, support.grid_h):
 		for f in _placed_list(tile):
 			var fur := f as Furniture
-			if fur == support or fur == exclude or counted.has(fur) or not fur.requires_surface:
+			if fur == support or fur == exclude or counted.has(fur):
 				continue
 			counted[fur] = true
 			total += fur.weight

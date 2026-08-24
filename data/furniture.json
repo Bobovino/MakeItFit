@@ -912,7 +912,9 @@
 			"color": "d8e4ec",
 			"floor_category": "bathroom",
 			"model": "res://assets/models/furniture/bathroomCabinet.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 8
 		},
 		{
 			"id": "towel_set",
@@ -981,7 +983,9 @@
 			"sell_price": 30,
 			"color": "907858",
 			"model": "res://assets/models/furniture/sideTable.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 8
 		},
 		{
 			"id": "tv_stand",
@@ -998,7 +1002,9 @@
 			"sell_price": 60,
 			"color": "604838",
 			"model": "res://assets/models/furniture/cabinetTelevision.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 15
 		},
 		{
 			"id": "office_chair",
@@ -1037,7 +1043,9 @@
 			"sell_price": 50,
 			"color": "6878a0",
 			"model": "res://assets/models/furniture/kitchenCabinetDrawer.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 10
 		},
 		{
 			"id": "whiteboard",
@@ -1107,7 +1115,9 @@
 			"buy_price": 280,
 			"sell_price": 100,
 			"color": "c0b090",
-			"model": "res://assets/models/furniture/kitchenBar.glb"
+			"model": "res://assets/models/furniture/kitchenBar.glb",
+			"is_surface": true,
+			"max_support_weight": 25
 		},
 		{
 			"id": "bar_stool",
@@ -1241,7 +1251,9 @@
 			"sell_price": 28,
 			"color": "907858",
 			"model": "res://assets/models/furniture/sideTableDrawers.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 8
 		},
 		{
 			"id": "dresser",
@@ -1260,7 +1272,9 @@
 			"sell_price": 80,
 			"color": "887050",
 			"model": "res://assets/models/furniture/cabinetBedDrawer.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 15
 		},
 		{
 			"id": "floor_mirror",
@@ -1465,7 +1479,9 @@
 			"sell_price": 70,
 			"color": "907040",
 			"model": "res://assets/models/furniture/bookcaseClosed.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 8
 		},
 		{
 			"id": "wide_bookcase",
@@ -1485,7 +1501,9 @@
 			"sell_price": 100,
 			"color": "987848",
 			"model": "res://assets/models/furniture/bookcaseClosedWide.glb",
-			"mobility_tier": "yellow"
+			"mobility_tier": "yellow",
+			"is_surface": true,
+			"max_support_weight": 12
 		},
 		{
 			"id": "book_stack",
