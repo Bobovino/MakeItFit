@@ -50,6 +50,12 @@ var custom_level_data: Dictionary = {}
 # the player uses Main.gd's "← Back to Editor" button to come back, so
 # testing a level doesn't lose the in-progress edit session.
 var editor_test_snapshot: Dictionary = {}
+# Mirrors LevelEditor._editor_nav_stack at the moment "▶ Test Level" was
+# pressed — if the level being tested was reached via "✎ Edit" (a nested
+# level, not the top apartment), _load_from_dict() alone on the way back
+# doesn't restore that history, so the "← Back to <parent>" button in the
+# editor never had anything to show. Restored alongside editor_test_snapshot.
+var editor_test_nav_stack: Array[String] = []
 
 # Set true for the WHOLE test session (not just while on the root level) —
 # Main.gd's "← Back to Editor" button used to only show up while

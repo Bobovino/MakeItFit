@@ -243,6 +243,13 @@ func _ready() -> void:
 	if not GameState.editor_test_snapshot.is_empty():
 		_load_from_dict(GameState.editor_test_snapshot)
 		GameState.editor_test_snapshot = {}
+		# _load_from_dict() alone has no way to know this level was reached
+		# via "✎ Edit" from a parent — restore that history too, or the
+		# "← Back to <parent>" button never shows for a nested level resumed
+		# this way (see GameState.editor_test_nav_stack's comment).
+		_editor_nav_stack = GameState.editor_test_nav_stack.duplicate()
+		GameState.editor_test_nav_stack = []
+		_refresh_nav_back_btn()
 
 	# The very first _fit_camera() call above can land before the viewport's
 	# layout has fully settled for one frame (anchors resolve immediately, but
@@ -4569,6 +4576,7 @@ func _test_level() -> void:
 	# (not root_dict) — "Back to Editor" resumes editing THAT, the test
 	# session reaches the root's tree separately via the in-game mini-plan.
 	gs.set("editor_test_snapshot", d.duplicate(true))
+	gs.set("editor_test_nav_stack", _editor_nav_stack.duplicate())
 	gs.set("testing_from_editor", true)
 	gs.set("pending_level_id",  "_custom")
 	gs.call("own_level", "_custom")
