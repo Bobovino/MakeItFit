@@ -130945,6 +130945,163 @@
 				"required_functions": [],
 				"monthly_rent": 0
 			}
+		},
+		{
+			"id": "debug:_sightlines",
+			"name": "Debug: Sightlines",
+			"district": "Debug",
+			"is_tutorial": true,
+			"block": 0,
+			"map_col": 11,
+			"map_row": 0,
+			"min_stars": 0,
+			"funds_base_reward": 0,
+			"acquisition_cost": 0,
+			"starting_budget": 1000,
+			"allowed_furniture": [],
+			"starting_inventory": [],
+			"apartment": {
+				"grid_w": 36,
+				"grid_h": 36,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				],
+				"floors": [
+					{
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"type": "floor",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": [
+							{
+								"x1": 1,
+								"x2": 33,
+								"y1": 1,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 33,
+								"x2": 33,
+								"y1": 1,
+								"y2": 33,
+								"primary": true,
+								"demolished": false,
+								"has_window": true,
+								"window_pos": 4,
+								"window_len": 8
+							},
+							{
+								"x1": 33,
+								"x2": 1,
+								"y1": 33,
+								"y2": 33,
+								"primary": true,
+								"demolished": false
+							},
+							{
+								"x1": 1,
+								"x2": 1,
+								"y1": 33,
+								"y2": 1,
+								"primary": true,
+								"demolished": false
+							}
+						]
+					},
+					{
+						"id": "fl_0_ceil",
+						"label": "Ground Floor Ceiling",
+						"type": "ceiling",
+						"parent_id": "fl_0",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					},
+					{
+						"id": "roof",
+						"label": "Roof / Techo",
+						"type": "roof",
+						"columns": [],
+						"floor_tiles": [],
+						"mezzanine_tiles": [],
+						"rails": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"segments": []
+					}
+				]
+			},
+			"moments": [],
+			"starting_furniture": [
+				{
+					"id": "desk",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "wardrobe",
+					"x": 18,
+					"y": 4
+				},
+				{
+					"id": "normal_bed",
+					"x": 3,
+					"y": 20
+				},
+				{
+					"id": "bookshelf",
+					"x": 24,
+					"y": 23
+				}
+			],
+			"tenant": {
+				"name": "Debug Tenant",
+				"age": "30",
+				"flavor": "Debug level for sightlines (height-based blocking). Two requirements, testing BOTH directions: 1) 'See the sunrise' from the desk to the window MUST be clear — the Wardrobe (tall) currently blocks it, move it out of the way. 2) 'Overprotective parents' from the door to the bed nook must STAY blocked — the Bookshelf (tall) currently blocks it correctly; try moving the bookshelf away and watch this requirement fail.",
+				"required_functions": [
+					"work",
+					"sleep"
+				],
+				"monthly_rent": 0,
+				"sightline_requirements": [
+					{
+						"from": [
+							6,
+							6
+						],
+						"to": [
+							32,
+							6
+						],
+						"must_be_clear": true,
+						"label": "See the sunrise from the desk"
+					},
+					{
+						"from": [
+							2,
+							24
+						],
+						"to": [
+							32,
+							24
+						],
+						"must_be_clear": false,
+						"label": "Overprotective parents can't see the bed nook"
+					}
+				]
+			}
 		}
 	]
 }
