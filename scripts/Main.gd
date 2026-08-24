@@ -65,6 +65,7 @@ var _category_wheel: CategoryWheel = null    # Sims-style radial category picker
 var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog, own node so it doesn't cross-wire with _modal_backdrop's WallInspector-specific dismiss callback
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
+var _breadcrumb_lbl: Label = null     # "Root > Shoebox > Shoebox Interior" — which apartment we're actually in, since nested boxes are otherwise only inferable from the mini-plan cards
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
@@ -656,6 +657,7 @@ func _load_level(level_id: String) -> void:
 	if first_floor_node and not _nested_stack.is_empty():
 		first_floor_node.set_external_daylight_factor(_current_nested_daylight_factor)
 	_refresh_nested_plan_panel()
+	_update_breadcrumb()
 
 	# Compute bounding box of painted tiles per floor for focused camera fit
 	_floor_tile_bounds.clear()
@@ -2070,6 +2072,31 @@ func _reraise_furniture_menu_nodes() -> void:
 # Neither mode has a permanent docked Wall Inspector to hint at wall access
 # — this small banner fills that gap. Empty text hides it (used whenever a
 # wall is already open, or in VIEW3D where the hint text says something else).
+# Which apartment we're actually looking at right now, spelled out as a
+# "Root > Shoebox > Shoebox Interior" trail — otherwise the only way to tell
+# was to read it off the mini-plan cards' labels, which isn't always visible
+# (e.g. a level with no boxes of its own shows no cards at all).
+func _update_breadcrumb() -> void:
+	if not is_instance_valid(_breadcrumb_lbl):
+		_breadcrumb_lbl = Label.new()
+		_breadcrumb_lbl.add_theme_font_size_override("font_size", 11)
+		_breadcrumb_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_breadcrumb_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_breadcrumb_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui_layer.add_child(_breadcrumb_lbl)
+	var parts: Array[String] = []
+	for ctx in _nested_stack:
+		parts.append(_level_display_name((ctx as Dictionary)["parent_level_id"] as String))
+	parts.append(_level_display_name(_current_level_id))
+	_breadcrumb_lbl.text = " > ".join(parts)
+	_breadcrumb_lbl.offset_left   = LEFT_X
+	_breadcrumb_lbl.offset_right  = RIGHT_X
+	_breadcrumb_lbl.offset_top    = TOP_Y
+	_breadcrumb_lbl.offset_bottom = TOP_Y + 14.0
+	_breadcrumb_lbl.visible = true
+	ui_layer.move_child(_breadcrumb_lbl, ui_layer.get_child_count() - 1)
+
+
 func _set_mode_hint(text: String) -> void:
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
