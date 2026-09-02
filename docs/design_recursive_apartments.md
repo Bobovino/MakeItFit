@@ -194,7 +194,103 @@ the apartment it just left).
 5. **Tenant pathing.** If tenant walk paths are ever more than cosmetic, they need the same wrap
    treatment as sightlines, and the same step budget.
 
-## 5. Suggested build order
+## 5. Recursion as economy — boxes that pay
+
+Everything above treats nesting as a *constraint*. Today that is all it is: a box costs floor
+space, steals light, adds noise, and gets heavier until it can't be moved. It never gives the
+player anything. That asymmetry is why nesting currently reads as a side objective rather than
+part of the main loop.
+
+The fix is to let the player **place a box to solve a budget problem**. A box with a tenant in
+it is income rather than expense — but the tenant inside has needs of their own, so buying your
+way out of a shortfall means taking on another puzzle.
+
+### 5.1 Rent, not a loan
+
+The obvious version — a lump sum now, "you owe a puzzle later" — is a debt: paid once, then
+inert. Better is a **standing income conditional on the inner tenant staying satisfied**.
+
+That framing is worth the difference because it makes the existing coupling mechanics load-
+bearing. Block the box's window while arranging the outer tenant's sofa and the interior loses
+daylight — and the rent stops. Put the TV near the box and the bed inside stops counting for
+noise. Fill the box and it goes red-tier and can never be repositioned again.
+
+So the bet isn't "solve one more puzzle." It's **keep two puzzles compatible at once**, using
+systems that already exist and already talk to each other. Difficulty scales without authoring:
+each additional box competes with the previous ones for light, quiet and floor.
+
+### 5.2 Three ways this breaks
+
+**No eviction valve → unwinnable saves.** If a box can't be removed, a player who over-extends
+has no move except restarting the level. There must be a way to pull one out at a penalty
+(partial refund, reputation, whatever the meta ends up being). This is the single most important
+safety mechanism in the whole idea.
+
+**Fatigue.** Interiors must get *smaller and simpler* with depth, never harder. If each box is a
+full-weight level, one level becomes five and players quit mid-chain. Budget the total puzzle
+mass of a chain, not of each link.
+
+**The degenerate fill.** If a box is reliably net-positive, the optimal play is to carpet the
+floor in boxes. The brakes already exist — boxes occupy parent floor and degrade each other via
+light/noise/weight — but the curve needs tuning so that the third or fourth box stops paying for
+itself.
+
+### 5.3 The missing implementation piece
+
+`child_level_id` is a **per-placement** field in each level's `starting_furniture`, not a catalog
+field on `shoebox_apartment` (confirmed in `levels.json`: `debug:_nested_child` sets it, the
+catalog entry does not). Boxes are therefore authored today, with their interiors chosen by hand.
+
+For a shop-bought box, the interior has to come from somewhere. Recommended: a **pool of small
+pre-authored interiors** tagged by rent yield and difficulty, drawn from on purchase. Not
+procedural generation — fifteen to twenty hand-made small interiors is plenty, and hand-made is
+the only way the inner puzzles stay worth solving.
+
+### 5.4 The arc this produces
+
+The player starts trying to house one person in 35 m² and ends up the landlord of a block of
+drawers in someone's living room. That arc needs no scripting — it emerges from a series of
+individually reasonable financial decisions, which makes it land far harder than a written
+narrative would.
+
+It is also the thesis of the whole game stated as a mechanic: the answer to not having enough
+room is always to put someone smaller inside.
+
+## 6. Further couplings worth prototyping
+
+**Level-type variety.** Nesting and recursion are different level *kinds*, not a single ladder.
+Some levels are ordinary nested apartments (a box containing a different apartment), some are
+looping, some are self-contained, each with its own depth cap. Mixing them across a district
+keeps the mechanic from becoming routine, and the economy in §5 applies to all three.
+
+**Apartments on rails.** `rail_axis` already gives per-Moment sliding positions to furniture. A
+*box* on a rail means the nested apartment itself slides between Moments — the interior's
+daylight, noise and external-zone profile all change depending on where the parent's rail has
+parked it. Nearly free: the box is already Furniture, and `moment_positions` already handles the
+per-Moment storage. The interesting authoring case is a rail that moves the box past a window,
+so the interior gets sun in one Moment and none in the other.
+
+**Cross-scale furniture transfer.** Let the player move a piece from the parent apartment down
+into a child that has run out of budget — a hand-me-down instead of a purchase. The rule that
+makes it a mechanic rather than a cheat: **weight is conserved across the transfer.**
+
+At roughly 8× linear scale per depth, volume — and therefore weight — scales by about 512×. A
+sofa at `weight: 10` in the parent arrives in the child weighing on the order of 5,000, against
+existing thresholds of `BOX_WEIGHT_RED_MIN = 150` and surface capacities of 8–25. The numbers
+already work out without tuning:
+
+- it is instantly and permanently red-tier — it will never be moved again once placed
+- it can never be stacked on anything, and nothing meaningful can be stacked on it
+- it will overload a mezzanine outright
+
+So a bail-out from upstairs is real help that arrives as a permanent obstruction. The exact
+multiplier matters less than its size — any large factor produces the same qualitative result,
+because the existing thresholds are so low.
+
+This is also the mother-and-daughter metaphor expressed as a rule: what you hand down is
+furniture the next one can never get rid of.
+
+## 7. Suggested build order
 
 Looping first — it is cheaper, more teachable, and its self-collision mechanic is the more
 distinctive of the two.
@@ -213,3 +309,13 @@ distinctive of the two.
    No entry allowed yet — the simulation is observable from outside the box first.
 6. **Self-containment: entry.** Relax the Main.gd:1062 guards to a depth cap once the maths is
    proven and the mini-plan card row handles repeated identical entries sensibly.
+
+**The economy (§5) is not gated behind any of this.** It needs only ordinary nesting, which
+already ships — a purchasable box, a pool of interiors, conditional rent and an eviction valve.
+It is the highest-value item in this document and the cheapest to reach, so it should probably
+be built *before* step 1 rather than after step 6. Recursion then arrives into a loop that
+already has a reason to care about boxes.
+
+Of §6's three, **rails are nearly free** (the box is already Furniture with `moment_positions`)
+and worth doing alongside the economy. **Cross-scale transfer** should wait until the economy
+exists, since its whole point is bailing out a child that has run out of money.
