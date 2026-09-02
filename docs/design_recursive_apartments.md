@@ -274,10 +274,12 @@ so the interior gets sun in one Moment and none in the other.
 into a child that has run out of budget — a hand-me-down instead of a purchase. The rule that
 makes it a mechanic rather than a cheat: **weight is conserved across the transfer.**
 
-At roughly 8× linear scale per depth, volume — and therefore weight — scales by about 512×. A
-sofa at `weight: 10` in the parent arrives in the child weighing on the order of 5,000, against
-existing thresholds of `BOX_WEIGHT_RED_MIN = 150` and surface capacities of 8–25. The numbers
-already work out without tuning:
+The scale factor is measurable, not assumed: the shoebox is 6×6 tiles and the convention is
+10 tiles = 1 m (`Main.TILE_M2 = 0.01`), so the box is 0.6 m across while `MIN_NESTED_INTERIOR_M2
+= 20.0` forces its interior to be at least ~4.5 m — a linear factor of about **7.5× per depth**,
+and therefore ~420× by volume. A sofa at `weight: 10` in the parent arrives in the child weighing
+on the order of 4,000, against existing thresholds of `BOX_WEIGHT_RED_MIN = 150` and surface
+capacities of 8–25. The numbers already work out without tuning:
 
 - it is instantly and permanently red-tier — it will never be moved again once placed
 - it can never be stacked on anything, and nothing meaningful can be stacked on it
@@ -290,7 +292,82 @@ because the existing thresholds are so low.
 This is also the mother-and-daughter metaphor expressed as a rule: what you hand down is
 furniture the next one can never get rid of.
 
-## 7. Suggested build order
+## 7. Showing the parent — two design cases
+
+The default for a nested level is that the parent is *implied*, not drawn: today `_load_level()`
+tears the parent down entirely and the only link between frames is a 2D `BlueprintPreview`
+sketch. Live miniatures and portal rendering were considered and rejected during the original
+build (Main.gd:1045), and that call still stands as the **default**.
+
+But some levels want the parent visible, and that is affordable as a **special-level resource**.
+
+### 7.1 It is not a performance problem
+
+The game already renders one apartment; showing the parent renders two. That is close to the
+whole analysis.
+
+Concretely, from the imported asset pack's own README: 145,444 triangles across **all 172 props
+combined**, i.e. ~850 each. A furnished apartment of 30 pieces is ~25k triangles; walls and floor
+are negligible. Drawing the parent as well puts the scene around 50k — a figure any integrated
+GPU of the last decade renders at frame rate without noticing.
+
+Draw calls, usually the real bottleneck before triangle count, are also covered: the pack ships
+**one shared 12-colour palette across every model**, explicitly so the set batches as a family.
+
+Two rules keep it that way:
+
+- **Depth 1 only.** Nesting is where cost multiplies, and where float precision eventually breaks
+  down (at 7.5× per depth, a depth-4 parent would span ~14 km, at which point float32 gives
+  ~1.7 mm of precision while the furniture needs sub-millimetre detail). One level up is a 34 m
+  room — a small scene with no precision concerns whatsoever.
+- **The parent is scenery, not a live level.** Rendered geometry with no zones, sightlines,
+  function updates or economy running against it.
+
+The actual work is therefore a **refactor of the level-swap path**, not a rendering budget: a
+mode where the parent's geometry survives `_load_level()` as inert decoration instead of being
+freed. Worth scoping before either case below is authored.
+
+### 7.2 Case: the camper van
+
+A camper van whose interior is a nested level, travelling through the parent apartment.
+
+Mechanically this is **a box on a rail (§6) with one Moment per parked position** — and almost
+all of it already exists. At each rail position the interior's `daylight_factor`, noisy-neighbour
+state and wall-derived `external_zone` all differ, because all three are already computed from
+where the box sits in the parent. Parked by the window in the morning: sun, and street noise.
+Under the table at night: dark, but quiet. The interior layout has to satisfy its tenant in
+**every parked position at once**, which is exactly what the Moments system is for.
+
+The sense of travel comes from the conditions changing, not from the render. A backdrop plate per
+Moment sells it, with a parallax slide during the transition; a genuinely rendered parent is an
+upgrade rather than a requirement here.
+
+### 7.3 Case: the sleepwalker
+
+The parent's tenant sleepwalks during the night Moment, and the boxes on their floor are in the
+way.
+
+The mechanic is that **the sleepwalker's route is a consequence of how the player furnished the
+parent** — they path around the parent's obstacles, and that path does or does not cross the
+boxes. The tension writes itself: the arrangement that satisfies the large tenant is the one that
+routes the sleeper over the small ones, and both have to be solved together.
+
+This needs no new traversal machinery in principle — a walk path across the grid is the same kind
+of trace as `Wall.has_sightline()`'s Bresenham walk, against the same occupancy data.
+
+For presentation, the cheaper option is also the better one:
+
+- **A giant silhouette crossing overhead** — one animated object, trivial cost, and a shadow
+  passing over the room is more frightening than a modelled foot.
+- **The parent's live blueprint** — show `BlueprintPreview` of the apartment above with the
+  route traced and a dot moving along it. It is 2D, costs nothing, sits inside the game's
+  existing visual language, and for a *route* puzzle reads considerably better than a 3D view.
+  Watching the dot approach is the tension.
+
+Recommend prototyping the blueprint version first; a rendered parent can be added on top if the
+level still wants it.
+
+## 8. Suggested build order
 
 Looping first — it is cheaper, more teachable, and its self-collision mechanic is the more
 distinctive of the two.
@@ -319,3 +396,9 @@ already has a reason to care about boxes.
 Of §6's three, **rails are nearly free** (the box is already Furniture with `moment_positions`)
 and worth doing alongside the economy. **Cross-scale transfer** should wait until the economy
 exists, since its whole point is bailing out a child that has run out of money.
+
+§7's two cases sit either side of that line. **The camper van is mostly authoring** once rails
+land — it is a level built from systems that already exist, and a good early proof that the rail
+idea carries a whole level rather than a gimmick. **The sleepwalker needs one new system** (a
+route trace across the parent's grid) plus the blueprint presentation, and neither depends on the
+parent-rendering refactor, so it can be built and evaluated before committing to that work.
