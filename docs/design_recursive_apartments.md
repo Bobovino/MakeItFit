@@ -241,10 +241,14 @@ itself.
 field on `shoebox_apartment` (confirmed in `levels.json`: `debug:_nested_child` sets it, the
 catalog entry does not). Boxes are therefore authored today, with their interiors chosen by hand.
 
-For a shop-bought box, the interior has to come from somewhere. Recommended: a **pool of small
-pre-authored interiors** tagged by rent yield and difficulty, drawn from on purchase. Not
-procedural generation — fifteen to twenty hand-made small interiors is plenty, and hand-made is
-the only way the inner puzzles stay worth solving.
+For a shop-bought box, the interior has to come from somewhere — and it must **not** be drawn at
+random. Randomness and puzzles are incompatible: a puzzle requires that the player can plan
+before committing, and a box whose interior is unknown until purchase turns a decision into a
+gamble. The player picks from a small set of **named boxes with published terms**, exactly as
+they pick furniture from the catalogue. Complete information, hard choice.
+
+That means a fixed roster of hand-authored interiors, each with an identity the player learns to
+recognise. See §5.5.
 
 ### 5.4 The arc this produces
 
@@ -255,6 +259,107 @@ narrative would.
 
 It is also the thesis of the whole game stated as a mechanic: the answer to not having enough
 room is always to put someone smaller inside.
+
+### 5.5 The signature boxes
+
+**A box is defined by what it demands of the parent, not by its theme.** Two boxes that ask for
+the same thing are the same box with a different sticker, however different their tenants read.
+The roster below is spread across the couplings that already exist (light, noise, weight,
+position) plus Moments, so that every entry is a genuinely different decision.
+
+| Box | Rent | Needs from the parent | Inflicts on the parent | System exercised |
+|---|---|---|---|---|
+| **The Drawer** | low | nothing | nothing | — (teaches the loop) |
+| **The Water Box** | mid | adjacency to a parent fixture | nothing | placement constraint (new) |
+| **The Window** | high | unblocked daylight | nothing | `_compute_box_occlusion()` |
+| **The Musician** | very high | nothing | noise — mutes nearby `needs_quiet` | `is_noisy` / `_mute_quiet_neighbors()` |
+| **The Night Shift** | high | dark and quiet in the *opposite* Moment | nothing | Moments, across frames |
+| **The Collector** | rising | nothing | weight — eventually freezes the layout | `apply_interior_weight()` |
+| **The Sublet** | highest | a slot for a further box | compounds everything above | recursion (§5.6) |
+| **The Foster Room** | steady | stability across Moments | nothing | re-solving without rebuying |
+
+Four of these deserve their reasoning spelled out:
+
+**The Window** is the cleanest conflict in the set, because the wall that gets daylight is also
+the wall the parent's own tenant wants for reading, plants or a desk. The player is choosing
+which tenant gets the sun.
+
+**The Musician** pays best and costs most: you can suddenly afford what you needed, and the
+bedroom upstairs stops working. It forces segregation of the parent plan rather than mere
+tidiness.
+
+**The Night Shift** is mechanically the most interesting, and the only box whose needs are
+evaluated in the *opposite* Moment to its host — the daytime layout must leave it dark and quiet,
+the night layout must not. It is the one entry that uses Moments across frames rather than within
+one.
+
+**The Collector** is a trap the player sets for themselves: it pays more the more is put inside
+it, and every item added pushes `interior_weight` toward `BOX_WEIGHT_RED_MIN`, after which the box
+is red-tier and can never be repositioned. The better the income, the more frozen the parent.
+
+**The Foster Room** — a different child every few Moments, same interior, nothing rebuyable — is
+structurally the most original level in the whole game and should be an unlock at the end of the
+arc rather than a catalogue entry.
+
+Two presentation notes that matter more than they look:
+
+- **The purchase card is a lease, not a price tag.** Four lines: what it pays, what floor it eats,
+  what it needs, what it does to you. Presented as taking on a subtenant rather than buying a
+  chest of drawers — it reinforces the theme and makes the decision legible in one glance.
+- **Rent must visibly stop.** If the player blocks the Window box's light, the income has to fall
+  with a notice attached. An uncommunicated coupling does not exist as far as the player is
+  concerned.
+
+### 5.6 Recursive economy — boxes that contain their own host
+
+Allowing a box to point at **the level it is in**, or at an **ancestor further up the stack**,
+turns the economy recursive. Both are currently refused outright (§3.2).
+
+**Self-reference does not add a second puzzle.** If the box contains this same apartment, the
+sub-puzzle is already solved by construction — it is the same layout — which would be free money.
+What saves it is that the couplings break the symmetry: the interior copy receives less light,
+inherits noise from outside, and has a smaller budget. Same layout, worse conditions.
+
+So what the player buys is not another puzzle but **a tighter tolerance on the one they have**:
+the apartment must be solved with enough margin that its own degraded copy also passes. That is
+mechanically distinct from every other box in §5.5, and it is the cleanest difficulty knob in the
+feature — how much degradation per level of depth.
+
+**The money must converge.** With rent `R` at the top and each nested copy yielding `k` times the
+one above it, total income is a geometric series:
+
+```
+R + kR + k²R + … = R / (1 − k)
+```
+
+At `k < 1` this converges to a finite, reasonable-about bonus — at `k = 0.5`, a self-referential
+box is worth at most twice its face rent. At `k ≥ 1` it diverges and the economy is broken. So the
+balance rule falls out of the maths rather than being imposed: **each depth must yield strictly
+less than the one above**, which is also simply what subletting does in reality. Income converging
+against constraints accumulating is the trade, and it caps itself — depth stops paying before it
+needs an arbitrary limit.
+
+**Cycles are richer than self-reference.** A box pointing at an ancestor (A contains B contains A)
+makes the coupling mutual rather than reflexive: A's layout affects B and B's affects A. The
+player can fix a problem in A by rearranging furniture in B — a two-body puzzle where both bodies
+are the same rooms seen from opposite sides.
+
+**State identity is the real engineering problem**, and it is not a rendering one. When the same
+level appears twice in `_nested_stack`, "the state of level A" is no longer uniquely defined:
+enter A, edit, leave to B, re-enter A — which snapshot wins? Two answers:
+
+- **Shared** — every instance of A is literally the same state; edit it anywhere and it changes
+  everywhere.
+- **Per-instance** — each stack frame keeps its own copy.
+
+**Decision: shared**, because it is the entire point of the mechanic — what you do here you are
+doing to yourself. The architecture already leans this way: `_level_state_cache` is keyed by
+`level_id`, not by stack position, so it is already one source of truth per level. The requirement
+it adds is that the snapshot be re-applied on **every** entry, not only the first.
+
+Per-instance is worth keeping as a possible *second box type* later rather than a replacement —
+"a copy that forgets" and "a copy that remembers" are different toys, and which is more fun is an
+empirical question best answered by playing both.
 
 ## 6. Further couplings worth prototyping
 
