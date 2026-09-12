@@ -590,7 +590,8 @@
       "height_category": "tall",
       "rail_axis": "h",
       "functions": [
-        "storage"
+        "storage",
+        "dress"
       ],
       "buy_price": 300,
       "sell_price": 100,
@@ -1275,7 +1276,8 @@
       "wall_h": 13,
       "floor_depth": 7,
       "functions": [
-        "storage"
+        "storage",
+        "dress"
       ],
       "buy_price": 200,
       "sell_price": 80,
@@ -1296,7 +1298,9 @@
       "wall_h": 18,
       "floor_depth": 8,
       "height_category": "tall",
-      "functions": [],
+      "functions": [
+        "dress"
+      ],
       "buy_price": 90,
       "sell_price": 35,
       "color": "c0c8d0",
@@ -1314,7 +1318,8 @@
       "wall_h": 14,
       "floor_depth": 5,
       "functions": [
-        "storage"
+        "storage",
+        "dress"
       ],
       "buy_price": 80,
       "sell_price": 30,
@@ -3384,7 +3389,8 @@
       "extended_add_h": 4,
       "functions": [
         "storage",
-        "work"
+        "work",
+        "dress"
       ],
       "folded_functions": [
         "storage"
@@ -3444,7 +3450,8 @@
       "rail_axis": "v",
       "zone_divider": true,
       "functions": [
-        "storage"
+        "storage",
+        "dress"
       ],
       "buy_price": 360,
       "sell_price": 130,
@@ -3544,7 +3551,8 @@
       "floor_depth": 5,
       "rail_axis": "h",
       "functions": [
-        "storage"
+        "storage",
+        "dress"
       ],
       "buy_price": 150,
       "sell_price": 55,
