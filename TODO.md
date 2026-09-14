@@ -1,5 +1,48 @@
 # TODO
 
+## `sport` has no provider — three levels are uncompletable
+
+`final_01`, `final_04` and `final_05` (Friedrichshain) require the `sport` function, and no
+catalogue item supplies it in `functions`, `folded_functions` or `extended_functions`. Those
+levels cannot currently be finished.
+
+`dress` had the same problem and is fixed — tagged on `wardrobe`, `sliding_wardrobe_tall`,
+`dresser`, `clothes_rack`, `rolling_clothes_rack`, `vanity_desk` and `floor_mirror`, which
+cleared `apr_10`, `loft_10` and `final_02`.
+
+`sport` was deliberately left untagged: nothing in the catalogue honestly provides it, and
+tagging a rug would leave the function meaningless to the player. Two ways to close it:
+
+- **Add a catalogue entry** — a fold-away wall gym. This is wanted content anyway (it came up as
+  a genuine gap when cross-checking against Never Too Small), and it can ship immediately reusing
+  `WallPegboard.glb` as a placeholder model until the real one is made. Needs a price and
+  footprint.
+- **Reinterpret `sport` as a free-space requirement** using the existing `space_needs`/`min_free`
+  machinery rather than as a function. Arguably truer — floor exercise needs clear floor, not
+  equipment — but it changes those three levels' data shape and removes `sport` from the function
+  vocabulary.
+
+## Missing space-saving furniture worth modelling
+
+From cross-checking the imported pack against Never Too Small's published design articles. The
+pack already covers most of the canon; these are the real gaps, ordered by how much existing
+mechanics they activate:
+
+- **Sleeping pod** — a closed sleeping capsule with integrated storage. This is the nesting
+  mechanic as it exists in real architecture: a room inside a room that occupies floor and blocks
+  or admits light depending on placement. Highest value of the set.
+- **Fluted / translucent glass panel** — passes daylight, blocks sightline. A new *combination* of
+  two systems that already exist, so close to free. Note `GlassPartition_Sliding` is already
+  imported but is clear glass, which passes both.
+- **Curtain divider** — a `zone_divider` that opens and closes per Moment.
+- **Skylight** — overhead daylight that furniture cannot block, unlike a window.
+- **Magnetic wall**, **retractable courtyard roof**, **climbing wall / ladder to a play loft** —
+  lower priority.
+
+Not furniture, and a separate and much larger decision: **sloped ceilings** and **split-level
+floors**, both of which are recurring devices in the source material and would be level geometry
+rather than props.
+
 ## Modular furniture kits from MakeItFit_GameAssets/furniture
 
 The external asset pack (`C:\Users\rodry\Documents\MakeItFit_GameAssets\furniture`) ships two
