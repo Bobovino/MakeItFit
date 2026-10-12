@@ -67,7 +67,7 @@ func _build() -> void:
 	vb.add_child(HSeparator.new())
 
 	vb.add_child(_entry("Art & Sound",
-		"Furniture models, interface sounds, and casino/UI audio by Kenney (kenney.nl)\n" +
+		"Interface sounds and casino/UI audio by Kenney (kenney.nl)\n" +
 		"Released under Creative Commons Zero (CC0)"))
 
 	vb.add_child(HSeparator.new())

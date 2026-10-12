@@ -201,6 +201,7 @@ var _level_completed:   bool = false   # true once this level's Results screen h
 
 
 func _ready() -> void:
+	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	# Floor tabs (Ground Floor/Loft/Second Floor/...) read better as a vertical
 	# stack — it echoes the actual building elevation (higher floors literally
 	# higher on screen) instead of a left-to-right strip, and frees up the
@@ -3114,7 +3115,14 @@ func _on_rent_pressed() -> void:
 		return
 	if not _all_furniture_accessible():
 		Audio.play("error")
-		result_screen.show_failure("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it.")
+		if Floor.pathing_enabled:
+			var stuck: PackedStringArray = []
+			for fid in _floors:
+				for f in (_floors[fid] as Floor).get_inaccessible_furniture():
+					stuck.append((f as Furniture).furniture_name)
+			result_screen.show_failure("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from." % ", ".join(stuck))
+		else:
+			result_screen.show_failure("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it.")
 		_refresh_undo_redo_buttons()
 		return
 

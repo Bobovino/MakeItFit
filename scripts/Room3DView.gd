@@ -1713,10 +1713,14 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 		_hide_wall_behind_item(mi.position, box_size, f)
 	if not is_instance_valid(ap):
 		return
+	# The kit names its clip "open"; _merge_animations() builds "Open".
+	var clip := "Open" if ap.has_animation("Open") else "open"
+	if not ap.has_animation(clip):
+		return
 	if is_extended:
-		ap.play("Open")
+		ap.play(clip)
 	else:
-		ap.play("Open", -1, -1.0, true)   # negative speed + from_end = play it backward, i.e. "Close"
+		ap.play(clip, -1, -1.0, true)   # negative speed + from_end = play it backward, i.e. "Close"
 
 
 # Same "flat glassy decal flush against the wall" trick _add_wall_opening_overlay
@@ -1806,7 +1810,11 @@ func _merge_animations(inst: Node3D) -> AnimationPlayer:
 # foldable items just rescale their one model between sizes, but a piece can
 # opt into a second, distinct model for its extended state via "model_extended"
 # (e.g. a sofa bed that should become an actual bed shape, not a bigger sofa).
+const OPEN_POSE_SUFFIX := "#open"
+
 func _active_model_path(fdata: Dictionary, is_extended: bool) -> String:
+	if is_extended and (fdata.get("open_anim", false) as bool):
+		return (fdata.get("model", "") as String) + OPEN_POSE_SUFFIX
 	if is_extended:
 		var ext := fdata.get("model_extended", "") as String
 		if not ext.is_empty():
@@ -2921,9 +2929,9 @@ func _box(box_size: Vector3, pos: Vector3, color: Color, role: StringName = &"")
 	return mi
 
 
-# Swaps a placeholder box's own surface for a real model (Kenney Furniture
-# Kit, CC0 — see assets/models/furniture/LICENSE.txt), scaled uniformly so it
-# never exceeds the box on any axis and grounded/centered inside it. `mi`
+# Swaps a placeholder box's own surface for a real model (the studio's own
+# Space-Saving Furniture Kit — see assets/models/furniture/README.txt), fitted
+# to the box and grounded/centered inside it. `mi`
 # keeps its existing transform/size as the pick/drag/fold anchor the rest of
 # this script already relies on — only its own mesh surface is removed, the
 # model renders as a child instead. No-op (box stays visible) if the item has
@@ -2937,6 +2945,9 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 			old_inst.queue_free()
 		mi.set_meta("model_inst", null)
 
+	# _active_model_path() marks "show this model unfolded" with a suffix.
+	var open_pose := model_path.ends_with(OPEN_POSE_SUFFIX)
+	model_path = model_path.trim_suffix(OPEN_POSE_SUFFIX)
 	if model_path.is_empty() or not ResourceLoader.exists(model_path):
 		return
 	var packed := load(model_path) as PackedScene
@@ -2945,7 +2956,18 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 	var inst := packed.instantiate() as Node3D
 	if not inst:
 		return
-	var native := _node_aabb(inst)
+	# A foldable piece is shown unfolded by posing the model at the end of
+	# its own "open" clip before it is measured, so the open shape is what
+	# gets fitted to the unfolded footprint.
+	if open_pose:
+		var poser := inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if poser != null and poser.has_animation("open"):
+			poser.play("open")
+			poser.seek(poser.get_animation("open").length, true)
+			poser.pause()
+	# Measured across every part of the model (a carcass, doors, legs, a
+	# mattress), not just the first one.
+	var native := _combined_aabb(inst)
 	if native.size.x <= 0.0001 or native.size.y <= 0.0001 or native.size.z <= 0.0001:
 		inst.queue_free()
 		return
@@ -3022,33 +3044,23 @@ func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
 		-world_center.z)
 
 
-# Depth-first, first-match only — deliberately NOT a merge of every mesh in
-# the scene. These Kenney kit files bundle small accessory sub-meshes (a
-# toilet lid "cover", a bed "cover"/"pillow") that carry bizarre baked
-# scale/rotation values (seen: 2.1x and 0.5x with swapped axes, presumably
-# left over from whatever rig/bone they were authored against) — merging
-# them in inflated the AABB to 2-3x the object's real size, which is why
-# fitting to that box made the actual body render tiny inside it. The first
-# MeshInstance3D found (always the primary body in every model checked:
-# "toilet(Clone)", "bedSingle(Clone)", etc.) is a much more honest measure
-# of the object's true footprint; the accessory pieces still render, they
-# just don't get a vote on how big the whole instance is scaled.
-func _first_mesh_aabb(node: Node3D, accumulated: Transform3D) -> Dictionary:
-	if node is MeshInstance3D and (node as MeshInstance3D).mesh:
-		return {"aabb": (node as MeshInstance3D).mesh.get_aabb(), "xform": accumulated}
-	for child in node.get_children():
-		if child is Node3D:
-			var result := _first_mesh_aabb(child as Node3D, accumulated * (child as Node3D).transform)
-			if not result.is_empty():
-				return result
-	return {}
-
-
-func _node_aabb(node: Node3D) -> AABB:
-	var found := _first_mesh_aabb(node, Transform3D.IDENTITY)
-	if found.is_empty():
-		return AABB()
-	return (found["xform"] as Transform3D) * (found["aabb"] as AABB)
+# Bounding box across every mesh in the model, in the model's own space.
+func _combined_aabb(node: Node3D) -> AABB:
+	var box := AABB()
+	var have_box := false
+	var stack: Array = [[node, Transform3D.IDENTITY]]
+	while not stack.is_empty():
+		var entry: Array = stack.pop_back()
+		var n: Node3D = entry[0]
+		var xform: Transform3D = entry[1]
+		if n is MeshInstance3D and (n as MeshInstance3D).mesh:
+			var mesh_box: AABB = xform * (n as MeshInstance3D).mesh.get_aabb()
+			box = box.merge(mesh_box) if have_box else mesh_box
+			have_box = true
+		for child in n.get_children():
+			if child is Node3D:
+				stack.append([child, xform * (child as Node3D).transform])
+	return box
 
 
 func _add_floor(w: float, d: float) -> void:

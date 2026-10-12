@@ -14,6 +14,12 @@ extends RefCounted
 const PALETTE_DIR := "res://style/palettes"
 const DEFAULT_NAME := "teal"
 
+# The whole game wears one palette; the mood changes with the moment (day,
+# night), not with the level. Set PER_LEVEL to true to go back to each level
+# choosing its own (the "palette" key in its data, or its block's colour).
+const HOUSE_PALETTE := "slate"
+const PER_LEVEL := false
+
 static var _loaded: Dictionary = {}   # file base name -> LevelPalette
 
 
@@ -55,6 +61,9 @@ static func nearest(color: Color) -> LevelPalette:
 # `level` is one entry of levels.json's "levels"; `levels_data` the whole file
 # (for the block colours). Always returns something if any palette exists.
 static func for_level(level: Dictionary, levels_data: Dictionary) -> LevelPalette:
+	if not PER_LEVEL:
+		var house := by_name(HOUSE_PALETTE)
+		return house if house != null else default_palette()
 	var explicit := by_name(str(level.get("palette", "")))
 	if explicit != null:
 		return explicit

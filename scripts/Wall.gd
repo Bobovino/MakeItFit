@@ -1686,9 +1686,225 @@ func min_distance_to_wall(tile: Vector2i) -> int:
 
 
 func get_inaccessible_furniture() -> Array:
+	if Floor.pathing_enabled:
+		return get_unreachable_furniture()
 	var result: Array = []
 	for f in get_all_furniture():
 		if not _has_adjacent_free(f):
+			result.append(f)
+	return result
+
+
+# ── Pathing (experimental — only in force while Floor.pathing_enabled) ──────
+# Can the tenant walk from the front door to every piece of furniture?
+#
+#   1. Walkable map: a person needs a WALK_WIDTH x WALK_WIDTH patch of clear
+#      floor to stand on. Starting from the patches at the entrance door, the
+#      flood fill moves one tile at a time through every such patch it can
+#      reach. The floor under those patches is the "reached" floor.
+#   2. Reachability: a piece is reachable when the side it is used from
+#      (Furniture.front) has reached floor right next to it.
+#
+# With the flag on, get_inaccessible_furniture() answers with this instead of
+# the older "one free tile beside it" rule, so the game's blocked-piece
+# marker, the win condition and the level validator all follow it.
+static var pathing_enabled := false
+const WALK_WIDTH := 4            # tiles (40 cm): the narrowest gap a person fits through
+const HEAD_HEIGHT := 18.0        # tiles: anything starting above this is walked under
+
+var _path_signature := -1
+var _path_reached: Dictionary = {}   # Vector2i -> true
+
+
+# Whether a placed piece stands in the way of someone walking.
+func blocks_walking(f: Furniture) -> bool:
+	return not f.walkable and not f.requires_surface and f.z_bottom < HEAD_HEIGHT
+
+
+# The floor tiles a person can stand on having walked in from the door.
+# Cached until the layout changes.
+func get_reachable_floor() -> Dictionary:
+	var parts: Array = [segments.size(), columns.size(), floor_mask.size()]
+	for s in segments:
+		parts.append((s as Dictionary).get("demolished", false))
+		parts.append((s as Dictionary).get("door_pos", -1))
+	for entry in _placed_continuous:
+		var pf: Furniture = entry["furniture"]
+		parts.append_array([pf.get_instance_id(), entry["pos"], pf.grid_w, pf.grid_h])
+	var signature := hash(parts)
+	if signature != _path_signature:
+		_path_signature = signature
+		_path_reached = _compute_reachable_floor()
+	return _path_reached
+
+
+func _compute_reachable_floor() -> Dictionary:
+	# Work area: the room, plus any painted floor that sticks out of it
+	# (balconies), plus a tile of margin.
+	var b := get_room_bounds()
+	var x0 := b.position.x; var y0 := b.position.y
+	var x1 := b.position.x + b.size.x; var y1 := b.position.y + b.size.y
+	for t in floor_mask:
+		var tv := t as Vector2i
+		x0 = mini(x0, tv.x); y0 = mini(y0, tv.y); x1 = maxi(x1, tv.x + 1); y1 = maxi(y1, tv.y + 1)
+	x0 -= 1; y0 -= 1; x1 += 1; y1 += 1
+	var w := x1 - x0
+	var h := y1 - y0
+	if w < WALK_WIDTH or h < WALK_WIDTH:
+		return {}
+
+	# 1 = something is in the way (no floor, a wall, a piece of furniture).
+	var solid := PackedByteArray()
+	solid.resize(w * h)
+	var walls := _partition_tile_set()
+	for y in h:
+		for x in w:
+			var t := Vector2i(x0 + x, y0 + y)
+			solid[y * w + x] = 1 if (not is_floor_tile(t) or walls.has(t)) else 0
+	for entry in _placed_continuous:
+		var f: Furniture = entry["furniture"]
+		if not blocks_walking(f):
+			continue
+		for t in _rect_tiles(entry["pos"], f.grid_w, f.grid_h):
+			var lx := t.x - x0
+			var ly := t.y - y0
+			if lx >= 0 and ly >= 0 and lx < w and ly < h:
+				solid[ly * w + lx] = 1
+
+	# Summed-area table, so "is this whole patch clear" is four lookups.
+	var sw := w + 1
+	var sums := PackedInt32Array()
+	sums.resize(sw * (h + 1))
+	for y in h:
+		var run := 0
+		for x in w:
+			run += solid[y * w + x]
+			sums[(y + 1) * sw + x + 1] = sums[y * sw + x + 1] + run
+	var aw := w - WALK_WIDTH + 1     # a patch is named by its top-left tile
+	var ah := h - WALK_WIDTH + 1
+	var clear := PackedByteArray()
+	clear.resize(aw * ah)
+	for y in ah:
+		for x in aw:
+			var total := sums[(y + WALK_WIDTH) * sw + x + WALK_WIDTH] - sums[y * sw + x + WALK_WIDTH] \
+				- sums[(y + WALK_WIDTH) * sw + x] + sums[y * sw + x]
+			clear[y * aw + x] = 1 if total == 0 else 0
+
+	# Start at the entrance: every clear patch that touches a door in an
+	# outer wall.
+	var seeds: Array[int] = []
+	for s in segments:
+		var sd := s as Dictionary
+		if sd.get("demolished", false) or not (sd.get("has_door", false) as bool):
+			continue
+		var sx1 := sd["x1"] as int; var sy1 := sd["y1"] as int
+		var sx2 := sd["x2"] as int; var sy2 := sd["y2"] as int
+		var outer := (sx1 == sx2 and (sx1 == b.position.x or sx1 == b.position.x + b.size.x)) \
+			or (sy1 == sy2 and (sy1 == b.position.y or sy1 == b.position.y + b.size.y))
+		if not outer:
+			continue
+		var dp := sd.get("door_pos", 0) as int
+		for i in range(dp, dp + 10):   # 10 = door length, as in _partition_tile_set
+			var door := Vector2i(sx1, mini(sy1, sy2) + i) if sx1 == sx2 else Vector2i(mini(sx1, sx2) + i, sy1)
+			for ay in range(door.y - y0 - WALK_WIDTH, door.y - y0 + 2):
+				for ax in range(door.x - x0 - WALK_WIDTH, door.x - x0 + 2):
+					if ax >= 0 and ay >= 0 and ax < aw and ay < ah and clear[ay * aw + ax] == 1:
+						seeds.append(ay * aw + ax)
+
+	var seen := PackedByteArray()
+	seen.resize(aw * ah)
+	var reached_patches: Array[int] = []
+	if not seeds.is_empty():
+		reached_patches = _flood_patches(seeds, clear, seen, aw, ah)
+	else:
+		# No entrance on this floor (an upper storey, a box interior, a test
+		# room): take the largest connected stretch of walkable floor.
+		for i in aw * ah:
+			if clear[i] == 1 and seen[i] == 0:
+				var comp := _flood_patches([i] as Array[int], clear, seen, aw, ah)
+				if comp.size() > reached_patches.size():
+					reached_patches = comp
+
+	var reached: Dictionary = {}
+	for i in reached_patches:
+		var px := x0 + i % aw
+		var py := y0 + i / aw
+		for dy in WALK_WIDTH:
+			for dx in WALK_WIDTH:
+				reached[Vector2i(px + dx, py + dy)] = true
+	return reached
+
+
+func _flood_patches(seeds: Array[int], clear: PackedByteArray, seen: PackedByteArray, aw: int, ah: int) -> Array[int]:
+	var out: Array[int] = []
+	var queue: Array[int] = []
+	for s in seeds:
+		if seen[s] == 0:
+			seen[s] = 1
+			queue.append(s)
+	var head := 0
+	while head < queue.size():
+		var i := queue[head]
+		head += 1
+		out.append(i)
+		var x := i % aw
+		var y := i / aw
+		if x > 0 and clear[i - 1] == 1 and seen[i - 1] == 0:
+			seen[i - 1] = 1; queue.append(i - 1)
+		if x < aw - 1 and clear[i + 1] == 1 and seen[i + 1] == 0:
+			seen[i + 1] = 1; queue.append(i + 1)
+		if y > 0 and clear[i - aw] == 1 and seen[i - aw] == 0:
+			seen[i - aw] = 1; queue.append(i - aw)
+		if y < ah - 1 and clear[i + aw] == 1 and seen[i + aw] == 0:
+			seen[i + aw] = 1; queue.append(i + aw)
+	return out
+
+
+# The sides a piece is used from, as indices 0 north (top of the plan),
+# 1 east, 2 south, 3 west — for the way it is turned right now.
+func _front_sides(f: Furniture) -> Array[int]:
+	match f.front:
+		"long":
+			if f.grid_w > f.grid_h: return [0, 2]
+			if f.grid_h > f.grid_w: return [1, 3]
+		"short":
+			if f.grid_w > f.grid_h: return [1, 3]
+			if f.grid_h > f.grid_w: return [0, 2]
+		"n", "e", "s", "w":
+			# Authored for the piece as it stands unrotated; each quarter
+			# turn moves it one side clockwise.
+			return [(["n", "e", "s", "w"].find(f.front) + f.rot_steps) % 4]
+	return [0, 1, 2, 3]
+
+
+# True when the tenant can walk up to the side this piece is used from.
+func is_reachable(f: Furniture) -> bool:
+	if not blocks_walking(f) or f.is_stair:
+		return true
+	var reached := get_reachable_floor()
+	var fx := floori(f.grid_pos.x)
+	var fy := floori(f.grid_pos.y)
+	for side in _front_sides(f):
+		match side:
+			0:
+				for x in range(fx, fx + f.grid_w):
+					if reached.has(Vector2i(x, fy - 1)): return true
+			2:
+				for x in range(fx, fx + f.grid_w):
+					if reached.has(Vector2i(x, fy + f.grid_h)): return true
+			1:
+				for y in range(fy, fy + f.grid_h):
+					if reached.has(Vector2i(fx + f.grid_w, y)): return true
+			3:
+				for y in range(fy, fy + f.grid_h):
+					if reached.has(Vector2i(fx - 1, y)): return true
+	return false
+
+
+func get_unreachable_furniture() -> Array:
+	var result: Array = []
+	for f in get_all_furniture():
+		if not is_reachable(f as Furniture):
 			result.append(f)
 	return result
 

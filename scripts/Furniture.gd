@@ -77,6 +77,8 @@ var weight: float = 1.0
 var is_surface: bool = false
 var max_support_weight: float = 0.0
 var requires_surface: bool = false
+var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
+var front: String = "any"            # side it is used from: any | long | short | n | e | s | w
 
 # Mobility tier — how hard THIS piece is for the tenant to reposition, an
 # entirely separate concept from the structural `weight` above (that one
@@ -281,6 +283,8 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	is_surface            = data.get("is_surface",        false)    as bool
 	max_support_weight    = data.get("max_support_weight", 0.0)     as float
 	requires_surface      = data.get("requires_surface",  false)    as bool
+	walkable              = data.get("walkable",          false)    as bool
+	front                 = data.get("front",             "any")    as String
 	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
 	keepsake              = data.get("keepsake",          false)    as bool

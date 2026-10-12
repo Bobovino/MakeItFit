@@ -207,7 +207,7 @@ func _render_ortho(model_path: String, mode: String, span_a: float, span_b: floa
 	# view never has this problem because _refit_item_model() always rescales
 	# every model onto its declared box_size -- ported the same fit here
 	# instead of inventing a second, inconsistent way to size furniture.
-	var native := _first_mesh_aabb(inst, Transform3D.IDENTITY)
+	var native := _combined_aabb(inst)
 	if native.size.length() < 0.0001:
 		inst.queue_free()
 		return null
@@ -280,23 +280,6 @@ func _render_ortho(model_path: String, mode: String, span_a: float, span_b: floa
 	if img == null:
 		return null
 	return ImageTexture.create_from_image(img)
-
-
-# Depth-first, first-match only, in `node`'s local space -- mirrors
-# Room3DView._first_mesh_aabb()/_node_aabb(). Some Kenney kit files bundle
-# small accessory sub-meshes (a toilet lid "cover", a bed "cover"/"pillow")
-# with bizarre baked scale/rotation values left over from whatever rig they
-# were authored against; merging them in inflates the AABB, so this is what
-# the real 3D view's own model-fitting uses as the item's true footprint.
-func _first_mesh_aabb(node: Node3D, accumulated: Transform3D) -> AABB:
-	if node is MeshInstance3D and (node as MeshInstance3D).mesh:
-		return accumulated * (node as MeshInstance3D).mesh.get_aabb()
-	for child in node.get_children():
-		if child is Node3D:
-			var result := _first_mesh_aabb(child as Node3D, accumulated * (child as Node3D).transform)
-			if result.size.length() > 0.0001:
-				return result
-	return AABB()
 
 
 # Combined AABB (in `node`'s local space) across every MeshInstance3D

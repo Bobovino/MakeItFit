@@ -350,6 +350,21 @@ func _build_quality_rows(vb: VBoxContainer) -> void:
 		GameState.set_graphics_quality(tier)
 		hint.text = _quality_hint(tier))
 
+	vb.add_child(_section_title("EXPERIMENTAL"))
+	var path_toggle := CheckButton.new()
+	path_toggle.text = "Walking paths"
+	path_toggle.add_theme_font_size_override("font_size", 13)
+	path_toggle.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	path_toggle.button_pressed = GameState.pathing_rule
+	path_toggle.toggled.connect(func(on: bool): GameState.set_pathing_rule(on))
+	vb.add_child(path_toggle)
+	var path_hint := Label.new()
+	path_hint.add_theme_font_size_override("font_size", 11)
+	path_hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	path_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	path_hint.text = "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
+	vb.add_child(path_hint)
+
 
 func _quality_hint(tier: int) -> String:
 	match tier:

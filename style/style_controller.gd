@@ -100,6 +100,9 @@ signal applied(palette: LevelPalette)
 @export_group("Look")
 @export var tonemap: Environment.ToneMapper = Environment.TONE_MAPPER_FILMIC
 @export var flat_shading: bool = true
+## How much of its own modelled colour a furniture piece keeps (0 = every piece
+## takes the palette's single furniture colour, 1 = exactly as modelled).
+@export_range(0.0, 1.0, 0.01) var furniture_own_color: float = 0.7
 ## How much bigger than this level the scenery around it is drawn (a nested
 ## box's parent apartment). Scales the scenery floor's boards to match, which
 ## is most of what sells the size.
@@ -385,7 +388,12 @@ func _surface_color(role: StringName, src: Variant) -> Color:
 		out = base.lerp(palette.floor_color, (lum - 0.5) * 2.0 * k)
 	else:
 		out = base.darkened((0.5 - lum) * 2.0 * k * 0.6)
-	out = out.lerp(src_color, palette.keep_source_color)
+	var keep := palette.keep_source_color
+	if role == ROLE_FURNITURE or role == ROLE_ACCENT:
+		# Furniture keeps most of the colour it was modelled with, pulled a
+		# little toward the level's hue so the room still reads as one place.
+		keep = maxf(keep, furniture_own_color)
+	out = out.lerp(src_color, keep)
 	out.a = 1.0
 	return out
 

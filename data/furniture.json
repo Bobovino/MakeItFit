@@ -16,8 +16,8 @@
       "sell_price": 0,
       "color": "d8c8a0",
       "is_nested_box": true,
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_capsule",
@@ -37,8 +37,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:capsule",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_student",
@@ -58,8 +58,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:student",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_bunk",
@@ -79,8 +79,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:bunk",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_garret",
@@ -100,8 +100,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:garret",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_nook",
@@ -121,8 +121,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:nook",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_couple",
@@ -142,8 +142,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:couple",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_family",
@@ -163,8 +163,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:family",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "rental_penthouse",
@@ -184,8 +184,8 @@
       "is_nested_box": true,
       "rental": true,
       "child_level_id": "rental:penthouse",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
     },
     {
       "id": "normal_bed",
@@ -203,8 +203,9 @@
       "buy_price": 300,
       "sell_price": 150,
       "color": "7a9ec0",
-      "model": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/TrundleBed.glb"
     },
     {
       "id": "storage_bed",
@@ -223,8 +224,9 @@
       "buy_price": 420,
       "sell_price": 180,
       "color": "5888b0",
-      "model": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/OttomanStorageBed.glb"
     },
     {
       "id": "high_bed",
@@ -246,12 +248,9 @@
       "buy_price": 500,
       "sell_price": 250,
       "color": "6a8eb0",
-      "model": "res://assets/models/furniture/bedBunk.glb",
-      "hide_nodes": [
-        "coverBottom",
-        "pillowBottom"
-      ],
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/LoftBed.glb"
     },
     {
       "id": "bunk_bed",
@@ -272,8 +271,9 @@
       "buy_price": 550,
       "sell_price": 220,
       "color": "6a8ea8",
-      "model": "res://assets/models/furniture/bedBunk.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/BunkBed.glb"
     },
     {
       "id": "murphy_bed",
@@ -297,10 +297,11 @@
       "extended_functions": [
         "sleep"
       ],
-      "model": "res://assets/models/furniture/murphyBedAnimated.glb",
-      "animated_fold": true,
       "wall_flush_required": true,
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/MurphyBedNoWardrobe.glb",
+      "open_anim": true
     },
     {
       "id": "balcony_window",
@@ -324,9 +325,9 @@
       "extended_functions": [
         "balcony"
       ],
-      "model": "res://assets/models/furniture/balconyWindow.glb",
       "animated_fold": true,
-      "wall_flush_required": true
+      "wall_flush_required": true,
+      "model": "res://assets/models/furniture/architecture/FoldOutBalconyWindow.glb"
     },
     {
       "id": "futon",
@@ -353,9 +354,10 @@
       "buy_price": 280,
       "sell_price": 100,
       "color": "c8a870",
-      "model": "res://assets/models/furniture/futonAnimated.glb",
-      "animated_fold": true,
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/FoldingFutonMattress.glb",
+      "open_anim": true
     },
     {
       "id": "sofa",
@@ -374,7 +376,8 @@
       "buy_price": 250,
       "sell_price": 100,
       "color": "c87848",
-      "model": "res://assets/models/furniture/loungeSofa.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/modular_sofa/_DemoSofa.glb"
     },
     {
       "id": "sofa_bed",
@@ -402,9 +405,10 @@
       "buy_price": 450,
       "sell_price": 200,
       "color": "b86838",
-      "model": "res://assets/models/furniture/sofaBedAnimated.glb",
-      "animated_fold": true,
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/SofaBed.glb",
+      "open_anim": true
     },
     {
       "id": "lounge_chair",
@@ -423,28 +427,8 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "a87050",
-      "model": "res://assets/models/furniture/loungeChair.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "barcelona_chair",
-      "name": "Barcelona Chair",
-      "placement": "floor",
-      "size": {
-        "w": 8,
-        "h": 8
-      },
-      "wall_h": 7,
-      "floor_depth": 8,
-      "ghost_radius": 3,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 500,
-      "sell_price": 200,
-      "color": "1c1008",
-      "model": "res://assets/models/furniture/loungeDesignChair.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/HangingEggChair.glb"
     },
     {
       "id": "puff",
@@ -462,8 +446,8 @@
       "buy_price": 80,
       "sell_price": 30,
       "color": "d07848",
-      "model": "res://assets/models/furniture/loungeSofaOttoman.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/StackablePouffes.glb"
     },
     {
       "id": "ottoman",
@@ -482,8 +466,8 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "c8a060",
-      "model": "res://assets/models/furniture/loungeSofaOttoman.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "stool",
@@ -501,8 +485,8 @@
       "buy_price": 50,
       "sell_price": 20,
       "color": "c09060",
-      "model": "res://assets/models/furniture/stoolBar.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/FoldingStepStool.glb"
     },
     {
       "id": "desk",
@@ -521,10 +505,11 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "6a9e78",
-      "model": "res://assets/models/furniture/desk.glb",
       "is_surface": true,
       "max_support_weight": 6,
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "front": "long",
+      "model": "res://assets/models/furniture/GrowingDesk.glb"
     },
     {
       "id": "small_desk",
@@ -543,8 +528,8 @@
       "buy_price": 120,
       "sell_price": 40,
       "color": "7aae88",
-      "model": "res://assets/models/furniture/deskCorner.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/WindowsillDesk.glb"
     },
     {
       "id": "murphy_desk",
@@ -569,7 +554,7 @@
       "sell_price": 220,
       "color": "5a8e68",
       "model": "res://assets/models/furniture/CabinetDesk.glb",
-      "model_extended": "res://assets/models/furniture/desk.glb"
+      "open_anim": true
     },
     {
       "id": "dining_table",
@@ -588,10 +573,10 @@
       "buy_price": 250,
       "sell_price": 100,
       "color": "b09060",
-      "model": "res://assets/models/furniture/table.glb",
       "is_surface": true,
       "max_support_weight": 10,
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/ExtendableDiningTable.glb"
     },
     {
       "id": "coffee_table",
@@ -611,8 +596,8 @@
       "buy_price": 100,
       "sell_price": 40,
       "color": "b09870",
-      "model": "res://assets/models/furniture/tableCoffee.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/FoldingCoffeeTable.glb"
     },
     {
       "id": "kitchen",
@@ -632,7 +617,8 @@
       "buy_price": 600,
       "sell_price": 200,
       "color": "a09888",
-      "model": "res://assets/models/furniture/kitchenBar.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/KitchenettePod.glb"
     },
     {
       "id": "kitchen_small",
@@ -652,7 +638,8 @@
       "buy_price": 400,
       "sell_price": 140,
       "color": "908878",
-      "model": "res://assets/models/furniture/kitchenCabinet.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/CornerCarousel.glb"
     },
     {
       "id": "bathtub",
@@ -670,7 +657,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/bathtub.glb"
+      "model": "res://assets/models/furniture/SoakingTub_Short.glb"
     },
     {
       "id": "toilet",
@@ -688,7 +675,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/toilet.glb"
+      "model": "res://assets/models/furniture/WallHungToilet.glb"
     },
     {
       "id": "sink",
@@ -706,7 +693,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 14,
-      "model": "res://assets/models/furniture/bathroomSink.glb"
+      "model": "res://assets/models/furniture/FloatingVanity.glb"
     },
     {
       "id": "shower",
@@ -724,7 +711,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/shower.glb"
+      "model": "res://assets/models/furniture/SlidingShowerDoor.glb"
     },
     {
       "id": "towel_rack",
@@ -741,8 +728,8 @@
         "h": 1
       },
       "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/coatRackStanding.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/VerticalTowelRadiator.glb"
     },
     {
       "id": "wardrobe",
@@ -765,7 +752,8 @@
       "sell_price": 100,
       "color": "b08848",
       "zone_divider": true,
-      "model": "res://assets/models/furniture/bookcaseClosedDoors.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/CapsuleWardrobe_Freestanding.glb"
     },
     {
       "id": "bookshelf",
@@ -786,8 +774,9 @@
       "sell_price": 50,
       "color": "9a7840",
       "zone_divider": true,
-      "model": "res://assets/models/furniture/bookcaseOpen.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "front": "long",
+      "model": "res://assets/models/furniture/OpenShelfRoomDivider.glb"
     },
     {
       "id": "pantry",
@@ -808,7 +797,7 @@
       "sell_price": 70,
       "color": "8a7060",
       "zone_divider": true,
-      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb"
+      "model": "res://assets/models/furniture/CeilingHeightCupboards.glb"
     },
     {
       "id": "wall_shelf",
@@ -826,8 +815,8 @@
       "buy_price": 80,
       "sell_price": 30,
       "color": "987840",
-      "model": "res://assets/models/furniture/bookcaseOpenLow.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/FloatingWallShelves.glb"
     },
     {
       "id": "wall_cabinet",
@@ -846,8 +835,8 @@
       "buy_price": 400,
       "sell_price": 150,
       "color": "887030",
-      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/PullDownCabinetShelf.glb"
     },
     {
       "id": "wall_hanger",
@@ -865,8 +854,8 @@
       "buy_price": 40,
       "sell_price": 15,
       "color": "987840",
-      "model": "res://assets/models/furniture/coatRack.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/WallHookRail.glb"
     },
     {
       "id": "tv",
@@ -882,8 +871,8 @@
       "buy_price": 350,
       "sell_price": 150,
       "color": "303028",
-      "model": "res://assets/models/furniture/televisionModern.glb",
-      "is_noisy": true
+      "is_noisy": true,
+      "model": "res://assets/models/furniture/SwivelTVMount.glb"
     },
     {
       "id": "mirror",
@@ -899,8 +888,8 @@
       "buy_price": 120,
       "sell_price": 50,
       "color": "90b8c8",
-      "model": "res://assets/models/furniture/bathroomMirror.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/MirrorCoatRack.glb"
     },
     {
       "id": "painting",
@@ -933,8 +922,8 @@
       "sell_price": 10,
       "color": "508040",
       "floor_category": "balcony",
-      "model": "res://assets/models/furniture/pottedPlant.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/PlantLadderShelf.glb"
     },
     {
       "id": "wall_plant",
@@ -950,8 +939,8 @@
       "buy_price": 25,
       "sell_price": 8,
       "color": "488038",
-      "model": "res://assets/models/furniture/plantSmall1.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/VerticalGardenWall.glb"
     },
     {
       "id": "stair_n",
@@ -972,7 +961,7 @@
       "is_stair": true,
       "stair_direction": "north",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/stairs.glb"
+      "model": "res://assets/models/furniture/stairs/WithDrawers.glb"
     },
     {
       "id": "stair_s",
@@ -993,7 +982,7 @@
       "is_stair": true,
       "stair_direction": "south",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/stairs.glb"
+      "model": "res://assets/models/furniture/stairs/WithDrawers.glb"
     },
     {
       "id": "stair_e",
@@ -1014,7 +1003,7 @@
       "is_stair": true,
       "stair_direction": "east",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/stairs.glb"
+      "model": "res://assets/models/furniture/stairs/WithDrawers.glb"
     },
     {
       "id": "stair_w",
@@ -1035,25 +1024,7 @@
       "is_stair": true,
       "stair_direction": "west",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/stairs.glb"
-    },
-    {
-      "id": "bath_mat",
-      "name": "Bath Mat",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 4
-      },
-      "wall_h": 1,
-      "floor_depth": 4,
-      "functions": [],
-      "buy_price": 40,
-      "sell_price": 15,
-      "color": "c8b8a0",
-      "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/rugDoormat.glb",
-      "mobility_tier": "green"
+      "model": "res://assets/models/furniture/stairs/WithDrawers.glb"
     },
     {
       "id": "laundry_basket",
@@ -1069,8 +1040,8 @@
       "buy_price": 50,
       "sell_price": 20,
       "color": "d0c0a8",
-      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/PullOutLaundrySorter.glb"
     },
     {
       "id": "bathroom_cabinet",
@@ -1089,10 +1060,11 @@
       "sell_price": 50,
       "color": "d8e4ec",
       "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/bathroomCabinet.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 8
+      "max_support_weight": 8,
+      "front": "long",
+      "model": "res://assets/models/furniture/OverToiletShelf.glb"
     },
     {
       "id": "towel_set",
@@ -1109,25 +1081,8 @@
       "sell_price": 10,
       "color": "e8ddd0",
       "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/pillow.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "rug",
-      "name": "Rug",
-      "placement": "floor",
-      "size": {
-        "w": 22,
-        "h": 14
-      },
-      "wall_h": 1,
-      "floor_depth": 14,
-      "functions": [],
-      "buy_price": 120,
-      "sell_price": 45,
-      "color": "a07898",
-      "model": "res://assets/models/furniture/rugRectangle.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/TowelLadder.glb"
     },
     {
       "id": "floor_lamp",
@@ -1143,8 +1098,8 @@
       "buy_price": 60,
       "sell_price": 25,
       "color": "d4c060",
-      "model": "res://assets/models/furniture/lampRoundFloor.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/ArcFloorLamp.glb"
     },
     {
       "id": "side_table",
@@ -1160,10 +1115,10 @@
       "buy_price": 80,
       "sell_price": 30,
       "color": "907858",
-      "model": "res://assets/models/furniture/sideTable.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 8
+      "max_support_weight": 8,
+      "model": "res://assets/models/furniture/SlimConsole_20cm.glb"
     },
     {
       "id": "tv_stand",
@@ -1179,10 +1134,11 @@
       "buy_price": 150,
       "sell_price": 60,
       "color": "604838",
-      "model": "res://assets/models/furniture/cabinetTelevision.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 15
+      "max_support_weight": 15,
+      "front": "long",
+      "model": "res://assets/models/furniture/FloatingMediaUnit.glb"
     },
     {
       "id": "office_chair",
@@ -1201,8 +1157,8 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "506070",
-      "model": "res://assets/models/furniture/chairDesk.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/HangOnChairs.glb"
     },
     {
       "id": "filing_cabinet",
@@ -1220,10 +1176,11 @@
       "buy_price": 130,
       "sell_price": 50,
       "color": "6878a0",
-      "model": "res://assets/models/furniture/kitchenCabinetDrawer.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 10
+      "max_support_weight": 10,
+      "front": "long",
+      "model": "res://assets/models/furniture/RollingFileCart.glb"
     },
     {
       "id": "whiteboard",
@@ -1239,7 +1196,8 @@
       "buy_price": 80,
       "sell_price": 30,
       "color": "f0f0e0",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/WallPegboard.glb"
     },
     {
       "id": "desk_lamp",
@@ -1257,7 +1215,6 @@
       "color": "d4b060",
       "weight": 1,
       "requires_surface": true,
-      "model": "res://assets/models/furniture/lampRoundTable.glb",
       "mobility_tier": "green"
     },
     {
@@ -1277,7 +1234,8 @@
       "buy_price": 350,
       "sell_price": 140,
       "color": "c0ccd8",
-      "model": "res://assets/models/furniture/kitchenFridge.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/UnderCounterFridge.glb"
     },
     {
       "id": "kitchen_island",
@@ -1293,28 +1251,9 @@
       "buy_price": 280,
       "sell_price": 100,
       "color": "c0b090",
-      "model": "res://assets/models/furniture/kitchenBar.glb",
       "is_surface": true,
-      "max_support_weight": 25
-    },
-    {
-      "id": "bar_stool",
-      "name": "Bar Stool",
-      "placement": "floor",
-      "size": {
-        "w": 4,
-        "h": 5
-      },
-      "wall_h": 10,
-      "floor_depth": 5,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 70,
-      "sell_price": 25,
-      "color": "806848",
-      "model": "res://assets/models/furniture/stoolBar.glb",
-      "mobility_tier": "green"
+      "max_support_weight": 25,
+      "model": "res://assets/models/furniture/FoldingIsland.glb"
     },
     {
       "id": "kitchen_rack",
@@ -1330,29 +1269,8 @@
       "buy_price": 50,
       "sell_price": 20,
       "color": "909898",
-      "model": "res://assets/models/furniture/kitchenCabinetUpper.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "outdoor_chair",
-      "name": "Outdoor Chair",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 8
-      },
-      "wall_h": 9,
-      "floor_depth": 8,
-      "ghost_radius": 2,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 90,
-      "sell_price": 35,
-      "color": "708060",
-      "floor_category": "balcony",
-      "model": "res://assets/models/furniture/chairRounded.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/UtensilRail.glb"
     },
     {
       "id": "outdoor_table",
@@ -1372,8 +1290,8 @@
       "sell_price": 55,
       "color": "607050",
       "floor_category": "balcony",
-      "model": "res://assets/models/furniture/tableRound.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/RailingFoldTable.glb"
     },
     {
       "id": "planter_box",
@@ -1390,8 +1308,8 @@
       "sell_price": 25,
       "color": "507040",
       "floor_category": "balcony",
-      "model": "res://assets/models/furniture/pottedPlant.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/RailingPlanter.glb"
     },
     {
       "id": "sun_lounger",
@@ -1411,8 +1329,8 @@
       "sell_price": 60,
       "color": "d4c070",
       "floor_category": "balcony",
-      "model": "res://assets/models/furniture/loungeChairRelax.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/FoldingSunLounger.glb"
     },
     {
       "id": "nightstand",
@@ -1428,10 +1346,10 @@
       "buy_price": 70,
       "sell_price": 28,
       "color": "907858",
-      "model": "res://assets/models/furniture/sideTableDrawers.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 8
+      "max_support_weight": 8,
+      "model": "res://assets/models/furniture/FloatingNightstand.glb"
     },
     {
       "id": "dresser",
@@ -1450,10 +1368,11 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "887050",
-      "model": "res://assets/models/furniture/cabinetBedDrawer.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 15
+      "max_support_weight": 15,
+      "front": "long",
+      "model": "res://assets/models/furniture/TiltOutShoeCabinet.glb"
     },
     {
       "id": "floor_mirror",
@@ -1472,8 +1391,9 @@
       "buy_price": 90,
       "sell_price": 35,
       "color": "c0c8d0",
-      "model": "res://assets/models/furniture/bathroomMirror.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "front": "long",
+      "model": "res://assets/models/furniture/MirrorJewelryCabinet.glb"
     },
     {
       "id": "clothes_rack",
@@ -1492,45 +1412,9 @@
       "buy_price": 80,
       "sell_price": 30,
       "color": "909898",
-      "model": "res://assets/models/furniture/coatRackStanding.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "bedroom_rug",
-      "name": "Bedroom Rug",
-      "placement": "floor",
-      "size": {
-        "w": 20,
-        "h": 12
-      },
-      "wall_h": 1,
-      "floor_depth": 12,
-      "functions": [],
-      "buy_price": 100,
-      "sell_price": 38,
-      "color": "c08878",
-      "model": "res://assets/models/furniture/rugRectangle.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "bathroom_drawer_cabinet",
-      "name": "Bathroom Drawer Cabinet",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 5
-      },
-      "wall_h": 12,
-      "floor_depth": 5,
-      "functions": [
-        "storage"
-      ],
-      "buy_price": 140,
-      "sell_price": 55,
-      "color": "d8e4ec",
-      "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/bathroomCabinetDrawer.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "front": "long",
+      "model": "res://assets/models/furniture/OpenClothesRail.glb"
     },
     {
       "id": "sink_square",
@@ -1549,24 +1433,7 @@
       "sell_price": 95,
       "color": "c8d8e8",
       "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/bathroomSinkSquare.glb"
-    },
-    {
-      "id": "teddy_bear",
-      "name": "Teddy Bear",
-      "placement": "floor",
-      "size": {
-        "w": 3,
-        "h": 3
-      },
-      "wall_h": 4,
-      "floor_depth": 3,
-      "functions": [],
-      "buy_price": 20,
-      "sell_price": 5,
-      "color": "a07850",
-      "model": "res://assets/models/furniture/bear.glb",
-      "mobility_tier": "green"
+      "model": "res://assets/models/furniture/CornerSink.glb"
     },
     {
       "id": "double_bed",
@@ -1584,8 +1451,9 @@
       "buy_price": 480,
       "sell_price": 220,
       "color": "7a9ec0",
-      "model": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/OttomanStorageBed.glb"
     },
     {
       "id": "bench",
@@ -1603,8 +1471,8 @@
       "buy_price": 90,
       "sell_price": 35,
       "color": "8a7050",
-      "model": "res://assets/models/furniture/bench.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/HallTreeBench.glb"
     },
     {
       "id": "cushioned_bench",
@@ -1622,8 +1490,8 @@
       "buy_price": 130,
       "sell_price": 50,
       "color": "9a7858",
-      "model": "res://assets/models/furniture/benchCushion.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/WindowSeatStorage.glb"
     },
     {
       "id": "low_bench",
@@ -1641,8 +1509,8 @@
       "buy_price": 100,
       "sell_price": 40,
       "color": "907048",
-      "model": "res://assets/models/furniture/benchCushionLow.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/OutdoorStorageBench.glb"
     },
     {
       "id": "closed_bookcase",
@@ -1661,10 +1529,11 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "907040",
-      "model": "res://assets/models/furniture/bookcaseClosed.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 8
+      "max_support_weight": 8,
+      "front": "long",
+      "model": "res://assets/models/furniture/VerticalStorageTower.glb"
     },
     {
       "id": "wide_bookcase",
@@ -1683,45 +1552,11 @@
       "buy_price": 260,
       "sell_price": 100,
       "color": "987848",
-      "model": "res://assets/models/furniture/bookcaseClosedWide.glb",
       "mobility_tier": "yellow",
       "is_surface": true,
-      "max_support_weight": 12
-    },
-    {
-      "id": "book_stack",
-      "name": "Book Stack",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 15,
-      "sell_price": 5,
-      "color": "a05838",
-      "model": "res://assets/models/furniture/books.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "tv_cabinet_doors",
-      "name": "TV Cabinet with Doors",
-      "placement": "floor",
-      "size": {
-        "w": 18,
-        "h": 5
-      },
-      "wall_h": 9,
-      "floor_depth": 5,
-      "functions": [
-        "storage"
-      ],
-      "buy_price": 210,
-      "sell_price": 85,
-      "color": "604838",
-      "model": "res://assets/models/furniture/cabinetTelevisionDoors.glb"
+      "max_support_weight": 12,
+      "front": "long",
+      "model": "res://assets/models/furniture/SlimSideboard.glb"
     },
     {
       "id": "moving_box",
@@ -1739,25 +1574,8 @@
       "buy_price": 20,
       "sell_price": 5,
       "color": "b89868",
-      "model": "res://assets/models/furniture/cardboardBoxClosed.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "ceiling_fan",
-      "name": "Ceiling Fan",
-      "placement": "wall",
-      "size": {
-        "w": 4,
-        "h": 1
-      },
-      "wall_h": 2,
-      "floor_depth": 1,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 90,
-      "sell_price": 35,
-      "color": "c8c8c0",
-      "model": "res://assets/models/furniture/ceilingFan.glb"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/StackableCrates_x3.glb"
     },
     {
       "id": "dining_chair",
@@ -1776,68 +1594,8 @@
       "buy_price": 60,
       "sell_price": 20,
       "color": "8a6848",
-      "model": "res://assets/models/furniture/chair.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "cushioned_chair",
-      "name": "Cushioned Chair",
-      "placement": "floor",
-      "size": {
-        "w": 5,
-        "h": 5
-      },
-      "wall_h": 8,
-      "floor_depth": 5,
-      "ghost_radius": 2,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 90,
-      "sell_price": 35,
-      "color": "a07050",
-      "model": "res://assets/models/furniture/chairCushion.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "modern_chair",
-      "name": "Modern Chair",
-      "placement": "floor",
-      "size": {
-        "w": 6,
-        "h": 6
-      },
-      "wall_h": 8,
-      "floor_depth": 6,
-      "ghost_radius": 2,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 150,
-      "sell_price": 60,
-      "color": "404850",
-      "model": "res://assets/models/furniture/chairModernCushion.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "modern_frame_chair",
-      "name": "Modern Frame Chair",
-      "placement": "floor",
-      "size": {
-        "w": 6,
-        "h": 6
-      },
-      "wall_h": 8,
-      "floor_depth": 6,
-      "ghost_radius": 2,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 170,
-      "sell_price": 65,
-      "color": "484038",
-      "model": "res://assets/models/furniture/chairModernFrameCushion.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/HangOnChairs.glb"
     },
     {
       "id": "keyboard",
@@ -1853,7 +1611,6 @@
       "buy_price": 15,
       "sell_price": 5,
       "color": "e0e0e0",
-      "model": "res://assets/models/furniture/computerKeyboard.glb",
       "mobility_tier": "green"
     },
     {
@@ -1870,7 +1627,6 @@
       "buy_price": 8,
       "sell_price": 2,
       "color": "e0e0e0",
-      "model": "res://assets/models/furniture/computerMouse.glb",
       "mobility_tier": "green"
     },
     {
@@ -1890,101 +1646,9 @@
       "buy_price": 90,
       "sell_price": 30,
       "color": "202020",
-      "model": "res://assets/models/furniture/computerScreen.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "dryer",
-      "name": "Dryer",
-      "placement": "floor",
-      "size": {
-        "w": 6,
-        "h": 6
-      },
-      "wall_h": 16,
-      "floor_depth": 6,
-      "functions": [
-        "laundry"
-      ],
-      "needs_water": true,
-      "needs_power": true,
-      "buy_price": 260,
-      "sell_price": 100,
-      "color": "d0d0d0",
-      "model": "res://assets/models/furniture/dryer.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "range_hood_large",
-      "name": "Range Hood",
-      "placement": "wall",
-      "size": {
-        "w": 10,
-        "h": 2
-      },
-      "wall_h": 6,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 90,
-      "sell_price": 35,
-      "color": "b8b8b0",
-      "model": "res://assets/models/furniture/hoodLarge.glb"
-    },
-    {
-      "id": "range_hood_modern",
-      "name": "Modern Range Hood",
-      "placement": "wall",
-      "size": {
-        "w": 8,
-        "h": 2
-      },
-      "wall_h": 6,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 110,
-      "sell_price": 45,
-      "color": "383838",
-      "model": "res://assets/models/furniture/hoodModern.glb"
-    },
-    {
-      "id": "kitchen_bar_end",
-      "name": "Kitchen Bar End",
-      "placement": "floor",
-      "size": {
-        "w": 6,
-        "h": 6
-      },
-      "wall_h": 22,
-      "floor_depth": 6,
-      "needs_water": true,
-      "needs_power": true,
-      "functions": [
-        "cook"
-      ],
-      "buy_price": 200,
-      "sell_price": 75,
-      "color": "a09888",
-      "model": "res://assets/models/furniture/kitchenBarEnd.glb"
-    },
-    {
-      "id": "blender",
-      "name": "Blender",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 30,
-      "sell_price": 10,
-      "color": "606870",
-      "model": "res://assets/models/furniture/kitchenBlender.glb",
-      "is_noisy": true
+      "mobility_tier": "green",
+      "front": "long",
+      "model": "res://assets/models/furniture/MonitorArm.glb"
     },
     {
       "id": "kitchen_corner_cabinet_inner",
@@ -2003,7 +1667,7 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "a09888",
-      "model": "res://assets/models/furniture/kitchenCabinetCornerInner.glb"
+      "model": "res://assets/models/furniture/MagicCornerPullout.glb"
     },
     {
       "id": "kitchen_corner_cabinet_round",
@@ -2022,99 +1686,7 @@
       "buy_price": 190,
       "sell_price": 75,
       "color": "988c78",
-      "model": "res://assets/models/furniture/kitchenCabinetCornerRound.glb"
-    },
-    {
-      "id": "kitchen_upper_corner_cabinet",
-      "name": "Upper Corner Cabinet",
-      "placement": "wall",
-      "size": {
-        "w": 6,
-        "h": 3
-      },
-      "wall_h": 6,
-      "floor_depth": 3,
-      "functions": [
-        "storage"
-      ],
-      "buy_price": 150,
-      "sell_price": 55,
-      "color": "887030",
-      "model": "res://assets/models/furniture/kitchenCabinetUpperCorner.glb"
-    },
-    {
-      "id": "kitchen_upper_cabinet_double",
-      "name": "Double Upper Cabinet",
-      "placement": "wall",
-      "size": {
-        "w": 16,
-        "h": 3
-      },
-      "wall_h": 6,
-      "floor_depth": 3,
-      "functions": [
-        "storage",
-        "cook"
-      ],
-      "buy_price": 260,
-      "sell_price": 100,
-      "color": "887030",
-      "model": "res://assets/models/furniture/kitchenCabinetUpperDouble.glb"
-    },
-    {
-      "id": "kitchen_upper_cabinet_low",
-      "name": "Low Upper Cabinet",
-      "placement": "wall",
-      "size": {
-        "w": 8,
-        "h": 2
-      },
-      "wall_h": 4,
-      "floor_depth": 2,
-      "functions": [
-        "storage"
-      ],
-      "buy_price": 140,
-      "sell_price": 55,
-      "color": "8a7238",
-      "model": "res://assets/models/furniture/kitchenCabinetUpperLow.glb"
-    },
-    {
-      "id": "coffee_machine",
-      "name": "Coffee Machine",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 3,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 60,
-      "sell_price": 20,
-      "color": "303030",
-      "model": "res://assets/models/furniture/kitchenCoffeeMachine.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "fridge_builtin",
-      "name": "Built-In Fridge",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 8
-      },
-      "wall_h": 20,
-      "floor_depth": 8,
-      "height_category": "tall",
-      "functions": [
-        "storage"
-      ],
-      "buy_price": 420,
-      "sell_price": 170,
-      "color": "c0ccd8",
-      "model": "res://assets/models/furniture/kitchenFridgeBuiltIn.glb"
+      "model": "res://assets/models/furniture/CornerCarousel.glb"
     },
     {
       "id": "fridge_large",
@@ -2133,7 +1705,8 @@
       "buy_price": 520,
       "sell_price": 210,
       "color": "b8c4d0",
-      "model": "res://assets/models/furniture/kitchenFridgeLarge.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/UnderCounterFridge.glb"
     },
     {
       "id": "mini_fridge",
@@ -2151,25 +1724,7 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "c8d4e0",
-      "model": "res://assets/models/furniture/kitchenFridgeSmall.glb"
-    },
-    {
-      "id": "microwave",
-      "name": "Microwave",
-      "placement": "floor",
-      "size": {
-        "w": 3,
-        "h": 3
-      },
-      "wall_h": 3,
-      "floor_depth": 3,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 70,
-      "sell_price": 25,
-      "color": "303030",
-      "model": "res://assets/models/furniture/kitchenMicrowave.glb",
-      "is_noisy": true
+      "model": "res://assets/models/furniture/UnderCounterFridge.glb"
     },
     {
       "id": "kitchen_sink",
@@ -2188,7 +1743,8 @@
       "buy_price": 150,
       "sell_price": 60,
       "color": "c8ccd0",
-      "model": "res://assets/models/furniture/kitchenSink.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/FoldDownUtilitySink.glb"
     },
     {
       "id": "stove",
@@ -2207,119 +1763,8 @@
       "buy_price": 260,
       "sell_price": 100,
       "color": "303030",
-      "model": "res://assets/models/furniture/kitchenStove.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "stove_electric",
-      "name": "Electric Stove",
-      "placement": "floor",
-      "size": {
-        "w": 6,
-        "h": 6
-      },
-      "wall_h": 9,
-      "floor_depth": 6,
-      "functions": [
-        "cook"
-      ],
-      "needs_power": true,
-      "buy_price": 280,
-      "sell_price": 110,
-      "color": "383838",
-      "model": "res://assets/models/furniture/kitchenStoveElectric.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "ceiling_lamp",
-      "name": "Ceiling Lamp",
-      "placement": "wall",
-      "size": {
-        "w": 4,
-        "h": 1
-      },
-      "wall_h": 2,
-      "floor_depth": 1,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 50,
-      "sell_price": 18,
-      "color": "e8e0c8",
-      "model": "res://assets/models/furniture/lampSquareCeiling.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "square_floor_lamp",
-      "name": "Square Floor Lamp",
-      "placement": "floor",
-      "size": {
-        "w": 3,
-        "h": 3
-      },
-      "wall_h": 14,
-      "floor_depth": 3,
-      "functions": [],
-      "buy_price": 65,
-      "sell_price": 25,
-      "color": "d4c060",
-      "model": "res://assets/models/furniture/lampSquareFloor.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "square_table_lamp",
-      "name": "Square Table Lamp",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 5,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 45,
-      "sell_price": 15,
-      "color": "d4b060",
-      "weight": 1,
-      "requires_surface": true,
-      "model": "res://assets/models/furniture/lampSquareTable.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "wall_lamp",
-      "name": "Wall Lamp",
-      "placement": "wall",
-      "size": {
-        "w": 2,
-        "h": 1
-      },
-      "wall_h": 3,
-      "floor_depth": 1,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 40,
-      "sell_price": 15,
-      "color": "d4c060",
-      "model": "res://assets/models/furniture/lampWall.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "laptop",
-      "name": "Laptop",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 1,
-      "floor_depth": 2,
-      "functions": [
-        "work"
-      ],
-      "buy_price": 500,
-      "sell_price": 220,
-      "color": "808890",
-      "model": "res://assets/models/furniture/laptop.glb",
-      "mobility_tier": "green"
+      "is_noisy": true,
+      "model": "res://assets/models/furniture/BuiltInOvenTower.glb"
     },
     {
       "id": "design_sofa",
@@ -2338,485 +1783,8 @@
       "buy_price": 620,
       "sell_price": 260,
       "color": "384048",
-      "model": "res://assets/models/furniture/loungeDesignSofa.glb"
-    },
-    {
-      "id": "design_corner_sofa",
-      "name": "Design Corner Sofa",
-      "placement": "floor",
-      "size": {
-        "w": 24,
-        "h": 18
-      },
-      "wall_h": 9,
-      "floor_depth": 18,
-      "ghost_radius": 4,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 780,
-      "sell_price": 320,
-      "color": "303840",
-      "model": "res://assets/models/furniture/loungeDesignSofaCorner.glb"
-    },
-    {
-      "id": "corner_sofa",
-      "name": "Corner Sofa",
-      "placement": "floor",
-      "size": {
-        "w": 22,
-        "h": 16
-      },
-      "wall_h": 9,
-      "floor_depth": 16,
-      "ghost_radius": 4,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 520,
-      "sell_price": 220,
-      "color": "b86838",
-      "model": "res://assets/models/furniture/loungeSofaCorner.glb"
-    },
-    {
-      "id": "blue_pillow",
-      "name": "Blue Pillow",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 12,
-      "sell_price": 4,
-      "color": "4868a0",
-      "model": "res://assets/models/furniture/pillowBlue.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "blue_long_pillow",
-      "name": "Blue Long Pillow",
-      "placement": "floor",
-      "size": {
-        "w": 4,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 18,
-      "sell_price": 6,
-      "color": "4868a0",
-      "model": "res://assets/models/furniture/pillowBlueLong.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "long_pillow",
-      "name": "Long Pillow",
-      "placement": "floor",
-      "size": {
-        "w": 4,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 16,
-      "sell_price": 5,
-      "color": "c8a870",
-      "model": "res://assets/models/furniture/pillowLong.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "small_plant_2",
-      "name": "Small Plant",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 5,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 22,
-      "sell_price": 8,
-      "color": "508040",
-      "model": "res://assets/models/furniture/plantSmall2.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "small_plant_3",
-      "name": "Potted Fern",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 6,
-      "floor_depth": 2,
-      "functions": [],
-      "buy_price": 24,
-      "sell_price": 8,
-      "color": "487838",
-      "model": "res://assets/models/furniture/plantSmall3.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "radio",
-      "name": "Radio",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 3,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 45,
-      "sell_price": 15,
-      "color": "886858",
-      "model": "res://assets/models/furniture/radio.glb",
-      "mobility_tier": "green",
-      "is_noisy": true
-    },
-    {
-      "id": "round_rug",
-      "name": "Round Rug",
-      "placement": "floor",
-      "size": {
-        "w": 10,
-        "h": 10
-      },
-      "wall_h": 1,
-      "floor_depth": 10,
-      "functions": [],
-      "buy_price": 90,
-      "sell_price": 35,
-      "color": "a07898",
-      "model": "res://assets/models/furniture/rugRound.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "rounded_rug",
-      "name": "Rounded Rug",
-      "placement": "floor",
-      "size": {
-        "w": 16,
-        "h": 10
-      },
-      "wall_h": 1,
-      "floor_depth": 10,
-      "functions": [],
-      "buy_price": 100,
-      "sell_price": 40,
-      "color": "987098",
-      "model": "res://assets/models/furniture/rugRounded.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "square_rug",
-      "name": "Square Rug",
-      "placement": "floor",
-      "size": {
-        "w": 12,
-        "h": 12
-      },
-      "wall_h": 1,
-      "floor_depth": 12,
-      "functions": [],
-      "buy_price": 95,
-      "sell_price": 38,
-      "color": "a88870",
-      "model": "res://assets/models/furniture/rugSquare.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "round_shower",
-      "name": "Round Shower",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 7
-      },
-      "wall_h": 20,
-      "floor_depth": 7,
-      "functions": [
-        "hygiene"
-      ],
-      "buy_price": 380,
-      "sell_price": 190,
-      "color": "b8ccd8",
-      "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/showerRound.glb"
-    },
-    {
-      "id": "speaker",
-      "name": "Speaker",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 8,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 80,
-      "sell_price": 30,
-      "color": "202020",
-      "model": "res://assets/models/furniture/speaker.glb",
-      "mobility_tier": "green",
-      "is_noisy": true
-    },
-    {
-      "id": "small_speaker",
-      "name": "Small Speaker",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 5,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 45,
-      "sell_price": 15,
-      "color": "282828",
-      "model": "res://assets/models/furniture/speakerSmall.glb",
-      "mobility_tier": "green",
-      "is_noisy": true
-    },
-    {
-      "id": "square_bar_stool",
-      "name": "Square Bar Stool",
-      "placement": "floor",
-      "size": {
-        "w": 4,
-        "h": 4
-      },
-      "wall_h": 10,
-      "floor_depth": 4,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 75,
-      "sell_price": 28,
-      "color": "806848",
-      "model": "res://assets/models/furniture/stoolBarSquare.glb",
-      "mobility_tier": "green"
-    },
-    {
-      "id": "clothed_table",
-      "name": "Clothed Table",
-      "placement": "floor",
-      "size": {
-        "w": 16,
-        "h": 10
-      },
-      "wall_h": 6,
-      "floor_depth": 10,
-      "ghost_radius": 3,
-      "functions": [
-        "dine"
-      ],
-      "buy_price": 280,
-      "sell_price": 110,
-      "color": "d8ccb8",
-      "model": "res://assets/models/furniture/tableCloth.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "glass_coffee_table",
-      "name": "Glass Coffee Table",
-      "placement": "floor",
-      "size": {
-        "w": 8,
-        "h": 5
-      },
-      "wall_h": 4,
-      "floor_depth": 5,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 140,
-      "sell_price": 55,
-      "color": "b8d0d8",
-      "model": "res://assets/models/furniture/tableCoffeeGlass.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "square_glass_coffee_table",
-      "name": "Square Glass Coffee Table",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 7
-      },
-      "wall_h": 4,
-      "floor_depth": 7,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 130,
-      "sell_price": 50,
-      "color": "b8d0d8",
-      "model": "res://assets/models/furniture/tableCoffeeGlassSquare.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "square_coffee_table",
-      "name": "Square Coffee Table",
-      "placement": "floor",
-      "size": {
-        "w": 7,
-        "h": 7
-      },
-      "wall_h": 4,
-      "floor_depth": 7,
-      "functions": [
-        "sit"
-      ],
-      "buy_price": 110,
-      "sell_price": 42,
-      "color": "b09870",
-      "model": "res://assets/models/furniture/tableCoffeeSquare.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "cross_leg_table",
-      "name": "Cross-Leg Table",
-      "placement": "floor",
-      "size": {
-        "w": 16,
-        "h": 10
-      },
-      "wall_h": 6,
-      "floor_depth": 10,
-      "ghost_radius": 3,
-      "functions": [
-        "dine"
-      ],
-      "buy_price": 240,
-      "sell_price": 95,
-      "color": "b09060",
-      "model": "res://assets/models/furniture/tableCross.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "cross_leg_clothed_table",
-      "name": "Cross-Leg Clothed Table",
-      "placement": "floor",
-      "size": {
-        "w": 16,
-        "h": 10
-      },
-      "wall_h": 6,
-      "floor_depth": 10,
-      "ghost_radius": 3,
-      "functions": [
-        "dine"
-      ],
-      "buy_price": 300,
-      "sell_price": 120,
-      "color": "d8ccb8",
-      "model": "res://assets/models/furniture/tableCrossCloth.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "glass_table",
-      "name": "Glass Table",
-      "placement": "floor",
-      "size": {
-        "w": 16,
-        "h": 10
-      },
-      "wall_h": 6,
-      "floor_depth": 10,
-      "ghost_radius": 3,
-      "functions": [
-        "dine"
-      ],
-      "buy_price": 320,
-      "sell_price": 130,
-      "color": "b8d0d8",
-      "model": "res://assets/models/furniture/tableGlass.glb",
-      "mobility_tier": "yellow"
-    },
-    {
-      "id": "vintage_antenna_tv",
-      "name": "Vintage Antenna TV",
-      "placement": "wall",
-      "size": {
-        "w": 10,
-        "h": 1
-      },
-      "wall_h": 8,
-      "floor_depth": 1,
-      "functions": [],
-      "buy_price": 150,
-      "sell_price": 60,
-      "color": "504840",
-      "model": "res://assets/models/furniture/televisionAntenna.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "vintage_tv",
-      "name": "Vintage TV",
-      "placement": "floor",
-      "size": {
-        "w": 8,
-        "h": 6
-      },
-      "wall_h": 10,
-      "floor_depth": 6,
-      "functions": [],
-      "buy_price": 180,
-      "sell_price": 70,
-      "color": "584c3c",
-      "model": "res://assets/models/furniture/televisionVintage.glb",
-      "is_noisy": true
-    },
-    {
-      "id": "toaster",
-      "name": "Toaster",
-      "placement": "floor",
-      "size": {
-        "w": 2,
-        "h": 2
-      },
-      "wall_h": 2,
-      "floor_depth": 2,
-      "functions": [],
-      "needs_power": true,
-      "buy_price": 25,
-      "sell_price": 8,
-      "color": "c8c8c8",
-      "model": "res://assets/models/furniture/toaster.glb",
-      "mobility_tier": "green",
-      "is_noisy": true
-    },
-    {
-      "id": "square_toilet",
-      "name": "Square Toilet",
-      "placement": "floor",
-      "color": "d4dde8",
-      "functions": [
-        "hygiene"
-      ],
-      "buy_price": 220,
-      "sell_price": 110,
-      "size": {
-        "w": 5,
-        "h": 6
-      },
-      "floor_category": "bathroom",
-      "wall_h": 8,
-      "floor_depth": 6,
-      "model": "res://assets/models/furniture/toiletSquare.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/ChaiseStorageSofa.glb"
     },
     {
       "id": "trash_can",
@@ -2832,8 +1800,8 @@
       "buy_price": 15,
       "sell_price": 5,
       "color": "707878",
-      "model": "res://assets/models/furniture/trashcan.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/PullOutTrashCabinet.glb"
     },
     {
       "id": "washer",
@@ -2853,8 +1821,8 @@
       "buy_price": 300,
       "sell_price": 120,
       "color": "d0d0d0",
-      "model": "res://assets/models/furniture/washer.glb",
-      "is_noisy": true
+      "is_noisy": true,
+      "model": "res://assets/models/furniture/UnderCounterWasher.glb"
     },
     {
       "id": "washer_dryer_stack",
@@ -2875,8 +1843,8 @@
       "buy_price": 480,
       "sell_price": 190,
       "color": "c8c8c8",
-      "model": "res://assets/models/furniture/washerDryerStacked.glb",
-      "is_noisy": true
+      "is_noisy": true,
+      "model": "res://assets/models/furniture/StackedWasherDryer.glb"
     },
     {
       "placement": "wall",
@@ -2900,9 +1868,9 @@
       "buy_price": 950,
       "sell_price": 430,
       "color": "5a7ea0",
+      "needs_quiet": true,
       "model": "res://assets/models/furniture/MurphyBed.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "wall",
@@ -2929,9 +1897,9 @@
       "buy_price": 1250,
       "sell_price": 560,
       "color": "6a86a8",
+      "needs_quiet": true,
       "model": "res://assets/models/furniture/WallBedSofa.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -2958,9 +1926,9 @@
       "buy_price": 380,
       "sell_price": 150,
       "color": "a87050",
+      "needs_quiet": true,
       "model": "res://assets/models/furniture/ChairBed.glb",
-      "model_extended": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -2987,9 +1955,9 @@
       "buy_price": 340,
       "sell_price": 130,
       "color": "c8a060",
+      "needs_quiet": true,
       "model": "res://assets/models/furniture/PouffeBed.glb",
-      "model_extended": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3017,9 +1985,10 @@
       "buy_price": 780,
       "sell_price": 330,
       "color": "384048",
+      "needs_quiet": true,
+      "front": "long",
       "model": "res://assets/models/furniture/SofaBed.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3047,9 +2016,10 @@
       "buy_price": 880,
       "sell_price": 360,
       "color": "b86838",
-      "model": "res://assets/models/furniture/loungeSofaCorner.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/ChaiseStorageSofa.glb",
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3075,9 +2045,10 @@
       "buy_price": 520,
       "sell_price": 210,
       "color": "7a9ec0",
+      "needs_quiet": true,
+      "front": "long",
       "model": "res://assets/models/furniture/TrundleBed.glb",
-      "model_extended": "res://assets/models/furniture/bedDouble.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3105,9 +2076,10 @@
       "buy_price": 820,
       "sell_price": 340,
       "color": "887050",
+      "needs_quiet": true,
+      "front": "long",
       "model": "res://assets/models/furniture/RollawayFoldingBed.glb",
-      "model_extended": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3134,9 +2106,10 @@
       "buy_price": 420,
       "sell_price": 170,
       "color": "9a7858",
-      "model": "res://assets/models/furniture/benchCushion.glb",
-      "model_extended": "res://assets/models/furniture/bedSingle.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/WindowSeatStorage.glb",
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3164,9 +2137,9 @@
       "buy_price": 980,
       "sell_price": 400,
       "color": "5a8e68",
-      "model": "res://assets/models/furniture/cabinetBedDrawerTable.glb",
-      "model_extended": "res://assets/models/furniture/bedBunk.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/LoftBed_WithDesk.glb"
     },
     {
       "placement": "floor",
@@ -3190,9 +2163,8 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "b09060",
-      "model": "res://assets/models/furniture/DropLeafWallTable.glb",
-      "model_extended": "res://assets/models/furniture/table.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/DropLeafWallTable.glb"
     },
     {
       "placement": "floor",
@@ -3219,9 +2191,9 @@
       "buy_price": 360,
       "sell_price": 145,
       "color": "b09060",
+      "mobility_tier": "yellow",
       "model": "res://assets/models/furniture/ExtendableDiningTable.glb",
-      "model_extended": "res://assets/models/furniture/tableCloth.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3249,7 +2221,7 @@
       "sell_price": 110,
       "color": "b09870",
       "model": "res://assets/models/furniture/LiftTopTable.glb",
-      "model_extended": "res://assets/models/furniture/table.glb"
+      "open_anim": true
     },
     {
       "placement": "wall",
@@ -3274,7 +2246,7 @@
       "sell_price": 120,
       "color": "a08858",
       "model": "res://assets/models/furniture/FoldingBistroTable.glb",
-      "model_extended": "res://assets/models/furniture/table.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3300,9 +2272,8 @@
       "buy_price": 190,
       "sell_price": 75,
       "color": "b09870",
-      "model": "res://assets/models/furniture/NestingTables_Set3.glb",
-      "model_extended": "res://assets/models/furniture/tableCoffeeGlassSquare.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/NestingTables_Set3.glb"
     },
     {
       "placement": "floor",
@@ -3326,9 +2297,9 @@
       "buy_price": 310,
       "sell_price": 125,
       "color": "907858",
+      "mobility_tier": "yellow",
       "model": "res://assets/models/furniture/ExpandingConsoleTable.glb",
-      "model_extended": "res://assets/models/furniture/tableCross.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3354,9 +2325,9 @@
       "buy_price": 390,
       "sell_price": 155,
       "color": "b8d0d8",
+      "mobility_tier": "yellow",
       "model": "res://assets/models/furniture/FoldingCoffeeTable.glb",
-      "model_extended": "res://assets/models/furniture/tableGlass.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "wall",
@@ -3380,8 +2351,8 @@
       "buy_price": 240,
       "sell_price": 95,
       "color": "987848",
-      "model": "res://assets/models/furniture/tableCoffeeSquare.glb",
-      "model_extended": "res://assets/models/furniture/tableRound.glb"
+      "model": "res://assets/models/furniture/FoldingPlayTable.glb",
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3405,9 +2376,9 @@
       "buy_price": 320,
       "sell_price": 125,
       "color": "a09888",
+      "mobility_tier": "yellow",
       "model": "res://assets/models/furniture/FoldDownBarShelf.glb",
-      "model_extended": "res://assets/models/furniture/kitchenBar.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3436,9 +2407,10 @@
       "buy_price": 480,
       "sell_price": 195,
       "color": "8a7040",
+      "mobility_tier": "yellow",
+      "front": "long",
       "model": "res://assets/models/furniture/MurphyDesk_Cabinet.glb",
-      "model_extended": "res://assets/models/furniture/desk.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3465,8 +2437,7 @@
       "buy_price": 390,
       "sell_price": 155,
       "color": "6878a0",
-      "model": "res://assets/models/furniture/CornerDesk.glb",
-      "model_extended": "res://assets/models/furniture/deskCorner.glb"
+      "model": "res://assets/models/furniture/CornerDesk.glb"
     },
     {
       "placement": "wall",
@@ -3491,7 +2462,7 @@
       "sell_price": 75,
       "color": "7aae88",
       "model": "res://assets/models/furniture/FoldDownWallDesk.glb",
-      "model_extended": "res://assets/models/furniture/desk.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3518,9 +2489,10 @@
       "buy_price": 440,
       "sell_price": 175,
       "color": "6a9e78",
+      "mobility_tier": "yellow",
+      "front": "long",
       "model": "res://assets/models/furniture/SitStandDesk.glb",
-      "model_extended": "res://assets/models/furniture/deskCorner.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3540,8 +2512,9 @@
       "buy_price": 320,
       "sell_price": 130,
       "color": "6a9e78",
-      "model": "res://assets/models/furniture/desk.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "front": "long",
+      "model": "res://assets/models/furniture/wall_system/Desk_2x1.glb"
     },
     {
       "placement": "floor",
@@ -3569,9 +2542,10 @@
       "buy_price": 330,
       "sell_price": 130,
       "color": "907858",
+      "mobility_tier": "yellow",
+      "front": "long",
       "model": "res://assets/models/furniture/FoldOutVanityDesk.glb",
-      "model_extended": "res://assets/models/furniture/desk.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3600,9 +2574,9 @@
       "buy_price": 420,
       "sell_price": 170,
       "color": "9a7840",
-      "model": "res://assets/models/furniture/LadderShelf.glb",
-      "model_extended": "res://assets/models/furniture/deskCorner.glb",
-      "mobility_tier": "yellow"
+      "mobility_tier": "yellow",
+      "front": "long",
+      "model": "res://assets/models/furniture/LadderShelf.glb"
     },
     {
       "placement": "floor",
@@ -3624,6 +2598,7 @@
       "buy_price": 360,
       "sell_price": 130,
       "color": "b08848",
+      "front": "long",
       "model": "res://assets/models/furniture/SlidingDoorWardrobe.glb"
     },
     {
@@ -3645,7 +2620,8 @@
       "buy_price": 210,
       "sell_price": 80,
       "color": "9a7840",
-      "model": "res://assets/models/furniture/bookcaseOpen.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/OpenShelfRoomDivider.glb"
     },
     {
       "placement": "floor",
@@ -3666,8 +2642,9 @@
       "buy_price": 330,
       "sell_price": 120,
       "color": "987848",
-      "model": "res://assets/models/furniture/bookcaseClosedWide.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "front": "long",
+      "model": "res://assets/models/furniture/SlimSideboard.glb"
     },
     {
       "placement": "floor",
@@ -3686,8 +2663,9 @@
       "buy_price": 280,
       "sell_price": 110,
       "color": "604838",
-      "model": "res://assets/models/furniture/SwivelTVMount.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "front": "long",
+      "model": "res://assets/models/furniture/SwivelTVMount.glb"
     },
     {
       "placement": "floor",
@@ -3704,8 +2682,8 @@
       "buy_price": 400,
       "sell_price": 160,
       "color": "c0b090",
-      "model": "res://assets/models/furniture/FoldingIsland.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/FoldingIsland.glb"
     },
     {
       "placement": "floor",
@@ -3725,8 +2703,9 @@
       "buy_price": 150,
       "sell_price": 55,
       "color": "909898",
-      "model": "res://assets/models/furniture/OpenClothesRail.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "front": "long",
+      "model": "res://assets/models/furniture/OpenClothesRail.glb"
     },
     {
       "placement": "floor",
@@ -3754,6 +2733,7 @@
       "buy_price": 260,
       "sell_price": 100,
       "color": "9a7858",
+      "front": "long",
       "model": "res://assets/models/furniture/StorageBench.glb"
     },
     {
@@ -3780,8 +2760,8 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "987840",
-      "model": "res://assets/models/furniture/bookcaseOpenLow.glb",
-      "model_extended": "res://assets/models/furniture/bookcaseOpen.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/CornerShelfUnit.glb"
     },
     {
       "placement": "floor",
@@ -3828,7 +2808,7 @@
       "sell_price": 35,
       "color": "b89868",
       "model": "res://assets/models/furniture/PullOutLaundryHamper.glb",
-      "model_extended": "res://assets/models/furniture/cardboardBoxOpen.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3858,8 +2838,9 @@
       "buy_price": 800,
       "sell_price": 320,
       "color": "a09888",
+      "front": "long",
       "model": "res://assets/models/furniture/KitchenettePod.glb",
-      "model_extended": "res://assets/models/furniture/kitchenBar.glb"
+      "open_anim": true
     },
     {
       "placement": "wall",
@@ -3884,7 +2865,7 @@
       "sell_price": 90,
       "color": "887030",
       "model": "res://assets/models/furniture/FoldDownBreakfastBar.glb",
-      "model_extended": "res://assets/models/furniture/kitchenBar.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3901,8 +2882,8 @@
       "buy_price": 200,
       "sell_price": 80,
       "color": "a09888",
-      "model": "res://assets/models/furniture/RollingKitchenCart.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/RollingKitchenCart.glb"
     },
     {
       "placement": "floor",
@@ -3932,8 +2913,8 @@
       "buy_price": 700,
       "sell_price": 280,
       "color": "908878",
-      "model": "res://assets/models/furniture/BuiltInOvenTower.glb",
-      "model_extended": "res://assets/models/furniture/kitchenStoveElectric.glb"
+      "front": "long",
+      "model": "res://assets/models/furniture/BuiltInOvenTower.glb"
     },
     {
       "placement": "wall",
@@ -3958,7 +2939,7 @@
       "sell_price": 140,
       "color": "988c78",
       "model": "res://assets/models/furniture/PullOutWorktop.glb",
-      "model_extended": "res://assets/models/furniture/kitchenBarEnd.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -3984,7 +2965,8 @@
       "buy_price": 460,
       "sell_price": 230,
       "color": "b8ccd8",
-      "model": "res://assets/models/furniture/FoldingShowerScreen.glb"
+      "model": "res://assets/models/furniture/FoldingShowerScreen.glb",
+      "open_anim": true
     },
     {
       "placement": "wall",
@@ -4009,7 +2991,7 @@
       "sell_price": 60,
       "color": "90b8c8",
       "model": "res://assets/models/furniture/MirrorCabinet.glb",
-      "model_extended": "res://assets/models/furniture/bathroomCabinet.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -4029,6 +3011,7 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "d8e4ec",
+      "front": "long",
       "model": "res://assets/models/furniture/SlidingMirrorPanel.glb"
     },
     {
@@ -4053,9 +3036,9 @@
       "buy_price": 60,
       "sell_price": 20,
       "color": "8a6848",
+      "mobility_tier": "green",
       "model": "res://assets/models/furniture/WallFoldingChair.glb",
-      "model_extended": "res://assets/models/furniture/chairCushion.glb",
-      "mobility_tier": "green"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -4081,9 +3064,8 @@
       "buy_price": 130,
       "sell_price": 50,
       "color": "806848",
-      "model": "res://assets/models/furniture/StackableChairs_x3.glb",
-      "model_extended": "res://assets/models/furniture/stoolBar.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/StackableChairs_x3.glb"
     },
     {
       "placement": "wall",
@@ -4107,9 +3089,9 @@
       "buy_price": 120,
       "sell_price": 45,
       "color": "907048",
-      "model": "res://assets/models/furniture/benchCushionLow.glb",
-      "model_extended": "res://assets/models/furniture/benchCushion.glb",
-      "mobility_tier": "green"
+      "mobility_tier": "green",
+      "model": "res://assets/models/furniture/WallFoldingChair.glb",
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -4137,7 +3119,7 @@
       "sell_price": 120,
       "color": "8a7050",
       "model": "res://assets/models/furniture/WallDropTable_WithChairs.glb",
-      "model_extended": "res://assets/models/furniture/tableCross.glb"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -4164,8 +3146,10 @@
       "buy_price": 380,
       "sell_price": 150,
       "color": "8a6848",
+      "mobility_tier": "yellow",
+      "front": "long",
       "model": "res://assets/models/furniture/PullOutTable_UnderCounter.glb",
-      "mobility_tier": "yellow"
+      "open_anim": true
     },
     {
       "placement": "floor",
@@ -4184,9 +3168,10 @@
       "buy_price": 480,
       "sell_price": 190,
       "color": "6a5a48",
-      "model": "res://assets/models/furniture/BanquetteBench.glb",
       "is_surface": true,
-      "max_support_weight": 10
+      "max_support_weight": 10,
+      "front": "long",
+      "model": "res://assets/models/furniture/BanquetteBench.glb"
     },
     {
       "placement": "floor",
@@ -4203,6 +3188,7 @@
       "buy_price": 560,
       "sell_price": 220,
       "color": "556070",
+      "front": "long",
       "model": "res://assets/models/furniture/CeilingLiftStorage.glb"
     },
     {
@@ -4220,8 +3206,8 @@
       "buy_price": 340,
       "sell_price": 130,
       "color": "70604a",
-      "model": "res://assets/models/furniture/FloorHatchStorage.glb",
-      "mobility_tier": "red"
+      "mobility_tier": "red",
+      "model": "res://assets/models/furniture/FloorHatchStorage.glb"
     },
     {
       "placement": "floor",
@@ -4240,6 +3226,7 @@
       "buy_price": 900,
       "sell_price": 360,
       "color": "8a7a5a",
+      "front": "long",
       "model": "res://assets/models/furniture/MovableIslandWall.glb"
     },
     {
@@ -4258,8 +3245,9 @@
       "buy_price": 760,
       "sell_price": 300,
       "color": "6a7a9a",
-      "model": "res://assets/models/furniture/PlatformBedPodium.glb",
-      "needs_quiet": true
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/PlatformBedPodium.glb"
     },
     {
       "placement": "floor",
@@ -4281,9 +3269,10 @@
       "buy_price": 700,
       "sell_price": 280,
       "color": "7a9ec0",
-      "model": "res://assets/models/furniture/SlidingPocketBed.glb",
       "wall_flush_required": true,
-      "needs_quiet": true
+      "needs_quiet": true,
+      "model": "res://assets/models/furniture/SlidingPocketBed.glb",
+      "open_anim": true
     }
   ],
   "paintable": [

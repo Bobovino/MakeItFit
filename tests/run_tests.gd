@@ -32,6 +32,9 @@ func _run_all() -> void:
 	_test("snap_to_wall lands flush against the wall", func(): _t_snap_to_wall())
 	_test("remove_furniture frees the tiles it occupied", func(): _t_remove_furniture())
 	_test("rotation cycles 0/1/2/3 and swaps footprint each step", func(): _t_rotation_cycle())
+	_test("pathing: a piece beside open floor is reachable", func(): _t_path_open())
+	_test("pathing: no room to walk means nothing is reachable", func(): _t_path_blocked())
+	_test("pathing: a piece must be reachable from its front", func(): _t_path_front())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -90,6 +93,46 @@ func _make_furniture(fl: Floor, w: int = 2, h: int = 2) -> Furniture:
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
+
+# The test room's interior is 7 x 5 tiles (x 2..8, y 2..6) and has no door,
+# so the walk starts from its largest stretch of open floor.
+func _t_path_open() -> void:
+	Floor.pathing_enabled = true
+	var fl := _make_floor()
+	var a := _make_furniture(fl, 1, 1)
+	fl.place_furniture(a, Vector2(2, 2))
+	_ok(fl.is_reachable(a), "open floor right beside it")
+	_eq(fl.get_inaccessible_furniture().size(), 0)
+	Floor.pathing_enabled = false
+	fl.queue_free()
+
+
+func _t_path_blocked() -> void:
+	var fl := _make_floor()
+	var a := _make_furniture(fl, 1, 1)
+	fl.place_furniture(a, Vector2(2, 2))
+	var b := _make_furniture(fl, 3, 3)
+	fl.place_furniture(b, Vector2(3, 2))   # leaves no 4 x 4 patch anywhere
+	_eq(fl.get_inaccessible_furniture().size(), 0, "old rule (flag off):")
+	Floor.pathing_enabled = true
+	_eq(fl.get_inaccessible_furniture().size(), 2, "pathing rule:")
+	Floor.pathing_enabled = false
+	fl.queue_free()
+
+
+func _t_path_front() -> void:
+	Floor.pathing_enabled = true
+	var fl := _make_floor()
+	var a := _make_furniture(fl, 3, 1)
+	fl.place_furniture(a, Vector2(2, 2))   # back against the north wall
+	var b := _make_furniture(fl, 3, 1)
+	fl.place_furniture(b, Vector2(2, 3))   # pushed up against its long side
+	_ok(fl.is_reachable(a), "used from any side: its east end is open")
+	a.front = "long"
+	_ok(not fl.is_reachable(a), "used from a long side: one is the wall, the other is covered")
+	Floor.pathing_enabled = false
+	fl.queue_free()
+
 func _t_place_and_overlap() -> void:
 	var fl := _make_floor()
 	var a := _make_furniture(fl)

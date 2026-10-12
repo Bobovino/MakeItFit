@@ -35,6 +35,8 @@ var reduce_motion: bool = false
 # Room3DView listens for the change signal and applies it live.
 signal graphics_quality_changed(level: int)
 var graphics_quality: int = 0
+signal pathing_rule_changed(on: bool)
+var pathing_rule: bool = false
 # Multiplies Window.content_scale_factor — a blunt but genuinely global text/
 # UI size control, since font sizes are set ad-hoc per-Label throughout the
 # codebase rather than through one themed size that could be scaled centrally.
@@ -119,6 +121,15 @@ func set_reduce_motion(v: bool) -> void:
 	save_game()
 
 
+# Experimental rule: the tenant must be able to walk from the door to every
+# piece of furniture (see Floor.pathing_enabled in Wall.gd).
+func set_pathing_rule(on: bool) -> void:
+	pathing_rule = on
+	Floor.pathing_enabled = on
+	pathing_rule_changed.emit(on)
+	save_game()
+
+
 func set_graphics_quality(level: int) -> void:
 	graphics_quality = clampi(level, 0, 2)
 	graphics_quality_changed.emit(graphics_quality)
@@ -157,6 +168,7 @@ func save_game() -> void:
 		"ui_scale":        ui_scale,
 		"undo_keycode":    undo_keycode,
 		"graphics_quality": graphics_quality,
+		"pathing_rule":    pathing_rule,
 		"last_active_level_id": last_active_level_id,
 	}
 	var audio := get_node_or_null("/root/Audio")
@@ -190,6 +202,8 @@ func load_game() -> void:
 	ui_scale        = data.get("ui_scale", ui_scale) as float
 	undo_keycode    = data.get("undo_keycode", undo_keycode) as int
 	graphics_quality = clampi(data.get("graphics_quality", graphics_quality) as int, 0, 2)
+	pathing_rule = data.get("pathing_rule", pathing_rule) as bool
+	Floor.pathing_enabled = pathing_rule
 	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
