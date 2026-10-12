@@ -1,8 +1,9 @@
 extends CanvasLayer
 class_name SettingsMenu
 
-# Self-contained settings modal: SFX/Music volume sliders (wired straight to
-# the Audio autoload's buses) and a confirm-gated Quit to Desktop. Usable from
+# Self-contained settings modal: audio (master/SFX/music volume and mute,
+# wired straight to the Audio autoload's buses), 3D view quality,
+# accessibility, and a confirm-gated Quit to Desktop. Usable from
 # anywhere — CityMap and Main both just do `SettingsMenu.open(self)`.
 
 signal closed
@@ -47,12 +48,21 @@ func _build() -> void:
 	cs.shadow_size  = 10
 	card.add_theme_stylebox_override("panel", cs)
 	card.position            = Vector2(390, 130)
-	card.custom_minimum_size = Vector2(500, 440)
+	card.custom_minimum_size = Vector2(500, 0)
 	add_child(card)
 
+	# The list is taller in-level (navigation rows) than from the menus, so it
+	# scrolls rather than run off the 720-high layout; _fit_card() sizes the
+	# scroll area to its content and centres the card once that's known.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	card.add_child(scroll)
+
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
-	card.add_child(vb)
+	vb.add_theme_constant_override("separation", 9)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(vb)
+	_fit_card.call_deferred(card, scroll, vb)
 
 	var title_row := HBoxContainer.new()
 	vb.add_child(title_row)
@@ -80,12 +90,27 @@ func _build() -> void:
 
 	var audio := get_node_or_null("/root/Audio")
 
-	vb.add_child(_build_slider_row("SFX Volume",
+	vb.add_child(_section_title("AUDIO"))
+
+	vb.add_child(_build_slider_row("Master Volume",
+		audio.master_volume if audio else 1.0,
+		func(v: float):
+			if audio:
+				audio.set_master_volume(v)
+			GameState.save_game()))
+
+	var sfx_row := _build_slider_row("SFX Volume",
 		audio.sfx_volume if audio else 1.0,
 		func(v: float):
 			if audio:
 				audio.set_sfx_volume(v)
-			GameState.save_game()))
+			GameState.save_game())
+	vb.add_child(sfx_row)
+	# Letting go of the SFX slider plays a click, so the level can be judged
+	# by ear instead of by leaving the menu to trigger a sound.
+	(sfx_row.get_child(1) as HSlider).drag_ended.connect(func(_changed: bool):
+		if audio:
+			audio.play("click"))
 
 	vb.add_child(_build_slider_row("Music Volume",
 		audio.music_volume if audio else 0.7,
@@ -94,14 +119,24 @@ func _build() -> void:
 				audio.set_music_volume(v)
 			GameState.save_game()))
 
+	var mute_chk := CheckBox.new()
+	mute_chk.text = "Mute all sound"
+	mute_chk.add_theme_font_size_override("font_size", 12)
+	mute_chk.button_pressed = audio.muted if audio else false
+	mute_chk.toggled.connect(func(on: bool):
+		if audio:
+			audio.set_muted(on)
+		GameState.save_game())
+	vb.add_child(mute_chk)
+
+	vb.add_child(HSeparator.new())
+	vb.add_child(_section_title("GRAPHICS"))
+	_build_quality_rows(vb)
+
 	var sep0 := HSeparator.new()
 	vb.add_child(sep0)
 
-	var acc_title := Label.new()
-	acc_title.text = "ACCESSIBILITY"
-	acc_title.add_theme_font_size_override("font_size", 13)
-	acc_title.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	vb.add_child(acc_title)
+	vb.add_child(_section_title("ACCESSIBILITY"))
 
 	# UI scale — a blunt global zoom (see GameState._apply_ui_scale) rather
 	# than a per-label font setting, since font sizes are hardcoded ad-hoc
@@ -266,6 +301,73 @@ func _build() -> void:
 	close_btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	close_btn.pressed.connect(_close)
 	vb.add_child(close_btn)
+
+
+func _section_title(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	return lbl
+
+
+# 3D view quality. Only tiers that add something on the running renderer are
+# offered (High is the SSAO tier, which this renderer may not have), and the
+# line underneath says what the chosen tier turns on.
+func _build_quality_rows(vb: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	vb.add_child(row)
+
+	var lbl := Label.new()
+	lbl.text = "3D Quality"
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	lbl.custom_minimum_size.x = 120
+	row.add_child(lbl)
+
+	var tiers := [StyleQuality.Level.LOW, StyleQuality.Level.MEDIUM]
+	if StyleQuality.supports_ssao():
+		tiers.append(StyleQuality.Level.HIGH)
+	var current := mini(GameState.graphics_quality, tiers[-1])
+
+	var picker := OptionButton.new()
+	picker.add_theme_font_size_override("font_size", 12)
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for tier in tiers:
+		picker.add_item(StyleQuality.LEVEL_NAMES[tier], tier)
+	picker.select(picker.get_item_index(current))
+	row.add_child(picker)
+
+	var hint := Label.new()
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hint.text = _quality_hint(current)
+	vb.add_child(hint)
+
+	picker.item_selected.connect(func(index: int):
+		var tier := picker.get_item_id(index)
+		GameState.set_graphics_quality(tier)
+		hint.text = _quality_hint(tier))
+
+
+func _quality_hint(tier: int) -> String:
+	match tier:
+		StyleQuality.Level.LOW:    return "Fastest. Flat lighting and shadows only."
+		StyleQuality.Level.MEDIUM: return "Adds glow on lamps and windows, and a soft vignette."
+		_:                         return "Adds contact shading in corners. Needs a dedicated GPU."
+
+
+# Sizes the scroll area to its content (capped to fit the 720-high layout) and
+# centres the card vertically. Deferred: sizes aren't known until after layout.
+func _fit_card(card: PanelContainer, scroll: ScrollContainer, vb: VBoxContainer) -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(card):
+		return
+	scroll.custom_minimum_size = Vector2(452, minf(vb.get_combined_minimum_size().y, 656.0))
+	await get_tree().process_frame
+	if is_instance_valid(card):
+		card.position.y = maxf(4.0, (720.0 - card.size.y) * 0.5)
 
 
 func _build_slider_row(label_text: String, initial: float, on_change: Callable) -> HBoxContainer:

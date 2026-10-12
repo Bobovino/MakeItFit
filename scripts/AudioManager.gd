@@ -32,6 +32,8 @@ var _streams:     Dictionary = {}   # key -> preloaded AudioStream, cached on fi
 
 var sfx_volume:   float = 1.0   # linear 0..1, persisted via GameState
 var music_volume: float = 0.7
+var master_volume: float = 1.0
+var muted:        bool  = false
 
 
 func _ready() -> void:
@@ -50,6 +52,8 @@ func _ready() -> void:
 
 	set_sfx_volume(sfx_volume)
 	set_music_volume(music_volume)
+	set_master_volume(master_volume)
+	set_muted(muted)
 
 
 func _ensure_bus(bus_name: String) -> void:
@@ -90,6 +94,19 @@ func set_music_volume(v: float) -> void:
 	var idx := AudioServer.get_bus_index(MUSIC_BUS)
 	if idx != -1:
 		AudioServer.set_bus_volume_db(idx, _linear_to_db(music_volume))
+
+
+# Master sits above both buses, so it scales everything without disturbing
+# the SFX/Music balance the player set.
+func set_master_volume(v: float) -> void:
+	master_volume = clampf(v, 0.0, 1.0)
+	AudioServer.set_bus_volume_db(0, _linear_to_db(master_volume))
+
+
+# Mute is separate from the sliders so unmuting returns to the same levels.
+func set_muted(on: bool) -> void:
+	muted = on
+	AudioServer.set_bus_mute(0, on)
 
 
 func _start_ambient() -> void:

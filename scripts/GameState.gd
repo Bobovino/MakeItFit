@@ -31,6 +31,10 @@ var dev_bonus_stars: int = 0
 # OUT pulse, tenant-need chip pop) for players sensitive to motion — the
 # underlying state change still happens instantly, only the animation is cut.
 var reduce_motion: bool = false
+# 3D view quality tier, as a StyleQuality.Level (0 Low, 1 Medium, 2 High).
+# Room3DView listens for the change signal and applies it live.
+signal graphics_quality_changed(level: int)
+var graphics_quality: int = 0
 # Multiplies Window.content_scale_factor — a blunt but genuinely global text/
 # UI size control, since font sizes are set ad-hoc per-Label throughout the
 # codebase rather than through one themed size that could be scaled centrally.
@@ -113,6 +117,12 @@ func set_reduce_motion(v: bool) -> void:
 	save_game()
 
 
+func set_graphics_quality(level: int) -> void:
+	graphics_quality = clampi(level, 0, 2)
+	graphics_quality_changed.emit(graphics_quality)
+	save_game()
+
+
 func set_undo_keycode(kc: int) -> void:
 	undo_keycode = kc
 	save_game()
@@ -144,12 +154,15 @@ func save_game() -> void:
 		"reduce_motion":   reduce_motion,
 		"ui_scale":        ui_scale,
 		"undo_keycode":    undo_keycode,
+		"graphics_quality": graphics_quality,
 		"last_active_level_id": last_active_level_id,
 	}
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
 		data["sfx_volume"]   = audio.sfx_volume
 		data["music_volume"] = audio.music_volume
+		data["master_volume"] = audio.master_volume
+		data["audio_muted"]   = audio.muted
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -174,6 +187,7 @@ func load_game() -> void:
 	reduce_motion   = data.get("reduce_motion", reduce_motion) as bool
 	ui_scale        = data.get("ui_scale", ui_scale) as float
 	undo_keycode    = data.get("undo_keycode", undo_keycode) as int
+	graphics_quality = clampi(data.get("graphics_quality", graphics_quality) as int, 0, 2)
 	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -181,6 +195,10 @@ func load_game() -> void:
 			audio.set_sfx_volume(data["sfx_volume"] as float)
 		if data.has("music_volume"):
 			audio.set_music_volume(data["music_volume"] as float)
+		if data.has("master_volume"):
+			audio.set_master_volume(data["master_volume"] as float)
+		if data.has("audio_muted"):
+			audio.set_muted(data["audio_muted"] as bool)
 
 
 func set_last_active_level(level_id: String) -> void:

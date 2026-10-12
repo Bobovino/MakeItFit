@@ -17,6 +17,7 @@ signal buy_cancelled(furniture: Furniture)    # the same, but the purchase was b
 signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a wall piece
 signal furniture_moved(furniture: Furniture)   # an existing piece was dragged to a new spot and committed
 signal reveal_finished   # a play_reveal() flythrough finished its scripted camera move
+signal box_enter_requested(furniture: Furniture)   # a nested box was double-clicked — Main.gd steps into it
 signal showcase_stop_changed(moment_id: String, needs: Array)   # tenant showcase moved to a new stop — Main.gd rings the matching TenantCard chip(s)
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
@@ -31,6 +32,29 @@ const WALL_THICK  := 0.1
 @onready var close_btn:  Button               = $CloseBtn
 @onready var _sun:       DirectionalLight3D   = $SubViewportContainer/SubViewport/World/Light
 @onready var _world_env: WorldEnvironment     = $SubViewportContainer/SubViewport/World/WorldEnvironment
+
+# Diorama look (res://style/): one palette per level drives the materials,
+# light, fog and backdrop. Purely presentational — picking, dragging and
+# placement never read it. Set USE_DIORAMA_STYLE to false to get the previous
+# plain-material rendering back.
+const USE_DIORAMA_STYLE := true
+var _style: StyleController = null
+var _palette: LevelPalette = null
+# Long lens for the styled view: nearly parallel lines, so the room reads as a
+# diorama instead of a wide-angle interior. The camera is simply moved further
+# back by _cam_dist_scale so the room fills the frame exactly as before —
+# _dist, zoom limits, pan speed and every ray-based pick keep their meaning.
+const STYLE_FOV := 26.0
+var _cam_dist_scale: float = 1.0
+var _travel_tween: Tween = null            # a level-transition camera move in progress, see travel_camera()
+var _next_camera_state: Dictionary = {}    # see set_next_camera_state()
+var _next_camera_until_ms: int = -1       # builds up to this moment apply _next_camera_state
+# Inside a nested box: the apartment the box sits in, drawn giant around this
+# room as inert scenery (see set_parent_scenery / _add_parent_scenery).
+var _parent_scenery: Dictionary = {}
+var _scenery_nodes: Array = []   # [{node: Node3D, center: Vector3}] — hidden while on the camera's side
+const PLINTH_DEPTH_M := 1.6   # how far the block under the floor reaches before it has dissolved
+const ACCENT_MAX_AREA_TILES := 16   # decor at most this big (e.g. 4x4 tiles) takes the accent colour
 
 var _yaw:     float   = -45.0
 var _pitch:   float   = -32.0
@@ -137,9 +161,226 @@ var _fold_model_extended_shown: bool = false   # which of the two real models is
 
 
 func _ready() -> void:
+	_setup_style()
 	close_btn.pressed.connect(func(): closed.emit())
 	container.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.gui_input.connect(_on_container_input)
+
+
+func _setup_style() -> void:
+	if not USE_DIORAMA_STYLE:
+		return
+	# The scene's Environment is a shared sub-resource; this view restyles it,
+	# so it takes its own copy rather than recolouring every other open view.
+	_world_env.environment = _world_env.environment.duplicate()
+	_style = StyleController.new()
+	_style.name = "StyleController"
+	_style.world_environment = _world_env
+	_style.sun = _sun
+	_style.camera = cam
+	_style.level_root = build_root
+	_style.room_height = WALL_H_M
+	_style.floor_thickness = 0.05
+	_style.manage_global_shadows = false   # shadow atlas settings are engine-wide; other views share them
+	_style.palette = _palette if _palette != null else PaletteLibrary.default_palette()
+	_style.quality = GameState.graphics_quality as StyleQuality.Level
+	GameState.graphics_quality_changed.connect(func(level: int):
+		_style.quality = level as StyleQuality.Level)
+	build_root.get_parent().add_child(_style)
+	_cam_dist_scale = tan(deg_to_rad(cam.fov) * 0.5) / tan(deg_to_rad(STYLE_FOV) * 0.5)
+	cam.fov = STYLE_FOV
+	# Sun from the home camera's left: of the two walls the home view looks
+	# at, one is well lit and the other still catches some light, and shadows
+	# fall across open floor to the right instead of straight behind things.
+	_sun.look_at_from_position(Vector3(-0.75, 0.85, 0.3) * 10.0, Vector3.ZERO, Vector3.UP)
+
+
+# Picks this level's palette: its own "palette" entry if it has one, else the
+# palette closest in hue to its block colour. Call before build_from_floor().
+func set_level_style(level: Dictionary, levels_data: Dictionary) -> void:
+	_palette = PaletteLibrary.for_level(level, levels_data)
+	if _style != null and _palette != null:
+		_style.palette = _palette
+
+
+func _style_node(node: Node, role: StringName) -> void:
+	if _style != null:
+		_style.style_node(node, role)
+
+
+# A furniture/wall-item placeholder box that got no model stays visible as a
+# plain box, so it takes the furniture tint. One that did get a model is left
+# alone: it's an invisible hitbox, and its own material is what hides it.
+func _style_if_bare(mi: MeshInstance3D) -> void:
+	if _style != null and not is_instance_valid(mi.get_meta("model_inst", null)):
+		_style.style_node(mi, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
+
+
+# The palette's accent colour is kept for small decorative pieces (a plant, a
+# lamp, a stack of books): things with no function of their own and a small
+# footprint. Everything else is a tint of the level hue.
+func _item_role(fdata: Dictionary) -> StringName:
+	var item_size := fdata.get("size", {}) as Dictionary
+	var area := (item_size.get("w", 99) as int) * (item_size.get("h", 99) as int)
+	if (fdata.get("functions", []) as Array).is_empty() and area <= ACCENT_MAX_AREA_TILES \
+			and not fdata.get("is_nested_box", false):
+		return StyleController.ROLE_ACCENT
+	return StyleController.ROLE_FURNITURE
+
+
+# Hands over what to draw around the room on the next build_from_floor():
+#   segments  the parent floor's wall segments (tile coordinates)
+#   items     [{fdata, x, y, rot_steps, is_extended}] — its furniture
+#   box_rect  Rect2 in the same tiles: where this room's box sits in it
+# {} (the default) means "not inside a box", and the room floats on its
+# plinth as usual. Call before build_from_floor().
+func set_parent_scenery(data: Dictionary) -> void:
+	_parent_scenery = data
+
+
+func _no_shadows(node: Node) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for child in node.get_children():
+		_no_shadows(child)
+
+
+# Draws the parent apartment around this room, scaled up so the box's outer
+# footprint matches the room: you are standing inside the box, looking out at
+# your own giant furniture. Scenery only — none of it is added to the pick or
+# drag lists, it casts no shadows (the box's daylight is already modelled by
+# the game's own occlusion value), and anything on the camera's side is
+# hidden so it can't block the view, the same idea as lowering near walls.
+# One level up only: two levels up would be a room kilometres across.
+func _add_parent_scenery(w: float, d: float) -> bool:
+	if _style == null or _parent_scenery.is_empty():
+		return false
+	var box: Rect2 = _parent_scenery.get("box_rect", Rect2())
+	if box.size.x <= 0.0 or box.size.y <= 0.0:
+		return false
+	# Big enough that the box's footprint covers the whole room, so nothing
+	# of the parent's can end up inside it.
+	var s := maxf(w / (box.size.x * TILE_M), d / (box.size.y * TILE_M))
+	var box_center := box.get_center()
+	var to_view := func(tx: float, ty: float) -> Vector3:
+		return Vector3((tx - box_center.x) * TILE_M * s + w * 0.5, 0.0, (ty - box_center.y) * TILE_M * s + d * 0.5)
+	const FLOOR_Y := -0.055   # just under this room's own floor slab
+	_style.scenery_scale = s
+
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	var segments := _parent_scenery.get("segments", []) as Array
+	for sd in segments:
+		var seg := sd as Dictionary
+		for p in [Vector2(seg["x1"] as float, seg["y1"] as float), Vector2(seg["x2"] as float, seg["y2"] as float)]:
+			lo = lo.min(p)
+			hi = hi.max(p)
+	if lo.x > hi.x:
+		lo = box.position - Vector2(20, 20)
+		hi = box.end + Vector2(20, 20)
+
+	var f0: Vector3 = to_view.call(lo.x, lo.y)
+	var f1: Vector3 = to_view.call(hi.x, hi.y)
+	var slab := _box(Vector3(f1.x - f0.x, 0.5, f1.z - f0.z),
+		Vector3((f0.x + f1.x) * 0.5, FLOOR_Y - 0.25, (f0.z + f1.z) * 0.5), Color.WHITE, StyleController.ROLE_SCENERY_FLOOR)
+	_no_shadows(slab)
+
+	var wall_h := WALL_H_M * s
+	var wall_t := WALL_THICK * s
+	for sd in segments:
+		var seg := sd as Dictionary
+		if seg.get("demolished", false):
+			continue
+		var a: Vector3 = to_view.call(seg["x1"] as float, seg["y1"] as float)
+		var b: Vector3 = to_view.call(seg["x2"] as float, seg["y2"] as float)
+		var along_x := absf(b.x - a.x) >= absf(b.z - a.z)
+		var length := absf(b.x - a.x) if along_x else absf(b.z - a.z)
+		if length < 0.01:
+			continue
+		var mid := (a + b) * 0.5
+		var wall := _box(Vector3(length, wall_h, wall_t) if along_x else Vector3(wall_t, wall_h, length),
+			Vector3(mid.x, FLOOR_Y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
+		_no_shadows(wall)
+		_scenery_nodes.append({"node": wall, "center": mid})
+
+	for it in _parent_scenery.get("items", []) as Array:
+		var item := it as Dictionary
+		var fdata := item.get("fdata", {}) as Dictionary
+		var size_t := fdata.get("size", {}) as Dictionary
+		var rot: int = item.get("rot_steps", 0) as int
+		var tw := (size_t.get("w", 4) as float)
+		var th := (size_t.get("h", 4) as float)
+		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
+		var rect := Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot)
+		if rect.intersects(box):
+			continue   # the box itself, and anything sharing its tiles
+		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
+		var canon := Vector3(tw * TILE_M * s, height, th * TILE_M * s)
+		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
+		var mi := _box(canon, Vector3(c.x, FLOOR_Y + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		mi.rotation.y = deg_to_rad(rot * 90.0)
+		mi.set_meta("style_role", _item_role(fdata))
+		_apply_item_model(mi, _active_model_path(fdata, item.get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
+		_style_if_bare(mi)
+		_no_shadows(mi)
+		_scenery_nodes.append({"node": mi, "center": c})
+	_style.apply()   # the scenery floor's board size depends on the scale just set
+	return true
+
+
+# Scenery on the camera's side of the room would sit between the camera and
+# what the player is working on: hide it. `flat` is the camera's direction
+# from the room, flattened (see _update_wall_visibility).
+func _update_scenery_visibility(flat: Vector3) -> void:
+	var room_center := Vector3(_room_w_m * 0.5, 0.0, _room_d_m * 0.5)
+	for sc in _scenery_nodes:
+		var node: Node3D = sc["node"]
+		if not is_instance_valid(node):
+			continue
+		var away: Vector3 = (sc["center"] as Vector3) - room_center
+		away.y = 0.0
+		node.visible = away.length() < 0.01 or away.normalized().dot(flat) < 0.2
+
+
+# The block the room stands on. Presentation only: it sits entirely below the
+# floor and nothing picks against it.
+func _add_plinth(w: float, d: float) -> void:
+	if _style == null:
+		return
+	var mi := _box(Vector3(w, PLINTH_DEPTH_M, d), Vector3(w * 0.5, -0.05 - PLINTH_DEPTH_M * 0.5, d * 0.5), Color.WHITE)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_style.style_plinth(mi, PLINTH_DEPTH_M + 0.05)
+
+
+# A piece still being bought is see-through, so it reads as "not placed yet"
+# and doesn't hide the floor and furniture you're judging the fit against.
+const BUY_GHOST_ALPHA := 0.6
+
+func _ghostify(mi: MeshInstance3D) -> void:
+	if _style == null:
+		return
+	var role: StringName = mi.get_meta("style_role", StyleController.ROLE_FURNITURE)
+	var inst: Variant = mi.get_meta("model_inst", null)
+	_style.style_node_transparent(inst if is_instance_valid(inst) else mi, role, BUY_GHOST_ALPHA)
+
+
+# ...and solid again once it's actually placed.
+func _solidify(mi: MeshInstance3D) -> void:
+	if _style == null:
+		return
+	var inst: Variant = mi.get_meta("model_inst", null)
+	if is_instance_valid(inst):
+		_style.style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
+	else:
+		_style_if_bare(mi)
+
+
+# Translucent pane colour for windows: the palette's glow colour when styled.
+func _glass_color() -> Color:
+	if _style != null and _style.palette != null:
+		var c := _style.palette.glow_color
+		return Color(c.r, c.g, c.b, 0.5)
+	return Color(0.55, 0.78, 0.92, 0.55)
 
 
 func _process(delta: float) -> void:
@@ -183,6 +424,18 @@ func _on_container_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
+			# Double-click a nested box to step inside it. Handled before
+			# anything else, so the second press neither picks the box up nor
+			# starts a pan, and it works in the read-only post-win view too.
+			# A single click or a drag still treats the box as furniture.
+			if mb.pressed and mb.double_click and not _buying_furniture:
+				var box_hit := _pick_furniture(_to_vp(mb.position))
+				if not box_hit.is_empty():
+					var box: Furniture = box_hit["furniture"]
+					if box.is_nested_box and not box.child_level_id.is_empty():
+						_hide_hover_highlight()
+						box_enter_requested.emit(box)
+						return
 			if mb.pressed:
 				_press_pos = mb.position
 				if read_only:
@@ -590,10 +843,12 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	col.a = 0.55
 	var box_size := Vector3(furniture.grid_w * TILE_M, height_m, furniture.grid_h * TILE_M)
 	_buying_mesh = _box(box_size, Vector3(box_size.x * 0.5, box_size.y * 0.5, box_size.z * 0.5), col)
+	_buying_mesh.set_meta("style_role", _item_role(fdata))
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, fdata.get("model", "") as String, false)
 	else:
 		_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
+	_ghostify(_buying_mesh)
 	_set_grid_overlay_visible(true)
 	_set_hitbox_highlights_visible(true)
 	# The box above spawns at a hardcoded position near the room's own origin
@@ -728,6 +983,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		(_buying_mesh.mesh as BoxMesh).size = xf["size"]
 		_buying_mesh.position = xf["pos"]
 		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, xf["size"], _buying_fdata.get("hide_nodes", []) as Array)
+		_solidify(_buying_mesh)
 		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": xf["size"]})
 		_buying_furniture = null
 		_buying_fdata     = {}
@@ -758,6 +1014,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
 		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
+	_solidify(_buying_mesh)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
 	_set_rail_indicator(_buying_mesh, f, Vector2(item_size.x, item_size.z))
@@ -1268,6 +1525,11 @@ func _click_furniture_no_drag() -> void:
 	var entry := _drag_target
 	_drag_target = {}
 	_dragging_furniture = false
+	# The press that began this click showed the placement grid and outlines
+	# as if a drag were starting; nothing was dragged, so put them away.
+	_set_grid_overlay_visible(false)
+	_set_hitbox_highlights_visible(false)
+	_hide_drag_highlight()
 	if entry.is_empty():
 		return
 	var f: Furniture = entry["furniture"]
@@ -1334,6 +1596,7 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			mat.albedo_color.a = 0.0
 		mi.add_child(inst)
+		_style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
 		# Yawed 180° because the panels' built-in "open" direction pointed
 		# back into the room instead of out through the wall — confirmed
 		# wrong in-game, this flips it to open outward.
@@ -1384,7 +1647,7 @@ func _add_balcony_wall_gap(mi: MeshInstance3D, box_size: Vector3) -> void:
 		gap = MeshInstance3D.new()
 		gap.mesh = BoxMesh.new()
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color   = Color(0.55, 0.78, 0.92, 0.55)
+		mat.albedo_color   = _glass_color()
 		mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.shading_mode   = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.cull_mode      = BaseMaterial3D.CULL_DISABLED
@@ -1538,9 +1801,11 @@ func _update_camera() -> void:
 	var ry := deg_to_rad(_yaw)
 	var rp := deg_to_rad(_pitch)
 	var offset := Vector3(cos(rp) * sin(ry), -sin(rp), cos(rp) * cos(ry)) * _dist
-	cam.position = _center + offset
+	cam.position = _center + offset * _cam_dist_scale
 	cam.look_at(_center, Vector3.UP)
 	_update_wall_visibility(offset)
+	if _style != null:
+		_style.refresh_view()
 
 
 # Keeps a left-drag pan from carrying the camera target out past the room's
@@ -1603,6 +1868,97 @@ func play_reveal(duration: float = 3.5) -> void:
 	await tw.finished
 	_reveal_playing = false
 	reveal_finished.emit()
+
+
+# ── Level-transition camera moves ───────────────────────────────────────────
+# Used by Main.gd when stepping into or out of a nested box, so the camera
+# visibly travels with the player instead of the room just being swapped.
+# Both block input for their (short) duration the same way play_reveal does,
+# and both leave yaw/pitch alone — only where the camera looks and how close.
+
+# Where the camera would sit to frame one placed piece. {} if it isn't in
+# this view.
+func furniture_focus(f: Furniture) -> Dictionary:
+	for entry in _furniture_entries:
+		if entry["furniture"] == f:
+			var item_size: Vector3 = entry["size"]
+			var pos: Vector3 = entry["pos"]
+			return {"center": pos, "dist": maxf(item_size.x, maxf(item_size.y, item_size.z)) * 1.3 + 0.5}
+	return {}
+
+
+# Moves the camera from where it is to (to_center, to_dist).
+func travel_camera(to_center: Vector3, to_dist: float, duration: float) -> void:
+	if not _take_over_camera():
+		return
+	_run_camera_travel(_center, _dist, to_center, to_dist, duration)
+
+
+# Starts the camera at (from_center, from_dist) and settles it on the view
+# it has right now (the one the room was just built or restored with).
+func arrive_camera(from_center: Vector3, from_dist: float, duration: float) -> void:
+	if not _take_over_camera():
+		return
+	_run_camera_travel(from_center, from_dist, _center, _dist, duration)
+
+
+# Stops a travel move where it is. Main.gd calls this before swapping levels,
+# and every rebuild calls it too: a move left running would keep writing the
+# OLD level's camera position into the new one — and since each trip starts
+# from wherever the last one ended, a few trips back and forth were enough to
+# leave the camera far out in empty space.
+func cancel_camera_travel() -> void:
+	if _travel_tween != null and _travel_tween.is_valid():
+		_travel_tween.kill()
+		_reveal_playing = false
+	_travel_tween = null
+
+
+# False if something else (the post-win reveal flythrough) owns the camera.
+func _take_over_camera() -> bool:
+	var ours := _travel_tween != null and _travel_tween.is_valid()
+	if _reveal_playing and not ours:
+		return false
+	cancel_camera_travel()
+	return true
+
+
+func _run_camera_travel(c0: Vector3, d0: float, c1: Vector3, d1: float, duration: float) -> void:
+	_reveal_playing = true
+	_hide_hover_highlight()
+	_center = c0
+	_dist = d0
+	_update_camera()
+	var tw := create_tween()
+	_travel_tween = tw
+	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(func(t: float) -> void:
+		_center = c0.lerp(c1, t)
+		_dist   = lerpf(d0, d1, t)
+		_update_camera(),
+		0.0, 1.0, duration)
+	tw.finished.connect(func():
+		if _travel_tween == tw:
+			_travel_tween = null
+			_reveal_playing = false)
+
+
+# Each apartment keeps its own camera. Main.gd reads the state on the way out
+# of a level and hands the state for the level being entered to
+# set_next_camera_state(); the next build_from_floor() applies it. An empty
+# state means "first visit": the home view, not whatever angle and zoom the
+# previous apartment happened to be left at.
+func get_camera_state() -> Dictionary:
+	return {"yaw": _yaw, "pitch": _pitch, "dist": _dist, "center": _center}
+
+
+# Loading a level can rebuild this view more than once in quick succession
+# (once for the level as authored, again once the player's saved layout is
+# restored), and every rebuild resets the zoom — so the state stays in force
+# for a short window rather than being used up by the first build.
+func set_next_camera_state(state: Dictionary) -> void:
+	_next_camera_state = state
+	_next_camera_until_ms = Time.get_ticks_msec() + 400
 
 
 # ── Post-win tenant showcase ────────────────────────────────────────────────
@@ -1852,6 +2208,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 		# that's the wall we need out of the way.
 		var facing := normal.dot(flat)
 		wd["target_h"] = 0.0 if facing > 0.0 else 1.0
+	_update_scenery_visibility(flat)
 
 
 # A balcony window is a permanent architectural opening, not furniture sitting
@@ -1904,7 +2261,7 @@ func _restore_wall_hole(f: Furniture) -> void:
 		if is_instance_valid(root):
 			root.queue_free()
 		var mesh := _add_sloped_wall(orig["length"], orig["thick"], orig["height"], orig["height"],
-			orig["pos"], orig["rot_y_deg"], orig["color"])
+			orig["pos"], orig["rot_y_deg"], orig["color"], wd.get("role", StyleController.ROLE_WALL))
 		wd["mesh"] = mesh
 		wd.erase("has_hole")
 		wd.erase("hole_owner")
@@ -1964,6 +2321,8 @@ func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: V
 	wall_mat.albedo_color = color
 	wall_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	wall_box.material = wall_mat
+	if _style != null:
+		wall_box.material = _style.material_for(wd.get("role", StyleController.ROLE_WALL))
 	root.add_child(wall_box)
 
 	var hole := CSGBox3D.new()
@@ -1992,6 +2351,16 @@ func _update_wall_fade(delta: float) -> void:
 		var full_h: float = wd.get("full_h", WALL_H_M)
 		var stub_ratio := clampf(STUB_HEIGHT_M / full_h, 0.0, 1.0)
 		mesh.scale.y = lerpf(stub_ratio, 1.0, h)
+		# A window squashed onto a 25 cm stub reads as clutter: drop the wall's
+		# dressing once it's mostly down. (Parts die with the wall mesh if a
+		# balcony hole rebuilds it, hence the validity check.)
+		for part in wd.get("decor", []):
+			if is_instance_valid(part):
+				(part as Node3D).visible = h > 0.6
+		# ...and mark where its openings are on the stub's cut face instead.
+		for mark in mesh.get_meta("stub_marks", []):
+			if is_instance_valid(mark):
+				(mark as Node3D).visible = h <= 0.6
 
 
 func _ensure_reason_label() -> void:
@@ -2051,6 +2420,7 @@ func _flash_reason(text: String) -> void:
 # dim, non-interactive "ghost" layer at the correct height beneath it, so
 # the player doesn't lose their bearings on what's directly underneath.
 func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = null) -> void:
+	cancel_camera_travel()
 	_auto_spin = false
 	_foldable  = false
 	_fold_mesh = null
@@ -2059,6 +2429,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	for c in build_root.get_children():
 		c.queue_free()
 	_wall_data.clear()
+	_scenery_nodes.clear()
 	_wall_grid_overlays.clear()
 	_hitbox_highlights.clear()
 	_drag_highlight = null
@@ -2084,8 +2455,33 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_dist   = maxf(w, d) * 1.4 + 2.0
 	_home_center = _center
 	_home_dist   = _dist
+	if _style != null:
+		_style.scene_center = Vector3(w * 0.5, 1.0, d * 0.5)
+		_style.scene_radius = maxf(w, d) * 0.75 + 1.0
+		# The long lens wastes less of the frame on perspective, so the home
+		# view can sit closer and let the room fill it. Zoom still works as before.
+		_dist = maxf(w, d) * 1.05 + 1.2
+		_home_dist = _dist
+
+	# A different apartment than last time: its own remembered camera, or the
+	# home view on a first visit. (A rebuild of the SAME level keeps whatever
+	# angle the player had, as before.)
+	if Time.get_ticks_msec() <= _next_camera_until_ms:
+		if _next_camera_state.is_empty():
+			_yaw = HOME_YAW
+			_pitch = HOME_PITCH
+		else:
+			_yaw = _next_camera_state.get("yaw", HOME_YAW) as float
+			_pitch = _next_camera_state.get("pitch", HOME_PITCH) as float
+			_dist = clampf(_next_camera_state.get("dist", _dist) as float, 1.5, 30.0)
+			_center = _clamp_pan_center(_next_camera_state.get("center", _center) as Vector3)
 
 	_add_floor(w, d)
+	if below_floor == null:   # a loft shows the floor beneath it there instead
+		# Inside a box the room stands on its parent's floor; otherwise it
+		# floats on its own block.
+		if not _add_parent_scenery(w, d):
+			_add_plinth(w, d)
 
 	# Subfloor/ceiling/roof layers only exist to carry the 2D-only pipe/duct
 	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
@@ -2175,6 +2571,8 @@ func _make_ghost(mi: MeshInstance3D) -> void:
 	if mat:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.albedo_color.a = GHOST_ALPHA
+	if _style != null:
+		_style.style_node_transparent(mi, StyleController.ROLE_WALL, GHOST_ALPHA)
 	mi.set_meta("is_ghost", true)
 
 
@@ -2209,6 +2607,15 @@ func _apply_moment_lighting() -> void:
 	var ambient: Color     = _NIGHT_AMBIENT     if night else _DAY_AMBIENT
 	var ambient_nrg: float = _NIGHT_AMBIENT_NRG if night else _DAY_AMBIENT_NRG
 	var bg: Color          = _NIGHT_BG          if night else _DAY_BG
+	if _style != null:
+		# Styled: day is the level palette as authored, night is the same
+		# palette dimmed and cooled by the StyleController.
+		var night_target := 1.0 if night else 0.0
+		if GameState.reduce_motion:
+			_style.night = night_target
+		else:
+			create_tween().tween_property(_style, "night", night_target, 0.6)
+		return
 	var env := _world_env.environment
 	if GameState.reduce_motion:
 		_sun.light_energy = sun_energy
@@ -2238,6 +2645,12 @@ func build_single_item(fdata: Dictionary) -> void:
 	for c in build_root.get_children():
 		c.queue_free()
 	_wall_data.clear()
+	_scenery_nodes.clear()
+	if _style != null:
+		var item_dims := fdata.get("size", {}) as Dictionary
+		_style.scene_center = Vector3.ZERO
+		_style.scene_radius = maxf(item_dims.get("w", 5) as float, item_dims.get("h", 5) as float) * TILE_M * 1.5 + 0.5
+		_style.night = 0.0
 
 	var iw: int = (fdata.get("size", {}) as Dictionary).get("w", 5) as int
 	var ih: int = (fdata.get("size", {}) as Dictionary).get("h", 5) as int
@@ -2259,11 +2672,11 @@ func build_single_item(fdata: Dictionary) -> void:
 		_center = Vector3(0.0, height_m * 0.35, open_depth * 0.25)
 		_dist   = maxf(fw, maxf(open_depth, height_m)) * 2.4 + 1.0
 
-		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83))
+		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
 
 		# Backdrop "wall" for context — the panel folds up flush against it.
 		var wall_z := -pad * 0.2
-		_box(Vector3(fw * 1.3, height_m * 1.15, 0.05), Vector3(0.0, height_m * 0.575, wall_z), Color(0.86, 0.83, 0.76))
+		_box(Vector3(fw * 1.3, height_m * 1.15, 0.05), Vector3(0.0, height_m * 0.575, wall_z), Color(0.86, 0.83, 0.76), StyleController.ROLE_WALL)
 
 		_fold_closed_size = Vector3(fw, height_m, closed_depth)
 		_fold_closed_pos  = Vector3(0.0, height_m * 0.5, wall_z + closed_depth * 0.5 + 0.03)
@@ -2285,10 +2698,12 @@ func build_single_item(fdata: Dictionary) -> void:
 		var pad := maxf(fw, fd) * 1.6
 		_center = Vector3(0.0, height_m * 0.4, 0.0)
 		_dist   = maxf(fw, maxf(fd, height_m)) * 2.2 + 1.0
-		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83))
+		_box(Vector3(pad, 0.05, pad), Vector3(0.0, -0.025, 0.0), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
 		var item_size := Vector3(fw, height_m, fd)
 		var item_mi := _box(item_size, Vector3(0.0, height_m * 0.5, 0.0), col)
+		item_mi.set_meta("style_role", _item_role(fdata))
 		_apply_item_model(item_mi, fdata.get("model", "") as String, item_size, fdata.get("hide_nodes", []) as Array)
+		_style_if_bare(item_mi)
 
 	_update_camera()
 
@@ -2300,7 +2715,10 @@ func _find_furniture_data(catalog: Array, fid: String) -> Dictionary:
 	return {}
 
 
-func _box(box_size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
+# `role` (a StyleController.ROLE_*) restyles the box with the level palette.
+# Left empty for furniture placeholders, whose own material doubles as the
+# switch that hides them once a model is applied.
+func _box(box_size: Vector3, pos: Vector3, color: Color, role: StringName = &"") -> MeshInstance3D:
 	var mesh := BoxMesh.new()
 	mesh.size = box_size
 	var mi := MeshInstance3D.new()
@@ -2310,6 +2728,8 @@ func _box(box_size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 	mat.albedo_color = color
 	mi.material_override = mat
 	build_root.add_child(mi)
+	if role != &"":
+		_style_node(mi, role)
 	return mi
 
 
@@ -2348,6 +2768,7 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.albedo_color.a = 0.0
 	mi.add_child(inst)
+	_style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
 	# Some shared models cover more than one item (e.g. the bunk-bed model
 	# doubles as the Loft Bed) — a piece can list child node names to hide so
 	# it reads as a distinct silhouette without needing its own separate file.
@@ -2439,7 +2860,7 @@ func _node_aabb(node: Node3D) -> AABB:
 
 
 func _add_floor(w: float, d: float) -> void:
-	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83))
+	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
 	_add_grid_overlay(w, d)
 
 
@@ -2682,6 +3103,7 @@ func _update_hover(vp_pos: Vector2) -> void:
 	_hover_highlight.position.z = pos.z - item_size.z * 0.5
 	build_root.add_child(_hover_highlight)
 	_hover_furniture = f
+	container.tooltip_text = "Double-click to step inside" if (f.is_nested_box and not f.child_level_id.is_empty()) else ""
 
 
 func _hide_hover_highlight() -> void:
@@ -2715,7 +3137,7 @@ func _add_columns(bounds: Rect2i) -> void:
 		var local_x := (cx - bounds.position.x) * TILE_M
 		var local_z := (cy - bounds.position.y) * TILE_M
 		_box(Vector3(TILE_M, WALL_H_M, TILE_M),
-			Vector3(local_x + TILE_M * 0.5, WALL_H_M * 0.5, local_z + TILE_M * 0.5), COL_COLOR)
+			Vector3(local_x + TILE_M * 0.5, WALL_H_M * 0.5, local_z + TILE_M * 0.5), COL_COLOR, StyleController.ROLE_WALL)
 
 
 # Stairs (from Floor.stairs_data — geometry-only, no furniture object) were
@@ -2817,7 +3239,7 @@ func _add_window_door_overlays(_bounds: Rect2i) -> void:
 			continue
 		if d.get("has_window", false):
 			_add_wall_opening_overlay(edge, d.get("window_x", 0) as int, d.get("window_len", 15) as int,
-				0.9, 1.9, Color(0.55, 0.78, 0.92, 0.55))
+				0.9, 1.9, _glass_color())
 		if d.get("has_door", false):
 			_add_wall_opening_overlay(edge, d.get("door_x", 0) as int, 10,
 				0.0, 2.0, Color(0.08, 0.09, 0.11, 0.85))
@@ -2966,7 +3388,7 @@ func _add_balcony_extras(bounds: Rect2i) -> void:
 		var local_z := (t.y - bounds.position.y) * TILE_M
 		if not bounds.has_point(t):
 			_box(Vector3(TILE_M, 0.05, TILE_M),
-				Vector3(local_x + TILE_M * 0.5, -0.025, local_z + TILE_M * 0.5), floor_col)
+				Vector3(local_x + TILE_M * 0.5, -0.025, local_z + TILE_M * 0.5), floor_col, StyleController.ROLE_FLOOR)
 		if (_apt_floor.floor_kind[tile] as String) != "balcony":
 			continue
 		var edges := [
@@ -2983,7 +3405,7 @@ func _add_balcony_extras(bounds: Rect2i) -> void:
 				continue
 			var rail_size := Vector3(TILE_M, RAIL_H_M, RAIL_THICK_M) if horizontal \
 				else Vector3(RAIL_THICK_M, RAIL_H_M, TILE_M)
-			_box(rail_size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col)
+			_box(rail_size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col, StyleController.ROLE_WALL)
 
 
 # Ceiling height (metres) at a given absolute world tile coordinate along the
@@ -3040,7 +3462,7 @@ func _wedge_mesh(length: float, thick: float, h0: float, h1: float) -> ArrayMesh
 
 
 func _add_sloped_wall(length: float, thick: float, h0: float, h1: float,
-		pos: Vector3, rot_y_deg: float, color: Color) -> MeshInstance3D:
+		pos: Vector3, rot_y_deg: float, color: Color, role: StringName = StyleController.ROLE_WALL) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = _wedge_mesh(length, thick, h0, h1)
 	mi.position = pos
@@ -3051,7 +3473,113 @@ func _add_sloped_wall(length: float, thick: float, h0: float, h1: float,
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mi.material_override = mat
 	build_root.add_child(mi)
+	_style_node(mi, role)
+	if _style != null:
+		# Skirting board along both faces, so the wall meets the floor on a line.
+		_wall_part(mi, 0.0, length, 0.0, SKIRTING_H_M, -SKIRTING_DEPTH_M, 0.0, StyleController.ROLE_TRIM)
+		_wall_part(mi, 0.0, length, 0.0, SKIRTING_H_M, thick, thick + SKIRTING_DEPTH_M, StyleController.ROLE_TRIM)
 	return mi
+
+
+# ── Windows, doors, skirting (styled view only) ─────────────────────────────
+# Dressing built from thin boxes parented to a wall's mesh, in the wall's own
+# space: x runs along the wall from its low end, y is up, z crosses its
+# thickness (0 on one face, WALL_THICK on the other). Being children, they
+# move, fade and get freed with the wall. Purely visual — the wall is not cut
+# and nothing here takes part in picking or placement.
+const SKIRTING_H_M     := 0.08
+const SKIRTING_DEPTH_M := 0.015
+const WINDOW_Y0_M      := 0.9
+const WINDOW_Y1_M      := 1.9
+const DOOR_LEN_TILES   := 10    # matches Wall.gd / WallInspector.gd
+const DOOR_H_M         := 2.0
+
+func _wall_part(wall: MeshInstance3D, x0: float, x1: float, y0: float, y1: float,
+		z0: float, z1: float, role: StringName) -> MeshInstance3D:
+	var box := BoxMesh.new()
+	box.size = Vector3(absf(x1 - x0), absf(y1 - y0), absf(z1 - z0))
+	var part := MeshInstance3D.new()
+	part.mesh = box
+	part.position = Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5)
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	wall.add_child(part)
+	_style_node(part, role)
+	return part
+
+
+# Builds the window and door a segment declares (has_window / has_door, the
+# same fields the 2D plan and the wall inspector read), on both faces of the
+# wall. Returns the parts so the wall's fade can hide them while it is cut
+# down to a stub.
+func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> Array:
+	var parts: Array = []
+	if _style == null:
+		return parts
+	_add_stub_marks(wall, seg, wall_h)
+	# [z at the wall face, direction pointing out of the wall] for each face.
+	for face in [[0.0, -1.0], [WALL_THICK, 1.0]]:
+		var z: float = face[0]
+		var out: float = face[1]
+		if seg.get("has_window", false) and wall_h >= WINDOW_Y0_M + 0.5:
+			var x0 := (seg.get("window_pos", 0) as float) * TILE_M
+			var x1 := x0 + (seg.get("window_len", 10) as float) * TILE_M
+			var y0 := WINDOW_Y0_M
+			var y1 := minf(WINDOW_Y1_M, wall_h - 0.12)
+			const BAR := 0.045
+			parts.append(_wall_part(wall, x0, x1, y0, y1, z, z + out * 0.012, StyleController.ROLE_WINDOW))
+			parts.append(_wall_part(wall, x0 - BAR, x0, y0, y1, z, z + out * 0.035, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x1, x1 + BAR, y0, y1, z, z + out * 0.035, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x0 - BAR, x1 + BAR, y1, y1 + BAR, z, z + out * 0.035, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x0 - BAR * 1.8, x1 + BAR * 1.8, y0 - BAR, y0, z, z + out * 0.07, StyleController.ROLE_FLOOR))   # sill
+			if x1 - x0 >= 0.8:
+				var mid := (x0 + x1) * 0.5
+				parts.append(_wall_part(wall, mid - 0.015, mid + 0.015, y0, y1, z, z + out * 0.03, StyleController.ROLE_FLOOR))
+		if seg.get("has_door", false):
+			var x0 := (seg.get("door_pos", 0) as float) * TILE_M
+			var x1 := x0 + DOOR_LEN_TILES * TILE_M
+			var y1 := minf(DOOR_H_M, wall_h - 0.06)
+			const JAMB := 0.05
+			parts.append(_wall_part(wall, x0, x1, 0.0, y1, z, z + out * 0.02, StyleController.ROLE_TRIM))
+			parts.append(_wall_part(wall, x0 - JAMB, x0, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x1, x1 + JAMB, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x0 - JAMB, x1 + JAMB, y1, y1 + JAMB, z, z + out * 0.04, StyleController.ROLE_FLOOR))
+			parts.append(_wall_part(wall, x1 - 0.14, x1 - 0.10, 0.95, 1.07, z, z + out * 0.05, StyleController.ROLE_ACCENT))   # handle
+	return parts
+
+
+# When a wall is lowered to a stub its window and door are hidden, which
+# would leave no sign that an opening is there — and a door you can't see is a
+# door you might block. Each opening gets a short coloured band on the stub's
+# cut face instead: a plan-style window symbol for a window, a dark band
+# between accent ticks for a door. Shown only while the wall is down; kept on the wall
+# as "stub_marks" meta for the fade to toggle.
+func _add_stub_marks(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> void:
+	var marks: Array = []
+	# Sized in the wall's unscaled space so that, once the wall is squashed to
+	# STUB_HEIGHT_M, the band is about 1.5 cm thick.
+	var band := 0.015 * wall_h / STUB_HEIGHT_M
+	var z0 := -0.012
+	var z1 := WALL_THICK + 0.012
+	if seg.get("has_window", false):
+		var x0 := (seg.get("window_pos", 0) as float) * TILE_M
+		var x1 := x0 + (seg.get("window_len", 10) as float) * TILE_M
+		# Drawn like a window on a floor plan: the glass colour across the
+		# wall, a dark line down its middle and a dark tick at each end, so
+		# it stands out against the light cut face.
+		var zm := WALL_THICK * 0.5
+		marks.append(_wall_part(wall, x0, x1, wall_h, wall_h + band, z0, z1, StyleController.ROLE_WINDOW))
+		marks.append(_wall_part(wall, x0, x1, wall_h, wall_h + band * 1.5, zm - 0.012, zm + 0.012, StyleController.ROLE_FURNITURE))
+		marks.append(_wall_part(wall, x0 - 0.03, x0, wall_h, wall_h + band * 1.5, z0, z1, StyleController.ROLE_FURNITURE))
+		marks.append(_wall_part(wall, x1, x1 + 0.03, wall_h, wall_h + band * 1.5, z0, z1, StyleController.ROLE_FURNITURE))
+	if seg.get("has_door", false):
+		var x0 := (seg.get("door_pos", 0) as float) * TILE_M
+		var x1 := x0 + DOOR_LEN_TILES * TILE_M
+		marks.append(_wall_part(wall, x0, x1, wall_h, wall_h + band, z0, z1, StyleController.ROLE_FURNITURE))
+		marks.append(_wall_part(wall, x0 - 0.05, x0, wall_h, wall_h + band * 1.6, z0, z1, StyleController.ROLE_ACCENT))
+		marks.append(_wall_part(wall, x1, x1 + 0.05, wall_h, wall_h + band * 1.6, z0, z1, StyleController.ROLE_ACCENT))
+	for m in marks:
+		(m as Node3D).visible = false
+	wall.set_meta("stub_marks", marks)
 
 
 # `sc` is Floor.sloped_ceiling ({} if the room has a flat ceiling). One
@@ -3077,7 +3605,10 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			continue
 		var x1: int = seg["x1"]; var y1: int = seg["y1"]
 		var x2: int = seg["x2"]; var y2: int = seg["y2"]
-		var wall_col := col if (seg.get("primary", false) as bool) else interior_col
+		var is_primary := seg.get("primary", false) as bool
+		var wall_col := col if is_primary else interior_col
+		# Styled, the "removable partition" hint is a lighter tint of the wall colour.
+		var wall_role := StyleController.ROLE_WALL if is_primary else StyleController.ROLE_PARTITION
 
 		if y1 == y2 and x1 != x2:
 			# Horizontal run along world X, fixed at world Z = line_z.
@@ -3098,8 +3629,9 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_z = line_z - WALL_THICK; normal = Vector3(0, 0, 1)        # south perimeter
 			else:
 				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
-			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col)
-			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1)})
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role)
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
+				"decor": _add_wall_openings(mi, seg, minf(h0, h1))})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 		elif x1 == x2 and y1 != y2:
@@ -3121,8 +3653,9 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_x = line_x; normal = Vector3(1, 0, 0)                     # east perimeter
 			else:
 				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
-			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col)
-			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1)})
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role)
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
+				"decor": _add_wall_openings(mi, seg, minf(h0, h1))})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 
@@ -3146,12 +3679,14 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var canon_size := Vector3(cw, height_m, cd)
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
 	var mi   := _box(canon_size, Vector3.ZERO, col)
+	mi.set_meta("style_role", _item_role(fdata))
 	mi.position = pos
 	mi.rotation.y = deg_to_rad(f.rot_steps * 90.0)
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(mi, fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
 		_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
+	_style_if_bare(mi)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 	_set_rail_indicator(mi, f, Vector2(fw, fd))
@@ -3169,5 +3704,7 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
 	var mi := _box(xf["size"], xf["pos"], col)
+	mi.set_meta("style_role", _item_role(fdata))
 	_apply_item_model(mi, fdata.get("model", "") as String, xf["size"], fdata.get("hide_nodes", []) as Array)
+	_style_if_bare(mi)
 	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": xf["size"]})

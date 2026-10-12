@@ -2,6 +2,7 @@ extends Node
 
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
+const NestedMapScript := preload("res://scripts/NestedMap.gd")
 const ComfortMeterScript := preload("res://scripts/ComfortMeter.gd")
 
 @onready var gm:           GameManager  = $GameManager
@@ -66,6 +67,7 @@ var _category_wheel: CategoryWheel = null    # Sims-style radial category picker
 var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog, own node so it doesn't cross-wire with _modal_backdrop's WallInspector-specific dismiss callback
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
+var _back_btn: Button = null          # "← Back to <parent>" — shown only inside a nested box, see _update_nested_nav()
 var _breadcrumb_lbl: Label = null     # "Root > Shoebox > Shoebox Interior" — which apartment we're actually in, since nested boxes are otherwise only inferable from the mini-plan cards
 var _comfort_meter: Control = null   # live gm.comfort_pct fill bar (ComfortMeter.gd) — only shown when the level actually has yellow-tier furniture placed
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
@@ -85,9 +87,8 @@ var _floor_below_id:    Dictionary = {}  # floor id -> id of the "floor"-type fl
 var _current_floor_id:  String = ""
 var _current_level_id:  String = ""
 # Nested/parabox levels: stack of {parent_level_id, daylight_factor}. Entering
-# a box (via the mini-plan panel, see _refresh_nested_plan_panel() — never by
-# clicking the box itself, which needs to stay a plain draggable piece of
-# furniture) pushes the CURRENT level id so leaving it can reload the parent;
+# a box (by double-clicking it, or from the Map — a single click or a drag
+# leaves it a plain draggable piece of furniture) pushes the CURRENT level id so leaving it can reload the parent;
 # the child level's own daylight is dimmed by daylight_factor to
 # model the parent's furniture blocking light into the box (see
 # _compute_box_occlusion()). Both directions snapshot the level being left
@@ -142,18 +143,27 @@ func _collect_nested_boxes() -> Array[Furniture]:
 			if is_instance_valid(fur) and fur.is_nested_box and not fur.child_level_id.is_empty():
 				out.append(fur)
 	return out
-# Row of small clickable blueprint-style mini-plan cards for every reachable
-# "other space" — an exit-to-parent card while inside a box, plus one
-# enter-this-box card per is_nested_box in the current level (both can
-# appear together for arbitrary nesting depth) — floating next to the
-# Minimap floor tabs. See _refresh_nested_plan_panel().
-var _nested_plan_row: HBoxContainer = null
-# Reentrancy guard — a card's click handler always re-resolves what to do
-# from _nested_stack/_collect_nested_boxes() at click time rather than baking a
-# specific action into a closure ahead of time (a captured Furniture
-# reference could go stale once a transition freed it); this additionally
-# blocks a second transition from starting while one is already tearing
-# down/rebuilding the level.
+# Nested navigation UI: a "Map" button (opens NestedMap, the tree of every
+# apartment in this project) and a "Back" button (one level up), both on
+# their own CanvasLayer — see _ensure_nested_ui_layer().
+var _nested_ui_layer: CanvasLayer = null
+var _map_btn: Button = null
+var _map_jump_busy: bool = false   # a map jump is travelling through several apartments
+# Stepping into or out of a box is shown as a short camera move, about half a
+# second in all: the view pushes into the box (or pulls back from the room)
+# as a veil comes down, the level is swapped behind the veil, and the new
+# view settles as the veil lifts. See _travel_depart() / _travel_arrive().
+const NESTED_TRAVEL_OUT := 0.25
+const NESTED_TRAVEL_IN  := 0.27
+var _nested_travel_busy: bool = false
+# Each apartment keeps its own 3D camera (angle, zoom, where it looks): saved
+# here by level id when leaving, handed back to the view when returning. See
+# _hand_over_camera().
+var _camera_by_level: Dictionary = {}
+var _camera_before_travel: Dictionary = {}   # the camera as the player left it, before the travel move started bending it
+var _travel_veil: ColorRect = null
+# Reentrancy guard — blocks a second transition from starting while one is
+# already tearing down/rebuilding the level.
 var _nested_transition_busy: bool = false
 
 # ── Builder tab tools (free-form geometry editing during play) ────────────
@@ -232,6 +242,7 @@ func _ready() -> void:
 	divider.mouse_default_cursor_shape = Control.CURSOR_VSPLIT
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
+	Furniture.on_box_enter_requested = _enter_box_animated
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
 		# The screen-rectangle check alone isn't enough: the Wall Inspector's
 		# elevation view can occupy that exact same rectangle when open,
@@ -758,7 +769,6 @@ func _load_level(level_id: String) -> void:
 	# would just get immediately wiped by the _refresh_functions() call below.
 	if first_floor_node and not _nested_stack.is_empty():
 		first_floor_node.set_external_daylight_factor(_current_nested_daylight_factor)
-	_refresh_nested_plan_panel()
 	_update_breadcrumb()
 
 	# Compute bounding box of painted tiles per floor for focused camera fit
@@ -852,9 +862,9 @@ func _load_level(level_id: String) -> void:
 	if _use_saved and GameState.has_level_layout(level_id):
 		_restore_furniture_snapshot(GameState.get_level_layout(level_id))
 		# The restore replaced every piece of furniture (including any nested
-		# box) after the cards above were built — rebuild them against what's
-		# actually on the floor now.
-		_refresh_nested_plan_panel()
+		# box) after the nav buttons were set up — refresh them against
+		# what's actually on the floor now.
+		_update_nested_nav()
 	else:
 		_restoring_furniture  = false
 		_last_furniture_state = _snapshot_all_furniture()
@@ -1084,15 +1094,24 @@ func _on_box_entered(box: Furniture) -> void:
 	# _post_win_view to false for the level it's loading, which otherwise
 	# silently killed the showcase the moment you stepped into any box.
 	var was_showcasing := _post_win_view
+	# Where the box sits in this (soon to be parent) apartment — what the 3D
+	# view needs to draw that apartment around the box's interior.
+	var box_floor_id := ""
+	for fid in _floors:
+		if _floors[fid] == box._wall_ref:
+			box_floor_id = fid as String
 	_nested_stack.append({
 		"parent_level_id": _current_level_id,
 		"daylight_factor": factor,
 		"noisy_from_outside": noisy_outside,
 		"was_post_win_view": was_showcasing,
+		"box_floor_id": box_floor_id,
+		"box_rect": Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)),
 	})
 	_current_nested_daylight_factor = factor
 	_current_nested_noisy_from_outside = noisy_outside
 	_current_nested_external_override = wall_override
+	_hand_over_camera(_current_level_id, box.child_level_id)
 	_load_level(box.child_level_id)
 	if _level_state_cache.has(box.child_level_id):
 		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
@@ -1188,174 +1207,351 @@ func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
 	return out
 
 
-# The row holding one "mini-plan card" per reachable space — an "exit to
-# parent" card when inside a box (_nested_stack non-empty), plus one "enter
-# this box" card for every is_nested_box in the CURRENT level
-# (_collect_nested_boxes()). Both can be true at once (a box's interior can
-# itself contain another box — arbitrary nesting depth, see
-# docs/design_nested_levels.md), so this is a row, not a single panel.
-func _ensure_nested_plan_row() -> void:
-	if is_instance_valid(_nested_plan_row):
-		return
-	_nested_plan_row = HBoxContainer.new()
-	_nested_plan_row.name = "NestedPlanRow"
-	_nested_plan_row.add_theme_constant_override("separation", 6)
-	_nested_plan_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Own CanvasLayer, above ui_layer's, rather than living in ui_layer and
-	# fighting for sibling order there. Several things in ui_layer re-raise
-	# THEMSELVES to the end after this row is positioned (_mode3d_view's
-	# full-screen input-capturing viewport, _show_watch_done_button, the
-	# Inventory...), and whichever ran last won — which is why neither a
-	# z_index (Control input picking goes by tree order, not z_index) nor
-	# re-raising the row at load time kept these cards clickable in the
-	# post-completion "Revisar Plano Actual" view. CanvasLayer order IS
-	# authoritative for both drawing and input picking, so a higher layer
-	# wins outright no matter what any ui_layer sibling does afterward.
-	var canvas := CanvasLayer.new()
-	canvas.name  = "NestedPlanLayer"
-	canvas.layer = 5   # ui_layer / ResultScreen are both the default layer 1
-	add_child(canvas)
-	canvas.add_child(_nested_plan_row)
+# Inside a box, the 3D view can draw the apartment the box sits in around the
+# room, giant (Room3DView._add_parent_scenery). This gathers what it needs
+# from the parent's saved layout — the parent itself is not loaded. {} when
+# not inside a box, or when the level doesn't want it.
+# On for every level; a level opts out with "show_parent": false in its data.
+func _parent_scenery_data() -> Dictionary:
+	if _nested_stack.is_empty():
+		return {}
+	var level := _lookup_level_dict(_current_level_id)
+	if not (level.get("show_parent", true) as bool):
+		return {}
+	var ctx := _nested_stack[-1] as Dictionary
+	if not ctx.has("box_rect"):
+		return {}
+	var parent_id := ctx["parent_level_id"] as String
+	var floor_id := ctx.get("box_floor_id", "") as String
+	var segments: Array = []
+	for fd in (_lookup_level_dict(parent_id).get("apartment", {}) as Dictionary).get("floors", []) as Array:
+		var floor_dict := fd as Dictionary
+		if str(floor_dict.get("id", "")) == floor_id:
+			segments = floor_dict.get("segments", []) as Array
+	var items: Array = []
+	var cached := _level_state_cache.get(parent_id, {}) as Dictionary
+	for it in (cached.get("floors", {}) as Dictionary).get(floor_id, []) as Array:
+		var d := it as Dictionary
+		var fdata := gm.get_furniture_by_id(d.get("id", "") as String)
+		if fdata.is_empty():
+			continue
+		items.append({"fdata": fdata, "x": d.get("x", 0), "y": d.get("y", 0),
+			"rot_steps": d.get("rot_steps", 0), "is_extended": d.get("is_extended", false)})
+	return {"segments": segments, "items": items, "box_rect": ctx["box_rect"]}
 
 
-# mode/index identify what THIS card does at click time (re-resolved fresh,
-# never a baked closure — see the stale-lambda-capture bug this replaced):
-# mode "exit" always calls _exit_nested_level(); mode "enter" looks up
-# _collect_nested_boxes()[index] and calls _on_box_entered() on whatever is
-# there right now, re-checked for validity first.
-func _make_nested_plan_card(level_id: String, label: String, mode: String, index: int) -> PanelContainer:
-	var card := PanelContainer.new()
-	card.name = "NestedPlanCard"
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	card.tooltip_text = "Click to step into/out of this space"
-	card.set_meta("mode", mode)
-	card.set_meta("index", index)
-	card.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			_on_nested_plan_card_clicked(card)
-			get_viewport().set_input_as_handled())
+# Own CanvasLayer, above ui_layer's, rather than living in ui_layer and
+# fighting for sibling order there. Several things in ui_layer re-raise
+# THEMSELVES to the end (_mode3d_view's full-screen input-capturing viewport,
+# _show_watch_done_button, the Inventory...), and whichever ran last won —
+# neither a z_index (Control input picking goes by tree order, not z_index)
+# nor re-raising kept nested navigation clickable in the post-completion
+# view. CanvasLayer order IS authoritative for both drawing and input
+# picking, so a higher layer wins outright.
+func _ensure_nested_ui_layer() -> CanvasLayer:
+	if not is_instance_valid(_nested_ui_layer):
+		_nested_ui_layer = CanvasLayer.new()
+		_nested_ui_layer.name = "NestedNavLayer"
+		_nested_ui_layer.layer = 5   # ui_layer / ResultScreen are both the default layer 1
+		add_child(_nested_ui_layer)
+	return _nested_ui_layer
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 2)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(vb)
 
-	var lbl := Label.new()
-	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", 9)
-	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.custom_minimum_size = Vector2(88, 0)
-	vb.add_child(lbl)
-
-	var preview := BlueprintPreview.new()
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(preview)
-
-	var level := _lookup_level_dict(level_id)
-	if not level.is_empty():
-		var plan := _floor_plan_data(level)
-		preview.custom_minimum_size = _nested_plan_card_size(plan["bounds"] as Rect2)
-		preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2,
-			_furniture_preview_rects_for(level_id, level))
+# The nested boxes sitting in any apartment of the tree, whether or not it is
+# the one loaded right now: live Furniture for the current level, the state
+# cache for one visited this session, the authored level data otherwise.
+# Returns [{child_level_id, x, y}].
+func _nested_children_of(level_id: String) -> Array:
+	var out: Array = []
+	if level_id == _current_level_id:
+		for box in _collect_nested_boxes():
+			out.append({"child_level_id": box.child_level_id, "x": box.grid_pos.x, "y": box.grid_pos.y})
+		return out
+	var items: Array = []
+	var cached := _level_state_cache.get(level_id, {}) as Dictionary
+	if not cached.is_empty():
+		for fid in (cached.get("floors", {}) as Dictionary):
+			items.append_array((cached["floors"] as Dictionary)[fid] as Array)
 	else:
-		preview.custom_minimum_size = Vector2(88, 66)
-	return card
+		var ld := _lookup_level_dict(level_id)
+		items.append_array(ld.get("starting_furniture", []) as Array)
+		for fd in (ld.get("apartment", {}) as Dictionary).get("floors", []) as Array:
+			items.append_array((fd as Dictionary).get("starting_furniture", []) as Array)
+	for it in items:
+		var d := it as Dictionary
+		var fdata := gm.get_furniture_by_id(d.get("id", "") as String)
+		if not (fdata.get("is_nested_box", false) as bool):
+			continue
+		# Per-instance override first, catalog default second — same order a
+		# spawned Furniture resolves it in.
+		var child := str(d.get("child_level_id", fdata.get("child_level_id", "")))
+		if not child.is_empty():
+			out.append({"child_level_id": child, "x": d.get("x", 0) as float, "y": d.get("y", 0) as float})
+	return out
 
 
-# Scales the card's blueprint preview to the level's actual floor area (in
-# tiles, 10 tiles = 1m — same convention as everywhere else) so a big
-# apartment reads as a bigger card than a small one, instead of every level
-# getting the same fixed-size thumbnail regardless of how large it actually
-# is. Sized by sqrt(area) (a linear "how big does this room feel" measure,
-# not raw area) and clamped so neither a tiny nor a huge level breaks the
-# floating row's layout.
-const NESTED_CARD_MIN_DIM := 56.0
-const NESTED_CARD_MAX_DIM := 150.0
-const NESTED_CARD_PX_PER_SQRT_TILE := 2.4
-
-func _nested_plan_card_size(bounds: Rect2) -> Vector2:
-	var area := maxf(bounds.size.x * bounds.size.y, 1.0)
-	var dim := clampf(sqrt(area) * NESTED_CARD_PX_PER_SQRT_TILE, NESTED_CARD_MIN_DIM, NESTED_CARD_MAX_DIM)
-	var aspect := bounds.size.y / maxf(bounds.size.x, 1.0)
-	if aspect >= 1.0:
-		return Vector2(dim / aspect, dim)
-	return Vector2(dim, dim * aspect)
+# The level ids from the top apartment down to the one loaded now.
+func _current_nested_path() -> Array:
+	var path: Array = []
+	for ctx in _nested_stack:
+		path.append((ctx as Dictionary)["parent_level_id"] as String)
+	path.append(_current_level_id)
+	return path
 
 
-func _on_nested_plan_card_clicked(card: PanelContainer) -> void:
-	if _nested_transition_busy or not is_instance_valid(card):
+# Builds the whole apartment tree for NestedMap (see its header for the node
+# shape). `path` is the level ids from the top apartment to a node, `hops`
+# the box taken at each step, which is what _jump_to_nested_node() replays.
+func _build_nested_tree() -> Dictionary:
+	# Snapshot the level on screen so its thumbnail shows what's there now,
+	# not what was there when it was last left.
+	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	var path := _current_nested_path()
+	var seen: Dictionary = {}   # level id -> how many nodes show it
+	var root := _nested_tree_node(path[0] as String, [path[0]], [], path, seen)
+	_flag_shared_nodes(root, seen)
+	return root
+
+
+func _nested_tree_node(level_id: String, path: Array, hops: Array, current_path: Array, seen: Dictionary) -> Dictionary:
+	seen[level_id] = (seen.get(level_id, 0) as int) + 1
+	var ld := _lookup_level_dict(level_id)
+	var plan := _floor_plan_data(ld)
+	var node := {
+		"level_id": level_id,
+		"name": _level_display_name(level_id),
+		"path": path,
+		"hops": hops,
+		"is_current": path == current_path,
+		"shared": false,
+		# The top apartment is always reachable; an interior has to be big
+		# enough to step into (the same rule _on_box_entered() enforces).
+		"enterable": path.size() == 1 or _level_floor_area_m2(level_id) >= MIN_NESTED_INTERIOR_M2,
+		"segments": plan["segments"],
+		"bounds": plan["bounds"],
+		"furniture": _furniture_preview_rects_for(level_id, ld),
+		"children": [],
+	}
+	if path.size() < 8:   # far deeper than any real project; stops runaway data
+		for c in _nested_children_of(level_id):
+			var child := c as Dictionary
+			var child_id := child["child_level_id"] as String
+			if path.has(child_id):
+				continue   # a box pointing back up its own chain: _on_box_entered() refuses it too
+			(node["children"] as Array).append(
+				_nested_tree_node(child_id, path + [child_id], hops + [child], current_path, seen))
+	return node
+
+
+func _flag_shared_nodes(node: Dictionary, seen: Dictionary) -> void:
+	node["shared"] = (seen.get(node["level_id"], 0) as int) > 1
+	for c in node["children"] as Array:
+		_flag_shared_nodes(c as Dictionary, seen)
+
+
+func _open_nested_map() -> void:
+	if _map_jump_busy or _nested_transition_busy or _nested_travel_busy:
 		return
-	var mode := card.get_meta("mode", "") as String
-	if mode == "exit":
-		var idx := card.get_meta("index", -1) as int
-		_exit_nested_level_to(idx)
-	elif mode == "enter":
-		var idx := card.get_meta("index", -1) as int
-		var boxes := _collect_nested_boxes()
-		if idx >= 0 and idx < boxes.size():
-			_on_box_entered(boxes[idx])
+	var map := NestedMapScript.open(self, _build_nested_tree())
+	map.node_chosen.connect(func(path: Array, hops: Array): _jump_to_nested_node(path, hops))
 
 
-# Rebuilds every card in the row from scratch: one "exit to" card per level
-# currently above this one on _nested_stack — not just the immediate parent,
-# so two levels deep in a box shows a way back to EITHER the box one level up
-# OR the top-level apartment directly, instead of forcing one click per level
-# — plus one "enter" card per is_nested_box in the current level. Both sides
-# can appear together (a box's interior containing its own box).
-func _refresh_nested_plan_panel() -> void:
-	_ensure_nested_plan_row()
-	# remove_child (not just queue_free, which is deferred) so the old cards
-	# are actually gone from get_children() before the fresh ones below are
-	# added — otherwise every refresh call left the previous set still
-	# parented until end of frame and the row just kept accumulating cards,
-	# shifting everything left on each click instead of replacing them.
-	for c in _nested_plan_row.get_children():
-		_nested_plan_row.remove_child(c)
-		c.queue_free()
-
-	# Nearest ancestor first (leftmost) — the immediate parent is the most
-	# likely destination, furthest ones (e.g. the top apartment) trail after.
-	for i in range(_nested_stack.size() - 1, -1, -1):
-		var target_id := (_nested_stack[i] as Dictionary)["parent_level_id"] as String
-		_nested_plan_row.add_child(
-			_make_nested_plan_card(target_id, "↩ " + _level_display_name(target_id), "exit", i))
-
-	var boxes := _collect_nested_boxes()
-	for i in boxes.size():
-		var box := boxes[i]
-		_nested_plan_row.add_child(_make_nested_plan_card(
-			box.child_level_id, "↪ " + _level_display_name(box.child_level_id), "enter", i))
-
-	_nested_plan_row.visible = _nested_plan_row.get_child_count() > 0
-	_position_nested_plan_panel()
-
-
-# Stacks directly above whatever's currently on top of the bottom-right
-# column (ViewModeBox, or Minimap if ViewModeBox is hidden, or the
-# TenantCard bar itself as a last resort) — same approach _position_view_mode_box()
-# and _position_minimap() already use for each other.
-func _position_nested_plan_panel() -> void:
-	if not is_instance_valid(_nested_plan_row) or not _nested_plan_row.visible:
+# Travels to any apartment in the tree: up to the nearest apartment the
+# current one and the target share, then down through each box on the way.
+# It really does pass through every apartment in between, one per frame,
+# because entering a box works out the daylight and noise reaching it from
+# where that box sits in its parent — skipping a step would skip that.
+func _jump_to_nested_node(path: Array, hops: Array) -> void:
+	if _map_jump_busy or _nested_transition_busy or _nested_travel_busy or path.is_empty():
 		return
-	var right_edge := RIGHT_X - 8.0
-	_nested_plan_row.offset_right = right_edge
-	_nested_plan_row.offset_left  = right_edge - 230.0   # room for two cards side by side
-	_nested_plan_row.reset_size()
-	var content_w := maxf(_nested_plan_row.size.x, 90.0)
-	_nested_plan_row.offset_left = right_edge - content_w
-	var content_h := maxf(_nested_plan_row.size.y, 90.0)
-	var top_of_stack: float
-	if is_instance_valid(_view_mode_box) and _view_mode_box.visible:
-		top_of_stack = _view_mode_box.offset_top
-	elif is_instance_valid(minimap) and minimap.visible:
-		top_of_stack = minimap.offset_top
+	var here := _current_nested_path()
+	if path == here:
+		return
+	_map_jump_busy = true
+	# Pull back and drop the veil first: the apartments passed through on the
+	# way are loaded behind it, so the player sees one move, not several.
+	await _travel_depart(null, false)
+	var common := 0
+	while common < mini(path.size(), here.size()) and path[common] == here[common]:
+		common += 1
+	if common > 0 and _nested_stack.size() > common - 1:
+		_exit_nested_level_to(common - 1)
+		await get_tree().process_frame
+	for depth in range(maxi(common, 1), path.size()):
+		var hop := hops[depth - 1] as Dictionary
+		# The box this hop went through: same interior, nearest to where the
+		# tree saw it (two boxes in one apartment can lead to the same place).
+		var box: Furniture = null
+		var best := INF
+		for candidate in _collect_nested_boxes():
+			if candidate.child_level_id != (hop["child_level_id"] as String):
+				continue
+			var dist := candidate.grid_pos.distance_to(Vector2(hop["x"] as float, hop["y"] as float))
+			if dist < best:
+				best = dist
+				box = candidate
+		if box == null:
+			break
+		var before := _current_level_id
+		_on_box_entered(box)
+		if _current_level_id == before:
+			break   # refused (interior too small, or a cycle)
+		await get_tree().process_frame
+	await _travel_arrive(null, true)
+	_map_jump_busy = false
+
+
+# Double-click on a box: push in on it, step inside, settle.
+func _enter_box_animated(box: Furniture) -> void:
+	if _nested_travel_busy or _nested_transition_busy or _map_jump_busy:
+		return
+	if not is_instance_valid(box) or box.child_level_id.is_empty():
+		return
+	_nested_travel_busy = true
+	await _travel_depart(box, true)
+	if is_instance_valid(box):
+		_on_box_entered(box)
+	await get_tree().process_frame
+	await _travel_arrive(null, true)
+	_nested_travel_busy = false
+
+
+# Back button: pull away from this room, step out, and settle from the box
+# we just came out of.
+func _exit_nested_animated() -> void:
+	if _nested_travel_busy or _nested_transition_busy or _map_jump_busy or _nested_stack.is_empty():
+		return
+	_nested_travel_busy = true
+	var left_id := _current_level_id
+	await _travel_depart(null, false)
+	_exit_nested_level()
+	await get_tree().process_frame
+	var came_from: Furniture = null
+	for candidate in _collect_nested_boxes():
+		if candidate.child_level_id == left_id:
+			came_from = candidate
+			break
+	await _travel_arrive(came_from, false)
+	_nested_travel_busy = false
+
+
+func _ensure_travel_veil() -> ColorRect:
+	if not is_instance_valid(_travel_veil):
+		_travel_veil = ColorRect.new()
+		_travel_veil.name = "TravelVeil"
+		_travel_veil.color = Color(GameTheme.C_BG.r, GameTheme.C_BG.g, GameTheme.C_BG.b, 0.0)
+		_travel_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_travel_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var nav_layer := _ensure_nested_ui_layer()
+		nav_layer.add_child(_travel_veil)
+		nav_layer.move_child(_travel_veil, 0)   # under the nav buttons
+	return _travel_veil
+
+
+func _styled_3d_view() -> Room3DView:
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		return _mode3d_view as Room3DView
+	return null
+
+
+# Scales the 2D plan by `k` about a fixed screen point, relative to the
+# transform (scale0, pos0) it is fitted at. k = 1 is the fitted view.
+func _set_plan_zoom_about(focus: Vector2, scale0: float, pos0: Vector2, k: float) -> void:
+	room.scale    = Vector2(scale0 * k, scale0 * k)
+	room.position = focus - (focus - pos0) * k
+
+
+func _plan_center() -> Vector2:
+	return Vector2((LEFT_X + RIGHT_X) * 0.5, (TOP_Y + _floor_pane_bottom_y()) * 0.5)
+
+
+func _box_plan_point(box: Furniture) -> Vector2:
+	return box.get_global_transform_with_canvas() * (Vector2(box.grid_w, box.grid_h) * TILE_SIZE * 0.5)
+
+
+# Saves the camera of the level being left and queues up the one for the
+# level being entered, so apartments never inherit each other's view. Called
+# right before every nested level swap.
+func _hand_over_camera(leaving_id: String, arriving_id: String) -> void:
+	if not is_instance_valid(_mode3d_view):
+		_camera_before_travel = {}
+		return
+	var view := _mode3d_view as Room3DView
+	view.cancel_camera_travel()
+	_camera_by_level[leaving_id] = _camera_before_travel if not _camera_before_travel.is_empty() else view.get_camera_state()
+	_camera_before_travel = {}
+	view.set_next_camera_state(_camera_by_level.get(arriving_id, {}) as Dictionary)
+
+
+# First half of a transition: the camera leaves. Toward `box` when stepping
+# in (entering), straight back from the room otherwise. Works in whichever
+# view is showing. Reduce-motion skips the whole thing.
+# The moves are stopped dead when the time is up rather than left to finish
+# on their own: the level is swapped right after, and a move still running
+# would carry on steering the new level's camera.
+func _travel_depart(box: Furniture, entering: bool) -> void:
+	var view := _styled_3d_view()
+	_camera_before_travel = view.get_camera_state() if view != null else {}
+	if GameState.reduce_motion:
+		return
+	var veil := _ensure_travel_veil()
+	veil.mouse_filter = Control.MOUSE_FILTER_STOP   # swallow clicks mid-move
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(veil, "color:a", 1.0, NESTED_TRAVEL_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if view != null:
+		var focus := view.furniture_focus(box) if (entering and is_instance_valid(box)) else {}
+		if not focus.is_empty():
+			view.travel_camera(focus["center"], focus["dist"], NESTED_TRAVEL_OUT)
+		else:
+			view.travel_camera(view._center, view._dist * 1.9, NESTED_TRAVEL_OUT)
 	else:
-		top_of_stack = tenant_card.offset_top
-	_nested_plan_row.offset_bottom = top_of_stack - 8.0
-	_nested_plan_row.offset_top    = _nested_plan_row.offset_bottom - content_h
+		var scale0 := room.scale.x
+		var pos0 := room.position
+		var focus_pt := _box_plan_point(box) if (entering and is_instance_valid(box)) else _plan_center()
+		var k_to := 3.2 if entering else 0.5
+		tw.tween_method(func(k: float) -> void: _set_plan_zoom_about(focus_pt, scale0, pos0, k),
+			1.0, k_to, NESTED_TRAVEL_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await get_tree().create_timer(NESTED_TRAVEL_OUT).timeout
+	tw.kill()
+	veil.color.a = 1.0
+	if is_instance_valid(view):
+		view.cancel_camera_travel()
+
+
+# Second half: the camera arrives in the level that was just loaded and
+# settles on that level's own view. Stepping in, the new room grows into
+# place (the push inward continues); stepping out, the view starts on `box`
+# — the one we came out of — and pulls back.
+func _travel_arrive(box: Furniture, entering: bool) -> void:
+	var veil := _ensure_travel_veil()
+	if GameState.reduce_motion:
+		veil.color.a = 0.0
+		veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(veil, "color:a", 0.0, NESTED_TRAVEL_IN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var view := _styled_3d_view()
+	var plan_scale := room.scale.x
+	var plan_pos := room.position
+	var plan_focus := _box_plan_point(box) if (not entering and is_instance_valid(box)) else _plan_center()
+	if view != null:
+		var focus := view.furniture_focus(box) if is_instance_valid(box) else {}
+		if not entering and not focus.is_empty():
+			view.arrive_camera(focus["center"], focus["dist"], NESTED_TRAVEL_IN)
+		else:
+			view.arrive_camera(view._center, view._dist * (1.9 if entering else 0.6), NESTED_TRAVEL_IN)
+	else:
+		var k_from := 0.5 if entering else 3.2
+		_set_plan_zoom_about(plan_focus, plan_scale, plan_pos, k_from)
+		tw.tween_method(func(k: float) -> void: _set_plan_zoom_about(plan_focus, plan_scale, plan_pos, k),
+			k_from, 1.0, NESTED_TRAVEL_IN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(NESTED_TRAVEL_IN).timeout
+	# Land exactly on the fitted view whatever the last tween step reached.
+	tw.kill()
+	veil.color.a = 0.0
+	if view == null:
+		_set_plan_zoom_about(plan_focus, plan_scale, plan_pos, 1.0)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 # Total walkable floor area (m²) of a level's "floor"/"loft" floors, WITHOUT
@@ -1396,6 +1592,7 @@ func _exit_nested_level_to(index: int) -> void:
 	_current_nested_daylight_factor = 1.0
 	_current_nested_noisy_from_outside = false
 	_current_nested_external_override = {}
+	_hand_over_camera(_current_level_id, target_id)
 	_load_level(target_id)
 	if _level_state_cache.has(target_id):
 		_apply_level_state_snapshot(_level_state_cache[target_id])
@@ -1907,7 +2104,6 @@ func _position_minimap() -> void:
 	minimap.offset_top    = minimap.offset_bottom - content_h
 	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
 	_position_view_mode_box()
-	_position_nested_plan_panel()
 
 
 # TenantCard is now a bottom status bar (moments/needs + Budget), left-
@@ -2077,6 +2273,10 @@ func _ensure_mode3d_view() -> void:
 			# actually be won that way.
 			if f.has_own_moment_position():
 				_refresh_functions())
+		# Deferred: entering rebuilds the level, and this signal fires from
+		# inside the view's own input handler.
+		_mode3d_view.box_enter_requested.connect(func(box: Furniture):
+			_enter_box_animated.call_deferred(box))
 		_mode3d_view.showcase_stop_changed.connect(func(moment_id: String, needs: Array):
 			if moment_id == "":
 				tenant_card.clear_showcase_highlight()
@@ -2115,6 +2315,8 @@ func _ensure_mode3d_view() -> void:
 	# reopen editing/selling the instant you tabbed away and back during
 	# post-win "View Apartment".
 	_mode3d_view.read_only = _post_win_view
+	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
+	_mode3d_view.set_parent_scenery(_parent_scenery_data())
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
 	# _teardown_mode3d_view() (see the comment above) frees the whole node,
 	# tenant and all, whenever the player steps out to the Floor Plan -- so
@@ -2354,9 +2556,60 @@ func _update_breadcrumb() -> void:
 	_breadcrumb_lbl.offset_bottom = TOP_Y + 14.0
 	_breadcrumb_lbl.visible = true
 	ui_layer.move_child(_breadcrumb_lbl, ui_layer.get_child_count() - 1)
+	_update_nested_nav()
+
+
+# Nested navigation, top left under the Furniture button:
+#   Map   opens NestedMap — shown whenever this project has any box in it.
+#   Back  steps up one level — shown only while inside a box.
+# Double-clicking a box is the way in (Furniture.gd / Room3DView.gd); these
+# cover going up, and reaching boxes that are far away or awkward to click.
+func _update_nested_nav() -> void:
+	var nav_layer := _ensure_nested_ui_layer()
+	if not is_instance_valid(_map_btn):
+		_map_btn = _make_nav_button("Map")
+		_map_btn.name = "NestedMapBtn"
+		_map_btn.tooltip_text = "See every apartment in this project and jump to any of them"
+		_map_btn.pressed.connect(_open_nested_map)
+		nav_layer.add_child(_map_btn)
+	if not is_instance_valid(_back_btn):
+		_back_btn = _make_nav_button("Back")
+		_back_btn.name = "BackToParentBtn"
+		_back_btn.tooltip_text = "Step back out to the apartment this box sits in"
+		_back_btn.pressed.connect(_exit_nested_animated)
+		nav_layer.add_child(_back_btn)
+
+	_map_btn.visible = not _nested_stack.is_empty() or not _collect_nested_boxes().is_empty()
+	_back_btn.visible = not _nested_stack.is_empty()
+	var x := LEFT_X + 8.0
+	var y := TOP_Y + 44.0
+	if _map_btn.visible:
+		_map_btn.reset_size()
+		_map_btn.position = Vector2(x, y)
+		x += _map_btn.size.x + 6.0
+	if _back_btn.visible:
+		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
+		_back_btn.text = "←  Back to %s" % _level_display_name(parent_id)
+		_back_btn.reset_size()
+		_back_btn.position = Vector2(x, y)
+
+
+func _make_nav_button(label: String) -> Button:
+	var btn := Button.new()
+	btn.text = label
+	btn.add_theme_font_size_override("font_size", 13)
+	var rs := GameTheme.make_rent_btn_style()
+	btn.add_theme_stylebox_override("normal",  rs[0])
+	btn.add_theme_stylebox_override("hover",   rs[1])
+	btn.add_theme_stylebox_override("pressed", rs[1])
+	btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	return btn
 
 
 func _set_mode_hint(text: String) -> void:
+	# A level with a nested box in it gets told how to get inside.
+	if text != "" and not _collect_nested_boxes().is_empty():
+		text += " · Double-click a box to step inside"
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
 			_mode_hint_lbl.visible = false
@@ -3514,6 +3767,7 @@ func _refresh_undo_redo_buttons() -> void:
 func _on_furniture_action_changed() -> void:
 	if _restoring_furniture:
 		return
+	_update_nested_nav()   # buying or selling a box changes whether the Map button applies
 	if not _last_furniture_state.is_empty():
 		_builder_undo_stack.append({"type": "furniture", "snapshot": _last_furniture_state})
 		if _builder_undo_stack.size() > BUILDER_UNDO_MAX:

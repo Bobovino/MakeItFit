@@ -13,6 +13,8 @@ const TILE_SIZE := 8
 # actually over the floor pane — otherwise it swallows every left click on
 # screen (other panels, buttons) trying to confirm placement at a stale position.
 static var is_in_floor_pane: Callable = Callable()
+# Set by Main: called with the box when the player double-clicks a nested box.
+static var on_box_enter_requested: Callable = Callable()
 
 func _play(sound: String) -> void:
 	var am := get_node_or_null("/root/Audio")
@@ -94,12 +96,11 @@ var mobility_tier: String = "red"
 var _home_grid_pos: Vector2 = Vector2(-1, -1)
 
 # Nested/parabox levels: this piece is a "box" whose interior is a whole
-# other apartment (see docs/design_nested_levels.md). Deliberately NOT
-# entered by clicking the box itself — it needs to behave like any other
-# draggable/movable piece of furniture so the player can reposition it in
-# the parent apartment without accidentally stepping inside. Main.gd tracks
-# every is_nested_box instance (_current_level_boxes) and offers entry only
-# through the separate mini-plan panel (_refresh_nested_plan_panel()).
+# other apartment (see docs/design_nested_levels.md). A single click or a
+# drag still treats it as ordinary furniture, so it can be repositioned and
+# rotated without accidentally stepping inside; a DOUBLE-click enters it
+# (see _input, and Room3DView for the 3D equivalent). Main.gd's apartment
+# map (NestedMap) can also jump straight to any box's interior.
 var is_nested_box: bool = false
 var child_level_id: String = ""
 # How much everything currently inside this box's child level weighs,
@@ -1305,6 +1306,22 @@ func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 
 
 func _input(event: InputEvent) -> void:
+	# Double-click a nested box to step inside. Checked before the read-only
+	# gate because entering isn't an edit (the mini-plan cards allow it in the
+	# post-win view too), and before the drag code so the second press doesn't
+	# pick the box up. Deferred: entering tears this level down, this node
+	# included.
+	if is_nested_box and not _placement_mode and not child_level_id.is_empty() \
+			and event is InputEventMouseButton \
+			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT \
+			and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).double_click \
+			and Furniture.on_box_enter_requested.is_valid() \
+			and not get_viewport().is_input_handled() and is_visible_in_tree() \
+			and _contains_screen_point((event as InputEventMouseButton).position) \
+			and (not Furniture.is_in_floor_pane.is_valid() or Furniture.is_in_floor_pane.call((event as InputEventMouseButton).position)):
+		get_viewport().set_input_as_handled()
+		Furniture.on_box_enter_requested.call_deferred(self)
+		return
 	if Furniture.read_only:
 		return
 	# ── Placement mode: furniture follows cursor until click or Esc ───────────
@@ -1370,6 +1387,14 @@ func _input(event: InputEvent) -> void:
 
 	elif event is InputEventMouseMotion and _dragging:
 		_drag(event.position)
+
+
+# Whether a viewport-space point (an input event's position) lands on this
+# piece's footprint. Uses the event's own position rather than the live
+# pointer, so it stays right even if the pointer has moved on since.
+func _contains_screen_point(screen_pos: Vector2) -> bool:
+	var local := get_global_transform_with_canvas().affine_inverse() * screen_pos
+	return Rect2(Vector2.ZERO, Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)).has_point(local)
 
 
 func _is_mouse_over() -> bool:
