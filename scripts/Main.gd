@@ -1017,7 +1017,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 		return null
 	# Apply per-instance overrides set by the level editor (rail axis/extents,
 	# or which level a nested/parabox box's interior points at).
-	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id"]
+	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id", "keepsake"]
 	for key in rail_keys:
 		if rail_data.has(key):
 			fdata = fdata.duplicate()
@@ -1664,6 +1664,8 @@ func _snapshot_level_state() -> Dictionary:
 			# be this same level).
 			if fur.is_nested_box:
 				item["child_level_id"] = fur.child_level_id
+			if fur.keepsake:
+				item["keepsake"] = true   # per-instance, like child_level_id above
 			items.append(item)
 		floors_snap[fid] = items
 	return {"budget": gm.budget, "floors": floors_snap}
@@ -2937,6 +2939,12 @@ func _on_buy_requested(furniture_id: String) -> void:
 
 
 func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
+	# A keepsake stays. (The 3D view checks this itself before it drops the
+	# piece from its own cache; this is the plan's path and the backstop.)
+	if is_instance_valid(furniture) and furniture.keepsake:
+		Audio.play("error")
+		_set_mode_hint("%s stays — the tenant won't part with it. You can still move it." % furniture.furniture_name)
+		return
 	Audio.play("sell")
 	gm.sell_furniture(furniture.furniture_id)
 	apt_floor.remove_furniture(furniture)
@@ -3856,6 +3864,8 @@ func _snapshot_all_furniture() -> Dictionary:
 			# default (see _restore_spawn_furniture()).
 			if f.is_nested_box:
 				entry["child_level_id"] = f.child_level_id
+			if f.keepsake:
+				entry["keepsake"] = true
 			# _home_grid_pos is the level's TRUE authored starting position,
 			# not whatever (x,y) this particular undo step happens to restore
 			# to — capture it explicitly so comfort scoring (which compares
@@ -3946,6 +3956,9 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	if override_data.has("child_level_id"):
 		fdata = fdata.duplicate()
 		fdata["child_level_id"] = override_data["child_level_id"]
+	if override_data.get("keepsake", false):
+		fdata = fdata.duplicate()
+		fdata["keepsake"] = true
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)

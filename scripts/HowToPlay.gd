@@ -73,6 +73,7 @@ func _build() -> void:
 		"The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom.",
 		"The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing.",
 		"The bar at the bottom is the goal: every need listed there has to be ticked.",
+		"A piece with a heart after its name is a keepsake: it can be moved but never sold.",
 		"Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it." % [
 			OS.get_keycode_string(GameState.undo_keycode),
 			OS.get_keycode_string(GameState.undo_keycode),

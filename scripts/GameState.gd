@@ -9,7 +9,7 @@ var company_funds: int = 0
 var portfolio_rent: int = 0
 var completed: Dictionary = {}   # level_id -> { stars, first_time }
 var owned: Array = []
-var pending_level_id: String = "level_01"
+var pending_level_id: String = "beach_house"
 # Last level actually entered (not just selected) — lets MainMenu's Continue
 # button jump straight back into it instead of always routing through
 # CityMap. Persisted; deliberately separate from pending_level_id, which is
@@ -87,7 +87,9 @@ func set_debug_mode(v: bool) -> void:
 # Levels owned unconditionally on every launch — tutorials, debug/test content,
 # and anything else that should never be gated behind a purchase. Kept
 # separate from persisted `owned` so a save file never has to list them.
-const DEFAULT_OWNED := ["tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony",
+const DEFAULT_OWNED := ["beach_house","three_freezers","day_and_night","the_inheritance","sneeze_girl",
+		"the_tower","overprotective","border_house",
+		"tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony",
 		"debug:_sloped_ceiling","debug:_demolition","tut_builder_basics","tut_verticality",
 		"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
 		"muchos_electrodomésticos",

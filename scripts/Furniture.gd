@@ -101,6 +101,11 @@ var _home_grid_pos: Vector2 = Vector2(-1, -1)
 # rotated without accidentally stepping inside; a DOUBLE-click enters it
 # (see _input, and Room3DView for the 3D equivalent). Main.gd's apartment
 # map (NestedMap) can also jump straight to any box's interior.
+# A keepsake cannot be sold: the tenant won't part with it (an inherited
+# wardrobe, a streamer's freezers). It can still be moved, rotated and
+# folded like anything else — the puzzle is living around it. Set per piece
+# in a level's starting_furniture ("keepsake": true), never in the catalogue.
+var keepsake: bool = false
 var is_nested_box: bool = false
 var child_level_id: String = ""
 # How much everything currently inside this box's child level weighs,
@@ -278,6 +283,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	requires_surface      = data.get("requires_surface",  false)    as bool
 	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
+	keepsake              = data.get("keepsake",          false)    as bool
 	child_level_id        = data.get("child_level_id",    "")       as String
 	is_noisy              = data.get("is_noisy",          false)    as bool
 	needs_quiet           = data.get("needs_quiet",       false)    as bool
@@ -469,9 +475,12 @@ func _draw() -> void:
 	# Name label: dark ink with a light halo. The piece's own ink colour is
 	# close to its fill and to the white of its symbol, which left names like
 	# "Bathtub" all but invisible.
-	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
+	# A keepsake wears a heart after its name, so it is recognisable before
+	# the player tries to sell it.
+	var shown_name := (furniture_name + " ♥") if keepsake else furniture_name
+	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1.0, 0.98, 0.94, 0.85))
-	draw_string(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
+	draw_string(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7,
 		Color(0.07, 0.14, 0.26, 0.95))
 

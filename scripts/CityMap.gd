@@ -849,7 +849,10 @@ func _rebuild_levels_ui() -> void:
 				if (d.get("block", 1) as int) == _current_block_id:
 					block_levels.append(d)
 			if not block_levels.is_empty():
-				y = _build_district_block(y, bd, block_levels)
+				if (bd.get("map", "") as String) == "koenigsberg":
+					y = _build_koenigsberg_map(y, bd, block_levels)
+				else:
+					y = _build_district_block(y, bd, block_levels)
 
 	_content_h = y
 	_map_content.size = Vector2(_list_w, _content_h)
@@ -1974,6 +1977,147 @@ func _draw_blueprint_grid(node: Control) -> void:
 # _rebuild_levels_ui), under its own "DEBUG LEVELS" header — only ever called
 # while debug_mode is on, so the rows are built plainly visible; the whole
 # section is simply torn down again the moment debug mode goes back off.
+# ── The Königsberg map ───────────────────────────────────────────────────────
+# One plan for the whole demo, after the Seven Bridges of Königsberg: the
+# river Pregel, its two islands (Kneiphof and Lomse), the north bank
+# (Altstadt, Löbenicht), the south bank (Vorstadt, Haberberg), and the seven
+# bridges between them. A block opts in with "map": "koenigsberg"; each of
+# its levels says where it stands with "map_pos": [x, y] (fractions of the
+# map, x across and y down) and names its neighbourhood in "district".
+#
+# The geography is a fixed schematic, laid out in fractions so it follows
+# whatever width the page has:
+#     north bank   y 0.00 – 0.30
+#     river        y 0.30 – 0.70   (north arm 0.30–0.38, south arm 0.62–0.70)
+#     Kneiphof     x 0.20 – 0.46, y 0.38 – 0.62
+#     Lomse        x 0.56 – 0.98, y 0.38 – 0.62
+#     south bank   y 0.70 – 1.00
+const KBG_CARD := Vector2(136, 92)
+const KBG_MAP_H := 520.0
+# [name, x, y, w, h] in map fractions — each rect spans the water it crosses.
+const KBG_BRIDGES := [
+	["Krämerbrücke",  0.245, 0.285, 0.030, 0.110],
+	["Schmiedebrücke", 0.385, 0.285, 0.030, 0.110],
+	["Grüne Brücke",  0.245, 0.605, 0.030, 0.110],
+	["Köttelbrücke",  0.385, 0.605, 0.030, 0.110],
+	["Honigbrücke",   0.445, 0.480, 0.130, 0.040],
+	["Holzbrücke",    0.665, 0.285, 0.030, 0.110],
+	["Hohe Brücke",   0.745, 0.605, 0.030, 0.110],
+]
+const KBG_DISTRICTS := [
+	["ALTSTADT", 0.03, 0.035], ["LÖBENICHT", 0.60, 0.035], ["KNEIPHOF", 0.215, 0.395],
+	["LOMSE", 0.575, 0.395], ["VORSTADT", 0.03, 0.735], ["HABERBERG", 0.48, 0.735],
+]
+
+func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> float:
+	var map_w := _list_w - H_PAD * 2
+	var map_h := maxf(KBG_MAP_H, (_map_clip.size.y if _map_clip else 0.0) - start_y - BLOCK_HEADER_H - V_PAD)
+
+	var hdr := Label.new()
+	hdr.text = "%s  ·  %s" % [(bd.get("name", "") as String).to_upper(), bd.get("subtitle", "") as String]
+	hdr.position = Vector2(H_PAD + BLOCK_PAD, start_y)
+	hdr.size = Vector2(map_w - BLOCK_PAD * 2, 16)
+	hdr.add_theme_font_size_override("font_size", 10)
+	hdr.add_theme_color_override("font_color", Color(bd.get("color", "#3870A0") as String).lightened(0.45))
+	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(hdr)
+
+	var origin := Vector2(H_PAD, start_y + BLOCK_HEADER_H)
+	var plan := KoenigsbergPlan.new()
+	plan.position = origin
+	plan.size = Vector2(map_w, map_h)
+	plan.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_map_content.add_child(plan)
+
+	# Homes go on top of the plan, each centred on its own spot. A level
+	# without a position is dealt one along the north bank so it is never lost.
+	var spare := 0
+	for ld in levels:
+		var d := ld as Dictionary
+		var at: Vector2
+		var mp := d.get("map_pos", []) as Array
+		if mp.size() == 2:
+			at = Vector2(mp[0] as float, mp[1] as float)
+		else:
+			at = Vector2(0.12 + 0.19 * (spare % 5), 0.15)
+			spare += 1
+		var parcel := _create_parcel(d)
+		var center := origin + Vector2(at.x * map_w, at.y * map_h)
+		var top_left := center - KBG_CARD * 0.5
+		top_left.x = clampf(top_left.x, origin.x + 2.0, origin.x + map_w - KBG_CARD.x - 2.0)
+		top_left.y = clampf(top_left.y, origin.y + 2.0, origin.y + map_h - KBG_CARD.y - 2.0)
+		parcel.position = top_left
+		parcel.custom_minimum_size = KBG_CARD
+		parcel.size = KBG_CARD
+		_cards[d["id"]] = parcel
+		_fill_parcel(parcel, d)
+
+	return origin.y + map_h + BLOCK_PAD
+
+
+# Draws the river, the islands, the bridges and the place names. Everything
+# is in fractions of this control's own size.
+class KoenigsbergPlan extends Control:
+	const WATER := Color(0.30, 0.56, 0.78, 0.38)
+	const WATER_EDGE := Color(0.62, 0.82, 0.98, 0.55)
+	const LAND := Color(0.12, 0.26, 0.42, 1.0)
+	const INK := Color(0.88, 0.92, 0.96, 0.92)
+	const INK_SOFT := Color(0.62, 0.80, 0.96, 0.60)
+
+	func _ready() -> void:
+		resized.connect(queue_redraw)
+
+	func _frac(x: float, y: float, w: float, h: float) -> Rect2:
+		return Rect2(Vector2(x, y) * size, Vector2(w, h) * size)
+
+	func _draw() -> void:
+		var font := ThemeDB.fallback_font
+		# The Pregel: one band across the page. The islands drawn over it
+		# leave the two arms and the channel between them as water.
+		var river := _frac(0.0, 0.30, 1.0, 0.40)
+		draw_rect(river, WATER)
+		draw_line(river.position, river.position + Vector2(river.size.x, 0), WATER_EDGE, 1.5)
+		draw_line(river.position + Vector2(0, river.size.y), river.end, WATER_EDGE, 1.5)
+		# Current lines, so it reads as flowing water and not a blue stripe.
+		for i in 7:
+			var wy := river.position.y + river.size.y * (0.12 + 0.13 * i)
+			draw_dashed_line(Vector2(0, wy), Vector2(size.x, wy), Color(WATER_EDGE.r, WATER_EDGE.g, WATER_EDGE.b, 0.16), 1.0, 14.0)
+		var flow := "P R E G E L"
+		draw_string(font, Vector2(size.x * 0.045, size.y * 0.515), flow, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, INK_SOFT)
+
+		# The two islands.
+		for isle in [_frac(0.20, 0.38, 0.26, 0.24), _frac(0.56, 0.38, 0.42, 0.24)]:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = LAND
+			sb.border_color = WATER_EDGE
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(14)
+			sb.anti_aliasing = true
+			draw_style_box(sb, isle)
+
+		# The seven bridges: a deck with a rail down each side.
+		for bridge in CityMap.KBG_BRIDGES:
+			var r := _frac(bridge[1], bridge[2], bridge[3], bridge[4])
+			draw_rect(r, Color(0.78, 0.70, 0.52, 0.95))
+			var along_y := r.size.y > r.size.x
+			if along_y:
+				draw_line(r.position, r.position + Vector2(0, r.size.y), INK, 1.5)
+				draw_line(r.position + Vector2(r.size.x, 0), r.end, INK, 1.5)
+			else:
+				draw_line(r.position, r.position + Vector2(r.size.x, 0), INK, 1.5)
+				draw_line(r.position + Vector2(0, r.size.y), r.end, INK, 1.5)
+			var label := bridge[0] as String
+			var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+			var lp := (r.position + Vector2(r.size.x + 4.0, r.size.y * 0.5 + 3.0)) if along_y \
+				else (r.position + Vector2((r.size.x - lw) * 0.5, -4.0))
+			draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, INK_SOFT)
+
+		# Neighbourhood names.
+		for dn in CityMap.KBG_DISTRICTS:
+			draw_string(font, Vector2(dn[1], dn[2]) * size + Vector2(0, 12), dn[0] as String,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK_SOFT)
+
+
 func _build_debug_section(start_y: float) -> float:
 	var debug_levels: Array = []
 	for ld in _levels_data.get("levels", []):

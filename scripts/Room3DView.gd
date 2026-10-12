@@ -1103,6 +1103,10 @@ func _cancel_buy() -> void:
 
 func _sell_furniture(hit: Dictionary) -> void:
 	var f: Furniture = hit["furniture"]
+	if f.keepsake:
+		# Refused here, before the piece is dropped from this view's cache.
+		_flash_reason("%s stays — the tenant won't part with it" % f.furniture_name)
+		return
 	remove_furniture_entry(f)
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
