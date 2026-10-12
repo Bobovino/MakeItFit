@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LevelPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://style/level_palette.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Slate"
+floor_color = Color(0.902, 0.9176, 0.9412, 1)
+wall_color = Color(0.749, 0.7961, 0.8588, 1)
+furniture_color = Color(0.2471, 0.3725, 0.5255, 1)
+accent_color = Color(0.8784, 0.5686, 0.2275, 1)
+light_color = Color(1, 0.9412, 0.8392, 1)
+ambient_color = Color(0.6157, 0.698, 0.8, 1)
+shadow_tint = Color(0.1216, 0.2, 0.3216, 1)
+background_top = Color(0.498, 0.6157, 0.749, 1)
+background_bottom = Color(0.8353, 0.8706, 0.9098, 1)
+fog_color = Color(0.7686, 0.8196, 0.8784, 1)
+glow_color = Color(1, 0.9059, 0.6902, 1)
+vignette_color = Color(0.0902, 0.1647, 0.2706, 1)

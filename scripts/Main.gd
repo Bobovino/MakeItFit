@@ -46,12 +46,12 @@ var _redo_btn: Button = null   # sits directly left of _undo_btn, same floating 
 var _test_btn: Button = null   # floating "Test Layout" toggle, top-left — only shown for levels with foldable furniture and no moments
 var _settings_btn: Button = null   # floating gear-only menu button, top-right corner
 var _editor_back_btn: Button = null   # "← Back to Editor" — only visible while testing a "_custom" level from the Level Editor
-var _view_mode_box: HBoxContainer = null   # floating Floor Plan/3D segmented toggle, stacked directly above the floor-tabs Minimap
+var _view_mode_box: HBoxContainer = null   # Floor Plan/3D segmented toggle, top right beside undo/redo/menu
 var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed alongside a wall placement
 
 # ── View mode: two ways to look at the same apartment, both reading/writing
 # the same Floor data — switching modes never converts or loses anything:
-#   TOPDOWN — plan only; click a highlighted wall edge to inspect it or hang items via a popup
+#   TOPDOWN — plan only; floor furniture (things are hung on walls in VIEW3D)
 #   VIEW3D  — walk around in 3D; drag items onto a wall to hang them there
 enum ViewMode { TOPDOWN, VIEW3D }
 const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
@@ -336,15 +336,15 @@ func _apply_ui_theme() -> void:
 	# into, plus (if you're inside one) the way back out.
 
 	# View-mode switcher: two ways to look at the apartment (see the ViewMode
-	# enum comment). Mutually exclusive via a ButtonGroup. Floats stacked
-	# directly above the floor-tabs Minimap (see _position_view_mode_box).
+	# enum comment). Mutually exclusive via a ButtonGroup. Sits in the
+	# top-right row (see _position_view_mode_box).
 	if not is_instance_valid(_view_mode_box):
 		var box := HBoxContainer.new()
 		box.name = "ViewModeBox"
 		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
 		var specs := [
-			[ViewMode.TOPDOWN, "Floor Plan", "Blueprint view — click a highlighted wall edge to inspect it or hang items"],
+			[ViewMode.TOPDOWN, "Floor Plan", "Blueprint view — place and move furniture from above"],
 			[ViewMode.VIEW3D,  "3D",         "Walk around and place items in 3D — drag onto a wall to hang them"],
 		]
 		for i in specs.size():
@@ -356,6 +356,7 @@ func _apply_ui_theme() -> void:
 			btn.tooltip_text  = spec[2]
 			btn.toggle_mode   = true
 			btn.button_group  = group
+			btn.custom_minimum_size = Vector2(0, 30)   # same height as the undo / redo / menu buttons beside it
 			btn.button_pressed = (mode == _view_mode)
 			btn.add_theme_font_size_override("font_size", 11)
 			# Segmented-control look: one connected pill, only the outer ends
@@ -734,7 +735,8 @@ func _load_level(level_id: String) -> void:
 		apt_floor.floor_z_offset = _floor_z
 		if _ftype == "floor": _floor_z += Floor.FLOOR_HEIGHT_TILES
 		apt_floor.furniture_changed.connect(_on_furniture_changed)
-		apt_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(apt_floor))
+		# Walls are not opened from the plan any more (see _disable_plan_wall_select).
+		_disable_plan_wall_select(apt_floor)
 		apt_floor.visible = false
 		_floors[fd["id"]] = apt_floor
 		if fd["id"] in _floor_below_id:
@@ -1368,28 +1370,26 @@ func _jump_to_nested_node(path: Array, hops: Array) -> void:
 	if path == here:
 		return
 	_map_jump_busy = true
-	# Pull back and drop the veil first: the apartments passed through on the
-	# way are loaded behind it, so the player sees one move, not several.
-	await _travel_depart(null, false)
 	var common := 0
 	while common < mini(path.size(), here.size()) and path[common] == here[common]:
 		common += 1
+	# The camera move should say which way we are going:
+	#   down (the target is somewhere inside this apartment) — push into the
+	#        box that leads there, exactly like double-clicking it;
+	#   up   (the target is an apartment this one sits inside) — pull back,
+	#        and arrive on the box we came out of;
+	#   across (up, then down another branch) — pull back, then settle in.
+	var going_down := common == here.size()
+	var going_up := common == path.size()
+	var first_box: Furniture = _find_box_for_hop(hops[common - 1] as Dictionary) if going_down else null
+	# The veil comes down during the move: apartments passed through on the
+	# way are loaded behind it, so the player sees one move, not several.
+	await _travel_depart(first_box, going_down)
 	if common > 0 and _nested_stack.size() > common - 1:
 		_exit_nested_level_to(common - 1)
 		await get_tree().process_frame
 	for depth in range(maxi(common, 1), path.size()):
-		var hop := hops[depth - 1] as Dictionary
-		# The box this hop went through: same interior, nearest to where the
-		# tree saw it (two boxes in one apartment can lead to the same place).
-		var box: Furniture = null
-		var best := INF
-		for candidate in _collect_nested_boxes():
-			if candidate.child_level_id != (hop["child_level_id"] as String):
-				continue
-			var dist := candidate.grid_pos.distance_to(Vector2(hop["x"] as float, hop["y"] as float))
-			if dist < best:
-				best = dist
-				box = candidate
+		var box := _find_box_for_hop(hops[depth - 1] as Dictionary)
 		if box == null:
 			break
 		var before := _current_level_id
@@ -1397,8 +1397,32 @@ func _jump_to_nested_node(path: Array, hops: Array) -> void:
 		if _current_level_id == before:
 			break   # refused (interior too small, or a cycle)
 		await get_tree().process_frame
-	await _travel_arrive(null, true)
+	if going_up:
+		var came_from: Furniture = null
+		for candidate in _collect_nested_boxes():
+			if candidate.child_level_id == (here[common] as String):
+				came_from = candidate
+				break
+		await _travel_arrive(came_from, false)
+	else:
+		await _travel_arrive(null, true)
 	_map_jump_busy = false
+
+
+# The live box in the current apartment that a tree hop went through: same
+# interior, nearest to where the tree saw it (two boxes in one apartment can
+# lead to the same place).
+func _find_box_for_hop(hop: Dictionary) -> Furniture:
+	var box: Furniture = null
+	var best := INF
+	for candidate in _collect_nested_boxes():
+		if candidate.child_level_id != (hop["child_level_id"] as String):
+			continue
+		var dist := candidate.grid_pos.distance_to(Vector2(hop["x"] as float, hop["y"] as float))
+		if dist < best:
+			best = dist
+			box = candidate
+	return box
 
 
 # Double-click on a box: push in on it, step inside, settle.
@@ -1690,6 +1714,13 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 	_refresh_functions()
 	_rent_auto_armed = _was_armed
 	_update_rent_btn()
+	# Every Furniture node was just replaced. The 3D view was built from the
+	# ones _load_level() spawned, so without a rebuild it keeps drawing
+	# meshes for furniture that no longer exists and can't pick any of the
+	# real pieces — nothing could be dragged, sold, or (for a nested box)
+	# stepped into after coming back to a level.
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_ensure_mode3d_view()
 
 
 # How much daylight reaches the box's interior from outside, given the
@@ -1917,7 +1948,7 @@ func _get_or_create_loft_floor(base_floor: Floor) -> Floor:
 	loft_floor.floor_z_offset = base_floor.floor_z_offset + Floor.FLOOR_HEIGHT_TILES / 2
 	loft_floor.furniture_changed.connect(_on_furniture_changed)
 	loft_floor.furniture_changed.connect(_on_loft_furniture_changed.bind(base_floor, loft_floor))
-	loft_floor.wall_edge_clicked.connect(_on_wall_edge_clicked.bind(loft_floor))
+	_disable_plan_wall_select(loft_floor)
 	loft_floor.visible = false
 	_floors[loft_id] = loft_floor
 	_loft_floors[base_floor.floor_id] = loft_floor
@@ -2140,17 +2171,24 @@ func _position_tenant_card() -> void:
 func _position_view_mode_box() -> void:
 	if not is_instance_valid(_view_mode_box):
 		return
-	# Same approach as _position_minimap(): fix left/right BEFORE reset_size()
-	# (which recomputes size from offset_left, so reading offset_right back
-	# out afterward isn't reliable) and only use the post-reset_size() height.
+	# Top right, at the left end of the redo / undo / menu row: the things
+	# that change how you look at the apartment sit together (the 3D view's
+	# own Walls button lands directly underneath). It used to float in the
+	# bottom-right corner above the floor tabs, attached to nothing.
 	var right_edge := RIGHT_X - 8.0
-	_view_mode_box.offset_right = right_edge
+	for btn in [_settings_btn, _undo_btn, _redo_btn]:
+		if is_instance_valid(btn) and (btn as Button).visible:
+			right_edge = minf(right_edge, (btn as Button).offset_left - 10.0)
+	# Same approach as _position_minimap(): fix the left edge, let
+	# reset_size() measure the real width, then re-pin to the right edge.
 	_view_mode_box.offset_left  = right_edge - 180.0
+	_view_mode_box.offset_right = right_edge
 	_view_mode_box.reset_size()
-	var content_h := maxf(_view_mode_box.size.y, 24.0)
-	var gap := 8.0 if minimap.visible else 0.0
-	_view_mode_box.offset_bottom = minimap.offset_top - gap
-	_view_mode_box.offset_top    = _view_mode_box.offset_bottom - content_h
+	var content := _view_mode_box.size
+	_view_mode_box.offset_right  = right_edge
+	_view_mode_box.offset_left   = right_edge - maxf(content.x, 60.0)
+	_view_mode_box.offset_top    = TOP_Y
+	_view_mode_box.offset_bottom = TOP_Y + maxf(content.y, 24.0)
 	ui_layer.move_child(_view_mode_box, ui_layer.get_child_count() - 1)
 
 
@@ -2183,6 +2221,7 @@ func _position_undo_btn() -> void:
 		_redo_btn.offset_left  = _redo_btn.offset_right - (_redo_btn.custom_minimum_size.x as float)
 		_redo_btn.offset_top   = _undo_btn.offset_top
 		ui_layer.move_child(_redo_btn, ui_layer.get_child_count() - 1)
+	_position_view_mode_box()   # it sits against this row
 
 
 # ── View mode switcher ──────────────────────────────────────────────────────
@@ -2224,7 +2263,7 @@ func _set_view_mode(mode: int) -> void:
 			else:
 				wall_inspector.hide()
 				_hide_modal_backdrop()
-				_set_mode_hint("Click a highlighted wall edge on the plan to inspect it or hang items")
+				_set_mode_hint("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls")
 		ViewMode.VIEW3D:
 			# Wall items are placed/moved directly in the 3D view here (drag onto
 			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
@@ -2233,7 +2272,7 @@ func _set_view_mode(mode: int) -> void:
 			wall_inspector.hide()
 			_hide_modal_backdrop()
 			_ensure_mode3d_view()
-			_set_mode_hint("Drop items on the floor, or drag them onto a wall to hang them · Press R to rotate")
+			_set_mode_hint("Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it")
 
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:
@@ -2583,6 +2622,8 @@ func _update_nested_nav() -> void:
 	_back_btn.visible = not _nested_stack.is_empty()
 	var x := LEFT_X + 8.0
 	var y := TOP_Y + 44.0
+	if is_instance_valid(_test_btn) and _test_btn.visible:
+		y = _test_btn.offset_top + _test_btn.size.y + 8.0   # Test Layout already sits under the Furniture button
 	if _map_btn.visible:
 		_map_btn.reset_size()
 		_map_btn.position = Vector2(x, y)
@@ -2693,6 +2734,18 @@ func _zoom_floor(delta: float, cursor_pos: Vector2) -> void:
 	_manual_pan    = room.position - _base_position
 
 
+# Clicking a wall on the floor plan used to open it in the Wall Inspector (a
+# flat elevation view for hanging things). The 3D view does that job directly
+# now — drag a piece onto a wall — so the plan no longer offers it: the
+# floor's wall_edge_clicked signal is left unconnected and the hover
+# highlight that advertised it is switched off. The inspector's own code
+# (_on_wall_edge_clicked and friends, WallInspector.gd) is still here but
+# nothing reaches it.
+func _disable_plan_wall_select(fl: Floor) -> void:
+	if is_instance_valid(fl) and is_instance_valid(fl.grid_draw):
+		fl.grid_draw.wall_select_enabled = false
+
+
 func _on_wall_edge_clicked(edge: String, span_lo: int, span_hi: int, apt_floor: Floor) -> void:
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
@@ -2763,7 +2816,7 @@ func _on_inspector_visibility_changed() -> void:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 		_hide_modal_backdrop()
 		if _view_mode == ViewMode.TOPDOWN:
-			_set_mode_hint("Click a highlighted wall edge on the plan to inspect it or hang items")
+			_set_mode_hint("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls")
 
 
 func _on_wall_item_placed(furniture_id: String) -> void:
@@ -2786,6 +2839,11 @@ func _on_buy_requested(furniture_id: String) -> void:
 		return
 	if gm.budget < (fdata.get("buy_price", 0) as int):
 		return
+	# Something that only goes on a wall can't be placed from the plan now
+	# that walls aren't opened there: go to the 3D view, where it can be
+	# dragged straight onto one.
+	if (fdata.get("placement", "floor") as String) == "wall" and _view_mode != ViewMode.VIEW3D:
+		_set_view_mode(ViewMode.VIEW3D)
 	# Every item can go on the floor or on a wall — arm both placements at once.
 	# Whichever the player actually clicks into completes the purchase; the other
 	# is cancelled automatically.
@@ -3169,10 +3227,6 @@ func _input(event: InputEvent) -> void:
 				and not (ke.ctrl_pressed or ke.meta_pressed or ke.alt_pressed):
 			if ke.keycode == KEY_T:
 				_set_view_mode(ViewMode.VIEW3D if _view_mode == ViewMode.TOPDOWN else ViewMode.TOPDOWN)
-				get_viewport().set_input_as_handled()
-				return
-			if ke.keycode == KEY_Q:
-				_reopen_last_wall()
 				get_viewport().set_input_as_handled()
 				return
 			if ke.keycode == KEY_F and not _post_win_view:

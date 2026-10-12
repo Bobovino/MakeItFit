@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LevelPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://style/level_palette.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Sage"
+floor_color = Color(0.9098, 0.9373, 0.902, 1)
+wall_color = Color(0.7765, 0.8353, 0.7686, 1)
+furniture_color = Color(0.3451, 0.4784, 0.3608, 1)
+accent_color = Color(0.7843, 0.3765, 0.4784, 1)
+light_color = Color(1, 0.949, 0.8471, 1)
+ambient_color = Color(0.6667, 0.7608, 0.6706, 1)
+shadow_tint = Color(0.1333, 0.2784, 0.1686, 1)
+background_top = Color(0.5647, 0.6824, 0.5725, 1)
+background_bottom = Color(0.8471, 0.898, 0.8392, 1)
+fog_color = Color(0.7843, 0.8588, 0.7765, 1)
+glow_color = Color(1, 0.9294, 0.7216, 1)
+vignette_color = Color(0.09412, 0.2275, 0.1255, 1)

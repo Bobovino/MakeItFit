@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LevelPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://style/level_palette.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Plum"
+floor_color = Color(0.9333, 0.902, 0.9255, 1)
+wall_color = Color(0.8275, 0.7529, 0.8118, 1)
+furniture_color = Color(0.4314, 0.2471, 0.4, 1)
+accent_color = Color(0.8784, 0.6902, 0.251, 1)
+light_color = Color(1, 0.9333, 0.8745, 1)
+ambient_color = Color(0.749, 0.6392, 0.7294, 1)
+shadow_tint = Color(0.2353, 0.1216, 0.2275, 1)
+background_top = Color(0.6353, 0.4863, 0.6118, 1)
+background_bottom = Color(0.8941, 0.8471, 0.8824, 1)
+fog_color = Color(0.8392, 0.7765, 0.8235, 1)
+glow_color = Color(1, 0.902, 0.7608, 1)
+vignette_color = Color(0.1804, 0.08627, 0.1882, 1)

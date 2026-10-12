@@ -43,6 +43,11 @@ static func _get_grain() -> ImageTexture:
 
 
 var _hovered_edge:    String = ""
+# Whether hovering a wall on the plan lights it up as something to click.
+# Main.gd turns this off: walls are no longer opened from the plan (hanging
+# things on walls happens in the 3D view), so a highlight would promise a
+# click that does nothing. The level editor leaves it on.
+var wall_select_enabled: bool = true
 var _active_edge:     String = ""
 var _hovered_seg_idx: int   = -1   # new-format hover: nearest segment index
 var _gm: GameManager = null
@@ -74,7 +79,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var parent: Floor = get_parent() as Floor
-	if not parent or not parent.visible:
+	if not parent or not parent.visible or not wall_select_enabled:
 		if _hovered_edge != "" or _hovered_seg_idx >= 0:
 			_hovered_edge = ""; _hovered_seg_idx = -1
 			queue_redraw()

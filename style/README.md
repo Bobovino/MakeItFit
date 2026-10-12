@@ -19,7 +19,7 @@ one of the scenes in `test/` and press F6.
 | `palette_library.gd` | `PaletteLibrary`: finds palettes by name and picks one per level. |
 | `shaders/backdrop.gdshader` | Full-screen gradient behind the level. |
 | `shaders/vignette.gdshader` | Hue-tinted vignette (Medium and up). |
-| `palettes/*.tres` | Teal, Ochre, Dusty Rose. |
+| `palettes/*.tres` | Teal, Slate, Terracotta, Ochre, Sage, Plum, Dusty Rose. |
 | `test/style_test.tscn` | Test apartment. `1`-`9` or `Tab` switch palette, `Q` cycles quality, `D` toggles depth of field, `G` cycles ghost alpha, `H` hides the text. |
 
 | `test/room3d_probe.tscn` | The real `Room3DView` on a throwaway room. `1`-`9` palette, `N` day/night. |
@@ -44,6 +44,10 @@ Camera, picking, dragging and placement are untouched.
   `"show_parent": false` in its data.
 - **Each apartment has its own camera:** angle, zoom and pan are remembered
   per level, and a first visit starts on the home view.
+- **View controls:** Q/E turn the view a quarter at a time, W/A/S/D move
+  it, middle-drag still orbits freely. A "Walls" button (Home/End) switches
+  between Up, Cutaway and Down. In Cutaway, an interior wall drops only
+  when it stands between the camera and the spot the camera is centred on.
 - **Long lens:** the styled view uses a 26 degree field of view with the
   camera moved back to match, and frames the room a little tighter. Orbit,
   zoom and pan work as before.

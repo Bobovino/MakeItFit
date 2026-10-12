@@ -46,6 +46,22 @@ var _palette: LevelPalette = null
 # _dist, zoom limits, pan speed and every ray-based pick keep their meaning.
 const STYLE_FOV := 26.0
 var _cam_dist_scale: float = 1.0
+
+# ── Sims-style view controls ────────────────────────────────────────────────
+# Wall display: UP shows every wall at full height, DOWN lowers them all to
+# stubs, CUTAWAY (the default) lowers only what is in the way — see
+# _update_wall_visibility(). Static, so the choice survives this view being
+# torn down and rebuilt (switching to the floor plan and back, a new level).
+enum WallMode { UP, CUTAWAY, DOWN }
+const WALL_MODE_LABELS := ["Walls: Up", "Walls: Cutaway", "Walls: Down"]
+static var wall_mode: int = WallMode.CUTAWAY
+var _walls_btn: Button = null
+# Q / E turn the view a quarter at a time, onto one of the four diagonal
+# views; free orbit (middle-drag) is still there for anything in between.
+const TURN_SECONDS := 0.28
+var _turn_tween: Tween = null
+var _turn_target: float = 0.0   # where a turn in progress is heading, so a second tap adds to it
+const KEY_PAN_SPEED := 0.55   # W/A/S/D: fraction of the camera distance covered per second
 var _travel_tween: Tween = null            # a level-transition camera move in progress, see travel_camera()
 var _next_camera_state: Dictionary = {}    # see set_next_camera_state()
 var _next_camera_until_ms: int = -1       # builds up to this moment apply _next_camera_state
@@ -162,6 +178,20 @@ var _fold_model_extended_shown: bool = false   # which of the two real models is
 
 func _ready() -> void:
 	_setup_style()
+	_walls_btn = Button.new()
+	_walls_btn.name = "WallModeBtn"
+	_walls_btn.focus_mode = Control.FOCUS_NONE   # must never take the keyboard: Q/E/WASD belong to the view
+	_walls_btn.add_theme_font_size_override("font_size", 12)
+	_walls_btn.tooltip_text = "How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered"
+	_walls_btn.anchor_left = 1.0
+	_walls_btn.anchor_right = 1.0
+	_walls_btn.offset_left = -152.0
+	_walls_btn.offset_right = -12.0
+	_walls_btn.offset_top = 52.0
+	_walls_btn.offset_bottom = 82.0
+	_walls_btn.visible = false   # shown once a room (not a single-item preview) is built
+	_walls_btn.pressed.connect(func(): set_wall_mode((wall_mode + 1) % WallMode.size()))
+	add_child(_walls_btn)
 	close_btn.pressed.connect(func(): closed.emit())
 	container.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.gui_input.connect(_on_container_input)
@@ -384,6 +414,8 @@ func _glass_color() -> Color:
 
 
 func _process(delta: float) -> void:
+	if not _reveal_playing and _camera_keys_active():
+		_key_pan(delta)
 	if _auto_spin and not _dragging:
 		_yaw += delta * 18.0
 		_update_camera()
@@ -496,6 +528,7 @@ func _on_container_input(event: InputEvent) -> void:
 			if mb.pressed:
 				_orbit_press_pos = mb.position
 				_dragging = true
+				_stop_turn()
 			else:
 				_dragging = false
 				# A plain middle-click (no drag) recenters — the only way back
@@ -554,6 +587,26 @@ func _on_container_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if _reveal_playing:
 		return
+	# View keys. Handled here, ahead of Main.gd's own shortcuts (this node is
+	# deeper in the tree, so it sees input first): in the 3D view W/A/S/D move
+	# the camera and Q/E turn it, where on the floor plan the same keys step
+	# floors/moments and reopen a wall. The arrow keys still do the stepping.
+	if event is InputEventKey and event.pressed and _camera_keys_active() \
+			and not (event.ctrl_pressed or event.alt_pressed or event.meta_pressed):
+		match event.keycode:
+			KEY_Q, KEY_E:
+				if not event.echo:
+					_turn_view(-1 if event.keycode == KEY_Q else 1)
+				get_viewport().set_input_as_handled()
+				return
+			KEY_HOME, KEY_END:
+				if not event.echo:
+					set_wall_mode(posmod(wall_mode + (-1 if event.keycode == KEY_HOME else 1), WallMode.size()))
+				get_viewport().set_input_as_handled()
+				return
+			KEY_W, KEY_A, KEY_S, KEY_D:
+				get_viewport().set_input_as_handled()   # the move itself is in _key_pan(), while held
+				return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
 		if _buying_furniture and not _buying_on_wall:
 			_buying_furniture._rotate()
@@ -2200,15 +2253,106 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 		return
 	flat = flat.normalized()
 	_cam_flat_dir = flat
+	# For the cutaway: the patch of floor the camera is centred on, how far
+	# behind itself a full-height wall hides floor at this camera pitch, and
+	# how wide a patch has to be kept clear (wider when zoomed out).
+	var focus := Vector2(_center.x, _center.z)
+	var toward_cam := Vector2(flat.x, flat.z)
+	var hide_reach := WALL_H_M / maxf(tan(deg_to_rad(-_pitch)), 0.2)
+	var clear_radius := clampf(_dist * 0.22, 0.9, 2.2)
 	for wd in _wall_data:
 		if wd.get("force_hidden", false):
 			continue   # a balcony window replaced this wall outright — never fade it back in
-		var normal: Vector3 = wd["normal"]
-		# Positive dot = camera is on the outside of this wall, looking in —
-		# that's the wall we need out of the way.
-		var facing := normal.dot(flat)
-		wd["target_h"] = 0.0 if facing > 0.0 else 1.0
+		var target := 1.0
+		match wall_mode:
+			WallMode.UP:
+				target = 1.0
+			WallMode.DOWN:
+				target = 0.0
+			_:
+				if wd.get("interior", false):
+					# An interior wall has no "outside": it is in the way only
+					# if it stands between the camera and where the player is
+					# looking. Pan into a room and the walls in front of that
+					# room drop; the rest of the apartment keeps its walls.
+					var a2 := Vector2((wd["a"] as Vector3).x, (wd["a"] as Vector3).z)
+					var b2 := Vector2((wd["b"] as Vector3).x, (wd["b"] as Vector3).z)
+					var near := Geometry2D.get_closest_points_between_segments(
+						a2, b2, focus + toward_cam * 0.15, focus + toward_cam * (hide_reach + clear_radius))
+					target = 0.0 if near[0].distance_to(near[1]) < clear_radius else 1.0
+				else:
+					# A perimeter wall is in the way when the camera is on its
+					# outside, looking in.
+					target = 0.0 if (wd["normal"] as Vector3).dot(flat) > 0.0 else 1.0
+		wd["target_h"] = target
 	_update_scenery_visibility(flat)
+
+
+func set_wall_mode(mode: int) -> void:
+	wall_mode = clampi(mode, 0, WallMode.size() - 1)
+	if is_instance_valid(_walls_btn):
+		_walls_btn.text = WALL_MODE_LABELS[wall_mode]
+	if is_node_ready() and _room_w_m > 0.0:
+		_update_camera()   # re-evaluates every wall against the new mode
+
+
+# Whether the view's own keys (Q/E, W/A/S/D, Home/End) apply right now: a
+# real room is showing (not the shop's single-item preview), and the player
+# isn't typing into a text field.
+func _camera_keys_active() -> bool:
+	if not is_visible_in_tree() or _room_w_m <= 0.0 or _auto_spin:
+		return false
+	var focused := get_viewport().gui_get_focus_owner()
+	return not (focused is LineEdit or focused is TextEdit)
+
+
+# Turns the view a quarter turn (steps = -1 or 1) onto the nearest of the
+# four diagonal views, so a couple of taps always lands on a clean angle
+# however the camera was left by a free orbit.
+func _turn_view(steps: int) -> void:
+	# Tapping again mid-turn adds another quarter to where the turn was
+	# heading, rather than re-snapping from wherever it has got to.
+	var from_yaw := _turn_target if (_turn_tween != null and _turn_tween.is_valid()) else _yaw
+	_stop_turn()
+	var target := HOME_YAW + (roundf((from_yaw - HOME_YAW) / 90.0) + steps) * 90.0
+	_turn_target = target
+	if GameState.reduce_motion:
+		_yaw = target
+		_update_camera()
+		return
+	var from := _yaw
+	_turn_tween = create_tween()
+	_turn_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_turn_tween.tween_method(func(v: float) -> void:
+		_yaw = v
+		_update_camera(),
+		from, target, TURN_SECONDS)
+
+
+func _stop_turn() -> void:
+	if _turn_tween != null and _turn_tween.is_valid():
+		_turn_tween.kill()
+	_turn_tween = null
+
+
+# W/A/S/D slide the point the camera looks at across the floor, relative to
+# the view: W away from the camera, S toward it, A/D sideways. Same limits as
+# dragging the floor, and the cutaway follows along.
+func _key_pan(delta: float) -> void:
+	if Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_ALT) or Input.is_key_pressed(KEY_META):
+		return
+	var move := Vector2(
+		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W)))
+	if move == Vector2.ZERO:
+		return
+	var right := cam.global_transform.basis.x
+	right.y = 0.0
+	right = right.normalized()
+	var toward := Vector3(_cam_flat_dir.x, 0.0, _cam_flat_dir.z)
+	_center += (right * move.x + toward * move.y).normalized() * _dist * KEY_PAN_SPEED * delta
+	_center = _clamp_pan_center(_center)
+	_update_camera()
 
 
 # A balcony window is a permanent architectural opening, not furniture sitting
@@ -2421,6 +2565,10 @@ func _flash_reason(text: String) -> void:
 # the player doesn't lose their bearings on what's directly underneath.
 func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = null) -> void:
 	cancel_camera_travel()
+	_stop_turn()
+	if is_instance_valid(_walls_btn):
+		_walls_btn.text = WALL_MODE_LABELS[wall_mode]
+		_walls_btn.visible = true
 	_auto_spin = false
 	_foldable  = false
 	_fold_mesh = null
@@ -3631,7 +3779,10 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role)
 			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
-				"decor": _add_wall_openings(mi, seg, minf(h0, h1))})
+				"decor": _add_wall_openings(mi, seg, minf(h0, h1)),
+				"interior": y1 != by0 and y1 != by1,
+				"a": Vector3(local_x, 0.0, pos_z + WALL_THICK * 0.5),
+				"b": Vector3(local_x + length, 0.0, pos_z + WALL_THICK * 0.5)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 		elif x1 == x2 and y1 != y2:
@@ -3655,7 +3806,10 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role)
 			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
-				"decor": _add_wall_openings(mi, seg, minf(h0, h1))})
+				"decor": _add_wall_openings(mi, seg, minf(h0, h1)),
+				"interior": x1 != bx0 and x1 != bx1,
+				"a": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z),
+				"b": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z + length)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 
