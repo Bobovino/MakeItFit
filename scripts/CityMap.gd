@@ -552,7 +552,7 @@ func _build_ui() -> void:
 	# layout (i.e. won at least once) — lets the player start over from
 	# scratch instead of reopening the layout they won with.
 	_redesign_btn = Button.new()
-	_redesign_btn.text = "Rediseñar desde Cero"
+	_redesign_btn.text = "Redesign from Scratch"
 	_redesign_btn.custom_minimum_size = Vector2(210, 32)
 	_redesign_btn.add_theme_font_size_override("font_size", 11)
 	_redesign_btn.visible = false
@@ -1227,7 +1227,7 @@ func _build_district_block(start_y: float, bd: Dictionary, levels: Array, header
 
 	var hdr := Label.new()
 	hdr.text = header_override if header_override != "" else \
-		"BLOQUE %d — %s" % [bid, (bd.get("name", "") as String).to_upper()] + \
+		"BLOCK %d — %s" % [bid, (bd.get("name", "") as String).to_upper()] + \
 		("  ·  " + subtitle if subtitle != "" else "")
 	hdr.position = Vector2(H_PAD + BLOCK_PAD, start_y)
 	hdr.size     = Vector2(block_w - BLOCK_PAD * 2, 16)
@@ -1734,7 +1734,7 @@ func _select_level(ld: Dictionary) -> void:
 			# Already won at least once — default to reopening it exactly as
 			# left, with "start over" as an explicit secondary choice rather
 			# than the only option.
-			_action_btn.text   = "Revisar Plano Actual"
+			_action_btn.text   = "Review Current Plan"
 			_action_btn.disabled = false
 			_redesign_btn.visible = true
 			_redesign_btn.disabled = false

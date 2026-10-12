@@ -550,7 +550,24 @@ class ItemCell extends PanelContainer:
 
 
 func _build_item_cell(f: Dictionary) -> Control:
-	return ItemCell.new(f, self)
+	var cell := ItemCell.new(f, self)
+	if _gm != null:
+		_mark_affordability(cell, _gm.budget)
+	return cell
+
+
+# An item the budget can't cover is dimmed, its price turns red, and hovering
+# says how far short the budget is. Before, a click on it just played the
+# error sound with nothing on screen to say why.
+func _mark_affordability(cell: Control, budget: int) -> void:
+	var price_lbl := cell.find_child("PriceLabel", true, false) as Label
+	if price_lbl == null:
+		return
+	var price := price_lbl.get_meta("price", 0) as int
+	var can_afford := budget >= price
+	cell.modulate = Color(1, 1, 1, 1.0) if can_afford else Color(1, 1, 1, 0.5)
+	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64) if can_afford else Color(0.95, 0.45, 0.38))
+	cell.tooltip_text = "" if can_afford else "Costs %d€ — you have %d€" % [price, budget]
 
 
 func _on_cell_clicked(f: Dictionary) -> void:
@@ -908,7 +925,13 @@ func _refresh_affordability(new_budget: int) -> void:
 	# button, leaving them stuck in their level-load disabled state.
 	for ctrl in item_list.find_children("*", "Button", true, false):
 		if (ctrl as Button).has_meta("price"):
-			(ctrl as Button).disabled = new_budget < (ctrl as Button).get_meta("price") as int
+			var price := (ctrl as Button).get_meta("price") as int
+			(ctrl as Button).disabled = new_budget < price
+			(ctrl as Button).tooltip_text = ("Costs %d€ — you have %d€" % [price, new_budget]) if new_budget < price else ""
+	for cell in item_list.find_children("PriceLabel", "Label", true, false):
+		var owner_cell := (cell as Label).get_parent().get_parent() as Control   # label -> VBox -> ItemCell
+		if owner_cell != null:
+			_mark_affordability(owner_cell, new_budget)
 
 
 func _on_buy_pressed(furniture_id: String) -> void:

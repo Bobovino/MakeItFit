@@ -2043,8 +2043,13 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	const V_PAD  := 24.0
 	const PAD_T  := 3     # tile padding around apartment content
 
+	# The top of the pane belongs to the title and hint line, and to
+	# anything the plan draws just above its own top wall (the slope banner
+	# on sloped-ceiling levels). Fitting the plan from the very top put those
+	# on top of each other.
+	const HEADER_H := 40.0
 	var avail_w := (RIGHT_X - LEFT_X) - H_PAD * 2
-	var avail_h := (_floor_pane_bottom_y() - TOP_Y) - V_PAD * 2
+	var avail_h := (_floor_pane_bottom_y() - TOP_Y - HEADER_H) - V_PAD * 2
 
 	var fw: float; var fh: float
 	var off_x := 0.0;   var off_y := 0.0
@@ -2066,7 +2071,7 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	_base_scale    = s
 	_base_position = Vector2(
 		LEFT_X + H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
-		TOP_Y + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
+		TOP_Y + HEADER_H + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
 	)
 	if reset_view:
 		_manual_zoom = 1.0
@@ -2889,6 +2894,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 		h["wall_confirmed"] = func(_fid: String, _edge: String, _origin: Vector2i):
 			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
+			apt_floor.forget_furniture(f)   # never leave a freed node on the floor's books
 			f.queue_free()   # the floor ghost was never used — it landed on a wall instead
 			gm.buy_furniture(furniture_id)
 			_refresh_functions()
@@ -2896,6 +2902,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 		h["cancelled"] = func(_f: Furniture):
 			_mode3d_view.buy_confirmed.disconnect(h["confirmed"])
 			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
+			apt_floor.forget_furniture(f)
 			f.queue_free()
 			_refresh_functions()
 		_mode3d_view.buy_confirmed.connect(h["confirmed"], CONNECT_ONE_SHOT)

@@ -95,18 +95,33 @@ func _draw() -> void:
 		var fsize := 22 if (w["id"] as String) != BUILDER_ID else 14
 		var txt := w["glyph"] as String
 		var txt_size := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, fsize)
-		draw_string(font, gp - txt_size * 0.5 + Vector2(0, txt_size.y * 0.35), txt,
+		draw_string(font, gp - txt_size * 0.5 + Vector2(0, txt_size.y * 0.35) - Vector2(0, 7), txt,
 			HORIZONTAL_ALIGNMENT_CENTER, -1, fsize)
+		# The category's name under its icon. The icons alone (a shuffle
+		# symbol for Transformable, a magnifier...) can't be told apart
+		# without hovering each wedge in turn.
+		var name_txt := w["id"] as String
+		var name_size := 10 if (w["id"] as String) != BUILDER_ID else 9
+		var name_w := font.get_string_size(name_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x
+		var name_col := Color(0.12, 0.10, 0.06) if hovered else Color(0.93, 0.88, 0.76)
+		draw_string(font, gp + Vector2(-name_w * 0.5, txt_size.y * 0.5 + 6), name_txt,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, name_size, name_col)
 
 	var hub_col: Color = GameTheme.C_AMBER if _hub_hover else Color(0.20, 0.18, 0.12, 0.95)
 	# Vertex-only hexagon (6 straight-line points, no angular sampling needed
 	# the way the wedges above do since the hub isn't a pie slice).
 	var hub_pts := PackedVector2Array()
-	for s in 7:
+	for s in 6:
 		var a: float = TAU * float(s) / 6.0
 		hub_pts.append(center + Vector2(inner_r, 0).rotated(a))
 	draw_colored_polygon(hub_pts, hub_col)
-	draw_polyline(hub_pts, Color(0, 0, 0, 0.55), 2.0, true)
+	# The fill takes the six corners only: a seventh point repeating the
+	# first made the triangulation fail, so the hub was never filled and the
+	# engine logged an error on every redraw. The outline is what needs the
+	# closing point.
+	var hub_outline := hub_pts.duplicate()
+	hub_outline.append(hub_pts[0])
+	draw_polyline(hub_outline, Color(0, 0, 0, 0.55), 2.0, true)
 	var hub_font := ThemeDB.fallback_font
 	# Longer names ("Transformable") need a smaller size to fit the hub's fixed
 	# diameter than short ones ("All", "Living") do.

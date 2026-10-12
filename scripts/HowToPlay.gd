@@ -64,21 +64,22 @@ func _build() -> void:
 	scroll.add_child(vb)
 
 	vb.add_child(_section("Controls", [
-		"Click a highlighted wall edge on the floor plan to inspect it or hang items.",
-		"In the 3D view, drag an item onto a wall to hang it there.",
-		"In the 3D view, middle-drag to orbit the camera, left-drag empty floor to pan, and scroll to zoom. Middle-click (no drag) recenters the view.",
+		"Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you.",
+		"In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter.",
+		"The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking.",
+		"Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them.",
 		"Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip.",
-		"Double-click a foldable piece (like a sofa bed) to fold or unfold it.",
+		"Click a foldable piece (like a sofa bed) to fold or unfold it.",
 		"The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom.",
+		"The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing.",
+		"The bar at the bottom is the goal: every need listed there has to be ticked.",
 		"Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it." % [
 			OS.get_keycode_string(GameState.undo_keycode),
 			OS.get_keycode_string(GameState.undo_keycode),
 		],
 		"Press T to switch between the Floor Plan and 3D view.",
-		"Press Q to reopen the last wall panel you inspected on the current floor.",
 		"Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab.",
-		"Press Up/W or Down/S to step to the floor above or below.",
-		"Press Left/A or Right/D to step to the previous or next moment.",
+		"Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same.",
 	]))
 
 	vb.add_child(_needs_legend())

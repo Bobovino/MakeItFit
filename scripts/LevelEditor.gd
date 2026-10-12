@@ -1993,7 +1993,20 @@ func _input(event: InputEvent) -> void:
 							_set_status("Can't place here — no floor under this footprint")
 							get_viewport().set_input_as_handled()
 							return
+						# Same flooring rule the game applies (a toilet on
+						# bathroom flooring, a sun lounger on the balcony, when
+						# this floor has any): a piece put down where the game
+						# would reject it can never be moved by the player.
+						if is_instance_valid(_floor):
+							var _flooring_problem := _floor.floor_category_problem(
+								_furn_data_by_id(_placing_furniture_id).get("floor_category", "") as String,
+								Vector2i(tx, ty), _pfw, _pfh)
+							if _flooring_problem != "":
+								_set_status("Can't place here — this piece %s" % _flooring_problem)
+								get_viewport().set_input_as_handled()
+								return
 						_placed_furniture.append({"id": _placing_furniture_id, "x": tx, "y": ty})
+						_warn_layout_problems.call_deferred()   # once the preview nodes have caught up
 						# If placed over a drawn rail, mark it as rail-constrained
 						var _ri := _detect_rail_under(tx, ty, _pfw, _pfh)
 						if not _ri.is_empty():
@@ -3272,6 +3285,36 @@ func _fill_inv_modal_rows() -> void:
 				ms_hb.add_child(cb)
 
 
+# Starting pieces the GAME would not accept where they stand, with its own
+# reason for each ("Needs clearance around Sofa", "Ceiling too low here",
+# "Overlaps Desk", "Needs bathroom flooring"...). The editor's preview nodes
+# are real Furniture registered on the real Floor (see
+# _update_placed_furniture_overlay), so this asks Floor.can_place() itself
+# rather than re-implementing any rule.
+# These are warnings, not errors: a piece that starts badly placed and has to
+# be moved can be a deliberate part of a puzzle. The one case that is never
+# deliberate — flooring the piece can't stand on anywhere — is refused
+# outright at placement time instead.
+func _layout_problems() -> PackedStringArray:
+	var out: PackedStringArray = []
+	if not is_instance_valid(_floor):
+		return out
+	for pn in _furn_preview_nodes:
+		if not is_instance_valid(pn):
+			continue
+		var f := pn as Furniture
+		if not _floor.can_place(f, f.grid_pos):
+			out.append("%s (%s)" % [f.furniture_name, _floor.get_block_reason().to_lower()])
+	return out
+
+
+# After a piece goes down: say so if the game would object to the layout.
+func _warn_layout_problems() -> void:
+	var problems := _layout_problems()
+	if not problems.is_empty():
+		_set_status("Placed — but the game would reject this start: %s" % ", ".join(problems))
+
+
 func _furn_data_by_id(fid: String) -> Dictionary:
 	for f in _furn_catalog:
 		if (f as Dictionary)["id"] == fid:
@@ -4005,7 +4048,11 @@ func _save_level() -> void:
 		return
 	wf.store_string(JSON.stringify(root, "\t"))
 	wf.close()
-	_set_status("Saved \"%s\" → levels.json (block %d, col %d, row %d)" % [_lname, _block, _map_col, _map_row])
+	var _stuck := _layout_problems()
+	if _stuck.is_empty():
+		_set_status("Saved \"%s\" → levels.json (block %d, col %d, row %d)" % [_lname, _block, _map_col, _map_row])
+	else:
+		_set_status("Saved \"%s\" — but the game would reject this start: %s" % [_lname, ", ".join(_stuck)])
 
 
 func _prompt_level_name(on_confirm: Callable) -> void:

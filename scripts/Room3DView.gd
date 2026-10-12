@@ -238,11 +238,18 @@ func _style_node(node: Node, role: StringName) -> void:
 		_style.style_node(node, role)
 
 
+# The model instance parented to a placeholder box, or null if it has none
+# (a piece with no model file). has_meta first: get_meta with a null default
+# still logs an engine error for a missing key.
+func _model_of(mi: MeshInstance3D) -> Variant:
+	return mi.get_meta("model_inst") if mi.has_meta("model_inst") else null
+
+
 # A furniture/wall-item placeholder box that got no model stays visible as a
 # plain box, so it takes the furniture tint. One that did get a model is left
 # alone: it's an invisible hitbox, and its own material is what hides it.
 func _style_if_bare(mi: MeshInstance3D) -> void:
-	if _style != null and not is_instance_valid(mi.get_meta("model_inst", null)):
+	if _style != null and not is_instance_valid(_model_of(mi)):
 		_style.style_node(mi, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
 
 
@@ -390,7 +397,7 @@ func _ghostify(mi: MeshInstance3D) -> void:
 	if _style == null:
 		return
 	var role: StringName = mi.get_meta("style_role", StyleController.ROLE_FURNITURE)
-	var inst: Variant = mi.get_meta("model_inst", null)
+	var inst: Variant = _model_of(mi)
 	_style.style_node_transparent(inst if is_instance_valid(inst) else mi, role, BUY_GHOST_ALPHA)
 
 
@@ -398,7 +405,7 @@ func _ghostify(mi: MeshInstance3D) -> void:
 func _solidify(mi: MeshInstance3D) -> void:
 	if _style == null:
 		return
-	var inst: Variant = mi.get_meta("model_inst", null)
+	var inst: Variant = _model_of(mi)
 	if is_instance_valid(inst):
 		_style.style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
 	else:
@@ -2608,7 +2615,12 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		_style.scene_radius = maxf(w, d) * 0.75 + 1.0
 		# The long lens wastes less of the frame on perspective, so the home
 		# view can sit closer and let the room fill it. Zoom still works as before.
-		_dist = maxf(w, d) * 1.05 + 1.2
+		# Fit the whole room, walls included, into the frame: far enough
+		# back for its bounding sphere and no further. A fixed margin on
+		# top of the longest side left small rooms as a speck in the middle
+		# of the screen.
+		var room_radius := 0.5 * Vector3(w, WALL_H_M, d).length()
+		_dist = maxf(room_radius * 1.45, 2.2)
 		_home_dist = _dist
 
 	# A different apartment than last time: its own remembered camera, or the
@@ -2933,7 +2945,11 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 # ghost is resizing, e.g. swapping between floor and wall placement) — avoids
 # reloading/reinstantiating the whole .glb every frame.
 func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
-	if not mi.has_meta("model_inst"):
+	# An animated-fold piece (futon, sofa bed) carries a model but is never
+	# exact-fit scaled, so it has no "model_native" box to refit from. The
+	# buy ghost's wall branch calls this for every piece; without the second
+	# check, hovering one of those over a wall errored on every mouse move.
+	if not mi.has_meta("model_inst") or not mi.has_meta("model_native"):
 		return
 	var inst: Node3D = mi.get_meta("model_inst")
 	if not inst or not is_instance_valid(inst):

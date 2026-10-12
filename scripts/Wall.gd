@@ -163,14 +163,39 @@ func get_tile_kind(tile: Vector2i) -> String:
 # Balcony tiles only accept balcony-category furniture (and vice versa —
 # balcony furniture only belongs on a balcony). Bathroom tiles accept
 # anything, but bathroom-category furniture is confined to bathroom tiles.
+#
+# Both "belongs on" rules only apply on a floor that actually HAS that kind
+# of flooring. A toilet is confined to the bathroom if there is a bathroom;
+# on a floor with no bathroom tiles at all it may go anywhere. Without this,
+# a piece that needs flooring the floor doesn't have can be placed nowhere —
+# not even back where it already stands — and most levels shipped with a
+# toilet and a sink in exactly that state: frozen in place.
 func _floor_category_ok(furn_category: String, tile_kind: String) -> bool:
 	if tile_kind == "balcony":
 		return furn_category == "balcony"
 	if furn_category == "balcony":
-		return false
+		return not has_floor_kind("balcony")
 	if furn_category == "bathroom" and tile_kind != "bathroom":
-		return false
+		return not has_floor_kind("bathroom")
 	return true
+
+
+# Whether any tile of this floor is painted with the given kind.
+func has_floor_kind(kind: String) -> bool:
+	return floor_kind.values().has(kind)
+
+
+# The pieces whose footprint the flooring rule rejects where they stand —
+# used by the level editor to warn before saving a level that would trap
+# them. Each entry is a furniture id.
+func floor_category_problem(furn_category: String, at: Vector2i, w: int, h: int) -> String:
+	if furn_category == "":
+		return ""
+	for dx in range(w):
+		for dy in range(h):
+			if not _floor_category_ok(furn_category, get_tile_kind(Vector2i(at.x + dx, at.y + dy))):
+				return "needs %s flooring" % furn_category
+	return ""
 
 
 func is_floor_tile(tile: Vector2i) -> bool:
@@ -1223,6 +1248,21 @@ func _recalculate_zones() -> void:
 					break
 		zones.append({"tiles": zone_tiles, "functions": zone_fns, "furniture_ids": zone_fids})
 	grid_draw.queue_redraw()
+
+
+# Whether this piece is actually on the floor's books (placed), as opposed to
+# a purchase ghost that is only a child node so far.
+func is_registered(furniture: Furniture) -> bool:
+	for entry in _placed_continuous:
+		if entry["furniture"] == furniture:
+			return true
+	return false
+
+
+# Takes a piece off the floor's books without freeing it. Safe to call for a
+# piece that was never placed.
+func forget_furniture(furniture: Furniture) -> void:
+	_remove_from_grid(furniture)
 
 
 func _remove_from_grid(furniture: Furniture) -> void:

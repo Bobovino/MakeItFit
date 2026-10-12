@@ -10,6 +10,7 @@ signal moment_selected(moment_id: String)
 
 # flat-list mode
 var _check_chips: Dictionary = {}   # func_name -> Control
+var _tenant_name: String = ""       # for the "ALEX NEEDS" lead-in, see _add_goal_label()
 
 # Suppresses the ✓-pop animation for the burst of updates right after a level
 # loads — only flips caused by the player's own actions should celebrate.
@@ -120,6 +121,7 @@ func set_rent_available(_available: bool) -> void:
 
 
 func setup(tenant: Dictionary) -> void:
+	_tenant_name = str(tenant.get("name", ""))
 	tenant_name_label.text = "%s, %d" % [tenant["name"], int(str(tenant["age"]))]
 	flavor_label.text = tenant["flavor"]
 	rent_label.text = "%d€ / month" % tenant["monthly_rent"]
@@ -147,8 +149,25 @@ func _clear_checklist() -> void:
 	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
 
 
+# The bar is the level's goal, so it says so: "ALEX NEEDS" in front of the
+# chips, and each chip carries its need's name. Icons alone left a new
+# player looking at two unlabelled squares with no idea they were the
+# objective.
+func _add_goal_label() -> void:
+	var lbl := Label.new()
+	lbl.text = ("%s NEEDS" % _tenant_name.to_upper()) if _tenant_name != "" else "NEEDS"
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_color_override("font_color", INK_MUTED)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lbl.tooltip_text = "Furnish the apartment so every need here is ticked"
+	lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+	checklist_container.add_child(lbl)
+
+
 func _build_checklist(required: Array) -> void:
 	_clear_checklist()
+	_add_goal_label()
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 7)
 	row.add_theme_constant_override("v_separation", 7)
@@ -167,6 +186,7 @@ func _build_checklist(required: Array) -> void:
 func _build_moment_checklist() -> void:
 	_clear_checklist()
 	_moment_check_chips = {}
+	_add_goal_label()
 
 	# Chrome-tab strip: every moment's tab sits in one connected row up front,
 	# always visible regardless of which one is active.
@@ -277,24 +297,37 @@ func highlight_moment(moment_id: String) -> void:
 # say about a need than "done or not."
 func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(30, 30)
-	chip.tooltip_text = func_name.capitalize()
+	chip.custom_minimum_size = Vector2(0, 30)
+	chip.tooltip_text = "%s — place furniture that provides it" % func_name.capitalize()
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Icon, name, then the tick or cross: readable without hovering.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(row)
 
 	var glyph := Label.new()
 	glyph.text = NEED_GLYPH.get(func_name, "❔") as String
-	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	glyph.add_theme_font_size_override("font_size", 15)
-	chip.add_child(glyph)
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(glyph)
+
+	var name_lbl := Label.new()
+	name_lbl.text = func_name.capitalize()
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(name_lbl)
 
 	var badge := Label.new()
 	badge.name = "Badge"
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	badge.add_theme_font_size_override("font_size", 11)
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.add_theme_font_size_override("font_size", 13)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_child(badge)
+	row.add_child(badge)
 
 	_paint_need_chip(chip, satisfied)
 	return chip
@@ -302,7 +335,7 @@ func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 
 func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = false) -> void:
 	chip.add_theme_stylebox_override("panel", _chip_style(satisfied, showcased))
-	var badge := chip.get_node("Badge") as Label
+	var badge := chip.find_child("Badge", true, false) as Label
 	if satisfied:
 		badge.text = "✓"
 		badge.add_theme_color_override("font_color", Color(0.180, 0.420, 0.160))
@@ -332,6 +365,10 @@ static func _chip_style(satisfied: bool, showcased: bool = false) -> StyleBoxFla
 	else:
 		s.set_border_width_all(1)
 	s.set_corner_radius_all(7)
+	s.set_content_margin(SIDE_LEFT, 8)
+	s.set_content_margin(SIDE_RIGHT, 8)
+	s.set_content_margin(SIDE_TOP, 2)
+	s.set_content_margin(SIDE_BOTTOM, 2)
 	s.anti_aliasing = true
 	return s
 

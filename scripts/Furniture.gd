@@ -466,10 +466,14 @@ func _draw() -> void:
 	# only the fill/hatch/symbol need to actually spin.
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# Name label
+	# Name label: dark ink with a light halo. The piece's own ink colour is
+	# close to its fill and to the white of its symbol, which left names like
+	# "Bathtub" all but invisible.
+	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1.0, 0.98, 0.94, 0.85))
 	draw_string(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7,
-		Color(ink.r, ink.g, ink.b, 0.90))
+		Color(0.07, 0.14, 0.26, 0.95))
 
 	# Mobility tier badge — a small always-visible dot in the corner (color
 	# alone reads at any size) plus the feather-count text once there's room
@@ -483,11 +487,15 @@ func _draw() -> void:
 		_:        tier_col = GameTheme.C_BAD
 	const BADGE_R := 3.0
 	draw_circle(Vector2(w - BADGE_R - 3.0, BADGE_R + 3.0), BADGE_R, tier_col)
-	if w >= 40.0:
-		var feathers := "🪶" if mobility_tier == "green" else ("🪶🪶" if mobility_tier == "yellow" else "🪶🪶🪶")
-		var ffont := ThemeDB.fallback_font
-		const FSIZE := 8
-		var ftw := ffont.get_string_size(feathers, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
+	var feathers := "🪶" if mobility_tier == "green" else ("🪶🪶" if mobility_tier == "yellow" else "🪶🪶🪶")
+	var ffont := ThemeDB.fallback_font
+	const FSIZE := 8
+	var ftw := ffont.get_string_size(feathers, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
+	# Feathers only where they fit beside the name: on a narrow piece they
+	# were drawn straight over it ("Toilet", "Sink"). The dot alone carries
+	# the same information.
+	var name_w := ffont.get_string_size(furniture_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+	if w >= maxf(40.0, name_w + ftw + BADGE_R * 2 + 16.0):
 		draw_string(ffont, Vector2(w - BADGE_R * 2 - 6.0 - ftw, BADGE_R * 2 + 6.0), feathers,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, tier_col)
 
@@ -1550,7 +1558,8 @@ func set_rot_steps(n: int) -> void:
 	# Dimensions just swapped under whatever footprint the floor already has
 	# registered at grid_pos (from the initial, un-rotated spawn) — re-place
 	# so the occupancy grid matches the new w/h, same as _rotate() does.
-	if changed and _wall_ref:
+	# Only for a piece that is on the floor's books: see _rotate().
+	if changed and _wall_ref and _wall_ref.is_registered(self):
 		_wall_ref.place_furniture(self, grid_pos)
 	queue_redraw()
 
@@ -1560,7 +1569,14 @@ func _rotate() -> void:
 	rot_steps = (rot_steps + 1) % 4
 	var new_w := grid_h
 	var new_h := grid_w
-	if _wall_ref:
+	# Re-register on the floor only if this piece is already placed there. A
+	# piece still being bought (R pressed while the ghost follows the cursor,
+	# in the plan or in 3D) is not on the floor yet, and place_furniture()
+	# would put it there — unvalidated, wherever grid_pos happens to be. If
+	# the purchase was then cancelled, or dropped on a wall instead, the node
+	# was freed while still on the floor's books, and every later refresh
+	# (comfort, functions, accessibility, undo) tripped over the dead entry.
+	if _wall_ref and _wall_ref.is_registered(self):
 		var cx := clampf(grid_pos.x, 0.0, float(_wall_ref.grid_w - new_w))
 		var cy := clampf(grid_pos.y, 0.0, float(_wall_ref.grid_h - new_h))
 		grid_w = new_w
@@ -1644,6 +1660,8 @@ func cancel_placement() -> void:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
 	placement_cancelled.emit()
+	if _wall_ref:
+		_wall_ref.forget_furniture(self)   # never leave a freed node on the floor's books
 	queue_free()
 
 

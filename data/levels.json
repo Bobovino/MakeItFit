@@ -81940,8 +81940,8 @@
 				{
 					"child_level_id": "debug:_nested_child",
 					"id": "shoebox_apartment",
-					"x": 20.0,
-					"y": 20.0
+					"x": 8.0,
+					"y": 24.0
 				},
 				{
 					"id": "wardrobe",
