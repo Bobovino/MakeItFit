@@ -20,6 +20,174 @@
       "mobility_tier": "green"
     },
     {
+      "id": "rental_capsule",
+      "name": "Capsule Pod",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 4
+      },
+      "wall_h": 5,
+      "floor_depth": 4,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -80,
+      "sell_price": -80,
+      "color": "c9d6df",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:capsule",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_student",
+      "name": "Student Shoebox",
+      "placement": "floor",
+      "size": {
+        "w": 5,
+        "h": 5
+      },
+      "wall_h": 5,
+      "floor_depth": 5,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -120,
+      "sell_price": -120,
+      "color": "e0c890",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:student",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_bunk",
+      "name": "Backpacker Bunk",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 4
+      },
+      "wall_h": 5,
+      "floor_depth": 4,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -110,
+      "sell_price": -110,
+      "color": "b8d0a8",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:bunk",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_garret",
+      "name": "Artist's Garret",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 6
+      },
+      "wall_h": 5,
+      "floor_depth": 6,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -170,
+      "sell_price": -170,
+      "color": "d8a890",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:garret",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_nook",
+      "name": "Night-Shift Nook",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 5
+      },
+      "wall_h": 5,
+      "floor_depth": 5,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -190,
+      "sell_price": -190,
+      "color": "a8a8c8",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:nook",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_couple",
+      "name": "Couple's Crate",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 6
+      },
+      "wall_h": 5,
+      "floor_depth": 6,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -230,
+      "sell_price": -230,
+      "color": "e0b0b8",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:couple",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_family",
+      "name": "Family Carton",
+      "placement": "floor",
+      "size": {
+        "w": 10,
+        "h": 6
+      },
+      "wall_h": 5,
+      "floor_depth": 6,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -290,
+      "sell_price": -290,
+      "color": "d8c070",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:family",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
+      "id": "rental_penthouse",
+      "name": "Penthouse-in-a-Box",
+      "placement": "floor",
+      "size": {
+        "w": 10,
+        "h": 8
+      },
+      "wall_h": 5,
+      "floor_depth": 8,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": -380,
+      "sell_price": -380,
+      "color": "e8e0d0",
+      "is_nested_box": true,
+      "rental": true,
+      "child_level_id": "rental:penthouse",
+      "model": "res://assets/models/furniture/cardboardBoxOpen.glb",
+      "mobility_tier": "green"
+    },
+    {
       "id": "normal_bed",
       "name": "Bed",
       "placement": "floor",

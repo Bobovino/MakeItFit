@@ -903,7 +903,7 @@ func _load_level(level_id: String) -> void:
 	# _load_gen against _level_load_id after every await so a stale tail is a
 	# harmless no-op instead of popping a results screen for a level that no
 	# longer matches what's on screen.
-	if _use_saved and gm.check_win():
+	if _use_saved and _level_has_goal() and gm.check_win():
 		_show_existing_completion(level_id, _load_gen)
 
 
@@ -1028,6 +1028,10 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	# A level can author a piece already turned ("rot_steps": quarter turns).
+	var authored_rot := rail_data.get("rot_steps", 0) as int
+	if authored_rot != 0:
+		f.set_rot_steps(authored_rot)
 	# Trust the explicit coordinates from the level editor; skip can_place so the
 	# furniture lands exactly where the designer placed it regardless of floor-tile
 	# bounds checks (the editor validated the position visually).
@@ -2346,6 +2350,7 @@ func _ensure_mode3d_view() -> void:
 			if _mode3d_view.wall_sell_requested.is_connected(old_wall):
 				_mode3d_view.wall_sell_requested.disconnect(old_wall)
 		_mode3d_view.sell_requested.connect(_on_sell_pressed.bind(fl))
+		_mode3d_view.budget_getter = func() -> int: return gm.budget
 		_mode3d_view.wall_sell_requested.connect(_on_wall_sell_pressed.bind(fl))
 		_mode3d_sell_floor = fl
 	_mode3d_view.offset_left   = LEFT_X
@@ -2846,6 +2851,14 @@ func _on_buy_requested(furniture_id: String) -> void:
 		return
 	if gm.budget < (fdata.get("buy_price", 0) as int):
 		return
+	# Each rental box is one particular tenant's home, so an apartment takes
+	# one of each.
+	if fdata.get("rental", false) as bool:
+		for box in _collect_nested_boxes():
+			if box.furniture_id == furniture_id:
+				Audio.play("error")
+				_set_mode_hint("%s is already renting here — pick a different box." % (fdata.get("name", "") as String))
+				return
 	# Something that only goes on a wall can't be placed from the plan now
 	# that walls aren't opened there: go to the 3D view, where it can be
 	# dragged straight onto one.
@@ -2943,7 +2956,13 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 	# piece from its own cache; this is the plan's path and the backstop.)
 	if is_instance_valid(furniture) and furniture.keepsake:
 		Audio.play("error")
-		_set_mode_hint("%s stays — the tenant won't part with it. You can still move it." % furniture.furniture_name)
+		_set_mode_hint("♥ %s is a keepsake: it can be moved, not sold." % furniture.furniture_name)
+		return
+	# Taking a rental box back out means handing its rent back.
+	if is_instance_valid(furniture) and furniture.buy_price < 0 and gm.budget < -furniture.buy_price:
+		Audio.play("error")
+		_set_mode_hint("Removing %s means repaying its %d€ rent — you only have %d€." % [
+			furniture.furniture_name, -furniture.buy_price, gm.budget])
 		return
 	Audio.play("sell")
 	gm.sell_furniture(furniture.furniture_id)
@@ -3048,9 +3067,15 @@ func _on_moments_updated(results: Dictionary) -> void:
 # (superseded by the TenantCard bar), kept only as a convenient bool holder
 # for the previous/current satisfied state so the edge below has something to
 # compare against.
+# A level that asks for nothing (the inside of a rental box) has nothing to
+# complete, so it never shows the "rented out" screen.
+func _level_has_goal() -> bool:
+	return not gm.required_functions.is_empty() or not gm.moments.is_empty()
+
+
 func _update_rent_btn() -> void:
 	var was_disabled := rent_btn.disabled
-	rent_btn.disabled = not gm.check_win() or not _all_furniture_accessible()
+	rent_btn.disabled = not _level_has_goal() or not gm.check_win() or not _all_furniture_accessible()
 	tenant_card.set_rent_available(not rent_btn.disabled)
 	# _rent_auto_armed stays false until _load_level() has finished spawning
 	# the level's starting furniture and synced this same baseline — otherwise

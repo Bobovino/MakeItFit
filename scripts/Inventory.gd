@@ -14,7 +14,7 @@ enum Category { FURNITURE, BUILDER }
 
 # Sub-categories within the Furniture tab — icon-grid browsing instead of one
 # long scrolling list, most valuable once the catalog is 40-60+ pieces.
-const SUB_CATEGORIES := ["All", "Bedroom", "Bathroom", "Kitchen", "Living", "Storage", "Transformable"]
+const SUB_CATEGORIES := ["All", "Bedroom", "Bathroom", "Kitchen", "Living", "Storage", "Transformable", "Rentals"]
 
 # Icon-only filter tabs — same glyph language as TenantCard's need chips, so
 # the sub-category row reads as a compact row of pictograms instead of a wall
@@ -27,7 +27,13 @@ const SUB_CATEGORY_GLYPH := {
 	"Living":        "🛋",
 	"Storage":       "📦",
 	"Transformable": "🔀",
+	"Rentals":       "💰",
 }
+
+
+# A rental box has a negative price: placing it pays the player its rent.
+static func price_text(price: int) -> String:
+	return ("+%d€" % -price) if price < 0 else ("%d€" % price)
 
 var _gm: GameManager = null
 var _category: int = Category.FURNITURE
@@ -219,6 +225,8 @@ func _is_builder(f: Dictionary) -> bool:
 # (e.g. a foldable bed is filed under Transformable first, since that's the
 # more useful thing to know about it while browsing).
 func _sub_category_of(f: Dictionary) -> String:
+	if f.get("rental", false) as bool:
+		return "Rentals"
 	if (f.get("foldable", false) as bool) or (f.get("rail_axis", "") as String) != "":
 		return "Transformable"
 	var functions := f.get("functions", []) as Array
@@ -487,7 +495,11 @@ class ItemCell extends PanelContainer:
 		vb.add_child(icon_row)
 
 		var price_lbl := Label.new()
-		price_lbl.text = "%d€" % (fdata.get("buy_price", 0) as int)
+		price_lbl.text = Inventory.price_text(fdata.get("buy_price", 0) as int)
+		if fdata.get("rental", false) as bool:
+			# Rental boxes share one icon; their footprint is what tells them apart.
+			var fp := fdata.get("size", {}) as Dictionary
+			price_lbl.text += "\n%d×%d cm" % [(fp.get("w", 0) as int) * 10, (fp.get("h", 0) as int) * 10]
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		price_lbl.add_theme_font_size_override("font_size", 11)
 		price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
@@ -686,7 +698,8 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	vb.add_child(sep)
 
 	var price_lbl := Label.new()
-	price_lbl.text = "Buy: %d€" % (f.get("buy_price", 0) as int)
+	var hover_price := f.get("buy_price", 0) as int
+	price_lbl.text = ("Rent: +%d€ — a tenant pays you for the space" % -hover_price) if hover_price < 0 else ("Buy: %d€" % hover_price)
 	price_lbl.add_theme_font_size_override("font_size", 11)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
 	vb.add_child(price_lbl)
@@ -814,7 +827,7 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 	vb.add_child(bottom_row)
 
 	var price_lbl := Label.new()
-	price_lbl.text = "%d€" % f["buy_price"]
+	price_lbl.text = Inventory.price_text(f["buy_price"] as int)
 	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	price_lbl.add_theme_font_size_override("font_size", 11)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))

@@ -1101,11 +1101,35 @@ func _cancel_buy() -> void:
 	buy_cancelled.emit(f)
 
 
+# The plan marks a keepsake with a heart after its name; in 3D, where pieces
+# have no labels, the heart floats above the piece itself.
+func _add_keepsake_mark(mesh: Node3D, height_m: float) -> void:
+	var heart := Label3D.new()
+	heart.text = "♥"
+	heart.font_size = 64
+	heart.pixel_size = 0.0022
+	heart.modulate = Color(0.86, 0.22, 0.30)
+	heart.outline_size = 14
+	heart.outline_modulate = Color(1.0, 0.97, 0.93)
+	heart.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	heart.no_depth_test = true
+	heart.fixed_size = false
+	heart.position = Vector3(0.0, height_m * 0.5 + 0.12, 0.0)
+	mesh.add_child(heart)
+
+
+# Set by Main: the current budget, so a rental box whose rent can no longer
+# be repaid is refused here, before it is dropped from this view's cache.
+var budget_getter: Callable
+
 func _sell_furniture(hit: Dictionary) -> void:
 	var f: Furniture = hit["furniture"]
 	if f.keepsake:
 		# Refused here, before the piece is dropped from this view's cache.
-		_flash_reason("%s stays — the tenant won't part with it" % f.furniture_name)
+		_flash_reason("♥ %s is a keepsake: it can be moved, not sold" % f.furniture_name)
+		return
+	if f.buy_price < 0 and budget_getter.is_valid() and (budget_getter.call() as int) < -f.buy_price:
+		_flash_reason("Removing %s means repaying its %d€ rent" % [f.furniture_name, -f.buy_price])
 		return
 	remove_furniture_entry(f)
 	_set_grid_overlay_visible(false)
@@ -3861,6 +3885,8 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	else:
 		_apply_item_model(mi, _active_model_path(fdata, f.is_extended), canon_size, fdata.get("hide_nodes", []) as Array)
 	_style_if_bare(mi)
+	if f.keepsake:
+		_add_keepsake_mark(mi, height_m)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 	_set_rail_indicator(mi, f, Vector2(fw, fd))

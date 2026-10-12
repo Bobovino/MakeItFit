@@ -641,34 +641,34 @@
 								"window_len": 12,
 								"window_pos": 8,
 								"x1": 1,
-								"x2": 47,
+								"x2": 55,
 								"y1": 1,
 								"y2": 1
 							},
 							{
 								"demolished": false,
 								"primary": true,
-								"x1": 47,
-								"x2": 47,
+								"x1": 55,
+								"x2": 55,
 								"y1": 1,
-								"y2": 33
+								"y2": 39
 							},
 							{
 								"demolished": false,
 								"primary": true,
-								"x1": 47,
+								"x1": 55,
 								"x2": 1,
-								"y1": 33,
-								"y2": 33
+								"y1": 39,
+								"y2": 39
 							},
 							{
 								"demolished": false,
-								"door_pos": 9,
+								"door_pos": 11,
 								"has_door": true,
 								"primary": true,
 								"x1": 1,
 								"x2": 1,
-								"y1": 33,
+								"y1": 39,
 								"y2": 1
 							}
 						],
@@ -703,8 +703,8 @@
 						"type": "roof"
 					}
 				],
-				"grid_h": 40,
-				"grid_w": 54,
+				"grid_h": 46,
+				"grid_w": 62,
 				"hidden_floors": [
 					"fl_0_ceil",
 					"roof"
@@ -732,44 +732,77 @@
 			"starting_budget": 330,
 			"starting_furniture": [
 				{
-					"id": "wardrobe",
-					"keepsake": true,
-					"x": 2,
-					"y": 2
-				},
-				{
-					"id": "bookshelf",
-					"keepsake": true,
-					"x": 18,
-					"y": 2
-				},
-				{
-					"id": "dresser",
-					"keepsake": true,
-					"x": 15,
-					"y": 8
-				},
-				{
 					"id": "double_bed",
 					"keepsake": true,
-					"x": 2,
+					"x": 28,
 					"y": 16
 				},
 				{
 					"id": "dining_table",
 					"keepsake": true,
-					"x": 30,
+					"x": 35,
+					"y": 2
+				},
+				{
+					"id": "tv_stand",
+					"keepsake": true,
+					"x": 2,
+					"y": 34
+				},
+				{
+					"id": "dresser",
+					"keepsake": true,
+					"x": 2,
+					"y": 2
+				},
+				{
+					"id": "wardrobe",
+					"keepsake": true,
+					"x": 10,
 					"y": 14
 				},
 				{
-					"id": "toilet",
-					"x": 40,
+					"id": "bookshelf",
+					"keepsake": true,
+					"rot_steps": 1,
+					"x": 20,
 					"y": 2
 				},
 				{
-					"id": "sink",
-					"x": 32,
+					"id": "floor_mirror",
+					"keepsake": true,
+					"x": 27,
 					"y": 2
+				},
+				{
+					"id": "nightstand",
+					"keepsake": true,
+					"x": 6,
+					"y": 24
+				},
+				{
+					"id": "nightstand",
+					"keepsake": true,
+					"rot_steps": 1,
+					"x": 16,
+					"y": 25
+				},
+				{
+					"id": "floor_lamp",
+					"keepsake": true,
+					"x": 36,
+					"y": 36
+				},
+				{
+					"id": "toilet",
+					"rot_steps": 1,
+					"x": 43,
+					"y": 34
+				},
+				{
+					"id": "sink",
+					"x": 26,
+					"y": 34
 				}
 			],
 			"starting_inventory": [],
@@ -18509,6 +18542,178 @@
 							[
 								160.0,
 								161.0
+							],
+							[
+								111,
+								119
+							],
+							[
+								111,
+								120
+							],
+							[
+								111,
+								121
+							],
+							[
+								111,
+								122
+							],
+							[
+								111,
+								123
+							],
+							[
+								111,
+								124
+							],
+							[
+								111,
+								125
+							],
+							[
+								111,
+								126
+							],
+							[
+								111,
+								127
+							],
+							[
+								111,
+								128
+							],
+							[
+								111,
+								129
+							],
+							[
+								111,
+								130
+							],
+							[
+								111,
+								131
+							],
+							[
+								111,
+								132
+							],
+							[
+								111,
+								133
+							],
+							[
+								111,
+								134
+							],
+							[
+								111,
+								135
+							],
+							[
+								111,
+								136
+							],
+							[
+								111,
+								137
+							],
+							[
+								111,
+								138
+							],
+							[
+								111,
+								139
+							],
+							[
+								111,
+								140
+							],
+							[
+								111,
+								141
+							],
+							[
+								111,
+								142
+							],
+							[
+								111,
+								143
+							],
+							[
+								111,
+								144
+							],
+							[
+								111,
+								145
+							],
+							[
+								111,
+								146
+							],
+							[
+								111,
+								147
+							],
+							[
+								111,
+								148
+							],
+							[
+								111,
+								149
+							],
+							[
+								111,
+								150
+							],
+							[
+								111,
+								151
+							],
+							[
+								111,
+								152
+							],
+							[
+								111,
+								153
+							],
+							[
+								111,
+								154
+							],
+							[
+								111,
+								155
+							],
+							[
+								111,
+								156
+							],
+							[
+								111,
+								157
+							],
+							[
+								111,
+								158
+							],
+							[
+								111,
+								159
+							],
+							[
+								111,
+								160
+							],
+							[
+								111,
+								161
 							]
 						],
 						"grid_h": 300.0,
@@ -28674,6 +28879,178 @@
 							[
 								160.0,
 								161.0
+							],
+							[
+								111,
+								119
+							],
+							[
+								111,
+								120
+							],
+							[
+								111,
+								121
+							],
+							[
+								111,
+								122
+							],
+							[
+								111,
+								123
+							],
+							[
+								111,
+								124
+							],
+							[
+								111,
+								125
+							],
+							[
+								111,
+								126
+							],
+							[
+								111,
+								127
+							],
+							[
+								111,
+								128
+							],
+							[
+								111,
+								129
+							],
+							[
+								111,
+								130
+							],
+							[
+								111,
+								131
+							],
+							[
+								111,
+								132
+							],
+							[
+								111,
+								133
+							],
+							[
+								111,
+								134
+							],
+							[
+								111,
+								135
+							],
+							[
+								111,
+								136
+							],
+							[
+								111,
+								137
+							],
+							[
+								111,
+								138
+							],
+							[
+								111,
+								139
+							],
+							[
+								111,
+								140
+							],
+							[
+								111,
+								141
+							],
+							[
+								111,
+								142
+							],
+							[
+								111,
+								143
+							],
+							[
+								111,
+								144
+							],
+							[
+								111,
+								145
+							],
+							[
+								111,
+								146
+							],
+							[
+								111,
+								147
+							],
+							[
+								111,
+								148
+							],
+							[
+								111,
+								149
+							],
+							[
+								111,
+								150
+							],
+							[
+								111,
+								151
+							],
+							[
+								111,
+								152
+							],
+							[
+								111,
+								153
+							],
+							[
+								111,
+								154
+							],
+							[
+								111,
+								155
+							],
+							[
+								111,
+								156
+							],
+							[
+								111,
+								157
+							],
+							[
+								111,
+								158
+							],
+							[
+								111,
+								159
+							],
+							[
+								111,
+								160
+							],
+							[
+								111,
+								161
 							]
 						],
 						"grid_h": 300.0,
@@ -38885,6 +39262,178 @@
 							[
 								160.0,
 								161.0
+							],
+							[
+								111,
+								119
+							],
+							[
+								111,
+								120
+							],
+							[
+								111,
+								121
+							],
+							[
+								111,
+								122
+							],
+							[
+								111,
+								123
+							],
+							[
+								111,
+								124
+							],
+							[
+								111,
+								125
+							],
+							[
+								111,
+								126
+							],
+							[
+								111,
+								127
+							],
+							[
+								111,
+								128
+							],
+							[
+								111,
+								129
+							],
+							[
+								111,
+								130
+							],
+							[
+								111,
+								131
+							],
+							[
+								111,
+								132
+							],
+							[
+								111,
+								133
+							],
+							[
+								111,
+								134
+							],
+							[
+								111,
+								135
+							],
+							[
+								111,
+								136
+							],
+							[
+								111,
+								137
+							],
+							[
+								111,
+								138
+							],
+							[
+								111,
+								139
+							],
+							[
+								111,
+								140
+							],
+							[
+								111,
+								141
+							],
+							[
+								111,
+								142
+							],
+							[
+								111,
+								143
+							],
+							[
+								111,
+								144
+							],
+							[
+								111,
+								145
+							],
+							[
+								111,
+								146
+							],
+							[
+								111,
+								147
+							],
+							[
+								111,
+								148
+							],
+							[
+								111,
+								149
+							],
+							[
+								111,
+								150
+							],
+							[
+								111,
+								151
+							],
+							[
+								111,
+								152
+							],
+							[
+								111,
+								153
+							],
+							[
+								111,
+								154
+							],
+							[
+								111,
+								155
+							],
+							[
+								111,
+								156
+							],
+							[
+								111,
+								157
+							],
+							[
+								111,
+								158
+							],
+							[
+								111,
+								159
+							],
+							[
+								111,
+								160
+							],
+							[
+								111,
+								161
 							]
 						],
 						"grid_h": 300.0,
@@ -79239,408 +79788,7 @@
 					{
 						"columns": [],
 						"floor_kinds": [],
-						"floor_tiles": [
-							[
-								19.0,
-								21.0
-							],
-							[
-								20.0,
-								21.0
-							],
-							[
-								21.0,
-								21.0
-							],
-							[
-								22.0,
-								21.0
-							],
-							[
-								23.0,
-								21.0
-							],
-							[
-								24.0,
-								21.0
-							],
-							[
-								25.0,
-								21.0
-							],
-							[
-								26.0,
-								21.0
-							],
-							[
-								27.0,
-								21.0
-							],
-							[
-								28.0,
-								21.0
-							],
-							[
-								19.0,
-								22.0
-							],
-							[
-								20.0,
-								22.0
-							],
-							[
-								21.0,
-								22.0
-							],
-							[
-								22.0,
-								22.0
-							],
-							[
-								23.0,
-								22.0
-							],
-							[
-								24.0,
-								22.0
-							],
-							[
-								25.0,
-								22.0
-							],
-							[
-								26.0,
-								22.0
-							],
-							[
-								27.0,
-								22.0
-							],
-							[
-								28.0,
-								22.0
-							],
-							[
-								19.0,
-								23.0
-							],
-							[
-								20.0,
-								23.0
-							],
-							[
-								21.0,
-								23.0
-							],
-							[
-								22.0,
-								23.0
-							],
-							[
-								23.0,
-								23.0
-							],
-							[
-								24.0,
-								23.0
-							],
-							[
-								25.0,
-								23.0
-							],
-							[
-								26.0,
-								23.0
-							],
-							[
-								27.0,
-								23.0
-							],
-							[
-								28.0,
-								23.0
-							],
-							[
-								19.0,
-								24.0
-							],
-							[
-								20.0,
-								24.0
-							],
-							[
-								21.0,
-								24.0
-							],
-							[
-								22.0,
-								24.0
-							],
-							[
-								23.0,
-								24.0
-							],
-							[
-								24.0,
-								24.0
-							],
-							[
-								25.0,
-								24.0
-							],
-							[
-								26.0,
-								24.0
-							],
-							[
-								27.0,
-								24.0
-							],
-							[
-								28.0,
-								24.0
-							],
-							[
-								19.0,
-								25.0
-							],
-							[
-								20.0,
-								25.0
-							],
-							[
-								21.0,
-								25.0
-							],
-							[
-								22.0,
-								25.0
-							],
-							[
-								23.0,
-								25.0
-							],
-							[
-								24.0,
-								25.0
-							],
-							[
-								25.0,
-								25.0
-							],
-							[
-								26.0,
-								25.0
-							],
-							[
-								27.0,
-								25.0
-							],
-							[
-								28.0,
-								25.0
-							],
-							[
-								19.0,
-								26.0
-							],
-							[
-								20.0,
-								26.0
-							],
-							[
-								21.0,
-								26.0
-							],
-							[
-								22.0,
-								26.0
-							],
-							[
-								23.0,
-								26.0
-							],
-							[
-								24.0,
-								26.0
-							],
-							[
-								25.0,
-								26.0
-							],
-							[
-								26.0,
-								26.0
-							],
-							[
-								27.0,
-								26.0
-							],
-							[
-								28.0,
-								26.0
-							],
-							[
-								19.0,
-								27.0
-							],
-							[
-								20.0,
-								27.0
-							],
-							[
-								21.0,
-								27.0
-							],
-							[
-								22.0,
-								27.0
-							],
-							[
-								23.0,
-								27.0
-							],
-							[
-								24.0,
-								27.0
-							],
-							[
-								25.0,
-								27.0
-							],
-							[
-								26.0,
-								27.0
-							],
-							[
-								27.0,
-								27.0
-							],
-							[
-								28.0,
-								27.0
-							],
-							[
-								19.0,
-								28.0
-							],
-							[
-								20.0,
-								28.0
-							],
-							[
-								21.0,
-								28.0
-							],
-							[
-								22.0,
-								28.0
-							],
-							[
-								23.0,
-								28.0
-							],
-							[
-								24.0,
-								28.0
-							],
-							[
-								25.0,
-								28.0
-							],
-							[
-								26.0,
-								28.0
-							],
-							[
-								27.0,
-								28.0
-							],
-							[
-								28.0,
-								28.0
-							],
-							[
-								19.0,
-								29.0
-							],
-							[
-								20.0,
-								29.0
-							],
-							[
-								21.0,
-								29.0
-							],
-							[
-								22.0,
-								29.0
-							],
-							[
-								23.0,
-								29.0
-							],
-							[
-								24.0,
-								29.0
-							],
-							[
-								25.0,
-								29.0
-							],
-							[
-								26.0,
-								29.0
-							],
-							[
-								27.0,
-								29.0
-							],
-							[
-								28.0,
-								29.0
-							],
-							[
-								19.0,
-								30.0
-							],
-							[
-								20.0,
-								30.0
-							],
-							[
-								21.0,
-								30.0
-							],
-							[
-								22.0,
-								30.0
-							],
-							[
-								23.0,
-								30.0
-							],
-							[
-								24.0,
-								30.0
-							],
-							[
-								25.0,
-								30.0
-							],
-							[
-								26.0,
-								30.0
-							],
-							[
-								27.0,
-								30.0
-							],
-							[
-								28.0,
-								30.0
-							]
-						],
+						"floor_tiles": [],
 						"id": "fl_0",
 						"label": "Ground Floor",
 						"mezzanine_tiles": [],
@@ -80179,6 +80327,1078 @@
 							24
 						]
 					}
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 51,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 51,
+								"x2": 51,
+								"y1": 1,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 51,
+								"x2": 1,
+								"y1": 41,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 41,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 48,
+				"grid_w": 58,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:capsule",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Capsule Pod",
+			"palette": "slate",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "normal_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "nightstand",
+					"x": 24,
+					"y": 3
+				},
+				{
+					"id": "floor_lamp",
+					"x": 44,
+					"y": 3
+				},
+				{
+					"id": "stool",
+					"x": 30,
+					"y": 28
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "A bed, a lamp, a door that locks. He is only here to sleep.",
+				"monthly_rent": 0,
+				"name": "Kenji",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 53,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 53,
+								"x2": 53,
+								"y1": 1,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 53,
+								"x2": 1,
+								"y1": 41,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 41,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 48,
+				"grid_w": 60,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:student",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Student Shoebox",
+			"palette": "teal",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "normal_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "desk",
+					"x": 30,
+					"y": 3
+				},
+				{
+					"id": "bookshelf",
+					"x": 3,
+					"y": 34
+				},
+				{
+					"id": "wardrobe",
+					"x": 38,
+					"y": 30
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "First room of her own. The desk matters more than the bed.",
+				"monthly_rent": 0,
+				"name": "Imke",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 57,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 57,
+								"x2": 57,
+								"y1": 1,
+								"y2": 39
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 57,
+								"x2": 1,
+								"y1": 39,
+								"y2": 39
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 39,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 46,
+				"grid_w": 64,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:bunk",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Backpacker Bunk",
+			"palette": "sage",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "bunk_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "bunk_bed",
+					"x": 3,
+					"y": 24
+				},
+				{
+					"id": "wardrobe",
+					"x": 42,
+					"y": 3
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "They split the rent three ways and are gone by Friday.",
+				"monthly_rent": 0,
+				"name": "Three backpackers",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 51,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 51,
+								"x2": 51,
+								"y1": 1,
+								"y2": 45
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 51,
+								"x2": 1,
+								"y1": 45,
+								"y2": 45
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 45,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 52,
+				"grid_w": 58,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:garret",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Artist's Garret",
+			"palette": "terracotta",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "normal_bed",
+					"x": 3,
+					"y": 32
+				},
+				{
+					"id": "desk",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "stool",
+					"x": 7,
+					"y": 12
+				},
+				{
+					"id": "lounge_chair",
+					"x": 36,
+					"y": 22
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "Paints at night, sleeps at noon, pays on time.",
+				"monthly_rent": 0,
+				"name": "Odile",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 61,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 61,
+								"x2": 61,
+								"y1": 1,
+								"y2": 37
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 61,
+								"x2": 1,
+								"y1": 37,
+								"y2": 37
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 37,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 44,
+				"grid_w": 68,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:nook",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Night-Shift Nook",
+			"palette": "plum",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "normal_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "sofa",
+					"x": 34,
+					"y": 22
+				},
+				{
+					"id": "coffee_table",
+					"x": 22,
+					"y": 24
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "Works nights at the harbour. Needs it dark and quiet by day.",
+				"monthly_rent": 0,
+				"name": "Tomasz",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 59,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 59,
+								"x2": 59,
+								"y1": 1,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 59,
+								"x2": 1,
+								"y1": 41,
+								"y2": 41
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 41,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 48,
+				"grid_w": 66,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:couple",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Couple's Crate",
+			"palette": "dusty_rose",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "double_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "wardrobe",
+					"x": 32,
+					"y": 3
+				},
+				{
+					"id": "tv_stand",
+					"x": 34,
+					"y": 30
+				},
+				{
+					"id": "nightstand",
+					"x": 46,
+					"y": 3
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "Saving for a place of their own. This will do until then.",
+				"monthly_rent": 0,
+				"name": "Lena and Aron",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 65,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 65,
+								"x2": 65,
+								"y1": 1,
+								"y2": 45
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 65,
+								"x2": 1,
+								"y1": 45,
+								"y2": 45
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 45,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 52,
+				"grid_w": 72,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:family",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Family Carton",
+			"palette": "ochre",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "double_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "bunk_bed",
+					"x": 40,
+					"y": 3
+				},
+				{
+					"id": "dining_table",
+					"x": 22,
+					"y": 26
+				},
+				{
+					"id": "wardrobe",
+					"x": 3,
+					"y": 34
+				},
+				{
+					"id": "dresser",
+					"x": 48,
+					"y": 34
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "Two parents, two children, one room. They have done the sums.",
+				"monthly_rent": 0,
+				"name": "The Baumanns",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
+				]
+			}
+		},
+		{
+			"acquisition_cost": 0,
+			"allowed_furniture": [],
+			"apartment": {
+				"floors": [
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0",
+						"label": "Ground Floor",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"reveal_zones": [],
+						"segments": [
+							{
+								"demolished": false,
+								"has_window": true,
+								"primary": true,
+								"window_len": 12,
+								"window_pos": 8,
+								"x1": 1,
+								"x2": 71,
+								"y1": 1,
+								"y2": 1
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 71,
+								"x2": 71,
+								"y1": 1,
+								"y2": 47
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 71,
+								"x2": 1,
+								"y1": 47,
+								"y2": 47
+							},
+							{
+								"demolished": false,
+								"primary": true,
+								"x1": 1,
+								"x2": 1,
+								"y1": 47,
+								"y2": 1
+							}
+						],
+						"sloped_ceiling": {},
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "floor"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "fl_0_ceil",
+						"label": "Ceiling",
+						"mezzanine_tiles": [],
+						"parent_id": "fl_0",
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "ceiling"
+					},
+					{
+						"columns": [],
+						"floor_tiles": [],
+						"id": "roof",
+						"label": "Roof",
+						"mezzanine_tiles": [],
+						"rails": [],
+						"segments": [],
+						"stair_tiles": [],
+						"stairs": [],
+						"type": "roof"
+					}
+				],
+				"grid_h": 54,
+				"grid_w": 78,
+				"hidden_floors": [
+					"fl_0_ceil",
+					"roof"
+				]
+			},
+			"block": -1,
+			"district": "Rental",
+			"funds_base_reward": 0,
+			"id": "rental:penthouse",
+			"map_col": 0,
+			"map_row": 0,
+			"min_stars": 0,
+			"moments": [],
+			"name": "Penthouse-in-a-Box",
+			"palette": "ochre",
+			"starting_budget": 200,
+			"starting_furniture": [
+				{
+					"id": "double_bed",
+					"x": 3,
+					"y": 3
+				},
+				{
+					"id": "dresser",
+					"x": 30,
+					"y": 3
+				},
+				{
+					"id": "dining_table",
+					"x": 48,
+					"y": 26
+				},
+				{
+					"id": "bookshelf",
+					"x": 56,
+					"y": 3
+				},
+				{
+					"id": "floor_lamp",
+					"x": 46,
+					"y": 3
+				}
+			],
+			"starting_inventory": [],
+			"tenant": {
+				"age": "",
+				"flavor": "Insists it is a penthouse. Pays as if it were one.",
+				"monthly_rent": 0,
+				"name": "Frau von Hagen",
+				"required_functions": [
+					"sleep",
+					"sit",
+					"storage"
 				]
 			}
 		}
