@@ -4234,7 +4234,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 			_builder_press_consumed = true
 			var tile := _builder_tile_at(fl)
 			match _active_builder_tool:
-				"wall", "rail", "reveal":
+				"wall", "glass_wall", "rail", "reveal":
 					_builder_press_tile = tile
 					_builder_cur_tile   = tile
 					_builder_drawing    = true
@@ -4306,7 +4306,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 			# since _input() runs before Control._gui_input and leaves the
 			# button's own click never firing.
 			_builder_press_consumed = false
-			if _builder_drawing and _active_builder_tool == "wall":
+			if _builder_drawing and (_active_builder_tool == "wall" or _active_builder_tool == "glass_wall"):
 				_commit_builder_wall(fl)
 			elif _builder_drawing and _active_builder_tool == "rail":
 				_commit_builder_rail(fl)
@@ -4320,7 +4320,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _builder_drawing:
 		var tile := _builder_tile_at(fl)
 		match _active_builder_tool:
-			"wall", "rail", "reveal":
+			"wall", "glass_wall", "rail", "reveal":
 				# Axis-snap to whichever direction has moved further, same as
 				# LevelEditor's wall-drawing preview.
 				if absi(tile.x - _builder_press_tile.x) >= absi(tile.y - _builder_press_tile.y):
@@ -4600,7 +4600,7 @@ func _commit_builder_wall(fl: Floor) -> void:
 		Audio.play("error")
 		return
 	_push_builder_undo(fl)
-	fl.add_segment(ps.x, ps.y, pe.x, pe.y)
+	fl.add_segment(ps.x, ps.y, pe.x, pe.y, _active_builder_tool == "glass_wall")
 	Audio.play("place")
 	_refresh_functions()
 

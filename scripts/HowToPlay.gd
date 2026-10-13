@@ -76,6 +76,7 @@ func _build() -> void:
 		"The bar at the bottom is the goal: every need listed there has to be ticked.",
 		"A piece with a heart after its name is a keepsake: it can be moved but never sold.",
 		"Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are.",
+		"Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark.",
 		"Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back).",
 		"A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep.",
 		"You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch.",

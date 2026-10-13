@@ -413,7 +413,7 @@ func set_external_daylight_factor(factor: float) -> void:
 
 func _compute_light_map() -> void:
 	_light_map.clear()
-	var blocked := _partition_tile_set()
+	var blocked := _partition_tile_set(true)
 	var queue: Array[Vector2i] = []
 
 	if _use_new_format:
@@ -595,12 +595,19 @@ func setup(floor_data: Dictionary) -> void:
 		grid_draw.queue_redraw()
 
 
-func _partition_tile_set() -> Dictionary:
+# The tiles walls stand on. A wall segment marked "translucent" (reeded or
+# frosted glass, as in the Never Too Small flats) is a wall in every way but
+# one: nothing can be put through it and nothing can be seen through it, but
+# daylight passes. `for_light` leaves those segments out, so the light map
+# flows straight through them.
+func _partition_tile_set(for_light: bool = false) -> Dictionary:
 	var blocked: Dictionary = {}
 
 	var source: Array = segments if _use_new_format else partitions
 	for p in source:
 		if p.get("demolished", false):
+			continue
+		if for_light and (p.get("translucent", false) as bool):
 			continue
 		var x1: int = p["x1"]; var y1: int = p["y1"]
 		var x2: int = p["x2"]; var y2: int = p["y2"]
@@ -670,8 +677,11 @@ func can_add_segment(x1: int, y1: int, x2: int, y2: int) -> bool:
 	return true
 
 
-func add_segment(x1: int, y1: int, x2: int, y2: int) -> void:
-	segments.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2, "primary": false, "demolished": false})
+func add_segment(x1: int, y1: int, x2: int, y2: int, translucent: bool = false) -> void:
+	var seg := {"x1": x1, "y1": y1, "x2": x2, "y2": y2, "primary": false, "demolished": false}
+	if translucent:
+		seg["translucent"] = true
+	segments.append(seg)
 	if grid_draw:
 		_compute_light_map()
 		grid_draw.queue_redraw()

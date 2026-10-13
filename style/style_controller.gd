@@ -29,6 +29,7 @@ const VIGNETTE_SHADER := preload("res://style/shaders/vignette.gdshader")
 const ROLE_FLOOR     := &"floor"
 const ROLE_WALL      := &"wall"
 const ROLE_PARTITION := &"partition"   # interior wall: a lighter tint, so it reads apart from the perimeter
+const ROLE_GLASS_WALL := &"glass_wall" # translucent wall: pale, faintly lit from within, like frosted glass
 const ROLE_FURNITURE := &"furniture"
 const ROLE_ACCENT    := &"accent"
 const ROLE_GLOW      := &"glow"   # windows and lamps: emissive, the only things that bloom
@@ -36,7 +37,7 @@ const ROLE_WINDOW    := &"window" # window glass: glows by day, goes dark at nig
 const ROLE_TRIM      := &"trim"   # skirting, door leaves: a mid tint between wall and furniture
 const ROLE_PLINTH    := &"plinth" # the block under the level; only via style_plinth()
 const ROLE_SCENERY_FLOOR := &"scenery_floor"   # the floor of a giant apartment drawn around this one
-const ROLES: Array[StringName] = [ROLE_FLOOR, ROLE_WALL, ROLE_PARTITION, ROLE_FURNITURE, ROLE_ACCENT, ROLE_GLOW, ROLE_WINDOW, ROLE_TRIM]
+const ROLES: Array[StringName] = [ROLE_FLOOR, ROLE_WALL, ROLE_PARTITION, ROLE_GLASS_WALL, ROLE_FURNITURE, ROLE_ACCENT, ROLE_GLOW, ROLE_WINDOW, ROLE_TRIM]
 const GROUP_PREFIX := "style_"
 
 const BACKDROP_DISTANCE := 400.0   # metres behind the camera plane; capped by the camera's far
@@ -72,7 +73,7 @@ signal applied(palette: LevelPalette)
 			_apply_light()
 			_apply_backdrop()
 			for entry in _materials.values():
-				if entry["role"] == ROLE_WINDOW:
+				if entry["role"] == ROLE_WINDOW or entry["role"] == ROLE_GLASS_WALL:
 					_configure_material(entry)
 
 ## Pick StyleQuality.recommended() at startup instead of the value above.
@@ -301,7 +302,7 @@ func _material_for(role: StringName, src: Variant) -> ShaderMaterial:
 	if _materials.has(key):
 		return _materials[key]["mat"]
 	var mat := ShaderMaterial.new()
-	mat.shader = MATTE_DOUBLE_SHADER if (role == ROLE_WALL or role == ROLE_PARTITION) else MATTE_SHADER
+	mat.shader = MATTE_DOUBLE_SHADER if (role == ROLE_WALL or role == ROLE_PARTITION or role == ROLE_GLASS_WALL) else MATTE_SHADER
 	var entry := {"mat": mat, "role": role, "src": src}
 	_materials[key] = entry
 	_configure_material(entry)
@@ -349,10 +350,14 @@ func _configure_material(entry: Dictionary) -> void:
 	mat.set_shader_parameter("plank_width", 0.2 * (scenery_scale if role == ROLE_SCENERY_FLOOR else 1.0))
 	# Walls show a light, flat cut face on top.
 	mat.set_shader_parameter("top_tint", palette.floor_color)
-	mat.set_shader_parameter("top_tint_amount", 1.0 if (role == ROLE_WALL or role == ROLE_PARTITION) else 0.0)
+	mat.set_shader_parameter("top_tint_amount", 1.0 if (role == ROLE_WALL or role == ROLE_PARTITION or role == ROLE_GLASS_WALL) else 0.0)
 	if role == ROLE_GLOW:
 		mat.set_shader_parameter("emission", palette.glow_color)
 		mat.set_shader_parameter("emission_energy", palette.glow_energy)
+	elif role == ROLE_GLASS_WALL:
+		# Light is coming through it: a soft glow by day, almost none at night.
+		mat.set_shader_parameter("emission", palette.glow_color.lerp(_night_glass(), night))
+		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * 0.22, 0.0, night))
 	elif role == ROLE_WINDOW:
 		# Daylight coming in; at night the glass is a dim pane of night sky,
 		# still faintly self-lit so it never drops to a black hole.
@@ -371,6 +376,9 @@ func _surface_color(role: StringName, src: Variant) -> Color:
 		ROLE_FLOOR:  base = palette.floor_color
 		ROLE_WALL:   base = palette.wall_color
 		ROLE_PARTITION: base = palette.wall_color.lerp(palette.floor_color, 0.6)
+		# Pale by day; at night there is nothing behind it to light it, so
+		# it falls back toward the ordinary wall colour.
+		ROLE_GLASS_WALL: base = palette.floor_color.lerp(Color(0.62, 0.90, 0.88), 0.55).lerp(palette.wall_color.darkened(0.25), night * 0.8)
 		ROLE_ACCENT: base = palette.accent_color
 		ROLE_PLINTH: base = palette.wall_color.lerp(palette.furniture_color, 0.35)
 		ROLE_SCENERY_FLOOR: base = palette.floor_color.lerp(palette.wall_color, 0.6)

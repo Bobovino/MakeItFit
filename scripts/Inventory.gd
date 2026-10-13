@@ -448,7 +448,7 @@ func _build_builder_tool_row() -> VBoxContainer:
 	var group := ButtonGroup.new()
 	_builder_tool_buttons = []
 	var rows := [
-		[["", "Select"], ["wall", "Wall"], ["column", "Column"], ["erase", "Erase"]],
+		[["", "Select"], ["wall", "Wall"], ["glass_wall", "Glass Wall"], ["column", "Column"], ["erase", "Erase"]],
 		[["balcony", "Balcony"], ["bathroom", "Bathroom"], ["window", "Window"], ["door", "Door"]],
 		[["rail", "Rail"], ["reveal", "Reveal Zone"]],
 		[["pipe_water", "Pipe: Water"], ["pipe_power", "Pipe: Power"]],

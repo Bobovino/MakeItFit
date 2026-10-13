@@ -27,7 +27,7 @@ const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
-enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE }
+enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE, GLASS_WALL }
 
 # ── Floor geometry ────────────────────────────────────────────────────────────
 var _gw: int = DEFAULT_GW
@@ -391,6 +391,7 @@ func _build_left(ui: Node) -> void:
 		[Tool.REVEAL,        "Reveal Zone",    "Drag over a rail to mark where a piece counts as revealed"],
 		[Tool.PRIMARY_WALL,  "Primary Wall",   "Drag axis-snapped — cannot demolish"],
 		[Tool.SECONDARY_WALL,"Secondary Wall", "Drag axis-snapped — can demolish"],
+		[Tool.GLASS_WALL,    "Glass Wall",     "Drag axis-snapped — lets daylight through, blocks the view"],
 		[Tool.WINDOW,        "Window",         "LMB paint · RMB erase window tiles on a wall"],
 		[Tool.DOOR,          "Door",           "Click wall · drag to choose side · Shift+drag/click for sliding · click again to remove"],
 		[Tool.WALL_VIEW,     "Wall View",      "Click wall · drag to choose which face is the interior view · RMB to clear"],
@@ -2193,7 +2194,7 @@ func _input(event: InputEvent) -> void:
 		elif _pdrawing:
 			_preview_wall(tile)
 		if is_instance_valid(_ov):
-			var is_wall := _tool == Tool.PRIMARY_WALL or _tool == Tool.SECONDARY_WALL
+			var is_wall := _tool == Tool.PRIMARY_WALL or _tool == Tool.SECONDARY_WALL or _tool == Tool.GLASS_WALL
 			var is_rail := _tool == Tool.RAIL
 			var is_reveal := _tool == Tool.REVEAL
 			var snapped_tile := _snap_tile(tile)
@@ -2283,7 +2284,7 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 			_paint_mezz_tile(tile, false)
 		Tool.STAIRS:
 			_place_stair(tile)
-		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.RAIL, Tool.REVEAL:
+		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.GLASS_WALL, Tool.RAIL, Tool.REVEAL:
 			_ps = _snap_tile(tile); _pe = _ps; _pdrawing = true
 			if is_instance_valid(_ov):
 				_ov.set("p_start", _ps)
@@ -2439,12 +2440,15 @@ func _lmb_up() -> void:
 			_set_status("Reveal zone added (%d tiles) — drop a rail piece over it" % maxi(absi(_pe.x - _ps.x), absi(_pe.y - _ps.y)))
 		else:
 			var primary := (_tool == Tool.PRIMARY_WALL)
-			_segments.append({
+			var new_seg := {
 				"x1": _ps.x, "y1": _ps.y, "x2": _pe.x, "y2": _pe.y,
 				"primary": primary, "demolished": false
-			})
+			}
+			if _tool == Tool.GLASS_WALL:
+				new_seg["translucent"] = true
+			_segments.append(new_seg)
 			_rebuild_floor()
-			var kind := "Primary" if primary else "Secondary"
+			var kind := "Glass" if _tool == Tool.GLASS_WALL else ("Primary" if primary else "Secondary")
 			_set_status(kind + " wall added (%d tiles)" % maxi(absi(_pe.x - _ps.x), absi(_pe.y - _ps.y)))
 	_ps = Vector2i(-1, -1)
 

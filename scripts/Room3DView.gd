@@ -4088,6 +4088,9 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 		var wall_col := col if is_primary else interior_col
 		# Styled, the "removable partition" hint is a lighter tint of the wall colour.
 		var wall_role := StyleController.ROLE_WALL if is_primary else StyleController.ROLE_PARTITION
+		if seg.get("translucent", false) as bool:
+			wall_role = StyleController.ROLE_GLASS_WALL
+			wall_col = Color(0.78, 0.93, 0.92)
 
 		if y1 == y2 and x1 != x2:
 			# Horizontal run along world X, fixed at world Z = line_z.
@@ -4101,6 +4104,15 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 					h0 = _sloped_height_m(sc, y1); h1 = h0
 			var local_x := (xs - bounds.position.x) * TILE_M
 			var line_z  := (y1 - bounds.position.y) * TILE_M
+			# An interior wall drawn from (or to) the perimeter stops at the
+			# perimeter wall's inner face, not inside it: its end used to
+			# poke out through the outside, which shows on a glass wall.
+			if y1 != by0 and y1 != by1:
+				if xs == bx0:
+					local_x += WALL_THICK
+					length -= WALL_THICK
+				if xe == bx1:
+					length -= WALL_THICK
 			var pos_z: float; var normal: Vector3
 			if y1 == by0:
 				pos_z = 0.0; normal = Vector3(0, 0, -1)                       # north perimeter
@@ -4128,6 +4140,12 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 					h0 = _sloped_height_m(sc, x1); h1 = h0
 			var local_z := (ys - bounds.position.y) * TILE_M
 			var line_x  := (x1 - bounds.position.x) * TILE_M
+			if x1 != bx0 and x1 != bx1:      # as for horizontal runs, above
+				if ys == by0:
+					local_z += WALL_THICK
+					length -= WALL_THICK
+				if ye == by1:
+					length -= WALL_THICK
 			var pos_x: float; var normal: Vector3
 			if x1 == bx0:
 				pos_x = WALL_THICK; normal = Vector3(-1, 0, 0)                # west perimeter

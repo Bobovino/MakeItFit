@@ -800,6 +800,10 @@ func _draw_segments(parent: Floor) -> void:
 		var seg_len := maxi(absi(x2 - x1), absi(y2 - y1))
 
 		var col    := PRIMARY_COL if primary else SECONDARY_COL
+		# A glass wall: pale and see-through on the plan, so it reads as
+		# "light comes through here" next to the solid walls.
+		if sd.get("translucent", false) as bool:
+			col = Color(0.55, 0.95, 0.90, 0.45)
 		var thick  := PRIMARY_T   if primary else SECONDARY_T      # tiles
 		var coff   := 0   # fill starts exactly at the segment line (thickness is 1 tile either way)
 
