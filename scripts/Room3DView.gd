@@ -288,25 +288,37 @@ func _no_shadows(node: Node) -> void:
 # drag lists, it casts no shadows (the box's daylight is already modelled by
 # the game's own occlusion value), and anything on the camera's side is
 # hidden so it can't block the view, the same idea as lowering near walls.
-# One level up only: two levels up would be a room kilometres across.
 func _add_parent_scenery(w: float, d: float) -> bool:
 	if _style == null or _parent_scenery.is_empty():
 		return false
 	var box: Rect2 = _parent_scenery.get("box_rect", Rect2())
 	if box.size.x <= 0.0 or box.size.y <= 0.0:
 		return false
+	_scenery_level(_parent_scenery, 0.0, 0.0, w, d, -0.055, true)   # just under this room's own floor slab
+	_style.apply()   # the scenery floor's board size depends on the scale just set
+	return true
+
+
+# One apartment drawn giant around a footprint (x0, z0, w, d, in view metres)
+# that stands where its box stands in that apartment. Then the same again for
+# the apartment THAT one stands in (data["outer"]), around its floor, and so
+# on outward; the outermost one stands on the desk.
+func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, floor_y: float, first: bool) -> void:
+	var box: Rect2 = data.get("box_rect", Rect2())
+	if box.size.x <= 0.0 or box.size.y <= 0.0:
+		return
 	# Big enough that the box's footprint covers the whole room, so nothing
 	# of the parent's can end up inside it.
 	var s := maxf(w / (box.size.x * TILE_M), d / (box.size.y * TILE_M))
 	var box_center := box.get_center()
 	var to_view := func(tx: float, ty: float) -> Vector3:
-		return Vector3((tx - box_center.x) * TILE_M * s + w * 0.5, 0.0, (ty - box_center.y) * TILE_M * s + d * 0.5)
-	const FLOOR_Y := -0.055   # just under this room's own floor slab
-	_style.scenery_scale = s
+		return Vector3((tx - box_center.x) * TILE_M * s + x0 + w * 0.5, 0.0, (ty - box_center.y) * TILE_M * s + z0 + d * 0.5)
+	if first:
+		_style.scenery_scale = s
 
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
-	var segments := _parent_scenery.get("segments", []) as Array
+	var segments := data.get("segments", []) as Array
 	for sd in segments:
 		var seg := sd as Dictionary
 		for p in [Vector2(seg["x1"] as float, seg["y1"] as float), Vector2(seg["x2"] as float, seg["y2"] as float)]:
@@ -319,8 +331,14 @@ func _add_parent_scenery(w: float, d: float) -> bool:
 	var f0: Vector3 = to_view.call(lo.x, lo.y)
 	var f1: Vector3 = to_view.call(hi.x, hi.y)
 	var slab := _box(Vector3(f1.x - f0.x, 0.5, f1.z - f0.z),
-		Vector3((f0.x + f1.x) * 0.5, FLOOR_Y - 0.25, (f0.z + f1.z) * 0.5), Color.WHITE, StyleController.ROLE_SCENERY_FLOOR)
+		Vector3((f0.x + f1.x) * 0.5, floor_y - 0.25, (f0.z + f1.z) * 0.5), Color.WHITE, StyleController.ROLE_SCENERY_FLOOR)
 	_no_shadows(slab)
+	# Further out: the apartment this one stands in, or the desk.
+	var outer := data.get("outer", {}) as Dictionary
+	if not outer.is_empty():
+		_scenery_level(outer, f0.x, f0.z, f1.x - f0.x, f1.z - f0.z, floor_y - 0.5, false)
+	else:
+		_add_desk_around(Vector3(f0.x, floor_y - 0.5, f0.z), f1.x - f0.x, f1.z - f0.z, false)
 
 	var wall_h := WALL_H_M * s
 	var wall_t := WALL_THICK * s
@@ -336,11 +354,11 @@ func _add_parent_scenery(w: float, d: float) -> bool:
 			continue
 		var mid := (a + b) * 0.5
 		var wall := _box(Vector3(length, wall_h, wall_t) if along_x else Vector3(wall_t, wall_h, length),
-			Vector3(mid.x, FLOOR_Y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
+			Vector3(mid.x, floor_y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
 		_no_shadows(wall)
 		_scenery_nodes.append({"node": wall, "center": mid})
 
-	for it in _parent_scenery.get("items", []) as Array:
+	for it in data.get("items", []) as Array:
 		var item := it as Dictionary
 		var fdata := item.get("fdata", {}) as Dictionary
 		var size_t := fdata.get("size", {}) as Dictionary
@@ -354,15 +372,13 @@ func _add_parent_scenery(w: float, d: float) -> bool:
 		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
 		var canon := Vector3(tw * TILE_M * s, height, th * TILE_M * s)
 		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
-		var mi := _box(canon, Vector3(c.x, FLOOR_Y + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		var mi := _box(canon, Vector3(c.x, floor_y + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
 		mi.rotation.y = deg_to_rad(rot * 90.0)
 		mi.set_meta("style_role", _item_role(fdata))
 		_apply_item_model(mi, _active_model_path(fdata, item.get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
 		_style_if_bare(mi)
 		_no_shadows(mi)
 		_scenery_nodes.append({"node": mi, "center": c})
-	_style.apply()   # the scenery floor's board size depends on the scale just set
-	return true
 
 
 # Scenery on the camera's side of the room would sit between the camera and
@@ -377,6 +393,118 @@ func _update_scenery_visibility(flat: Vector3) -> void:
 		var away: Vector3 = (sc["center"] as Vector3) - room_center
 		away.y = 0.0
 		node.visible = away.length() < 0.01 or away.normalized().dot(flat) < 0.2
+
+
+# ── The desk ─────────────────────────────────────────────────────────────────
+# A top-level apartment has no bigger apartment around it. It stands on the
+# architect's desk instead, as a scale model: a base board on a green cutting
+# mat, with a pencil, a ruler and a mug lying about, all giant next to it.
+# The plan view has the same desk as its background (DeskBackdrop), so a box
+# sits in a flat and the flat sits on the desk.
+const DESK_MAT_Y := -0.20          # top of the mat, under the model's base board
+const DESK_MAT_SIZE := 90.0        # metres; the fog swallows its far edges
+
+func _desk_mat_material(square_m: float = 2.0) -> StandardMaterial3D:
+	const PX := 64
+	var img := Image.create(PX, PX, false, Image.FORMAT_RGB8)
+	# Darker than the plan view's mat: this one is lit by the sun as well.
+	img.fill(Color(0.105, 0.265, 0.235))
+	var line := Color(0.16, 0.34, 0.30)
+	for i in PX:
+		img.set_pixel(i, 0, line)
+		img.set_pixel(0, i, line)
+	img.generate_mipmaps()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = ImageTexture.create_from_image(img)
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	mat.uv1_scale = Vector3(_desk_mat_size / square_m, _desk_mat_size / square_m, 1.0)
+	# Unlit and out of the fog: the same green from the model's feet to the
+	# horizon, matching the mat behind the plan view. (Lit, it went nearly
+	# black by the camera and hazy grey further off.)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.disable_fog = true
+	mat.roughness = 1.0
+	mat.metallic_specular = 0.0
+	return mat
+
+
+func _desk_part(mesh: Mesh, color: Color, pos: Vector3, rot := Vector3.ZERO) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 1.0
+	mat.metallic_specular = 0.0
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	build_root.add_child(mi)
+	return mi
+
+
+var _desk_mat_size := DESK_MAT_SIZE
+
+func _add_desk_scenery(w: float, d: float) -> void:
+	_add_desk_around(Vector3(0.0, DESK_MAT_Y, 0.0), w, d, true)
+
+
+# The desk around a model whose footprint starts at `origin` (x, z) and
+# measures w x d; origin.y is the top of the mat.
+func _add_desk_around(origin: Vector3, w: float, d: float, with_board: bool) -> void:
+	var mat_y := origin.y
+	var ox := origin.x
+	var oz := origin.z
+	_desk_mat_size = maxf(DESK_MAT_SIZE, maxf(w, d) * 14.0)
+	if with_board:
+		var board := BoxMesh.new()
+		board.size = Vector3(w + 0.5, -mat_y - 0.05, d + 0.5)
+		_desk_part(board, Color(0.46, 0.38, 0.27), Vector3(ox + w * 0.5, (mat_y - 0.05) * 0.5, oz + d * 0.5))
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(_desk_mat_size, _desk_mat_size)
+	var mat_mi := MeshInstance3D.new()
+	mat_mi.mesh = plane
+	mat_mi.material_override = _desk_mat_material(maxf(w, d) * 0.4)
+	mat_mi.position = Vector3(ox + w * 0.5, mat_y, oz + d * 0.5)
+	build_root.add_child(mat_mi)
+
+	var s := maxf(w, d)            # the props scale with the model
+	var props: Array = []
+	# A pencil, lying at an angle beyond the left side.
+	var pencil_len := s * 2.0
+	var pr := s * 0.055
+	var p_center := Vector3(ox - s * 1.35, mat_y + pr, oz + d * 0.2)
+	var p_rot := Vector3(0.0, deg_to_rad(68.0), deg_to_rad(90.0))
+	var body := CylinderMesh.new()
+	body.top_radius = pr; body.bottom_radius = pr; body.height = pencil_len; body.radial_segments = 6
+	props.append(_desk_part(body, Color(0.62, 0.47, 0.12), p_center, p_rot))
+	var axis := (Basis.from_euler(p_rot) * Vector3.UP).normalized()
+	var tip := CylinderMesh.new()
+	tip.top_radius = 0.0; tip.bottom_radius = pr; tip.height = pr * 3.2; tip.radial_segments = 6
+	props.append(_desk_part(tip, Color(0.55, 0.46, 0.34), p_center + axis * (pencil_len * 0.5 + pr * 1.6), p_rot))
+	var rubber := CylinderMesh.new()
+	rubber.top_radius = pr; rubber.bottom_radius = pr; rubber.height = pr * 2.0; rubber.radial_segments = 6
+	props.append(_desk_part(rubber, Color(0.55, 0.32, 0.32), p_center - axis * (pencil_len * 0.5 + pr), p_rot))
+	# A ruler along the back.
+	var ruler := BoxMesh.new()
+	ruler.size = Vector3(s * 3.0, s * 0.02, s * 0.30)
+	props.append(_desk_part(ruler, Color(0.52, 0.46, 0.33), Vector3(ox + w * 0.5 + s * 0.3, mat_y + s * 0.01, oz - s * 1.5), Vector3(0, deg_to_rad(-6.0), 0)))
+	# A mug, off to the back right.
+	var mug_r := s * 0.34
+	var mug_h := s * 0.75
+	var mug_at := Vector3(ox + w + s * 1.7, mat_y + mug_h * 0.5, oz - s * 1.1)
+	var mug := CylinderMesh.new()
+	mug.top_radius = mug_r; mug.bottom_radius = mug_r * 0.92; mug.height = mug_h; mug.radial_segments = 20
+	props.append(_desk_part(mug, Color(0.56, 0.55, 0.53), mug_at))
+	var coffee := CylinderMesh.new()
+	coffee.top_radius = mug_r * 0.88; coffee.bottom_radius = mug_r * 0.88; coffee.height = 0.02; coffee.radial_segments = 20
+	props.append(_desk_part(coffee, Color(0.24, 0.15, 0.09), mug_at + Vector3(0, mug_h * 0.5 + 0.011, 0)))
+	var handle := TorusMesh.new()
+	handle.inner_radius = mug_r * 0.28; handle.outer_radius = mug_r * 0.42; handle.rings = 12; handle.ring_segments = 6
+	props.append(_desk_part(handle, Color(0.56, 0.55, 0.53), mug_at + Vector3(mug_r * 1.12, 0, 0), Vector3(deg_to_rad(90.0), 0, 0)))
+	for p in props:
+		# Hidden when they come between the camera and the model, like the
+		# giant furniture around a box.
+		_scenery_nodes.append({"node": p, "center": (p as MeshInstance3D).position})
 
 
 # The block the room stands on. Presentation only: it sits entirely below the
@@ -2708,7 +2836,10 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		# Inside a box the room stands on its parent's floor; otherwise it
 		# floats on its own block.
 		if not _add_parent_scenery(w, d):
-			_add_plinth(w, d)
+			if _style != null:
+				_add_desk_scenery(w, d)
+			else:
+				_add_plinth(w, d)
 
 	# Subfloor/ceiling/roof layers only exist to carry the 2D-only pipe/duct
 	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
@@ -3953,6 +4084,9 @@ func _add_sloped_wall(length: float, thick: float, h0: float, h1: float,
 	mi.material_override = mat
 	build_root.add_child(mi)
 	_style_node(mi, role)
+	if role == StyleController.ROLE_GLASS_WALL:
+		# Daylight passes a glass wall, so it throws no shadow of its own.
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if _style != null:
 		# Skirting board along both faces, so the wall meets the floor on a line.
 		_wall_part(mi, 0.0, length, 0.0, SKIRTING_H_M, -SKIRTING_DEPTH_M, 0.0, StyleController.ROLE_TRIM)

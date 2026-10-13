@@ -15,6 +15,7 @@ const CARD_W   := 142
 const CARD_H   := 108
 const MAP_VISIBLE_H := 666.0   # 720 - TOP_H
 const SCROLLBAR_W := 14.0
+const SHEET_GAP := 26.0     # cutting mat left showing under the plan sheet, so it lies ON the desk
 const PAPER_MARGIN := 18.0   # thickness of the kraft-paper band framing the blueprint sheet — keep
 							  # this small: it eats directly into the grid's usable width, and wider
 							  # values silently drop a whole manzana column (verified: 34px only fit 1)
@@ -226,16 +227,21 @@ func _build_ui() -> void:
 	# Archivador tab rail — full-height strip along the left edge, one tab per
 	# game block, populated by _rebuild_tabs(). Everything else (top bar, map
 	# viewport) starts at TAB_W instead of the window's left edge.
+	# The same green cutting mat the levels lie on, behind the whole screen.
+	var desk := DeskBackdrop.new()
+	desk.show_props = false
+	add_child(desk)
+	move_child(desk, 0)
+
 	_tabs_col = Control.new()
 	_tabs_col.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	_tabs_col.offset_right = TAB_W
 	add_child(_tabs_col)
 
 	var tabs_bg := ColorRect.new()
-	tabs_bg.color = GameTheme.C_BG
+	tabs_bg.color = Color(0, 0, 0, 0)     # the cutting mat behind shows through
 	tabs_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	tabs_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tabs_bg.draw.connect(_draw_wood_grain.bind(tabs_bg))
 	_tabs_col.add_child(tabs_bg)
 
 	_tabs_col.z_index = 2
@@ -248,19 +254,13 @@ func _build_ui() -> void:
 	top_pc.offset_right = -(INFO_W + 1)
 	top_pc.custom_minimum_size = Vector2(0, TOP_H)
 	var ts := StyleBoxFlat.new()
-	ts.bg_color     = GameTheme.C_BG2
-	ts.border_color = GameTheme.C_BORDER
-	ts.set_border_width(SIDE_BOTTOM, 1)
+	ts.bg_color     = Color(0, 0, 0, 0)     # the cutting mat shows; no bar
 	ts.set_content_margin_all(8)
 	# A real drop shadow, not just the 1px border — the desk/blueprint area
 	# sits underneath and is added later (drawn on top of tree order), so
 	# this needs z_index to actually show instead of being painted over.
-	ts.shadow_color  = Color(0, 0, 0, 0.35)
-	ts.shadow_size   = 8
-	ts.shadow_offset = Vector2(0, 3)
 	top_pc.add_theme_stylebox_override("panel", ts)
 	top_pc.z_index = 2
-	top_pc.draw.connect(_draw_wood_grain.bind(top_pc))
 	add_child(top_pc)
 
 	var top_row := HBoxContainer.new()
@@ -277,10 +277,24 @@ func _build_ui() -> void:
 
 	var title_lbl := Label.new()
 	title_lbl.text = "PROJECTS"
-	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_lbl.add_theme_font_size_override("font_size", 16)
-	title_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	title_lbl.add_theme_font_size_override("font_size", 15)
+	title_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
+	var tape := StyleBoxFlat.new()          # a strip of masking tape, written on
+	tape.bg_color = Color(0.93, 0.88, 0.72, 0.94)
+	tape.set_content_margin(SIDE_LEFT, 16)
+	tape.set_content_margin(SIDE_RIGHT, 16)
+	tape.set_content_margin(SIDE_TOP, 3)
+	tape.set_content_margin(SIDE_BOTTOM, 3)
+	tape.shadow_color = Color(0, 0, 0, 0.25)
+	tape.shadow_size = 3
+	tape.shadow_offset = Vector2(1, 2)
+	title_lbl.add_theme_stylebox_override("normal", tape)
+	title_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_lbl.rotation_degrees = -1.2
 	top_row.add_child(title_lbl)
+	var title_gap := Control.new()
+	title_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(title_gap)
 
 	_stars_label = Label.new()
 	_stars_label.add_theme_font_size_override("font_size", 12)
@@ -303,7 +317,7 @@ func _build_ui() -> void:
 	var legend := Label.new()
 	legend.text = "▲ N   ├── 5 m ──┤"
 	legend.add_theme_font_size_override("font_size", 11)
-	legend.add_theme_color_override("font_color", Color(0.55, 0.68, 0.80, 0.65))
+	legend.add_theme_color_override("font_color", Color(0.70, 0.90, 0.82, 0.55))
 	top_row.add_child(legend)
 
 	# The OUTSIDE reads as a thick stack of kraft/off-white paper resting on
@@ -317,7 +331,7 @@ func _build_ui() -> void:
 		peek.offset_left   = TAB_W + corner_off.x
 		peek.offset_top    = TOP_H
 		peek.offset_right  = -(INFO_W + 1 + SCROLLBAR_W)
-		peek.offset_bottom = corner_off.y
+		peek.offset_bottom = corner_off.y - SHEET_GAP
 		peek.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var peek_sn := StyleBoxFlat.new()
 		peek_sn.bg_color = GameTheme.C_PAPER.darkened(0.12 if corner_off.x < -6 else 0.06)
@@ -329,11 +343,15 @@ func _build_ui() -> void:
 	table_bg.offset_left  = TAB_W
 	table_bg.offset_top   = TOP_H
 	table_bg.offset_right = -(INFO_W + 1 + SCROLLBAR_W)
+	table_bg.offset_bottom = -SHEET_GAP
 	table_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var table_sn := StyleBoxFlat.new()
 	table_sn.bg_color = GameTheme.C_PAPER   # thick kraft/off-white sheet
 	table_sn.border_color = GameTheme.C_BORDER
 	table_sn.set_border_width_all(1)
+	table_sn.shadow_color = Color(0, 0, 0, 0.35)
+	table_sn.shadow_size = 10
+	table_sn.shadow_offset = Vector2(3, 5)
 	table_bg.add_theme_stylebox_override("panel", table_sn)
 	add_child(table_bg)
 
@@ -346,6 +364,7 @@ func _build_ui() -> void:
 	grain.offset_left  = TAB_W
 	grain.offset_top   = TOP_H
 	grain.offset_right = -(INFO_W + 1 + SCROLLBAR_W)
+	grain.offset_bottom = -SHEET_GAP
 	grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	grain.draw.connect(_draw_paper_grain.bind(grain))
 	add_child(grain)
@@ -359,7 +378,7 @@ func _build_ui() -> void:
 	_map_clip.offset_left   = TAB_W + PAPER_MARGIN
 	_map_clip.offset_top    = TOP_H + PAPER_MARGIN
 	_map_clip.offset_right  = -(INFO_W + 1 + SCROLLBAR_W + PAPER_MARGIN)
-	_map_clip.offset_bottom = -PAPER_MARGIN
+	_map_clip.offset_bottom = -(PAPER_MARGIN + SHEET_GAP)
 	_map_clip.clip_contents = true
 	add_child(_map_clip)
 	var map_clip := _map_clip
@@ -397,7 +416,7 @@ func _build_ui() -> void:
 	clip_frame.offset_left   = TAB_W + PAPER_MARGIN
 	clip_frame.offset_top    = TOP_H + PAPER_MARGIN
 	clip_frame.offset_right  = -(INFO_W + 1 + SCROLLBAR_W + PAPER_MARGIN)
-	clip_frame.offset_bottom = -PAPER_MARGIN
+	clip_frame.offset_bottom = -(PAPER_MARGIN + SHEET_GAP)
 	clip_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var frame_sn := StyleBoxFlat.new()
 	frame_sn.bg_color = Color(0, 0, 0, 0)
@@ -418,60 +437,71 @@ func _build_ui() -> void:
 	_scrollbar.offset_left  = -(INFO_W + 1 + SCROLLBAR_W)
 	_scrollbar.offset_right = -(INFO_W + 1)
 	_scrollbar.offset_top   = TOP_H
-	_scrollbar.offset_bottom = 0
+	_scrollbar.offset_bottom = -SHEET_GAP
 	_scrollbar.min_value = 0
 	_scrollbar.value_changed.connect(func(v: float):
 		_map_content.position.y = -v
 		queue_redraw())
 	add_child(_scrollbar)
 
-	# Vertical divider before info panel — hugs the sidebar's left edge
-	var div := ColorRect.new()
-	div.color = GameTheme.C_BORDER
-	div.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-	div.offset_left  = -(INFO_W + 1)
-	div.offset_right = -INFO_W
-	add_child(div)
-
-	# Info panel — anchored to the window's right edge at a fixed width
-	var ip := PanelContainer.new()
+	# The right-hand side of the desk: a fax machine, and the sheet it has
+	# just printed. Choosing a home on the plan makes it print that home's
+	# details; the machine's keys are Enter, Settings and Quit.
+	var ip := MarginContainer.new()
 	ip.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
 	ip.offset_left = -INFO_W
-	var ip_s := StyleBoxFlat.new()
-	ip_s.bg_color = GameTheme.C_BG2
-	ip_s.set_content_margin(SIDE_LEFT,   22)
-	ip_s.set_content_margin(SIDE_RIGHT,  22)
-	ip_s.set_content_margin(SIDE_TOP,    60)
-	ip_s.set_content_margin(SIDE_BOTTOM, 24)
-	ip_s.shadow_color  = Color(0, 0, 0, 0.35)
-	ip_s.shadow_size   = 10
-	ip_s.shadow_offset = Vector2(-3, 0)
-	ip.add_theme_stylebox_override("panel", ip_s)
+	ip.add_theme_constant_override("margin_left", 26)
+	ip.add_theme_constant_override("margin_right", 26)
+	ip.add_theme_constant_override("margin_top", 14)
+	ip.add_theme_constant_override("margin_bottom", 18)
 	ip.z_index = 2
-	ip.draw.connect(_draw_wood_grain.bind(ip))
 	add_child(ip)
 
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", -10)   # the sheet tucks into the slot
+	ip.add_child(column)
+
+	# The printout slides up out of the slot inside this clip.
+	_fax_clip = Control.new()
+	_fax_clip.clip_contents = true
+	_fax_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(_fax_clip)
+
+	_fax_paper = PanelContainer.new()
+	_fax_paper.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fax_paper.offset_left = 16
+	_fax_paper.offset_right = -16
+	var paper_sb := StyleBoxFlat.new()
+	paper_sb.bg_color = Color(0.965, 0.955, 0.925)
+	paper_sb.set_content_margin(SIDE_LEFT, 18)
+	paper_sb.set_content_margin(SIDE_RIGHT, 18)
+	paper_sb.set_content_margin(SIDE_TOP, 16)
+	paper_sb.set_content_margin(SIDE_BOTTOM, 20)
+	paper_sb.shadow_color = Color(0, 0, 0, 0.30)
+	paper_sb.shadow_size = 6
+	paper_sb.shadow_offset = Vector2(2, 3)
+	_fax_paper.add_theme_stylebox_override("panel", paper_sb)
+	_fax_clip.add_child(_fax_paper)
+
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	ip.add_child(vb)
+	vb.add_theme_constant_override("separation", 8)
+	_fax_paper.add_child(vb)
 
-	_info_title = _make_info_label(vb, 18, GameTheme.C_AMBER, true)
-	_info_district = _make_info_label(vb, 11, GameTheme.C_MUTED)
+	const FAX_INK := Color(0.16, 0.15, 0.14)
+	const FAX_INK_SOFT := Color(0.40, 0.38, 0.35)
+	var fax_head := _make_info_label(vb, 9, FAX_INK_SOFT)
+	fax_head.text = "FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1"
+	var head_rule := HSeparator.new()
+	head_rule.add_theme_color_override("color", FAX_INK_SOFT)
+	vb.add_child(head_rule)
+	_info_title = _make_info_label(vb, 19, FAX_INK, true)
+	_info_district = _make_info_label(vb, 11, FAX_INK_SOFT)
 
-	# Blueprint preview — the level's actual wall segments, drawn as a small
-	# top-down sketch, so you can see the real apartment shape before
-	# committing to it instead of just reading a size number. Framed like a
-	# pinned photo/plan (border + shadow) instead of floating loose against
-	# the sidebar's flat background.
 	var preview_frame := PanelContainer.new()
 	var pf_sn := StyleBoxFlat.new()
 	pf_sn.bg_color = Color(0, 0, 0, 0)
-	pf_sn.border_color = GameTheme.C_BORDER
-	pf_sn.set_border_width_all(3)
-	pf_sn.set_corner_radius_all(2)
-	pf_sn.shadow_color  = Color(0, 0, 0, 0.4)
-	pf_sn.shadow_size   = 6
-	pf_sn.shadow_offset = Vector2(2, 3)
+	pf_sn.border_color = FAX_INK
+	pf_sn.set_border_width_all(1)
 	pf_sn.set_content_margin_all(0)
 	preview_frame.add_theme_stylebox_override("panel", pf_sn)
 	vb.add_child(preview_frame)
@@ -481,7 +511,7 @@ func _build_ui() -> void:
 	preview_frame.add_child(_blueprint_preview)
 
 	var sep1 := HSeparator.new()
-	sep1.add_theme_color_override("color", GameTheme.C_BORDER)
+	sep1.add_theme_color_override("color", FAX_INK_SOFT)
 	vb.add_child(sep1)
 
 	# Tenant row: the real 3D Mii's face (rendered offscreen, see
@@ -497,12 +527,8 @@ func _build_ui() -> void:
 	var portrait_frame := PanelContainer.new()
 	var por_sn := StyleBoxFlat.new()
 	por_sn.bg_color = Color(0, 0, 0, 0)
-	por_sn.border_color = GameTheme.C_BORDER
-	por_sn.set_border_width_all(2)
-	por_sn.set_corner_radius_all(2)
-	por_sn.shadow_color  = Color(0, 0, 0, 0.4)
-	por_sn.shadow_size   = 5
-	por_sn.shadow_offset = Vector2(2, 2)
+	por_sn.border_color = FAX_INK
+	por_sn.set_border_width_all(1)
 	por_sn.set_content_margin_all(0)
 	portrait_frame.add_theme_stylebox_override("panel", por_sn)
 	tenant_row.add_child(portrait_frame)
@@ -516,12 +542,12 @@ func _build_ui() -> void:
 	_info_tenant = Label.new()
 	_info_tenant.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_info_tenant.add_theme_font_size_override("font_size", 11)
-	_info_tenant.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	_info_tenant.add_theme_color_override("font_color", FAX_INK)
 	_info_tenant.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tenant_row.add_child(_info_tenant)
 
-	_info_reqs   = _make_info_label(vb, 11, GameTheme.C_MUTED)
-	_info_budget = _make_info_label(vb, 12, GameTheme.C_TEXT)
+	_info_reqs   = _make_info_label(vb, 11, FAX_INK_SOFT)
+	_info_budget = _make_info_label(vb, 12, FAX_INK)
 	_info_rent   = _make_info_label(vb, 15, Color(0.50, 0.78, 0.60))
 	_info_reqs.visible   = false   # hidden for now, not needed yet
 	_info_rent.visible   = false   # hidden for now, not needed yet
@@ -531,21 +557,58 @@ func _build_ui() -> void:
 	sep2.visible = false   # hidden for now, not needed yet
 	vb.add_child(sep2)
 
-	_info_cost = _make_info_label(vb, 13, GameTheme.C_AMBER, true)
+	_info_cost = _make_info_label(vb, 13, FAX_INK, true)
 	_info_cost.visible = false   # hidden for now, not needed yet
+
+	# ── the machine ──
+	var machine := PanelContainer.new()
+	var body := StyleBoxFlat.new()
+	body.bg_color = Color(0.205, 0.215, 0.230)
+	body.border_color = Color(0.11, 0.12, 0.13)
+	body.set_border_width_all(2)
+	body.set_corner_radius_all(14)
+	body.set_content_margin(SIDE_LEFT, 18)
+	body.set_content_margin(SIDE_RIGHT, 18)
+	body.set_content_margin(SIDE_TOP, 12)
+	body.set_content_margin(SIDE_BOTTOM, 16)
+	body.shadow_color = Color(0, 0, 0, 0.45)
+	body.shadow_size = 12
+	body.shadow_offset = Vector2(3, 6)
+	body.anti_aliasing = true
+	machine.add_theme_stylebox_override("panel", body)
+	column.add_child(machine)
+	vb = VBoxContainer.new()                 # from here on, things go on the machine
+	vb.add_theme_constant_override("separation", 9)
+	machine.add_child(vb)
+
+	var slot := Panel.new()                  # the slot the paper comes out of
+	slot.custom_minimum_size = Vector2(0, 10)
+	var slot_sb := StyleBoxFlat.new()
+	slot_sb.bg_color = Color(0.04, 0.04, 0.05)
+	slot_sb.set_corner_radius_all(4)
+	slot.add_theme_stylebox_override("panel", slot_sb)
+	vb.add_child(slot)
+
+	var lcd := Label.new()                   # the little green display
+	lcd.text = "READY"
+	lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lcd.add_theme_font_size_override("font_size", 11)
+	lcd.add_theme_color_override("font_color", Color(0.20, 0.34, 0.16))
+	var lcd_sb := StyleBoxFlat.new()
+	lcd_sb.bg_color = Color(0.62, 0.74, 0.52)
+	lcd_sb.border_color = Color(0.10, 0.11, 0.10)
+	lcd_sb.set_border_width_all(2)
+	lcd_sb.set_corner_radius_all(3)
+	lcd_sb.set_content_margin_all(4)
+	lcd.add_theme_stylebox_override("normal", lcd_sb)
+	vb.add_child(lcd)
+	_fax_lcd = lcd
 
 	_action_btn = Button.new()
 	_action_btn.custom_minimum_size = Vector2(210, 44)
 	_action_btn.add_theme_font_size_override("font_size", 14)
-	var rs := GameTheme.make_rent_btn_style()
-	_action_btn.add_theme_stylebox_override("normal",   rs[0])
-	_action_btn.add_theme_stylebox_override("hover",    rs[1])
-	_action_btn.add_theme_stylebox_override("pressed",  rs[1])
-	_action_btn.add_theme_stylebox_override("disabled", rs[2])
-	_action_btn.add_theme_color_override("font_color",          GameTheme.C_AMBER)
-	_action_btn.add_theme_color_override("font_disabled_color", GameTheme.C_MUTED)
+	_fax_key(_action_btn, Color(0.22, 0.56, 0.36), Color(0.94, 1.0, 0.95))   # the big green Start key
 	_action_btn.pressed.connect(_on_action_pressed)
-	_action_btn.draw.connect(_draw_sheen.bind(_action_btn))
 	vb.add_child(_action_btn)
 
 	# Second entry point shown only for levels that already have a saved
@@ -556,43 +619,81 @@ func _build_ui() -> void:
 	_redesign_btn.custom_minimum_size = Vector2(210, 32)
 	_redesign_btn.add_theme_font_size_override("font_size", 11)
 	_redesign_btn.visible = false
+	_fax_key(_redesign_btn, Color(0.42, 0.44, 0.47), Color(0.95, 0.95, 0.95))
 	_redesign_btn.pressed.connect(_on_redesign_pressed)
-	_redesign_btn.draw.connect(_draw_sheen.bind(_redesign_btn))
 	vb.add_child(_redesign_btn)
 
-	# Bottom spacer pushes the secondary buttons to the bottom of the panel
-	var push := Control.new()
-	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vb.add_child(push)
-
-	var sep3 := HSeparator.new()
-	sep3.add_theme_color_override("color", Color(0.16, 0.20, 0.26))
-	vb.add_child(sep3)
-
-	# Same blueprint-label tag style as MainMenu's secondary actions — bare
-	# text links here read as a plain settings list, not part of the same
-	# desk/tag visual language everything else on this page now uses.
+	var keys := HBoxContainer.new()
+	keys.add_theme_constant_override("separation", 9)
+	vb.add_child(keys)
 	var settings_btn := Button.new()
 	settings_btn.text = "⚙ Settings"
+	settings_btn.custom_minimum_size = Vector2(0, 34)
+	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_btn.add_theme_font_size_override("font_size", 12)
-	settings_btn.add_theme_color_override("font_color", GameTheme.C_TEXT)
-	var settings_ts := GameTheme.make_tag_btn_style()
-	settings_btn.add_theme_stylebox_override("normal",  settings_ts[0])
-	settings_btn.add_theme_stylebox_override("hover",   settings_ts[1])
-	settings_btn.add_theme_stylebox_override("pressed", settings_ts[2])
+	_fax_key(settings_btn, Color(0.42, 0.44, 0.47), Color(0.95, 0.95, 0.95))
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
-	vb.add_child(settings_btn)
-
+	keys.add_child(settings_btn)
 	var quit_btn := Button.new()
-	quit_btn.text = "⏻ Quit to Desktop"
+	quit_btn.text = "⏻ Quit"
+	quit_btn.tooltip_text = "Quit to desktop"
+	quit_btn.custom_minimum_size = Vector2(0, 34)
+	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quit_btn.add_theme_font_size_override("font_size", 12)
-	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	var quit_ts := GameTheme.make_tag_btn_style()
-	quit_btn.add_theme_stylebox_override("normal",  quit_ts[0])
-	quit_btn.add_theme_stylebox_override("hover",   quit_ts[1])
-	quit_btn.add_theme_stylebox_override("pressed", quit_ts[2])
+	_fax_key(quit_btn, Color(0.62, 0.26, 0.24), Color(1.0, 0.94, 0.93))   # the red Stop key
 	quit_btn.pressed.connect(func(): get_tree().quit())
-	vb.add_child(quit_btn)
+	keys.add_child(quit_btn)
+
+
+var _fax_clip: Control = null
+var _fax_paper: PanelContainer = null
+var _fax_lcd: Label = null
+var _fax_tween: Tween = null
+
+# A key on the fax machine: a raised cap in `face`, pressed in when clicked.
+func _fax_key(btn: Button, face: Color, text: Color) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = face
+		if state == "hover":
+			sb.bg_color = face.lightened(0.12)
+		elif state == "pressed":
+			sb.bg_color = face.darkened(0.15)
+		elif state == "disabled":
+			sb.bg_color = Color(0.30, 0.31, 0.33)
+		sb.border_color = face.darkened(0.45)
+		sb.set_border_width_all(1)
+		sb.set_border_width(SIDE_BOTTOM, 1 if state == "pressed" else 4)
+		sb.set_corner_radius_all(7)
+		sb.set_content_margin_all(6)
+		sb.anti_aliasing = true
+		btn.add_theme_stylebox_override(state, sb)
+	for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+		btn.add_theme_color_override(c, text)
+	btn.add_theme_color_override("font_disabled_color", Color(0.60, 0.60, 0.60))
+
+
+# The machine prints the chosen home: the sheet feeds up out of the slot.
+func _fax_print() -> void:
+	if not is_instance_valid(_fax_paper) or not is_instance_valid(_fax_clip):
+		return
+	if _fax_tween and _fax_tween.is_valid():
+		_fax_tween.kill()
+	var feed := func(v: float):
+		_fax_paper.offset_top = v
+		_fax_paper.offset_bottom = v
+	if GameState.reduce_motion:
+		feed.call(0.0)
+		return
+	var from := maxf(_fax_clip.size.y, 200.0)
+	feed.call(from)
+	if is_instance_valid(_fax_lcd):
+		_fax_lcd.text = "RECEIVING…"
+	_fax_tween = create_tween()
+	_fax_tween.tween_method(feed, from, 0.0, 0.55).set_trans(Tween.TRANS_LINEAR)
+	_fax_tween.tween_callback(func():
+		if is_instance_valid(_fax_lcd):
+			_fax_lcd.text = "READY")
 
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
@@ -1672,6 +1773,8 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 
 # ── Info panel update ────────────────────────────────────────────────────────
 func _select_level(ld: Dictionary) -> void:
+	if ld != _selected:
+		_fax_print()
 	_selected_is_custom = false
 	_selected = ld
 	var lid      := ld["id"] as String

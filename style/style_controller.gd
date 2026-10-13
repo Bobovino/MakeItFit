@@ -23,6 +23,7 @@ extends Node
 const MATTE_SHADER    := preload("res://style/shaders/matte_gradient.gdshader")
 const MATTE_ALPHA_SHADER := preload("res://style/shaders/matte_gradient_alpha.gdshader")
 const MATTE_DOUBLE_SHADER := preload("res://style/shaders/matte_gradient_double.gdshader")
+const GLASS_WALL_SHADER := preload("res://style/shaders/glass_wall.gdshader")
 const BACKDROP_SHADER := preload("res://style/shaders/backdrop.gdshader")
 const VIGNETTE_SHADER := preload("res://style/shaders/vignette.gdshader")
 
@@ -302,7 +303,9 @@ func _material_for(role: StringName, src: Variant) -> ShaderMaterial:
 	if _materials.has(key):
 		return _materials[key]["mat"]
 	var mat := ShaderMaterial.new()
-	mat.shader = MATTE_DOUBLE_SHADER if (role == ROLE_WALL or role == ROLE_PARTITION or role == ROLE_GLASS_WALL) else MATTE_SHADER
+	mat.shader = MATTE_DOUBLE_SHADER if (role == ROLE_WALL or role == ROLE_PARTITION) else MATTE_SHADER
+	if role == ROLE_GLASS_WALL:
+		mat.shader = GLASS_WALL_SHADER      # see-through and reeded: its own shader
 	var entry := {"mat": mat, "role": role, "src": src}
 	_materials[key] = entry
 	_configure_material(entry)
@@ -357,7 +360,7 @@ func _configure_material(entry: Dictionary) -> void:
 	elif role == ROLE_GLASS_WALL:
 		# Light is coming through it: a soft glow by day, almost none at night.
 		mat.set_shader_parameter("emission", palette.glow_color.lerp(_night_glass(), night))
-		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * 0.22, 0.0, night))
+		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * 0.16, 0.0, night))
 	elif role == ROLE_WINDOW:
 		# Daylight coming in; at night the glass is a dim pane of night sky,
 		# still faintly self-lit so it never drops to a black hole.
@@ -378,7 +381,7 @@ func _surface_color(role: StringName, src: Variant) -> Color:
 		ROLE_PARTITION: base = palette.wall_color.lerp(palette.floor_color, 0.6)
 		# Pale by day; at night there is nothing behind it to light it, so
 		# it falls back toward the ordinary wall colour.
-		ROLE_GLASS_WALL: base = palette.floor_color.lerp(Color(0.62, 0.90, 0.88), 0.55).lerp(palette.wall_color.darkened(0.25), night * 0.8)
+		ROLE_GLASS_WALL: base = palette.floor_color.lerp(Color(0.55, 0.92, 0.90), 0.6).lerp(palette.wall_color.darkened(0.15), night * 0.6)
 		ROLE_ACCENT: base = palette.accent_color
 		ROLE_PLINTH: base = palette.wall_color.lerp(palette.furniture_color, 0.35)
 		ROLE_SCENERY_FLOOR: base = palette.floor_color.lerp(palette.wall_color, 0.6)

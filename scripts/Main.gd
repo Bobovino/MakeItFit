@@ -246,6 +246,12 @@ func _fit_to_window() -> void:
 
 
 func _ready() -> void:
+	# The desk the plan lies on, behind everything else on this screen.
+	var desk_layer := CanvasLayer.new()
+	desk_layer.layer = -10
+	desk_layer.name = "Desk"
+	add_child(desk_layer)
+	desk_layer.add_child(DeskBackdrop.new())
 	_fit_to_window()
 	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
@@ -1012,6 +1018,8 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 		not gm.get_next_owned_level_id(level_id).is_empty())
 
 
+var _intros_shown: Dictionary = {}   # level id -> true, for this session in the play screen
+
 func _show_mechanic_intro_if_needed() -> void:
 	var intro: Dictionary = gm.current_level.get("mechanic_intro", {}) as Dictionary
 	if intro.is_empty():
@@ -1019,6 +1027,11 @@ func _show_mechanic_intro_if_needed() -> void:
 	var lid := gm.current_level.get("id", "") as String
 	if lid in GameState.completed:
 		return  # already played this level — skip intro
+	# Once per visit to the project: coming back out of a box (or restarting)
+	# reloads this level, and must not put the card up again.
+	if _intros_shown.has(lid):
+		return
+	_intros_shown[lid] = true
 
 	# Build fullscreen CanvasLayer overlay
 	var cl := CanvasLayer.new()
@@ -1313,7 +1326,13 @@ func _parent_scenery_data() -> Dictionary:
 	var level := _lookup_level_dict(_current_level_id)
 	if not (level.get("show_parent", true) as bool):
 		return {}
-	var ctx := _nested_stack[-1] as Dictionary
+	return _scenery_for(_nested_stack.size() - 1)
+
+
+# What the apartment at _nested_stack[index] looks like from inside its box,
+# with the apartment it stands in turn nested under "outer".
+func _scenery_for(index: int) -> Dictionary:
+	var ctx := _nested_stack[index] as Dictionary
 	if not ctx.has("box_rect"):
 		return {}
 	var parent_id := ctx["parent_level_id"] as String
@@ -1332,7 +1351,10 @@ func _parent_scenery_data() -> Dictionary:
 			continue
 		items.append({"fdata": fdata, "x": d.get("x", 0), "y": d.get("y", 0),
 			"rot_steps": d.get("rot_steps", 0), "is_extended": d.get("is_extended", false)})
-	return {"segments": segments, "items": items, "box_rect": ctx["box_rect"]}
+	var out := {"segments": segments, "items": items, "box_rect": ctx["box_rect"]}
+	if index > 0:
+		out["outer"] = _scenery_for(index - 1)
+	return out
 
 
 # Own CanvasLayer, above ui_layer's, rather than living in ui_layer and
