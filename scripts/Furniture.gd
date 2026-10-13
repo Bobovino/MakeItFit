@@ -94,6 +94,18 @@ var is_surface: bool = false
 var max_support_weight: float = 0.0
 var requires_surface: bool = false
 var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
+# A screen hides what is behind it without darkening the room: reeded glass,
+# a curtain. It stops a line of sight and divides zones like tall storage
+# does, but daylight passes it. "screen_when": "extended" makes that true
+# only while the piece is unfolded (a curtain drawn across).
+var screen: bool = false
+var screen_when: String = "always"
+# A living thing that needs the window: it gives nothing while it stands in
+# the dark (see _daylight_starved, set by Main), and its noise reaches further
+# than a machine's (noise_radius, in tiles; 0 = the usual touching-only rule).
+var needs_daylight: bool = false
+var noise_radius: int = 0
+var _daylight_starved: bool = false
 var front: String = "any"            # side it is used from: any | long | short | n | e | s | w
 
 # Mobility tier — how hard THIS piece is for the tenant to reposition, an
@@ -300,6 +312,10 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	max_support_weight    = data.get("max_support_weight", 0.0)     as float
 	requires_surface      = data.get("requires_surface",  false)    as bool
 	walkable              = data.get("walkable",          false)    as bool
+	screen                = data.get("screen",            false)    as bool
+	screen_when           = data.get("screen_when",       "always") as String
+	needs_daylight        = data.get("needs_daylight",    false)    as bool
+	noise_radius          = data.get("noise_radius",      0)        as int
 	front                 = data.get("front",             "any")    as String
 	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
@@ -330,6 +346,29 @@ func _fetch_topdown_icon(data: Dictionary) -> void:
 	if is_instance_valid(self) and tex:
 		_topdown_icon = tex
 		queue_redraw()
+
+
+func _screen_up() -> bool:
+	return screen and (screen_when != "extended" or is_extended)
+
+
+# Stops a line of sight: tall furniture, or a screen that is up.
+func blocks_sight() -> bool:
+	if screen:
+		return _screen_up()
+	return height_category == "tall"
+
+
+# Stops daylight: tall furniture, but never a screen.
+func blocks_light() -> bool:
+	return height_category == "tall" and not screen
+
+
+# Splits the floor into zones: tall storage, or a screen that is up.
+func divides_zone() -> bool:
+	if screen:
+		return zone_divider and _screen_up()
+	return zone_divider
 
 
 func set_accessible(is_accessible: bool) -> void:

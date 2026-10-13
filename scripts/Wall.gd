@@ -475,10 +475,14 @@ func _compute_light_map() -> void:
 			var _lm := _placed_list(next)
 			if not _lm.is_empty():
 				var f := _lm[0] as Furniture
-				match f.height_category:
-					"tall":   continue
-					"medium": decay += 0.28
-					"low":    decay += 0.05
+				if f.blocks_light():
+					continue
+				if f.screen:
+					decay += 0.05      # reeded glass, a curtain: the light comes through
+				else:
+					match f.height_category:
+						"medium": decay += 0.28
+						"low":    decay += 0.05
 			var next_i: float = intensity - decay
 			if next_i <= 0.0:
 				continue
@@ -1207,7 +1211,7 @@ func _recalculate_zones() -> void:
 	var divider_tiles: Dictionary = {}
 	for item in _get_all_placed_unique():
 		var f := item as Furniture
-		if not f.zone_divider:
+		if not f.divides_zone():
 			continue
 		for t in _rect_tiles(f.grid_pos, f.grid_w, f.grid_h):
 			divider_tiles[t] = true
@@ -1236,7 +1240,7 @@ func _recalculate_zones() -> void:
 		var zone_fids: Array[String] = []
 		for item in _get_all_placed_unique():
 			var f := item as Furniture
-			if f.zone_divider:
+			if f.divides_zone():
 				continue
 			for ft in _rect_tiles(f.grid_pos, f.grid_w, f.grid_h):
 				if ft in zone_tiles:
@@ -1550,7 +1554,7 @@ func sightline_block(from: Vector2i, to: Vector2i) -> Variant:
 			if tile in blocked:
 				return tile
 			for f in _placed_list(tile):
-				if (f as Furniture).height_category == "tall":
+				if (f as Furniture).blocks_sight():
 					return tile
 		if x0 == x1 and y0 == y1:
 			break

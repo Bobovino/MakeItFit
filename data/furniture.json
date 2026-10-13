@@ -3277,6 +3277,77 @@
       "needs_quiet": true,
       "model": "res://assets/models/furniture/SlidingPocketBed.glb",
       "open_anim": true
+    },
+    {
+      "id": "fluted_glass_panel",
+      "name": "Reeded Glass Screen",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 3
+      },
+      "wall_h": 22,
+      "floor_depth": 3,
+      "height_category": "tall",
+      "functions": [],
+      "buy_price": 220,
+      "sell_price": 110,
+      "color": "cfe3ea",
+      "screen": true,
+      "zone_divider": true,
+      "front": "any",
+      "model": "res://assets/models/furniture/FlutedGlassPanel.glb",
+      "mobility_tier": "yellow"
+    },
+    {
+      "id": "curtain",
+      "name": "Curtain",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "wall_h": 22,
+      "floor_depth": 2,
+      "height_category": "medium",
+      "functions": [],
+      "folded_functions": [],
+      "extended_functions": [],
+      "foldable": true,
+      "extended_add_h": 8,
+      "buy_price": 60,
+      "sell_price": 30,
+      "color": "c9d6c4",
+      "screen": true,
+      "screen_when": "extended",
+      "zone_divider": true,
+      "walkable": true,
+      "model": "res://assets/models/furniture/Curtain.glb",
+      "open_anim": true,
+      "mobility_tier": "green"
+    },
+    {
+      "id": "bird_cage",
+      "name": "Bird Cage",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 4
+      },
+      "wall_h": 16,
+      "floor_depth": 4,
+      "height_category": "medium",
+      "functions": [
+        "pet"
+      ],
+      "buy_price": 90,
+      "sell_price": 45,
+      "color": "d9b56a",
+      "is_noisy": true,
+      "noise_radius": 5,
+      "needs_daylight": true,
+      "model": "res://assets/models/furniture/BirdCage.glb",
+      "mobility_tier": "green"
     }
   ],
   "paintable": [

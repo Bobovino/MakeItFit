@@ -229,6 +229,9 @@ func _functions_of(entry, moment_id: String = "") -> Array:
 		# it's no longer near the source.
 		if fur.needs_quiet and fur._noise_muted:
 			return []
+		# A pet kept in the dark gives nothing (see Main._recompute_pet_effects).
+		if fur.needs_daylight and fur._daylight_starved:
+			return []
 		if moment_id != "":
 			return fur.functions_for_moment(moment_id)
 		return fur.functions

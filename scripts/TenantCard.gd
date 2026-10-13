@@ -60,6 +60,7 @@ const NEED_GLYPH := {
 	"storage": "📦",
 	"eat":     "🍽",
 	"social":  "🎉",
+	"pet":     "🐦",
 }
 
 

@@ -1847,7 +1847,7 @@ func _compute_box_occlusion(box: Furniture) -> float:
 				var fur := f as Furniture
 				if fur == box:
 					continue
-				if fur.height_category == "tall":
+				if fur.blocks_light():
 					worst = "tall"
 				elif fur.height_category == "medium" and worst != "tall":
 					worst = "medium"
@@ -1960,6 +1960,7 @@ func _recompute_box_effects() -> void:
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
 			(f as Furniture)._noise_muted = false
+	_recompute_pet_effects()
 	# Direction 1 (parent noise -> child): if we're currently INSIDE a box
 	# that had a noisy neighbor outside it when we entered, every needs_quiet
 	# piece in here is muted — set once at entry (_on_box_entered), applied
@@ -3040,6 +3041,41 @@ func _on_furniture_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vecto
 	f.queue_free()
 	_deliver_piece(fid, piece_name, target)
 	return true
+
+
+# Pets. A caged bird sings: anything that needs quiet within its reach gets
+# none (beds stop counting as somewhere to sleep). And it needs the window:
+# standing in the dark it gives nothing, and the player is told why, once
+# each time it happens.
+const DAYLIGHT_NEEDED := 0.30
+
+func _recompute_pet_effects() -> void:
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var all: Array = fl.get_all_furniture()
+		for entry in all:
+			var pet := entry as Furniture
+			if pet.needs_daylight:
+				# The light that reaches it: the brightest tile right beside
+				# it. (The tile under a piece is in that piece's own shade.)
+				var px := floori(pet.grid_pos.x)
+				var py := floori(pet.grid_pos.y)
+				var reaching := 0.0
+				for x in range(px - 1, px + pet.grid_w + 1):
+					for y in range(py - 1, py + pet.grid_h + 1):
+						if x < px or x >= px + pet.grid_w or y < py or y >= py + pet.grid_h:
+							reaching = maxf(reaching, fl.get_light(Vector2i(x, y)))
+				var starved := reaching < DAYLIGHT_NEEDED
+				if starved and not pet._daylight_starved:
+					_toast("%s needs daylight: stand it where the window's light reaches." % pet.furniture_name, true)
+				pet._daylight_starved = starved
+			if pet.noise_radius <= 0 or not pet.is_noisy:
+				continue
+			var reach := Rect2(pet.grid_pos, Vector2(pet.grid_w, pet.grid_h)).grow(float(pet.noise_radius))
+			for other in all:
+				var q := other as Furniture
+				if q != pet and q.needs_quiet and reach.intersects(Rect2(q.grid_pos, Vector2(q.grid_w, q.grid_h))):
+					q._noise_muted = true
 
 
 # Hands a piece to another apartment: it joins that apartment's owned pieces,
