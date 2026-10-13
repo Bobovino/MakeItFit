@@ -2,6 +2,8 @@ extends PanelContainer
 class_name TenantCard
 
 signal moment_selected(moment_id: String)
+signal need_clicked(need: String)   # a need chip was clicked: show what provides it
+signal height_changed               # the chips wrapped onto more or fewer rows
 
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
@@ -70,7 +72,7 @@ func _ready() -> void:
 	paper.border_color = BP_LINE
 	paper.set_border_width(SIDE_TOP, 1)
 	paper.set_content_margin(SIDE_LEFT, 12)
-	paper.set_content_margin(SIDE_RIGHT, 12)
+	paper.set_content_margin(SIDE_RIGHT, 310)   # Main adjusts this: see set_right_reserve()
 	paper.set_content_margin(SIDE_TOP, 8)
 	paper.set_content_margin(SIDE_BOTTOM, 8)
 	paper.anti_aliasing = true
@@ -105,9 +107,24 @@ func _ready() -> void:
 	_update_card_height()
 
 
+# Room kept free at the bar's right-hand end for the comfort gauge, the
+# budget and the Furniture button, which Main lays over it.
+func set_right_reserve(px: float) -> void:
+	var paper := get_theme_stylebox("panel") as StyleBoxFlat
+	if paper != null and not is_equal_approx(paper.get_content_margin(SIDE_RIGHT), px):
+		paper.set_content_margin(SIDE_RIGHT, px)
+		update_minimum_size()
+
+
+var _last_height := -1.0
+
 func _update_card_height() -> void:
 	var hbox := $VBox as HBoxContainer
-	size.y = hbox.get_combined_minimum_size().y + 12.0
+	var h := hbox.get_combined_minimum_size().y + 12.0
+	size.y = h
+	if not is_equal_approx(h, _last_height):
+		_last_height = h
+		height_changed.emit()
 
 
 # RENT OUT was a manual "I'm done, finish the level" button; Main.gd now
@@ -303,8 +320,14 @@ func highlight_moment(moment_id: String) -> void:
 func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.custom_minimum_size = Vector2(0, 30)
-	chip.tooltip_text = "%s — place furniture that provides it" % func_name.capitalize()
+	chip.tooltip_text = "%s — click to see the furniture that provides it" % func_name.capitalize()
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	if func_name != "rule":
+		chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		chip.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+					and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+				need_clicked.emit(func_name))
 
 	# Icon, name, then the tick or cross: readable without hovering.
 	var row := HBoxContainer.new()

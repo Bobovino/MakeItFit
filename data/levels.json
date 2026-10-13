@@ -203,7 +203,7 @@
 			],
 			"map_row": 0,
 			"mechanic_intro": {
-				"body": "Every apartment has a tenant, and every tenant has needs. They are listed in the bar at the bottom: a tick means the apartment already provides it, a cross means it doesn't.\n\nMarisol's family can cook, wash and store things here, but there is nowhere to sleep and nowhere to sit.\n\nOpen Furniture (top left, or press F), pick a category, and buy a bed and a chair. Click the floor to put each one down. Press R to rotate while placing.\n\nWhen every need is ticked, the apartment is ready to rent.",
+				"body": "Every apartment has a tenant, and every tenant has needs. They are listed in the bar at the bottom: a tick means the apartment already provides it, a cross means it doesn't.\n\nMarisol's family can cook, wash and store things here, but there is nowhere to sleep and nowhere to sit.\n\nOpen Furniture (top left, or press F). The catalogue opens on what the tenant still needs: buy a bed and something to sit on. Click the floor to put each one down. Press R to rotate while placing.\n\nWhen every need is ticked, the apartment is ready to rent.",
 				"title": "Welcome to Make It Fit"
 			},
 			"min_stars": 0,

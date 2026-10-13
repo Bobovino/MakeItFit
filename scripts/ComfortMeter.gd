@@ -7,8 +7,8 @@ extends Control
 # Main.gd handles that visibility check, this just draws whatever value it's
 # given.
 
-const BG_COL     := Color(0.16, 0.14, 0.12, 0.9)
-const BORDER_COL := Color(0.35, 0.32, 0.28, 0.9)
+const BG_COL     := Color(0.05, 0.11, 0.19, 0.95)
+const BORDER_COL := Color(0.62, 0.82, 0.98, 0.55)
 const TEXT_COL   := Color(0.93, 0.90, 0.86, 0.95)
 
 var _pct: float = 100.0
@@ -18,7 +18,7 @@ var _pulse_t: float = 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	tooltip_text = "Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out."
+	tooltip_text = "Comfort. Below the warning line the apartment can't be rented like this. Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out."
 	set_process(false)
 
 
@@ -64,9 +64,10 @@ func _draw() -> void:
 	draw_rect(r, border_col, false, border_w)
 	var font := ThemeDB.fallback_font
 	const FSIZE := 10
+	# Short enough for the bar; the tooltip carries the explanation.
 	var label := "Comfort %d%%" % roundi(_pct)
 	if failing:
-		label += " — can't rent like this"
+		label += "  ✗"
 	var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
 	draw_string(font, Vector2((size.x - tw) * 0.5, size.y * 0.5 + FSIZE * 0.35), label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, TEXT_COL)
+		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, Color(0.06, 0.12, 0.08) if _pct >= 60.0 else TEXT_COL)

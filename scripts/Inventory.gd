@@ -3,6 +3,7 @@ class_name Inventory
 
 signal buy_requested(furniture_id: String)
 signal builder_tool_selected(tool_id: String)   # "" = no tool (back to select/place mode)
+signal close_requested
 
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
@@ -50,6 +51,21 @@ var _category_buttons: Dictionary = {}     # Category enum value -> Button
 var _sub_filter_box: Container = null
 var _sub_filter_separator: HSeparator = null
 var _sub_filter_buttons: Dictionary = {}   # category name -> Button
+var _search: LineEdit = null
+var _row: HBoxContainer = null       # the strip's single row of cards
+var _need_filter: String = ""        # set when opened from a need chip: only what provides it
+var _last_unmet: Array = []
+
+# The catalogue's left-hand list. "Needed" comes first and is where the
+# catalogue opens: the pieces that provide something the tenant still lacks.
+const VIEW_NEEDED := "Needed"
+const VIEW_BUILDER := "Builder"
+const VIEWS := [
+	["Needed", "⭐", "Needed"], ["All", "▦", "All"], ["Bedroom", "🛏", "Bedroom"],
+	["Bathroom", "🚿", "Bathroom"], ["Kitchen", "🍳", "Kitchen"], ["Living", "🛋", "Living"],
+	["Storage", "📦", "Storage"], ["Transformable", "🔀", "Folding"], ["Rentals", "💰", "Rentals"],
+	["Builder", "🛠", "Build"],
+]
 var _builder_tool_buttons: Array = []
 var _builder_tool: String = ""
 var _tooltip: PanelContainer = null
@@ -66,143 +82,198 @@ func setup(game_manager: GameManager) -> void:
 	item_list.add_theme_constant_override("separation", 5)
 
 
+# The catalogue is a strip docked along the bottom of the screen, the way
+# The Sims does it: the apartment stays in view above it, and it stays open
+# while the player buys and places one piece after another. Tabs and a search
+# box across the top, one row of cards underneath that scrolls sideways.
 func _ensure_filter_box() -> void:
 	if is_instance_valid(_filter_box):
 		return
-	_filter_box = HBoxContainer.new()
-	_filter_box.name = "CategoryFilter"
-	_filter_box.add_theme_constant_override("separation", 4)
-	var group := ButtonGroup.new()
-	var specs := [
-		[Category.FURNITURE, "🛋", "Furniture"],
-		[Category.BUILDER,   "🛠", "Builder"],
-	]
-	for spec in specs:
-		var cat: int = spec[0]
-		var btn := Button.new()
-		btn.text           = spec[1]
-		btn.tooltip_text   = spec[2]
-		btn.toggle_mode    = true
-		btn.button_group   = group
-		btn.button_pressed = (cat == _category)
-		btn.add_theme_font_size_override("font_size", 16)
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		# Active tab fills amber like a proper tab selector, instead of relying
-		# on the barely-visible default toggle border.
-		var tp := StyleBoxFlat.new()
-		tp.bg_color = Color(0.42, 0.36, 0.13)
-		tp.border_color = GameTheme.C_AMBER
-		tp.set_border_width_all(1)
-		tp.set_corner_radius_all(9)
-		tp.anti_aliasing = true
-		tp.set_content_margin(SIDE_TOP, 6)
-		tp.set_content_margin(SIDE_BOTTOM, 6)
-		btn.add_theme_stylebox_override("pressed", tp)
-		btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
-		btn.pressed.connect(_set_category.bind(cat))
-		_filter_box.add_child(btn)
-		_category_buttons[cat] = btn
-
-	# Fixed 2-column grid — same column count as the item cell grid below, so
-	# the icon rows line up with the furniture grid instead of a flowing wrap
-	# that broke onto 3-per-row and looked wider than the items underneath.
-	var sub_grid := GridContainer.new()
-	sub_grid.name = "SubCategoryFilter"
-	sub_grid.columns = 2
-	sub_grid.add_theme_constant_override("h_separation", 6)
-	sub_grid.add_theme_constant_override("v_separation", 6)
-	_sub_filter_box = sub_grid
-	var sub_group := ButtonGroup.new()
-	for sub in SUB_CATEGORIES:
-		var sb := Button.new()
-		sb.text = SUB_CATEGORY_GLYPH.get(sub, "?") as String
-		sb.tooltip_text = sub
-		sb.toggle_mode = true
-		sb.button_group = sub_group
-		sb.button_pressed = (sub == _sub_category)
-		sb.custom_minimum_size = Vector2(0, 28)
-		sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		sb.add_theme_font_size_override("font_size", 14)
-		var sp := StyleBoxFlat.new()
-		sp.bg_color = Color(0.30, 0.26, 0.16)
-		sp.border_color = GameTheme.C_AMBER
-		sp.set_border_width_all(1)
-		sp.set_corner_radius_all(6)
-		sp.anti_aliasing = true
-		sb.add_theme_stylebox_override("pressed", sp)
-		sb.add_theme_color_override("font_pressed_color", GameTheme.C_AMBER)
-		sb.pressed.connect(_set_sub_category.bind(sub))
-		_sub_filter_box.add_child(sb)
-		_sub_filter_buttons[sub] = sb
-
-	# PanelContainer only auto-fills a single child, so wrap the pre-existing
-	# ScrollContainer alongside the new filter rows in a VBoxContainer instead
-	# of trying to lay both out directly as PanelContainer children.
 	remove_child(scroll)
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = TenantCard.BP_BG.darkened(0.18)
+	paper.bg_color.a = 0.97
+	paper.set_content_margin(SIDE_LEFT, 12)
+	paper.set_content_margin(SIDE_RIGHT, 12)
+	paper.set_content_margin(SIDE_TOP, 8)
+	paper.set_content_margin(SIDE_BOTTOM, 8)
+	add_theme_stylebox_override("panel", paper)
 	var root := VBoxContainer.new()
 	root.name = "Root"
-	root.add_theme_constant_override("separation", 4)
+	root.add_theme_constant_override("separation", 6)
 	add_child(root)
-	root.add_child(_filter_box)
 
-	# A hairline break between the main Furniture/Builder tabs and the
-	# sub-category icon grid — otherwise the two icon rows read as one
-	# undifferentiated block.
-	_sub_filter_separator = HSeparator.new()
-	_sub_filter_separator.add_theme_constant_override("separation", 2)
-	var sep_style := StyleBoxFlat.new()
-	sep_style.bg_color = Color(1, 1, 1, 0.12)
-	sep_style.content_margin_top = 1
-	sep_style.content_margin_bottom = 1
-	_sub_filter_separator.add_theme_stylebox_override("separator", sep_style)
-	root.add_child(_sub_filter_separator)
-	root.add_child(_sub_filter_box)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 4)
+	root.add_child(top)
+	_filter_box = top
+	_sub_filter_box = top
+	var group := ButtonGroup.new()
+	group.allow_unpress = true   # while searching or filtering by a need, no tab is current
+	for spec in VIEWS:
+		var id: String = spec[0]
+		var b := Button.new()
+		b.text = "%s %s" % [spec[1], spec[2]]
+		b.toggle_mode = true
+		b.button_group = group
+		b.custom_minimum_size = Vector2(0, 28)
+		b.add_theme_font_size_override("font_size", 12)
+		var sp := StyleBoxFlat.new()
+		sp.bg_color = Color(0.42, 0.36, 0.13)
+		sp.border_color = GameTheme.C_AMBER
+		sp.set_border_width_all(1)
+		sp.set_corner_radius_all(7)
+		sp.set_content_margin(SIDE_LEFT, 8)
+		sp.set_content_margin(SIDE_RIGHT, 8)
+		sp.anti_aliasing = true
+		b.add_theme_stylebox_override("pressed", sp)
+		b.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
+		b.pressed.connect(_set_view.bind(id))
+		if id == VIEW_NEEDED:
+			b.custom_minimum_size.x = 112   # room for its "(3)" count
+		top.add_child(b)
+		_sub_filter_buttons[id] = b
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
+	_search = LineEdit.new()
+	_search.placeholder_text = "Search…"
+	_search.clear_button_enabled = true
+	_search.custom_minimum_size = Vector2(200, 28)
+	_search.add_theme_font_size_override("font_size", 12)
+	_search.text_changed.connect(func(_t: String):
+		_need_filter = ""
+		_sync_filter_buttons()
+		_render())
+	# Enter hands the keyboard back to the game (R to rotate, Q/E, WASD).
+	_search.text_submitted.connect(func(_t: String): _search.release_focus())
+	top.add_child(_search)
 	root.add_child(scroll)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# The mouse wheel moves the row sideways.
+	scroll.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			var wheel := (event as InputEventMouseButton).button_index
+			if wheel == MOUSE_BUTTON_WHEEL_DOWN or wheel == MOUSE_BUTTON_WHEEL_UP:
+				scroll.scroll_horizontal += 140 if wheel == MOUSE_BUTTON_WHEEL_DOWN else -140
+				scroll.accept_event())
+	if _gm != null and not _gm.functions_updated.is_connected(_on_needs_changed):
+		_gm.functions_updated.connect(_on_needs_changed)
 
 
-# Opens the catalog pre-filtered to the category/sub-category the player just
-# picked on CategoryWheel — the wheel only ever navigates, it never touches
-# _full_list or _render() itself, so this just drives the same state the
-# existing tab buttons already drive and reuses _render() unchanged.
-func open_for_category(category: int, sub_category: String) -> void:
-	_category = category
-	_sub_category = sub_category if sub_category != "" else "All"
-	if _category != Category.BUILDER:
-		_builder_tool = ""
-	if is_instance_valid(_sub_filter_box):
-		_sub_filter_box.visible = (_category == Category.FURNITURE)
-	if is_instance_valid(_sub_filter_separator):
-		_sub_filter_separator.visible = (_category == Category.FURNITURE)
+# The apartment changed. If the strip is showing "what is still needed", that
+# list has just changed too.
+func _on_needs_changed(_fulfilled: Array, _required: Array) -> void:
+	if not visible or not is_instance_valid(_filter_box):
+		return
+	var now := unmet_needs()
+	if now == _last_unmet:
+		return
+	_sync_filter_buttons()
+	if _search.text.strip_edges() == "" and (_need_filter != "" or (_category == Category.FURNITURE and _sub_category == VIEW_NEEDED)):
+		_render()
+
+
+# Opened from a need chip in the bar ("Sleep ✗"): everything that provides
+# that one need, and nothing else.
+func show_need(need: String) -> void:
+	_ensure_filter_box()
+	_category = Category.FURNITURE
+	_need_filter = need
+	_search.text = ""
 	_sync_filter_buttons()
 	visible = true
 	_render()
 
 
+# Which view is showing: one of VIEWS' ids.
+func _current_view() -> String:
+	return VIEW_BUILDER if _category == Category.BUILDER else _sub_category
+
+
+func _set_view(id: String) -> void:
+	_need_filter = ""
+	if id == VIEW_BUILDER:
+		_category = Category.BUILDER
+	else:
+		_category = Category.FURNITURE
+		_sub_category = id
+		if _builder_tool != "":
+			_builder_tool = ""
+			builder_tool_selected.emit("")
+	if is_instance_valid(_search) and _search.text != "":
+		_search.text = ""      # picking a tab leaves search mode
+	_sync_filter_buttons()
+	_render()
+
+
+# Opens the strip. It starts on "Needed" whenever the tenant still lacks
+# something, because that is nearly always what the player came for.
+func open_catalog() -> void:
+	_ensure_filter_box()
+	_category = Category.FURNITURE
+	_sub_category = VIEW_NEEDED if not unmet_needs().is_empty() else "All"
+	_need_filter = ""
+	_builder_tool = ""
+	_search.text = ""
+	_sync_filter_buttons()
+	visible = true
+	_render()
+
+
+# Kept for callers that open on a particular category.
+func open_for_category(category: int, sub_category: String) -> void:
+	_ensure_filter_box()
+	_search.text = ""
+	_set_view(VIEW_BUILDER if category == Category.BUILDER else (sub_category if sub_category != "" else "All"))
+	visible = true
+
+
 func _sync_filter_buttons() -> void:
-	for cat in _category_buttons:
-		(_category_buttons[cat] as Button).button_pressed = (cat == _category)
-	for sub in _sub_filter_buttons:
-		(_sub_filter_buttons[sub] as Button).button_pressed = (sub == _sub_category)
+	var view := _current_view()
+	var searching := (is_instance_valid(_search) and _search.text.strip_edges() != "") or _need_filter != ""
+	var needed := unmet_needs().size()
+	for id in _sub_filter_buttons:
+		var b := _sub_filter_buttons[id] as Button
+		b.button_pressed = (id == view) and not searching
+		if id == VIEW_NEEDED:
+			b.text = "⭐ Needed" + ((" (%d)" % needed) if needed > 0 else "")
 
 
-func _set_category(cat: int) -> void:
-	if _category == cat:
-		return
-	_category = cat
-	if cat != Category.BUILDER and _builder_tool != "":
-		_builder_tool = ""
-		builder_tool_selected.emit("")
-	_sub_filter_box.visible = (cat == Category.FURNITURE)
-	_sub_filter_separator.visible = (cat == Category.FURNITURE)
-	_render()
+# What the tenant still lacks: every need the level asks for (in any moment)
+# that the apartment does not provide yet.
+func unmet_needs() -> Array:
+	var out: Array = []
+	if _gm == null:
+		return out
+	var wanted: Array = _gm.required_functions.duplicate()
+	if not _gm.moments.is_empty():
+		# A level with moments shows one moment's needs at a time in the
+		# bar; "Needed" lists what is missing for that same moment.
+		wanted = []
+		for m in _gm.moments:
+			var md := m as Dictionary
+			if Furniture.active_moment_id == "" or (md.get("id", "") as String) == Furniture.active_moment_id:
+				for need in md.get("needs", []) as Array:
+					if need not in wanted:
+						wanted.append(need)
+	for need in wanted:
+		if need not in _gm.fulfilled_functions:
+			out.append(need)
+	return out
 
 
-func _set_sub_category(sub: String) -> void:
-	if _sub_category == sub:
-		return
-	_sub_category = sub
-	_render()
+# Everything a piece can provide, folded or unfolded.
+static func provides(f: Dictionary) -> Array:
+	var out: Array = []
+	for key in ["functions", "folded_functions", "extended_functions"]:
+		for fn in f.get(key, []) as Array:
+			if fn not in out:
+				out.append(fn)
+	return out
 
 
 func _set_builder_tool(tool_id: String) -> void:
@@ -249,42 +320,108 @@ func populate(furniture_list: Array) -> void:
 
 
 func _render() -> void:
+	# Taken out at once, not just queued: for a frame the old row and the new
+	# one would both count toward the strip's height.
 	for child in item_list.get_children():
+		item_list.remove_child(child)
 		child.queue_free()
+	if not is_instance_valid(_filter_box):
+		return
+	_row = HBoxContainer.new()
+	_row.add_theme_constant_override("separation", 8)
+	item_list.add_child(_row)
+	_last_unmet = unmet_needs()
+	# Neutral order: smallest footprint first. Not cheapest first, which only
+	# invited clicking the first card; what a piece costs in floor is the
+	# decision here, and the card shows it.
+	var by_size := func(a, b):
+		var sa := a.get("size", {}) as Dictionary
+		var sb := b.get("size", {}) as Dictionary
+		var aa := (sa.get("w", 0) as int) * (sa.get("h", 0) as int)
+		var ab := (sb.get("w", 0) as int) * (sb.get("h", 0) as int)
+		return aa < ab if aa != ab else (a.get("buy_price", 0) as int) < (b.get("buy_price", 0) as int)
+	var furniture := _full_list.filter(func(f): return not _is_builder(f))
+	furniture.sort_custom(by_size)
+	var query := _search.text.strip_edges().to_lower() if is_instance_valid(_search) else ""
 
-	if _category == Category.BUILDER:
-		item_list.add_child(_build_builder_tool_row())
-
-	# The "ITEMS" caption used to explain click=buy/hover=preview, but it forced
-	# the narrow sidebar wider than the 2-column item grid, causing a
-	# horizontal scrollbar and clipping the right column — the icon grid is
-	# self-explanatory enough (and the item tooltips carry the "hover for
-	# details" hint) that the label isn't needed for Furniture. Builder still
-	# gets a short caption since its rows are text, not icons.
-	if _category == Category.BUILDER:
-		var hdr := Label.new()
-		hdr.text = "STAIRCASES"
-		hdr.add_theme_font_size_override("font_size", 9)
-		hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-		item_list.add_child(hdr)
-
-	var shown := _full_list.filter(func(f): return _is_builder(f) == (_category == Category.BUILDER))
-	if _category == Category.FURNITURE and _sub_category != "All":
-		shown = shown.filter(func(f): return _sub_category_of(f) == _sub_category)
-
-	if _category == Category.FURNITURE:
-		var flow := HFlowContainer.new()
-		flow.add_theme_constant_override("h_separation", 6)
-		flow.add_theme_constant_override("v_separation", 6)
-		for f in shown:
-			flow.add_child(_build_item_cell(f))
-		item_list.add_child(flow)
+	if query != "":
+		var hits := furniture.filter(func(f):
+			var hay := (f.get("name", "") as String).to_lower() + " " + " ".join(Inventory.provides(f)) \
+				+ " " + _sub_category_of(f).to_lower()
+			for word in query.split(" ", false):
+				if not hay.contains(word):
+					return false
+			return true)
+		_add_heading("🔎", "%d found" % hits.size())
+		_add_cards(hits)
+		if hits.is_empty():
+			_add_note("Nothing matches. Try a need (sleep, sit, work, storage) or part of a name.")
+	elif _need_filter != "":
+		var options := furniture.filter(func(f): return _need_filter in Inventory.provides(f))
+		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "❔") as String, _need_filter.capitalize())
+		_add_cards(options)
+		if options.is_empty():
+			_add_note("No piece in this level provides it.")
+	elif _category == Category.BUILDER:
+		_row.add_child(_build_builder_tool_row())
+		for f in _full_list.filter(func(f): return _is_builder(f)):
+			_row.add_child(_build_shop_row(f))
+	elif _sub_category == VIEW_NEEDED:
+		if _last_unmet.is_empty():
+			_add_note("The tenant has everything they asked for. Pick a tab to browse.")
+		for need in _last_unmet:
+			var options := furniture.filter(func(f): return need in Inventory.provides(f))
+			_add_heading(TenantCard.NEED_GLYPH.get(need, "❔") as String, (need as String).capitalize())
+			if options.is_empty():
+				_add_note("Nothing in this level provides it.")
+			else:
+				_add_cards(options)
 	else:
-		for f in shown:
-			item_list.add_child(_build_shop_row(f))
+		var shown := furniture
+		if _sub_category != "All":
+			shown = furniture.filter(func(f): return _sub_category_of(f) == _sub_category)
+		_add_cards(shown)
+		if shown.is_empty():
+			_add_note("Nothing in this category for this level.")
 
 	if not _owned_list.is_empty():
 		_render_owned_section()
+	scroll.scroll_horizontal = 0
+
+
+func _add_cards(items: Array) -> void:
+	for f in items:
+		_row.add_child(_build_item_cell(f))
+
+
+# A group's name plate inside the row: a pictogram over a short label.
+func _add_heading(glyph: String, text: String) -> void:
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.custom_minimum_size.x = 70
+	var g := Label.new()
+	g.text = glyph
+	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	g.add_theme_font_size_override("font_size", 22)
+	box.add_child(g)
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	box.add_child(l)
+	_row.add_child(box)
+
+
+func _add_note(text: String) -> void:
+	var note := Label.new()
+	note.text = text
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	note.custom_minimum_size = Vector2(260, 0)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_row.add_child(note)
 
 
 # Free-form building tools (walls, columns, erase, ...) — distinct from the
@@ -469,9 +606,9 @@ class ItemCell extends PanelContainer:
 	func _init(fdata: Dictionary, owner_inv: Control) -> void:
 		_fdata = fdata
 		_owner_inv = owner_inv
-		custom_minimum_size = Vector2(60, 78)
+		custom_minimum_size = Vector2(116, 132)
 		mouse_filter = Control.MOUSE_FILTER_STOP
-		var style := GameTheme.make_card_stylebox(Color(0.210, 0.185, 0.150), Color(0.320, 0.270, 0.205), 8)
+		var style := GameTheme.make_card_stylebox(Color(0.105, 0.185, 0.290), Color(0.30, 0.44, 0.60), 8)
 		add_theme_stylebox_override("panel", style)
 
 		_hover_timer = Timer.new()
@@ -486,22 +623,62 @@ class ItemCell extends PanelContainer:
 		add_child(vb)
 
 		_icon_holder = Control.new()
-		_icon_holder.custom_minimum_size = Vector2(48, 48)
+		_icon_holder.custom_minimum_size = Vector2(54, 54)
 		_icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_icon_holder.add_child(Inventory._make_item_icon(fdata, 48.0))
+		_icon_holder.add_child(Inventory._make_item_icon(fdata, 54.0))
 		var icon_row := CenterContainer.new()
 		icon_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon_row.add_child(_icon_holder)
 		vb.add_child(icon_row)
 
+		# The name, always visible: the picture alone is not enough to tell
+		# a nightstand from a side table.
+		var name_lbl := Label.new()
+		name_lbl.text = fdata.get("name", "?") as String
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_lbl.max_lines_visible = 2
+		name_lbl.custom_minimum_size = Vector2(106, 28)
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(name_lbl)
+
+		# What it provides, as the same pictograms the needs bar uses.
+		var gives := Label.new()
+		var marks: PackedStringArray = []
+		for fn in Inventory.provides(fdata):
+			if TenantCard.NEED_GLYPH.has(fn):
+				marks.append(TenantCard.NEED_GLYPH[fn] as String)
+		# ...and what it costs in floor: the footprint, in centimetres.
+		var fp := fdata.get("size", {}) as Dictionary
+		var size_text := "%d×%d cm" % [(fp.get("w", 0) as int) * 10, (fp.get("h", 0) as int) * 10]
+		gives.text = (" ".join(marks) + "  " + size_text) if not marks.is_empty() else size_text
+		gives.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		gives.custom_minimum_size.y = 15
+		gives.add_theme_font_size_override("font_size", 10)
+		gives.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		gives.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(gives)
+
+		# A piece that covers two or more of the needs still missing is the
+		# kind of answer the puzzle rewards; it gets an amber edge and a mark.
+		var missing: Array = owner_inv.call("unmet_needs") if owner_inv.has_method("unmet_needs") else []
+		var covers := 0
+		for fn in Inventory.provides(fdata):
+			if fn in missing:
+				covers += 1
+		if covers >= 2:
+			var gold := GameTheme.make_card_stylebox(Color(0.20, 0.23, 0.22), GameTheme.C_AMBER, 8)
+			add_theme_stylebox_override("panel", gold)
+			name_lbl.text = "★ " + name_lbl.text
+			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.62))
+			set_meta("covers", covers)
+
 		var price_lbl := Label.new()
 		price_lbl.text = Inventory.price_text(fdata.get("buy_price", 0) as int)
-		if fdata.get("rental", false) as bool:
-			# Rental boxes share one icon; their footprint is what tells them apart.
-			var fp := fdata.get("size", {}) as Dictionary
-			price_lbl.text += "\n%d×%d cm" % [(fp.get("w", 0) as int) * 10, (fp.get("h", 0) as int) * 10]
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		price_lbl.add_theme_font_size_override("font_size", 11)
+		price_lbl.add_theme_font_size_override("font_size", 12)
 		price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
 		price_lbl.set_meta("price", fdata.get("buy_price", 0) as int)
 		price_lbl.name = "PriceLabel"
@@ -527,7 +704,7 @@ class ItemCell extends PanelContainer:
 			c.queue_free()
 		var trect := TextureRect.new()
 		trect.texture = tex
-		trect.custom_minimum_size = Vector2(48, 48)
+		trect.custom_minimum_size = Vector2(54, 54)
 		trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		trect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -867,13 +1044,13 @@ func populate_owned(owned_list: Array, catalog: Array) -> void:
 func _render_owned_section() -> void:
 	var sep := HSeparator.new()
 	sep.add_theme_constant_override("separation", 4)
-	item_list.add_child(sep)
+	_row.add_child(sep)
 
 	var hdr := Label.new()
 	hdr.text = "STARTING ITEMS"
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	item_list.add_child(hdr)
+	_row.add_child(hdr)
 
 	for entry in _owned_list:
 		var fid   := (entry as Dictionary)["id"] as String
@@ -923,7 +1100,7 @@ func _render_owned_section() -> void:
 				card.queue_free())
 			row.add_child(place_btn)
 
-			item_list.add_child(card)
+			_row.add_child(card)
 
 
 func _fmt_funcs(funcs: Array) -> String:
@@ -948,5 +1125,7 @@ func _refresh_affordability(new_budget: int) -> void:
 
 
 func _on_buy_pressed(furniture_id: String) -> void:
+	if is_instance_valid(_search):
+		_search.release_focus()
 	Audio.play("click")
 	buy_requested.emit(furniture_id)

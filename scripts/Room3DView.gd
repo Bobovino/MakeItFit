@@ -592,6 +592,9 @@ func _on_container_input(event: InputEvent) -> void:
 # doesn't hold keyboard focus), so Esc-to-cancel a purchase is handled through
 # the normal _input() channel instead, same as Furniture.gd's 2D equivalent.
 func _input(event: InputEvent) -> void:
+	# Letters typed into a text box (the catalogue's search) are not camera keys.
+	if event is InputEventKey and get_viewport().gui_get_focus_owner() is LineEdit:
+		return
 	if _reveal_playing:
 		return
 	# View keys. Handled here, ahead of Main.gd's own shortcuts (this node is
@@ -1747,7 +1750,7 @@ func _add_balcony_wall_gap(mi: MeshInstance3D, box_size: Vector3) -> void:
 		mi.add_child(gap)
 		mi.set_meta("wall_gap", gap)
 	# Recomputed every call for the same reason as inst's own position above
-	# — the box's depth (and therefore where its wall-flush edge sits
+	# — the box's depth (and therefore w	here its wall-flush edge sits
 	# relative to its own center) changes between folded/extended states.
 	(gap.mesh as BoxMesh).size = Vector3(box_size.x * 0.92, box_size.y * 0.92, 0.02)
 	gap.position = Vector3(0, 0, -box_size.z * 0.5)

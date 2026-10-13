@@ -63,7 +63,6 @@ var _post_win_view: bool = false      # true during Watch Again — level is alr
 var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
 var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _furniture_menu_btn: Button = null       # persistent "Furniture" trigger — replaces the old always-docked Inventory sidebar
-var _category_wheel: CategoryWheel = null    # Sims-style radial category picker, built lazily
 var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog, own node so it doesn't cross-wire with _modal_backdrop's WallInspector-specific dismiss callback
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
@@ -202,6 +201,10 @@ var _level_completed:   bool = false   # true once this level's Results screen h
 
 func _ready() -> void:
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
+	tenant_card.need_clicked.connect(_on_need_clicked)
+	# The bar grows upward when its chips wrap (rule chips arrive after the
+	# needs): everything that sits on it or under it follows.
+	tenant_card.height_changed.connect(func(): _relayout_bottom_bar.call_deferred())
 	# Floor tabs (Ground Floor/Loft/Second Floor/...) read better as a vertical
 	# stack — it echoes the actual building elevation (higher floors literally
 	# higher on screen) instead of a left-to-right strip, and frees up the
@@ -417,7 +420,7 @@ func _apply_ui_theme() -> void:
 		# TOP_Y (10) + the Furniture button's own ~34px height + a gap —
 		# this used to sit at the exact same (8, 8) spot as "🛋 Furniture",
 		# fully overlapping it (that button's own position is LEFT_X+8, TOP_Y).
-		_editor_back_btn.offset_top = TOP_Y + 34.0 + 8.0
+		_editor_back_btn.offset_top = TOP_Y
 		_editor_back_btn.pressed.connect(func():
 			GameState.testing_from_editor = false
 			Transition.change_scene("res://scenes/LevelEditor.tscn"))
@@ -426,20 +429,31 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn = Button.new()
 		_furniture_menu_btn.name = "FurnitureMenuBtn"
-		_furniture_menu_btn.text = "🛋 Furniture (F)"
-		_furniture_menu_btn.tooltip_text = "Open the furniture menu (F)"
-		_furniture_menu_btn.add_theme_font_size_override("font_size", 14)
-		# Same prominent amber treatment as the Rent Out button — this is now
-		# the only way into buying furniture, so it needs to read as a clearly
-		# clickable primary action, not a small utility icon tucked in a corner.
-		var fs := GameTheme.make_rent_btn_style()
-		_furniture_menu_btn.add_theme_stylebox_override("normal",  fs[0])
-		_furniture_menu_btn.add_theme_stylebox_override("hover",   fs[1])
-		_furniture_menu_btn.add_theme_stylebox_override("pressed", fs[1])
+		_furniture_menu_btn.text = "🛋  Furniture  ▴"
+		_furniture_menu_btn.tooltip_text = "Open or close the furniture catalogue (F)"
+		_furniture_menu_btn.add_theme_font_size_override("font_size", 13)
+		# It sits at the right-hand end of the needs bar and is drawn as part
+		# of it: the bar is the handle of the catalogue that opens under it.
+		# (It used to float alone in the top-left corner, as a large amber
+		# slab with nothing around it.)
+		for state in ["normal", "hover", "pressed"]:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0.42, 0.36, 0.13) if state != "normal" else Color(0.13, 0.22, 0.34)
+			sb.border_color = GameTheme.C_AMBER
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(8)
+			sb.set_content_margin(SIDE_LEFT, 12)
+			sb.set_content_margin(SIDE_RIGHT, 12)
+			sb.anti_aliasing = true
+			_furniture_menu_btn.add_theme_stylebox_override(state, sb)
 		_furniture_menu_btn.add_theme_color_override("font_color",         GameTheme.C_AMBER)
 		_furniture_menu_btn.add_theme_color_override("font_hover_color",   Color(1.0, 0.96, 0.72))
 		_furniture_menu_btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.96, 0.72))
-		_furniture_menu_btn.pressed.connect(_open_furniture_menu)
+		_furniture_menu_btn.pressed.connect(func():
+			if _is_furniture_menu_open():
+				_close_furniture_menu()
+			else:
+				_open_furniture_menu())
 		ui_layer.add_child(_furniture_menu_btn)
 
 	if not is_instance_valid(_undo_btn):
@@ -479,8 +493,6 @@ func _position_top_left_icons() -> void:
 	if is_instance_valid(_test_btn):
 		_test_btn.offset_left = LEFT_X + 8.0
 		_test_btn.offset_top  = TOP_Y
-		if is_instance_valid(_furniture_menu_btn):
-			_test_btn.offset_top = _furniture_menu_btn.offset_bottom + 8.0
 	if is_instance_valid(_settings_btn):
 		_settings_btn.offset_right = RIGHT_X - 8.0
 		_settings_btn.offset_left  = _settings_btn.offset_right - (_settings_btn.custom_minimum_size.x as float)
@@ -497,31 +509,39 @@ func _position_top_left_icons() -> void:
 # it's only wrong when something else already fixed a wider offset_right
 # first (see _position_tenant_card()'s comment).
 func _position_budget_label() -> void:
-	if not is_instance_valid(budget_label):
+	if not is_instance_valid(budget_label) or not is_instance_valid(tenant_card):
 		return
-	budget_label.offset_left = 8.0
+	# The budget is part of the bottom bar, beside the Furniture button: what
+	# you can spend sits next to where you spend it. It used to float on its
+	# own above the bar's left end.
+	if not budget_label.has_meta("in_bar"):
+		budget_label.set_meta("in_bar", true)
+		var plain := StyleBoxEmpty.new()
+		plain.set_content_margin(SIDE_LEFT, 4)
+		plain.set_content_margin(SIDE_RIGHT, 4)
+		budget_label.add_theme_stylebox_override("normal", plain)
+		budget_label.add_theme_font_size_override("font_size", 14)
+		budget_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	budget_label.offset_left = 0.0
 	budget_label.reset_size()
-	# Capture the real (small) minimum height BEFORE touching offset_top/
-	# offset_bottom below — Control's offset_top/offset_bottom/size are three
-	# views of the same live state, so writing offset_bottom first and then
-	# reading .size.y back out returns a value already corrupted by the still-
-	# stale offset_top, not the natural content height reset_size() just gave it.
-	var h := budget_label.size.y
-	var gap := 8.0
-	budget_label.offset_bottom = tenant_card.offset_top - gap
-	budget_label.offset_top    = budget_label.offset_bottom - h
+	var w := budget_label.size.x
+	var right := (_furniture_menu_btn.offset_left - 12.0) if is_instance_valid(_furniture_menu_btn) else (RIGHT_X - 12.0)
+	budget_label.offset_right  = right
+	budget_label.offset_left   = right - w
+	budget_label.offset_top    = tenant_card.offset_top + 5.0
+	budget_label.offset_bottom = budget_label.offset_top + 28.0
 	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
 	_position_comfort_meter()
 
 
-const COMFORT_METER_SIZE := Vector2(210.0, 22.0)  # wide enough for "Comfort 100% — can't rent like this"
+const COMFORT_METER_SIZE := Vector2(132.0, 22.0)  # a gauge in the bottom bar: "Comfort 100%"
 
 func _ensure_comfort_meter() -> void:
 	if is_instance_valid(_comfort_meter):
 		return
 	_comfort_meter = ComfortMeterScript.new()
 	_comfort_meter.name = "ComfortMeter"
-	_comfort_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_comfort_meter.mouse_filter = Control.MOUSE_FILTER_STOP   # for its tooltip
 	_comfort_meter.custom_minimum_size = COMFORT_METER_SIZE
 	_comfort_meter.size = COMFORT_METER_SIZE
 	ui_layer.add_child(_comfort_meter)
@@ -534,11 +554,12 @@ func _position_comfort_meter() -> void:
 		return
 	if not is_instance_valid(budget_label):
 		return
-	var gap := 6.0
-	_comfort_meter.offset_left   = 8.0
-	_comfort_meter.offset_right  = 8.0 + COMFORT_METER_SIZE.x
-	_comfort_meter.offset_bottom = budget_label.offset_top - gap
-	_comfort_meter.offset_top    = _comfort_meter.offset_bottom - COMFORT_METER_SIZE.y
+	# In the bottom bar, just left of the budget. (It used to float above
+	# the bar's left end.)
+	_comfort_meter.offset_right  = budget_label.offset_left - 14.0
+	_comfort_meter.offset_left   = _comfort_meter.offset_right - COMFORT_METER_SIZE.x
+	_comfort_meter.offset_top    = tenant_card.offset_top + 8.0
+	_comfort_meter.offset_bottom = _comfort_meter.offset_top + COMFORT_METER_SIZE.y
 	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
 
 
@@ -556,12 +577,16 @@ func _update_comfort_meter() -> void:
 		if has_yellow:
 			break
 	if not has_yellow:
-		if is_instance_valid(_comfort_meter):
+		if is_instance_valid(_comfort_meter) and _comfort_meter.visible:
 			_comfort_meter.visible = false
+			_position_minimap()
 		return
 	_ensure_comfort_meter()
+	var was_hidden := not _comfort_meter.visible
 	_comfort_meter.visible = true
 	_comfort_meter.set_value(gm.comfort_pct, gm.COMFORT_WARN_THRESHOLD)
+	if was_hidden:
+		_position_minimap()   # re-lays the bar, which now reserves room for the gauge
 	_position_comfort_meter()
 
 
@@ -645,6 +670,9 @@ func _load_level(level_id: String) -> void:
 	WallInspector.read_only = false
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
+	# Stepping into a box, back out of it, or restarting keeps the catalogue
+	# as the player left it; it is re-opened below once the new shop is in.
+	var _reopen_catalog := _catalog_wanted
 	_close_furniture_menu()
 	if is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn.visible = true
@@ -827,6 +855,8 @@ func _load_level(level_id: String) -> void:
 	inventory.populate(shop_list)
 	if not gm.starting_inventory.is_empty():
 		inventory.populate_owned(gm.starting_inventory, gm.furniture_data["furniture"])
+	if _reopen_catalog:
+		_open_furniture_menu.call_deferred()
 	budget_label.text = "Budget: %d€" % gm.budget
 	wall_inspector.setup(gm.furniture_data["furniture"])
 
@@ -2118,7 +2148,19 @@ func _position_minimap() -> void:
 	_position_tenant_card()
 	# Stacked bottom-right, directly above the TenantCard bar now that it
 	# spans the bottom edge instead of sitting in a right-hand column.
-	var right_edge := RIGHT_X - 8.0
+	var right_edge := RIGHT_X
+	if not minimap.has_meta("docked"):
+		# One piece with the bar: same navy, squared off where they meet.
+		minimap.set_meta("docked", true)
+		var tab := StyleBoxFlat.new()
+		tab.bg_color = TenantCard.BP_BG
+		tab.border_color = TenantCard.BP_LINE
+		tab.set_border_width(SIDE_TOP, 1)
+		tab.set_border_width(SIDE_LEFT, 1)
+		tab.corner_radius_top_left = 8
+		tab.set_content_margin_all(8)
+		tab.anti_aliasing = true
+		minimap.add_theme_stylebox_override("panel", tab)
 	minimap.offset_right  = right_edge
 	minimap.offset_left   = right_edge - 100.0   # rough placeholder — reset_size() below measures the real width
 	# Shrink-wrapped to however many floor buttons the current level actually
@@ -2142,8 +2184,8 @@ func _position_minimap() -> void:
 	# with nothing actually in it. Collapse the reserved band to zero so the
 	# next thing up (ViewModeBox) touches the bar instead.
 	var content_h := maxf(minimap.size.y, 40.0) if minimap.visible else 0.0
-	var gap       := 8.0 if minimap.visible else 0.0
-	minimap.offset_bottom = tenant_card.offset_top - gap
+	var gap       := 0.0
+	minimap.offset_bottom = _hud_stack_top() - gap
 	minimap.offset_top    = minimap.offset_bottom - content_h
 	ui_layer.move_child(minimap, ui_layer.get_child_count() - 1)
 	_position_view_mode_box()
@@ -2167,13 +2209,22 @@ func _position_tenant_card() -> void:
 	# extra wrapped rows instead of measuring a natural unwrapped width.
 	# get_combined_minimum_size() alone re-measures children at the CURRENT
 	# (already-fixed-width) rect without touching offsets.
-	tenant_card.offset_right = LEFT_X + minf(700.0, RIGHT_X - LEFT_X)
-	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 36.0)
-	# Flush with the true bottom edge, no margin — this is a HUD bar sitting
-	# on the screen's own edge (matching how the old TopBar sat flush at the
-	# top), not a floating card that wants breathing room around it.
-	tenant_card.offset_bottom = BOT_Y
-	tenant_card.offset_top    = BOT_Y - content_h
+	tenant_card.offset_right = RIGHT_X
+	var reserve := 10.0 + 150.0 + 12.0 + 14.0   # edge, Furniture button, gaps
+	if is_instance_valid(budget_label):
+		reserve += budget_label.get_combined_minimum_size().x
+	if is_instance_valid(_comfort_meter) and _comfort_meter.visible:
+		reserve += COMFORT_METER_SIZE.x + 14.0
+	tenant_card.set_right_reserve(reserve)
+	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 38.0)
+	# Flush with the bottom edge while the catalogue is shut. When it opens,
+	# the bar rides on top of it: the bar is the catalogue's own header.
+	var strip_h := 0.0
+	if is_instance_valid(inventory) and inventory.visible:
+		strip_h = maxf(CATALOG_STRIP_H, inventory.get_combined_minimum_size().y)
+	tenant_card.offset_bottom = BOT_Y - strip_h
+	tenant_card.offset_top    = tenant_card.offset_bottom - content_h
+	_position_furniture_menu_btn()
 
 
 # The Floor Plan/3D segmented toggle floats directly above whatever's next in
@@ -2357,7 +2408,7 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.offset_left   = LEFT_X
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
-	_mode3d_view.offset_bottom = BOT_Y
+	_mode3d_view.offset_bottom = _floor_pane_bottom_y()
 	var below_floor: Floor = null
 	if fl.floor_id in _floor_below_id:
 		below_floor = _floors.get(_floor_below_id[fl.floor_id] as String) as Floor
@@ -2466,32 +2517,82 @@ func _hide_modal_backdrop() -> void:
 # offers for its own build/buy mode; pressing F opens the wheel at the cursor
 # instead of this button's fixed position (see _open_furniture_menu).
 func _position_furniture_menu_btn() -> void:
-	if not is_instance_valid(_furniture_menu_btn):
+	if not is_instance_valid(_furniture_menu_btn) or not is_instance_valid(tenant_card):
 		return
 	var w := 150.0
-	_furniture_menu_btn.offset_left   = LEFT_X + 8.0
-	_furniture_menu_btn.offset_right  = LEFT_X + 8.0 + w
-	_furniture_menu_btn.offset_top    = TOP_Y
-	_furniture_menu_btn.offset_bottom = TOP_Y + 34.0
+	var h := 28.0
+	_furniture_menu_btn.offset_right  = RIGHT_X - 10.0
+	_furniture_menu_btn.offset_left   = _furniture_menu_btn.offset_right - w
+	_furniture_menu_btn.offset_top    = tenant_card.offset_top + 5.0
+	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
+	_furniture_menu_btn.text = "🛋  Furniture  ▾" if _is_furniture_menu_open() else "🛋  Furniture  ▴"
+	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
+	_position_budget_label()
 
 
-# at_cursor: true opens the wheel centered on the mouse (used by the F-key
-# shortcut — the wheel appears wherever the player was already looking, like
-# The Sims' own build/buy mode); false (the "Furniture" button's own click)
-# keeps it at its usual fixed spot in the middle of the play area, since a
-# button click's "cursor position" is just wherever that button happens to be.
-func _open_furniture_menu(at_cursor: bool = false) -> void:
+# Opens the furniture catalogue (the "Furniture" button, or F): a strip
+# docked above the needs bar. It does not cover the apartment and it stays
+# open while pieces are bought and placed. `_at_cursor` is left over from the
+# radial wheel this replaced and is ignored.
+func _open_furniture_menu(_at_cursor: bool = false) -> void:
 	if _post_win_view:
 		return
-	_ensure_furniture_menu_backdrop()
-	_ensure_category_wheel()
-	var center := get_viewport().get_mouse_position() if at_cursor \
-		else Vector2((LEFT_X + RIGHT_X) * 0.5, (TOP_Y + BOT_Y) * 0.5)
-	_position_category_wheel(center)
-	_furniture_menu_backdrop.visible = true
-	_category_wheel.visible = true
-	inventory.visible = false
-	_reraise_furniture_menu_nodes()
+	if not inventory.close_requested.is_connected(_close_furniture_menu):
+		inventory.close_requested.connect(_close_furniture_menu)
+	inventory.open_catalog()
+	_catalog_wanted = true
+	_relayout_for_catalog()
+
+
+# A need chip in the bar was clicked: open the strip on what provides it.
+func _on_need_clicked(need: String) -> void:
+	if _post_win_view:
+		return
+	if not inventory.close_requested.is_connected(_close_furniture_menu):
+		inventory.close_requested.connect(_close_furniture_menu)
+	inventory.show_need(need)
+	_catalog_wanted = true
+	_relayout_for_catalog()
+
+
+# The strip takes the bottom of the play area while it is open: the plan and
+# the 3D view give that height up, and the floating HUD pieces that sit on
+# the needs bar move up to sit on the strip instead.
+const CATALOG_STRIP_H := 180.0
+
+func _relayout_for_catalog() -> void:
+	_position_minimap()            # places the needs bar (above the strip when open) and the view toggle
+	_position_furniture_catalog_modal()
+	_position_budget_label()
+	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
+	_position_furniture_menu_btn()
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+	if _view_mode == ViewMode.TOPDOWN:
+		var fl := _floors.get(_current_floor_id) as Floor
+		if fl:
+			_fit_floor(fl, true)
+
+
+var _bar_relayout_busy := false
+
+func _relayout_bottom_bar() -> void:
+	if _bar_relayout_busy or not is_instance_valid(tenant_card) or _floors.is_empty():
+		return
+	_bar_relayout_busy = true
+	_position_minimap()
+	if _is_furniture_menu_open():
+		_position_furniture_catalog_modal()
+		if is_instance_valid(_mode3d_view):
+			_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+	_position_budget_label()
+	_position_comfort_meter()
+	_bar_relayout_busy = false
+
+
+# Top edge of whatever sits along the bottom of the screen right now.
+func _hud_stack_top() -> float:
+	return tenant_card.offset_top
 
 
 func _ensure_furniture_menu_backdrop() -> void:
@@ -2512,54 +2613,11 @@ func _ensure_furniture_menu_backdrop() -> void:
 	ui_layer.add_child(_furniture_menu_backdrop)
 
 
-func _ensure_category_wheel() -> void:
-	if is_instance_valid(_category_wheel):
-		return
-	_category_wheel = CategoryWheel.new()
-	_category_wheel.name = "CategoryWheel"
-	_category_wheel.category_chosen.connect(_on_wheel_category_chosen)
-	_category_wheel.cancelled.connect(_close_furniture_menu)
-	_category_wheel.visible = false
-	ui_layer.add_child(_category_wheel)
-
-
-const WHEEL_SIZE := 420.0
-
-# Centers the wheel on `center`, clamped so it never spills off the play area
-# — needed now that it can open at the cursor (see _open_furniture_menu)
-# instead of always at the same fixed, already-in-bounds spot.
-func _position_category_wheel(center: Vector2) -> void:
-	var half := WHEEL_SIZE * 0.5
-	var cx := clampf(center.x, LEFT_X + half, RIGHT_X - half)
-	var cy := clampf(center.y, TOP_Y + half, BOT_Y - half)
-	_category_wheel.offset_left   = cx - half
-	_category_wheel.offset_right  = cx + half
-	_category_wheel.offset_top    = cy - half
-	_category_wheel.offset_bottom = cy + half
-
-
-func _on_wheel_category_chosen(id: String) -> void:
-	_category_wheel.visible = false
-	if id == "Builder":
-		inventory.open_for_category(Inventory.Category.BUILDER, "All")
-	else:
-		inventory.open_for_category(Inventory.Category.FURNITURE, id)
-	_position_furniture_catalog_modal()
-	_reraise_furniture_menu_nodes()
-
-
-# Floating centered catalog — same centering approach as
-# _position_wall_inspector_modal() above, just without that function's
-# content-aspect-ratio sizing (Inventory's own ScrollContainer handles
-# overflow instead).
 func _position_furniture_catalog_modal() -> void:
-	var w := 340.0
-	var h := clampf(BOT_Y - TOP_Y - 40.0, 300.0, 640.0)
-	var center_x := (LEFT_X + RIGHT_X) * 0.5
-	inventory.offset_left   = center_x - w * 0.5
-	inventory.offset_right  = center_x + w * 0.5
-	inventory.offset_top    = TOP_Y + 20.0
-	inventory.offset_bottom = inventory.offset_top + h
+	inventory.offset_left   = LEFT_X
+	inventory.offset_right  = RIGHT_X
+	inventory.offset_top    = tenant_card.offset_bottom
+	inventory.offset_bottom = BOT_Y
 
 
 # True while either the radial category wheel or the filtered item grid
@@ -2567,24 +2625,25 @@ func _position_furniture_catalog_modal() -> void:
 # cycle through. Used so pressing F again closes whichever of those is open
 # instead of only ever opening.
 func _is_furniture_menu_open() -> bool:
-	return (is_instance_valid(_category_wheel) and _category_wheel.visible) \
-		or (is_instance_valid(inventory) and inventory.visible)
+	return is_instance_valid(inventory) and inventory.visible
 
+
+var _catalog_wanted := false   # the player has the catalogue open (survives a level load)
 
 func _close_furniture_menu() -> void:
-	if is_instance_valid(_category_wheel):
-		_category_wheel.visible = false
+	_catalog_wanted = false
+	var was_open := is_instance_valid(inventory) and inventory.visible
 	if is_instance_valid(_furniture_menu_backdrop):
 		_furniture_menu_backdrop.visible = false
 	inventory.visible = false
+	if was_open:
+		_relayout_for_catalog()
 
 
 func _reraise_furniture_menu_nodes() -> void:
 	if is_instance_valid(_furniture_menu_backdrop):
 		ui_layer.move_child(_furniture_menu_backdrop, ui_layer.get_child_count() - 1)
 	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
-	if is_instance_valid(_category_wheel):
-		ui_layer.move_child(_category_wheel, ui_layer.get_child_count() - 1)
 
 
 # Neither mode has a permanent docked Wall Inspector to hint at wall access
@@ -2639,7 +2698,7 @@ func _update_nested_nav() -> void:
 	_map_btn.visible = not _nested_stack.is_empty() or not _collect_nested_boxes().is_empty()
 	_back_btn.visible = not _nested_stack.is_empty()
 	var x := LEFT_X + 8.0
-	var y := TOP_Y + 44.0
+	var y := TOP_Y
 	if is_instance_valid(_test_btn) and _test_btn.visible:
 		y = _test_btn.offset_top + _test_btn.size.y + 8.0   # Test Layout already sits under the Furniture button
 	if _map_btn.visible:
@@ -2704,6 +2763,8 @@ func _floor_pane_right_x() -> float:
 
 
 func _floor_pane_bottom_y() -> float:
+	if is_instance_valid(inventory) and inventory.visible:
+		return tenant_card.offset_top
 	return BOT_Y
 
 
@@ -2848,7 +2909,7 @@ func _on_wall_item_placed(furniture_id: String) -> void:
 
 
 func _on_buy_requested(furniture_id: String) -> void:
-	_close_furniture_menu()   # Sims-style flow: picking an item returns to the apartment view immediately
+	# The catalogue strip stays open: buy, place, buy the next one.
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
 		return
@@ -3265,6 +3326,14 @@ func _has_foldable_furniture() -> bool:
 
 
 func _input(event: InputEvent) -> void:
+	# While the player is typing (the catalogue's search box), letters are
+	# text, not shortcuts. Escape still closes the catalogue.
+	if event is InputEventKey and get_viewport().gui_get_focus_owner() is LineEdit:
+		var typed := event as InputEventKey
+		if typed.pressed and typed.keycode == KEY_ESCAPE and _is_furniture_menu_open():
+			_close_furniture_menu()
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey:
 		var ke := event as InputEventKey
 		if ke.pressed and not ke.echo and ke.keycode == KEY_ESCAPE \
