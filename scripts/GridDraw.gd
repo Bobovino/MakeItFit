@@ -283,15 +283,21 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 					draw_line(pt, pt + inward * 5.0, RAIL_BAR_COL, 1.5)
 
 	# ── 2b. Zone overlays — colour-coded by primary function ─────────────────
-	if parent.zones.size() > 1:
-		for zone in parent.zones:
-			var z     := zone as Dictionary
+	# A level with a zone rule always shows its zones, even while the whole
+	# room is still one: that single tinted, flagged zone IS the problem the
+	# player has to solve. A zone that breaks a rule is red.
+	var zone_rules := not parent.zone_status.is_empty()
+	if parent.zones.size() > 1 or zone_rules:
+		for zi in parent.zones.size():
+			var z     := parent.zones[zi] as Dictionary
 			var z_fns := z.get("functions", []) as Array
 			var z_col := Color(0, 0, 0, 0)
 			if   "sleep" in z_fns:                     z_col = Color(0.36, 0.52, 0.82, 0.14)  # blue
 			elif "cook"  in z_fns:                     z_col = Color(0.82, 0.42, 0.28, 0.14)  # red
 			elif "sit"   in z_fns or "dine" in z_fns:  z_col = Color(0.78, 0.68, 0.28, 0.14)  # amber
 			elif "work"  in z_fns:                     z_col = Color(0.32, 0.70, 0.42, 0.14)  # green
+			if zone_rules:
+				z_col = RuleOverlay.zone_color(zi, zi < parent.zone_status.size() and (parent.zone_status[zi] as Dictionary)["conflict"] as bool)
 			if z_col.a > 0:
 				for tile in z.get("tiles", {}) as Dictionary:
 					var t := tile as Vector2i

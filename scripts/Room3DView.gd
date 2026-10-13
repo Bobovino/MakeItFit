@@ -2703,7 +2703,10 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_update_camera()   # also applies initial wall visibility now that _wall_data exists
 
 	for item in apt_floor.get_all_furniture():
+		_add_piece_rail(item as Furniture, bounds)
 		_add_furniture_box(item as Furniture, bounds, catalog)
+	_rule_root = null   # freed with the rest of build_root's children
+	_rebuild_rule_overlays()
 
 	for edge in apt_floor.wall_items:
 		var items: Dictionary = apt_floor.wall_items[edge] as Dictionary
@@ -3492,11 +3495,6 @@ func _add_wall_opening_overlay(edge: String, x_tile: int, len_tiles: int, y0_m: 
 func _add_rails(bounds: Rect2i) -> void:
 	if not _apt_floor:
 		return
-	const RAIL_LINE_COLOR := Color(0.22, 0.70, 0.78, 0.9)
-	const RAIL_TIE_COLOR  := Color(0.22, 0.70, 0.78, 0.4)
-	const Y_LVL      := 0.006   # just above the floor mesh, avoids z-fighting
-	const LINE_THICK := 0.012
-	const LINE_MARGIN := 0.16   # how far each side rail sits from the channel's own centerline
 	for rail in _apt_floor.rails:
 		var rd := rail as Dictionary
 		var x1: int = rd.get("x1", 0) as int
@@ -3504,23 +3502,261 @@ func _add_rails(bounds: Rect2i) -> void:
 		var x2: int = rd.get("x2", 0) as int
 		var y2: int = rd.get("y2", 0) as int
 		var is_h_r := (y1 == y2)
+		# A piece riding this rail draws its own track under itself (see
+		# _add_piece_rail); drawing the authored one too would double it.
+		var ridden := false
+		for item in _apt_floor.get_all_furniture():
+			var rider := item as Furniture
+			if rider.rail_axis != ("h" if is_h_r else "v"):
+				continue
+			var lo := rider.grid_pos.y if is_h_r else rider.grid_pos.x
+			var span := rider.grid_h if is_h_r else rider.grid_w
+			var line := float(y1 if is_h_r else x1)
+			if line >= lo and line < lo + span:
+				ridden = true
+				break
+		if ridden:
+			continue
 		var local_x := (mini(x1, x2) - bounds.position.x) * TILE_M
 		var local_z := (mini(y1, y2) - bounds.position.y) * TILE_M
 		var length := (absi(x2 - x1) + 1) * TILE_M if is_h_r else (absi(y2 - y1) + 1) * TILE_M
 		var channel_w := (absi(y2 - y1) + 1) * TILE_M if is_h_r else (absi(x2 - x1) + 1) * TILE_M
 		var center := (local_z + channel_w * 0.5) if is_h_r else (local_x + channel_w * 0.5)
-		var along0 := local_x if is_h_r else local_z
-		for side in [-1.0, 1.0]:
-			var size := Vector3(length, 0.002, LINE_THICK) if is_h_r else Vector3(LINE_THICK, 0.002, length)
-			var pos := Vector3(along0 + length * 0.5, Y_LVL, center + side * LINE_MARGIN) if is_h_r \
-				else Vector3(center + side * LINE_MARGIN, Y_LVL, along0 + length * 0.5)
-			_add_rail_decal(size, pos, RAIL_LINE_COLOR)
-		var t := 0.0
-		while t < length + 0.001:
-			var tie_size := Vector3(LINE_THICK, 0.002, channel_w) if is_h_r else Vector3(channel_w, 0.002, LINE_THICK)
-			var tie_pos := Vector3(along0 + t, Y_LVL, center) if is_h_r else Vector3(center, Y_LVL, along0 + t)
-			_add_rail_decal(tie_size, tie_pos, RAIL_TIE_COLOR)
-			t += TILE_M
+		_add_track(is_h_r, local_x if is_h_r else local_z, length, center, 0.16)
+
+
+# ── Rule overlays: lines of sight and zones ──────────────────────────────────
+# The 3D counterpart of RuleOverlay (the plan's lines) and GridDraw's zone
+# tints. Main hands over the current state after every change.
+const SIGHT_OK_COLOR  := Color(0.25, 0.85, 0.48)
+const SIGHT_BAD_COLOR := Color(0.98, 0.34, 0.30)
+const EYE_HEIGHT := 1.45   # metres
+
+var _rule_root: Node3D = null
+var _rule_sight: Array = []
+var _rule_zones: Array = []
+var _rule_zone_status: Array = []   # per zone {conflict, label}; empty when the level has no zone rule
+
+func set_rule_overlays(sight: Array, zones: Array, zone_status: Array = []) -> void:
+	_rule_sight = sight
+	_rule_zones = zones
+	_rule_zone_status = zone_status
+	_rebuild_rule_overlays()
+
+
+func _rule_point(tile: Vector2i, height: float) -> Vector3:
+	return Vector3((tile.x - _room_bounds.position.x + 0.5) * TILE_M, height,
+		(tile.y - _room_bounds.position.y + 0.5) * TILE_M)
+
+
+func _rule_mat(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true          # a line of sight stays readable through furniture
+	mat.render_priority = 5
+	if color.a < 1.0:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return mat
+
+
+func _rule_beam(a: Vector3, b: Vector3, thick: float, color: Color) -> void:
+	var length := a.distance_to(b)
+	if length < 0.001:
+		return
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(thick, thick, length)
+	mi.mesh = mesh
+	mi.material_override = _rule_mat(color)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_rule_root.add_child(mi)
+	mi.position = (a + b) * 0.5
+	mi.look_at_from_position(mi.position, b, Vector3.UP if absf((b - a).normalized().y) < 0.99 else Vector3.RIGHT)
+
+
+func _rule_ball(at: Vector3, radius: float, color: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 12
+	mesh.rings = 6
+	mi.mesh = mesh
+	mi.material_override = _rule_mat(color)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = at
+	_rule_root.add_child(mi)
+
+
+func _rebuild_rule_overlays() -> void:
+	if is_instance_valid(_rule_root):
+		_rule_root.queue_free()
+	_rule_root = null
+	if not is_instance_valid(build_root) or _apt_floor == null:
+		return
+	var zone_rules := not _rule_zone_status.is_empty()
+	if _rule_sight.is_empty() and _rule_zones.size() < 2 and not zone_rules:
+		return
+	_rule_root = Node3D.new()
+	build_root.add_child(_rule_root)
+
+	for i in _rule_sight.size():
+		var s := _rule_sight[i] as Dictionary
+		var col: Color = SIGHT_OK_COLOR if (s["ok"] as bool) else SIGHT_BAD_COLOR
+		var from := _rule_point(s["from"], EYE_HEIGHT)
+		var to := _rule_point(s["to"], EYE_HEIGHT)
+		var seen_to := to
+		if s["block"] != null:
+			seen_to = _rule_point(s["block"], EYE_HEIGHT)
+		if s["must_be_clear"] as bool:
+			_rule_beam(from, seen_to, 0.035, col)
+		else:
+			# Dashed: this line is meant to be cut.
+			var total := from.distance_to(seen_to)
+			var dir := (seen_to - from).normalized() if total > 0.001 else Vector3.ZERO
+			var t := 0.0
+			while t < total:
+				_rule_beam(from + dir * t, from + dir * minf(t + 0.16, total), 0.035, col)
+				t += 0.3
+		if s["block"] != null:
+			_rule_beam(seen_to, to, 0.014, Color(col.r, col.g, col.b, 0.35))
+			for d in [Vector3(0.11, 0.11, 0.0), Vector3(0.11, -0.11, 0.0), Vector3(0.0, 0.11, 0.11), Vector3(0.0, -0.11, 0.11)]:
+				_rule_beam(seen_to - d, seen_to + d, 0.035, col)
+		# The eye stands on a post so it is clear where on the floor it is;
+		# the target is a ring of small balls would be noise, so: one ball.
+		_rule_beam(_rule_point(s["from"], 0.02), from, 0.02, Color(col.r, col.g, col.b, 0.7))
+		_rule_ball(from, 0.10, col)
+		_rule_beam(_rule_point(s["to"], 0.02), to, 0.02, Color(col.r, col.g, col.b, 0.7))
+		_rule_ball(to, 0.06, col)
+		var num := Label3D.new()
+		num.text = str(i + 1)
+		num.font_size = 56
+		num.pixel_size = 0.0022
+		num.modulate = Color(0.04, 0.10, 0.08)
+		num.outline_size = 10
+		num.outline_modulate = col
+		num.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		num.no_depth_test = true
+		num.render_priority = 6
+		num.position = from + Vector3(0.0, 0.22, 0.0)
+		_rule_root.add_child(num)
+
+	# Zones: the same tints the plan uses, painted on the floor as one image.
+	if _rule_zones.size() > 1 or zone_rules:
+		var w := _room_bounds.size.x
+		var h := _room_bounds.size.y
+		var img := Image.create(maxi(w, 1), maxi(h, 1), false, Image.FORMAT_RGBA8)
+		var any := false
+		for zi in _rule_zones.size():
+			var z := _rule_zones[zi] as Dictionary
+			var fns := z.get("functions", []) as Array
+			var zc := Color(0, 0, 0, 0)
+			if   "sleep" in fns:                    zc = Color(0.36, 0.52, 0.82, 0.30)
+			elif "cook"  in fns:                    zc = Color(0.82, 0.42, 0.28, 0.30)
+			elif "sit"   in fns or "dine" in fns:   zc = Color(0.78, 0.68, 0.28, 0.30)
+			elif "work"  in fns:                    zc = Color(0.32, 0.70, 0.42, 0.30)
+			if zone_rules:
+				# Same colours and name plates as the plan (see RuleOverlay).
+				var st := (_rule_zone_status[zi] as Dictionary) if zi < _rule_zone_status.size() else {"conflict": false, "label": ""}
+				var conflict := st["conflict"] as bool
+				zc = RuleOverlay.zone_color(zi, conflict)
+				zc.a *= 1.6
+				var text := st["label"] as String
+				if text != "":
+					var c2 := RuleOverlay.zone_center(z)
+					var plate := Label3D.new()
+					plate.text = ("✗ " + text) if conflict else text
+					plate.font_size = 44
+					plate.pixel_size = 0.0042
+					plate.modulate = SIGHT_BAD_COLOR if conflict else Color(0.92, 0.96, 1.0)
+					plate.outline_size = 12
+					plate.outline_modulate = Color(0.04, 0.08, 0.14)
+					plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+					plate.no_depth_test = true
+					plate.render_priority = 6
+					plate.position = Vector3((c2.x - _room_bounds.position.x) * TILE_M, 0.35, (c2.y - _room_bounds.position.y) * TILE_M)
+					_rule_root.add_child(plate)
+			if zc.a <= 0.0:
+				continue
+			for tile in z.get("tiles", {}) as Dictionary:
+				var t := tile as Vector2i
+				var px := t.x - _room_bounds.position.x
+				var py := t.y - _room_bounds.position.y
+				if px >= 0 and py >= 0 and px < w and py < h:
+					img.set_pixel(px, py, zc)
+					any = true
+		if any:
+			var quad := QuadMesh.new()
+			quad.size = Vector2(w * TILE_M, h * TILE_M)
+			quad.orientation = PlaneMesh.FACE_Y
+			var zmi := MeshInstance3D.new()
+			zmi.mesh = quad
+			zmi.position = Vector3(w * TILE_M * 0.5, 0.008, h * TILE_M * 0.5)
+			var zmat := StandardMaterial3D.new()
+			zmat.albedo_texture = ImageTexture.create_from_image(img)
+			zmat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			zmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			zmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			zmi.material_override = zmat
+			zmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			_rule_root.add_child(zmi)
+
+
+# A piece that slides (a wardrobe, a rolling cart) gets the track it rides
+# drawn on the floor under it, end to end, so it is clear in 3D that it only
+# moves one way and how far. The plan shows the same thing with arrows.
+func _add_piece_rail(f: Furniture, bounds: Rect2i) -> void:
+	if f.rail_axis == "" or not _apt_floor:
+		return
+	var room := _apt_floor.get_room_bounds()
+	var is_h := f.rail_axis == "h"
+	var first: float       # tile where the track starts
+	var last: float        # tile just past its end
+	if is_h:
+		first = float(room.position.x + 1) if f.rail_start < 0 else float(f.rail_start)
+		last = float(room.position.x + room.size.x) if f.rail_end < 0 else float(f.rail_end + f.grid_w)
+	else:
+		first = float(room.position.y + 1) if f.rail_start < 0 else float(f.rail_start)
+		last = float(room.position.y + room.size.y) if f.rail_end < 0 else float(f.rail_end + f.grid_h)
+	if last <= first:
+		return
+	var origin := float(bounds.position.x if is_h else bounds.position.y)
+	var cross := (f.grid_pos.y - bounds.position.y + f.grid_h * 0.5) if is_h \
+		else (f.grid_pos.x - bounds.position.x + f.grid_w * 0.5)
+	var depth := (f.grid_h if is_h else f.grid_w) * TILE_M
+	_add_track(is_h, (first - origin) * TILE_M, (last - first) * TILE_M, cross * TILE_M, clampf(depth * 0.3, 0.06, 0.2))
+
+
+# Two rails with sleepers between them, lying on the floor. `along0` and
+# `length` run along the track; `center` is its middle line across; `gauge`
+# is how far each rail sits from that line. All in metres, room-local.
+func _add_track(is_h: bool, along0: float, length: float, center: float, gauge: float) -> void:
+	const RAIL_LINE_COLOR := Color(0.10, 0.52, 0.62, 1.0)
+	const RAIL_TIE_COLOR  := Color(0.10, 0.52, 0.62, 0.55)
+	const RAIL_BED_COLOR  := Color(0.22, 0.70, 0.78, 0.16)
+	const Y_LVL      := 0.012   # clear of the floor and its plank pattern
+	const LINE_THICK := 0.028
+	const TIE_EVERY  := 0.2
+	var mid := along0 + length * 0.5
+	var bed_w := gauge * 2.0 + 0.08
+	_add_rail_decal(Vector3(length, 0.002, bed_w) if is_h else Vector3(bed_w, 0.002, length),
+		Vector3(mid, Y_LVL - 0.003, center) if is_h else Vector3(center, Y_LVL - 0.003, mid), RAIL_BED_COLOR)
+	for side in [-1.0, 1.0]:
+		var size := Vector3(length, 0.004, LINE_THICK) if is_h else Vector3(LINE_THICK, 0.004, length)
+		var pos := Vector3(mid, Y_LVL, center + side * gauge) if is_h else Vector3(center + side * gauge, Y_LVL, mid)
+		_add_rail_decal(size, pos, RAIL_LINE_COLOR)
+	var t := TIE_EVERY * 0.5
+	while t < length:
+		var tie_size := Vector3(LINE_THICK * 0.7, 0.003, gauge * 2.0) if is_h else Vector3(gauge * 2.0, 0.003, LINE_THICK * 0.7)
+		var tie_pos := Vector3(along0 + t, Y_LVL - 0.001, center) if is_h else Vector3(center, Y_LVL - 0.001, along0 + t)
+		_add_rail_decal(tie_size, tie_pos, RAIL_TIE_COLOR)
+		t += TIE_EVERY
+	# A buffer stop at each end.
+	for end_at in [along0, along0 + length]:
+		var stop_size := Vector3(LINE_THICK, 0.02, gauge * 2.0 + LINE_THICK) if is_h else Vector3(gauge * 2.0 + LINE_THICK, 0.02, LINE_THICK)
+		var stop_pos := Vector3(end_at, Y_LVL + 0.008, center) if is_h else Vector3(center, Y_LVL + 0.008, end_at)
+		_add_rail_decal(stop_size, stop_pos, RAIL_LINE_COLOR)
 
 
 func _add_rail_decal(size: Vector3, pos: Vector3, color: Color) -> void:

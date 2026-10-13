@@ -10,6 +10,8 @@ signal moment_selected(moment_id: String)
 
 # flat-list mode
 var _check_chips: Dictionary = {}   # func_name -> Control
+var _rule_chips: Array = []         # one per GameManager.rule_status() entry
+var _rule_row: Container = null     # where those chips live
 var _tenant_name: String = ""       # for the "ALEX NEEDS" lead-in, see _add_goal_label()
 
 # Suppresses the ✓-pop animation for the burst of updates right after a level
@@ -142,6 +144,8 @@ func _clear_checklist() -> void:
 		checklist_container.remove_child(child)
 		child.queue_free()
 	_check_chips.clear()
+	_rule_chips.clear()
+	_rule_row = null
 	_moment_check_chips.clear()
 	_moment_header_btns.clear()
 	_moment_rows.clear()
@@ -181,6 +185,7 @@ func _build_checklist(required: Array) -> void:
 		var chip := _make_need_chip(func_name, false)
 		row.add_child(chip)
 		_check_chips[func_name] = chip
+	_rule_row = row
 
 
 func _build_moment_checklist() -> void:
@@ -425,6 +430,43 @@ func _pop_chip(chip: Control) -> void:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(chip, "scale", Vector2.ONE, 0.14) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# Chips for the rules that are not furniture needs: lines of sight ("1 Sofa
+# sees the door") and zone separations. Built the first time they arrive and
+# after every rebuild of the bar; then only repainted.
+func update_rules(rules: Array) -> void:
+	if rules.is_empty() and _rule_chips.is_empty():
+		return
+	if _rule_chips.size() != rules.size():
+		for c in _rule_chips:
+			if is_instance_valid(c):
+				c.queue_free()
+		_rule_chips.clear()
+		if _rule_row == null or not is_instance_valid(_rule_row):
+			# A level with moments keeps its needs behind tabs; the rules
+			# hold all day, so they get their own row beside the tabs.
+			_rule_row = HBoxContainer.new()
+			_rule_row.add_theme_constant_override("separation", 7)
+			checklist_container.add_child(_rule_row)
+		for r in rules:
+			var rule := r as Dictionary
+			var chip := _make_need_chip("rule", false)
+			var is_sight := (rule["kind"] as String) == "sight"
+			var text := rule.get("short", "") as String
+			if text == "":
+				text = rule["label"] as String
+			if is_sight:
+				text = "%d  %s" % [rule["number"], text]
+			(chip.get_child(0).get_child(0) as Label).text = "👁" if is_sight else "🚧"
+			(chip.get_child(0).get_child(1) as Label).text = text
+			chip.tooltip_text = (rule["label"] as String) + (
+				"\nThe numbered line on the plan shows it." if is_sight
+				else "\nTall storage splits a room into zones.")
+			_rule_row.add_child(chip)
+			_rule_chips.append(chip)
+	for i in rules.size():
+		_set_need_chip(_rule_chips[i] as PanelContainer, (rules[i] as Dictionary)["ok"] as bool)
 
 
 func update_checks(fulfilled: Array, required: Array) -> void:

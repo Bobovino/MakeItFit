@@ -2369,6 +2369,11 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
+	# Hand the rule overlays over before the build, so a view created (or
+	# rebuilt) after the last refresh still shows them.
+	_mode3d_view._rule_sight = gm.sightline_status
+	_mode3d_view._rule_zones = fl.zones
+	_mode3d_view._rule_zone_status = fl.zone_status
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
 	# _teardown_mode3d_view() (see the comment above) frees the whole node,
 	# tenant and all, whenever the player steps out to the Floor Plan -- so
@@ -3037,6 +3042,13 @@ func _refresh_functions() -> void:
 		gm.update_zones(apt_floor.zones)
 		gm.update_sightlines(apt_floor)
 		gm.update_external_zone(apt_floor, all_entries, _active_moment_id)
+		# The rules that aren't furniture needs, shown where the player looks:
+		# lines on the plan, lines and zone tints in 3D, chips in the bar.
+		apt_floor.set_sight_lines(gm.sightline_status)
+		apt_floor.set_zone_status(gm.zone_status())
+		tenant_card.update_rules(gm.rule_status())
+		if is_instance_valid(_mode3d_view):
+			_mode3d_view.set_rule_overlays(gm.sightline_status, apt_floor.zones, apt_floor.zone_status)
 		# Zone separations/sightlines are level-wide checks against whatever's
 		# CURRENTLY on screen — with per-moment furniture positions now
 		# possible, that's only valid for _active_moment_id specifically. Every
@@ -3110,7 +3122,14 @@ func _on_rent_pressed() -> void:
 		if gm.comfort_pct < gm.COMFORT_WARN_THRESHOLD:
 			result_screen.show_failure("The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started.")
 		else:
-			result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
+			var unmet: PackedStringArray = []
+			for rule in gm.rule_status():
+				if not ((rule as Dictionary)["ok"] as bool):
+					unmet.append((rule as Dictionary)["label"] as String)
+			if unmet.is_empty():
+				result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
+			else:
+				result_screen.show_failure("Not yet:\n" + "\n".join(unmet))
 		_refresh_undo_redo_buttons()
 		return
 	if not _all_furniture_accessible():

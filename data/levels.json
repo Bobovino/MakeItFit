@@ -2605,7 +2605,7 @@
 			],
 			"map_row": 0,
 			"mechanic_intro": {
-				"body": "Some needs are not furniture: they are whether one spot can see another. Tall furniture blocks a line of sight, low furniture doesn't.\n\nThe parents want two lines kept clear. Their daughter wants one line blocked: nobody should see her window from her doorway. The three lines are drawn on the plan.\n\nA wardrobe in the wrong place breaks a line. A wardrobe in the right place is exactly what she needs.",
+				"body": "Some needs are not furniture: they are whether one spot can see another. Tall furniture blocks a line of sight, low furniture doesn't.\n\nThe parents want two lines kept clear. Their daughter wants one line blocked: nobody should see her window from her doorway. The three lines are numbered and drawn in both views: green when the rule is met, red when it is not. A solid line has to stay clear; a dashed line has to be blocked.\n\nA wardrobe in the wrong place breaks a line. A wardrobe in the right place is exactly what she needs.",
 				"title": "Lines of sight"
 			},
 			"min_stars": 0,
@@ -2656,6 +2656,7 @@
 						],
 						"label": "See the front door from the sofa corner",
 						"must_be_clear": true,
+						"short": "Sofa sees the front door",
 						"to": [
 							20,
 							38
@@ -2668,6 +2669,7 @@
 						],
 						"label": "See the daughter's doorway from the computer corner",
 						"must_be_clear": true,
+						"short": "Computer sees her doorway",
 						"to": [
 							40,
 							13
@@ -2680,6 +2682,7 @@
 						],
 						"label": "The window can't be seen from her doorway",
 						"must_be_clear": false,
+						"short": "Her window is hidden",
 						"to": [
 							59,
 							30

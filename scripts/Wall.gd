@@ -1532,6 +1532,12 @@ func get_all_furniture() -> Array:
 # dims ambient light) — sightline blocking is specifically about eye-level
 # obstruction, not the softer light-falloff model.
 func has_sightline(from: Vector2i, to: Vector2i) -> bool:
+	return sightline_block(from, to) == null
+
+
+# The first tile that cuts the line of sight from `from` to `to` (a wall or a
+# tall piece of furniture), or null when the line is clear.
+func sightline_block(from: Vector2i, to: Vector2i) -> Variant:
 	var blocked := _partition_tile_set()
 	var x0 := from.x; var y0 := from.y
 	var x1 := to.x;   var y1 := to.y
@@ -1542,10 +1548,10 @@ func has_sightline(from: Vector2i, to: Vector2i) -> bool:
 		var tile := Vector2i(x0, y0)
 		if tile != from and tile != to:
 			if tile in blocked:
-				return false
+				return tile
 			for f in _placed_list(tile):
 				if (f as Furniture).height_category == "tall":
-					return false
+					return tile
 		if x0 == x1 and y0 == y1:
 			break
 		var e2 := 2 * err
@@ -1553,7 +1559,34 @@ func has_sightline(from: Vector2i, to: Vector2i) -> bool:
 			err += dy; x0 += sx
 		if e2 <= dx:
 			err += dx; y0 += sy
-	return true
+	return null
+
+
+# Shows the level's lines of sight on this floor's plan (see RuleOverlay).
+var _rule_overlay: RuleOverlay = null
+
+var zone_status: Array = []   # GameManager.zone_status(): one {conflict, label} per zone, or empty
+
+func set_zone_status(status: Array) -> void:
+	zone_status = status
+	if grid_draw:
+		grid_draw.queue_redraw()
+	if _rule_overlay == null and not status.is_empty():
+		_rule_overlay = RuleOverlay.new()
+		_rule_overlay.z_index = 20
+		add_child(_rule_overlay)
+	if _rule_overlay != null:
+		_rule_overlay.set_zones(zones, status)
+
+
+func set_sight_lines(status: Array) -> void:
+	if _rule_overlay == null:
+		if status.is_empty():
+			return
+		_rule_overlay = RuleOverlay.new()
+		_rule_overlay.z_index = 20   # above furniture, including a piece being dragged
+		add_child(_rule_overlay)
+	_rule_overlay.set_lines(status)
 
 
 # Total weight already resting on this floor's mezzanine tiles, excluding

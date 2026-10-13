@@ -45,6 +45,7 @@ var current_zones: Array = []        # latest zone snapshot from the active floo
 # only place that actually has a Floor reference to evaluate these against.
 var sightline_requirements: Array = []
 var sightline_ok: bool = true
+var sightline_status: Array = []   # one per requirement: {from, to, must_be_clear, block, ok, label, short}
 
 # External zones & restrictions — noise/smells/birds/municipal ordinances
 # from outside the apartment. Two concrete effects, kept simple on purpose:
@@ -377,21 +378,79 @@ func update_external_zone(apt_floor, placed_furniture: Array, active_moment_id: 
 # layout. Called from Main.gd's _refresh_functions() (the only place holding
 # a real Floor reference) every time furniture changes.
 func update_sightlines(apt_floor) -> void:
-	if sightline_requirements.is_empty():
-		sightline_ok = true
-		return
+	sightline_status = []
+	sightline_ok = true
 	for req in sightline_requirements:
 		var r := req as Dictionary
 		var from_arr := r.get("from", [0, 0]) as Array
 		var to_arr   := r.get("to",   [0, 0]) as Array
 		var from_tile := Vector2i(from_arr[0] as int, from_arr[1] as int)
 		var to_tile   := Vector2i(to_arr[0]   as int, to_arr[1]   as int)
-		var clear: bool = apt_floor.has_sightline(from_tile, to_tile)
+		var block: Variant = apt_floor.sightline_block(from_tile, to_tile)
 		var must_be_clear := r.get("must_be_clear", true) as bool
-		if clear != must_be_clear:
+		var ok := (block == null) == must_be_clear
+		if not ok:
 			sightline_ok = false
-			return
-	sightline_ok = true
+		sightline_status.append({"from": from_tile, "to": to_tile, "must_be_clear": must_be_clear,
+			"block": block, "ok": ok, "label": r.get("label", "") as String, "short": r.get("short", "") as String})
+
+
+# Every rule of the level that is not a furniture need — lines of sight and
+# zone separations — with whether it is met right now. One entry per chip in
+# the needs bar: {kind: "sight" | "zones", label, short, ok}.
+func rule_status() -> Array:
+	var out: Array = []
+	for i in sightline_status.size():
+		var s := sightline_status[i] as Dictionary
+		out.append({"kind": "sight", "number": i + 1, "label": s["label"], "short": s["short"], "ok": s["ok"],
+			"must_be_clear": s["must_be_clear"]})
+	for sep in zone_separations:
+		var a := ", ".join(((sep[0] as Array).map(func(f): return str(f).capitalize())))
+		var b := ", ".join(((sep[1] as Array).map(func(f): return str(f).capitalize())))
+		out.append({"kind": "zones", "label": "%s and %s must be in different zones" % [a, b],
+			"short": "%s apart from %s" % [a, b], "ok": _separation_ok(sep as Array)})
+	return out
+
+
+# One entry per zone of the floor on screen, for levels that have a zone
+# rule (empty otherwise): {conflict, label}. A zone is in conflict when it
+# holds two things a rule says must be apart; its label names what it holds
+# out of the things the rules care about.
+func zone_status() -> Array:
+	var out: Array = []
+	if zone_separations.is_empty():
+		return out
+	var watched: Array = []
+	for sep in zone_separations:
+		for group in sep:
+			for fn in group:
+				if fn not in watched:
+					watched.append(fn)
+	for zone in current_zones:
+		var fns := (zone as Dictionary).get("functions", []) as Array
+		var here: Array = watched.filter(func(fn): return fn in fns)
+		var conflict := false
+		for sep in zone_separations:
+			var has_a := (sep[0] as Array).any(func(fn): return fn in fns)
+			var has_b := (sep[1] as Array).any(func(fn): return fn in fns)
+			if has_a and has_b:
+				conflict = true
+		var names := " + ".join(here.map(func(fn): return str(fn).capitalize()))
+		var label := ""
+		if conflict:
+			label = "%s share this zone" % names
+		elif names != "":
+			label = "%s zone" % names
+		out.append({"conflict": conflict, "label": label})
+	return out
+
+
+func _separation_ok(sep: Array) -> bool:
+	var saved := zone_separations
+	zone_separations = [sep]
+	var ok := check_zone_separations()
+	zone_separations = saved
+	return ok
 
 
 func _zone_fns_for_moment(zone: Dictionary, m_needs: Array) -> Array:
