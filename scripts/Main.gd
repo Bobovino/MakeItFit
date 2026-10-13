@@ -21,8 +21,7 @@ const ComfortMeterScript := preload("res://scripts/ComfortMeter.gd")
 const TILE_SIZE := 8          # pixels per grid tile — matches Floor/GridDraw
 const TOP_Y     := 10.0       # slim top margin — the old full-width bar is gone; only a
 							   # floating gear icon (and Test Layout, when shown) sit up here now
-const BOT_Y     := 720.0      # bottom of the play area — full window height now that
-							   # the furniture/tenant panels are side columns, not a bottom bar
+var BOT_Y     := 720.0      # bottom of the play area: the window's own bottom edge (see _fit_to_window)
 const FIT_PCT   := 0.95       # fraction of available area to fill
 
 # ── Play-area bounds ────────────────────────────────────────────────────────
@@ -31,7 +30,7 @@ const FIT_PCT   := 0.95       # fraction of available area to fill
 # (see the furniture wheel/catalog flow below); TenantCard and the furniture
 # menu button/wheel all float as overlays instead of reserved columns.
 const LEFT_X  := 0.0
-const RIGHT_X := 1280.0
+var RIGHT_X := 1280.0     # the window's own right edge (see _fit_to_window)
 
 # ── Floor plan / docked-panel resizable split ──────────────────────────────
 # The docked panel (Wall Inspector or the 3D preview, depending on mode) is a
@@ -54,7 +53,7 @@ var _pending_floor_ghost: Furniture = null   # the floor-placement ghost armed a
 #   TOPDOWN — plan only; floor furniture (things are hung on walls in VIEW3D)
 #   VIEW3D  — walk around in 3D; drag items onto a wall to hang them there
 enum ViewMode { TOPDOWN, VIEW3D }
-const SCREEN_W := 1280.0   # design-resolution width every TopBar/Divider/WallInspector offset assumes
+var SCREEN_W := 1280.0   # full width of the play screen, same as RIGHT_X
 var _view_mode: int = ViewMode.TOPDOWN
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _mode3d_sell_floor: Floor = null  # which Floor _mode3d_view's sell_requested/wall_sell_requested are currently bound to — see _ensure_mode3d_view
@@ -199,7 +198,64 @@ var _level_load_id:     int  = 0       # bumped on every _load_level() call — 
 var _level_completed:   bool = false   # true once this level's Results screen has been shown this session — see _on_settings_btn_pressed
 
 
+# ── Filling the window ───────────────────────────────────────────────────────
+# The play screen was laid out for exactly 1280 x 720, so any window that was
+# not exactly 16:9 showed an unused band along one edge. It now takes the
+# whole window: while this screen is up the window's contents are allowed to
+# extend past the 16:9 design area, and the right and bottom edges every
+# panel is placed against (RIGHT_X, BOT_Y) follow the real size.
+var _window_fit_busy := false
+
+func _fit_to_window() -> void:
+	var visible := get_viewport().get_visible_rect().size
+	var w := maxf(visible.x, 960.0)
+	var h := maxf(visible.y, 540.0)
+	if is_equal_approx(w, RIGHT_X) and is_equal_approx(h, BOT_Y):
+		return
+	RIGHT_X = w
+	SCREEN_W = w
+	BOT_Y = h
+	if _floors.is_empty() or _window_fit_busy:
+		return    # nothing laid out yet; the first layout will use the new edges
+	_window_fit_busy = true
+	_position_top_left_icons()
+	_position_undo_btn()
+	_position_minimap()
+	if _is_furniture_menu_open():
+		_position_furniture_catalog_modal()
+	_position_budget_label()
+	_position_comfort_meter()
+	for backdrop in [_modal_backdrop, _furniture_menu_backdrop]:
+		if is_instance_valid(backdrop):
+			(backdrop as ColorRect).offset_right = SCREEN_W
+			(backdrop as ColorRect).offset_bottom = BOT_Y
+	if is_instance_valid(_mode_hint_lbl):
+		_mode_hint_lbl.offset_right = RIGHT_X
+	if is_instance_valid(_breadcrumb_lbl):
+		_breadcrumb_lbl.offset_right = RIGHT_X
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.offset_right = RIGHT_X
+		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+	if wall_inspector.is_showing_wall():
+		_position_wall_inspector_modal()
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl and _view_mode == ViewMode.TOPDOWN:
+		_fit_floor(fl, true)
+	_update_nested_nav()
+	_window_fit_busy = false
+
+
+func _exit_tree() -> void:
+	# Other screens are still laid out for 16:9: give them their bars back.
+	var win := get_window()
+	if win:
+		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+
+
 func _ready() -> void:
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	_fit_to_window()
+	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
 	# The bar grows upward when its chips wrap (rule chips arrive after the
