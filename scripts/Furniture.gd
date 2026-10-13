@@ -13,6 +13,10 @@ const TILE_SIZE := 8
 # actually over the floor pane — otherwise it swallows every left click on
 # screen (other panels, buttons) trying to confirm placement at a stale position.
 static var is_in_floor_pane: Callable = Callable()
+# (furniture, screen position, the piece's centre in tiles) -> true when Main
+# took the piece (dropped on a nested box, or on "Back": see
+# Main._on_furniture_dropped), so the ordinary "put it down here" is skipped.
+static var on_drag_dropped: Callable = Callable()
 # Set by Main: called with the box when the player double-clicks a nested box.
 static var on_box_enter_requested: Callable = Callable()
 
@@ -1613,6 +1617,9 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	queue_redraw()
 	var snapped_x := position.x / TILE_SIZE
 	var snapped_y := position.y / TILE_SIZE
+	if Furniture.on_drag_dropped.is_valid() and Furniture.on_drag_dropped.call(self, get_viewport().get_mouse_position(),
+			Vector2(snapped_x + grid_w * 0.5, snapped_y + grid_h * 0.5)):
+		return
 	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(snapped_x, snapped_y)) if _wall_ref else Vector2(snapped_x, snapped_y)
 
 	# A red (heavy), non-rail piece shares ONE position across every Moment

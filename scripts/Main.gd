@@ -295,6 +295,9 @@ func _ready() -> void:
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.on_box_enter_requested = _enter_box_animated
+	Furniture.on_drag_dropped = _on_furniture_dropped
+	if not inventory.place_owned_requested.is_connected(_on_place_owned_requested):
+		inventory.place_owned_requested.connect(_on_place_owned_requested)
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
 		# The screen-rectangle check alone isn't enough: the Wall Inspector's
 		# elevation view can occupy that exact same rectangle when open,
@@ -901,8 +904,12 @@ func _load_level(level_id: String) -> void:
 	if not gm.allowed_furniture.is_empty():
 		shop_list = shop_list.filter(func(f): return (f["id"] as String) in gm.allowed_furniture)
 	inventory.populate(shop_list)
-	if not gm.starting_inventory.is_empty():
-		inventory.populate_owned(gm.starting_inventory, gm.furniture_data["furniture"])
+	# Pieces sent here from another apartment before this one was ever opened.
+	if _pending_arrivals.has(level_id):
+		for arrival in _pending_arrivals[level_id] as Array:
+			_add_owned(gm.starting_inventory, (arrival as Dictionary)["id"] as String, (arrival as Dictionary)["count"] as int)
+		_pending_arrivals.erase(level_id)
+	_refresh_owned_ui()
 	if _reopen_catalog:
 		_open_furniture_menu.call_deferred()
 	budget_label.text = "Budget: %d€" % gm.budget
@@ -1752,7 +1759,7 @@ func _snapshot_level_state() -> Dictionary:
 				item["keepsake"] = true   # per-instance, like child_level_id above
 			items.append(item)
 		floors_snap[fid] = items
-	return {"budget": gm.budget, "floors": floors_snap}
+	return {"budget": gm.budget, "floors": floors_snap, "owned": gm.starting_inventory.duplicate(true)}
 
 
 # Wipes whatever the just-completed _load_level() spawned from the level's
@@ -1764,6 +1771,9 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 		return
 	gm.budget = snapshot.get("budget", gm.budget) as int
 	gm.budget_changed.emit(gm.budget)
+	if snapshot.has("owned"):
+		gm.starting_inventory = (snapshot["owned"] as Array).duplicate(true)
+		_refresh_owned_ui()
 	# Freeing then respawning furniture one-by-one below fires
 	# furniture_changed → _refresh_functions() → _update_rent_btn() on every
 	# single step, and an in-between state (partway through respawning) can
@@ -2776,7 +2786,11 @@ func _make_nav_button(label: String) -> Button:
 func _set_mode_hint(text: String) -> void:
 	# A level with a nested box in it gets told how to get inside.
 	if text != "" and not _collect_nested_boxes().is_empty():
-		text += " · Double-click a box to step inside"
+		text += " · Double-click a box to enter; drop a piece on it to put it in"
+	if text != "" and not _nested_stack.is_empty():
+		# Inside a box the Map and Back buttons sit top-left, under where
+		# this line would run: keep it to the one thing that is new here.
+		text = "Drop a piece on “Back” to send it out · R rotates a piece"
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
 			_mode_hint_lbl.visible = false
@@ -2957,15 +2971,121 @@ func _on_wall_item_placed(furniture_id: String) -> void:
 	_refresh_functions()
 
 
+# ── Moving furniture between an apartment and the boxes inside it ────────────
+# Drag a piece onto a nested box and let go: it goes into that box's
+# apartment. Inside a box, drag a piece onto the "Back to …" button: it goes
+# out to the apartment the box stands in. Either way the piece arrives as an
+# "owned" piece in the other apartment's catalogue, to be put down there at
+# no charge — where it fits over there is still the player's problem.
+#
+# What cannot travel: keepsakes (they stay in their flat), boxes themselves,
+# and staircases.
+var _pending_arrivals: Dictionary = {}   # level id -> [{id, count}] for apartments not opened yet
+var _place_owned_next := false
+
+func _add_owned(list: Array, fid: String, count: int = 1) -> void:
+	for entry in list:
+		if (entry as Dictionary)["id"] == fid:
+			(entry as Dictionary)["count"] = ((entry as Dictionary)["count"] as int) + count
+			return
+	list.append({"id": fid, "count": count})
+
+
+func _refresh_owned_ui() -> void:
+	inventory.populate_owned(gm.starting_inventory, gm.furniture_data["furniture"])
+
+
+# Where a piece let go at this spot is headed: {level_id, name}, or {}.
+func _transfer_target_at(f: Furniture, screen_pos: Vector2, center_tile: Vector2) -> Dictionary:
+	if is_instance_valid(_back_btn) and _back_btn.visible and not _nested_stack.is_empty() \
+			and _back_btn.get_global_rect().grow(6.0).has_point(screen_pos):
+		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
+		return {"level_id": parent_id, "name": _level_display_name(parent_id)}
+	for box in _collect_nested_boxes():
+		if box == f or box._wall_ref != f._wall_ref:
+			continue
+		if Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)).has_point(center_tile):
+			return {"level_id": box.child_level_id, "name": box.furniture_name}
+	return {}
+
+
+# Furniture.on_drag_dropped: true when the piece was sent elsewhere.
+func _on_furniture_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vector2) -> bool:
+	if not is_instance_valid(f) or _post_win_view:
+		return false
+	var target := _transfer_target_at(f, screen_pos, center_tile)
+	if target.is_empty():
+		return false
+	var why := ""
+	if f.keepsake:
+		why = "♥ %s is a keepsake: it stays in this flat." % f.furniture_name
+	elif f.is_nested_box:
+		why = "A box can't go inside another apartment."
+	elif f.is_stair:
+		why = "Stairs can't be moved to another apartment."
+	if why != "":
+		Audio.play("error")
+		_set_mode_hint(why)
+		return false   # falls through to the ordinary drop, which puts it back
+	var fid := f.furniture_id
+	var piece_name := f.furniture_name
+	var fl := f._wall_ref as Floor
+	fl.remove_furniture(f)
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.remove_furniture_entry(f)
+	f.queue_free()
+	var to_id := target["level_id"] as String
+	if _level_state_cache.has(to_id):
+		var snap := _level_state_cache[to_id] as Dictionary
+		if not snap.has("owned"):
+			snap["owned"] = []
+		_add_owned(snap["owned"] as Array, fid)
+	else:
+		if not _pending_arrivals.has(to_id):
+			_pending_arrivals[to_id] = []
+		_add_owned(_pending_arrivals[to_id] as Array, fid)
+	# The move spans two apartments; undo only knows about this one.
+	_builder_undo_stack.clear()
+	_redo_stack.clear()
+	_refresh_undo_redo_buttons()
+	Audio.play("place")
+	_refresh_functions()
+	_set_mode_hint("%s moved to %s. It is waiting under “Owned” in the catalogue there." % [piece_name, target["name"]])
+	return true
+
+
+func _on_place_owned_requested(furniture_id: String) -> void:
+	var have := false
+	for entry in gm.starting_inventory:
+		if (entry as Dictionary)["id"] == furniture_id and ((entry as Dictionary)["count"] as int) > 0:
+			have = true
+	if not have:
+		return
+	_place_owned_next = true
+	_on_buy_requested(furniture_id)
+	_place_owned_next = false
+
+
+# Settles a placement: an owned piece comes off the owned list, anything
+# else is paid for.
+func _settle_placement(furniture_id: String, owned: bool) -> void:
+	if owned:
+		gm.consume_starting_item(furniture_id)
+		_refresh_owned_ui()
+	else:
+		gm.buy_furniture(furniture_id)
+
+
 func _on_buy_requested(furniture_id: String) -> void:
 	# The catalogue strip stays open: buy, place, buy the next one.
+	var owned := _place_owned_next
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
 		return
 	var fdata := gm.get_furniture_by_id(furniture_id)
 	if fdata.is_empty():
 		return
-	if gm.budget < (fdata.get("buy_price", 0) as int):
+	if not owned and gm.budget < (fdata.get("buy_price", 0) as int):
 		return
 	# Each rental box is one particular tenant's home, so an apartment takes
 	# one of each.
@@ -3017,7 +3137,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 		h["confirmed"] = func(_f: Furniture):
 			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
-			gm.buy_furniture(furniture_id)
+			_settle_placement(furniture_id, owned)
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
 			_refresh_functions()
@@ -3027,7 +3147,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
 			apt_floor.forget_furniture(f)   # never leave a freed node on the floor's books
 			f.queue_free()   # the floor ghost was never used — it landed on a wall instead
-			gm.buy_furniture(furniture_id)
+			_settle_placement(furniture_id, owned)
 			_refresh_functions()
 			_on_furniture_action_changed()
 		h["cancelled"] = func(_f: Furniture):
@@ -3042,7 +3162,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 		_mode3d_view.start_buying(f, fdata)
 	else:
 		f.placement_confirmed.connect(func():
-			gm.buy_furniture(furniture_id)
+			_settle_placement(furniture_id, owned)
 			_pending_floor_ghost = null
 			wall_inspector.cancel_selection()
 			if fdata.get("creates_loft", false):

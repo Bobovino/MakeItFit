@@ -1549,6 +1549,14 @@ func _finish_furniture_drag() -> void:
 	var f: Furniture = _drag_target["furniture"]
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
+	# Dropped on a nested box, or on "Back": Main moves the piece to that
+	# apartment (see Furniture.on_drag_dropped) and it is gone from here.
+	if Furniture.on_drag_dropped.is_valid() and Furniture.on_drag_dropped.call(f, get_viewport().get_mouse_position(),
+			_drag_last_tile + Vector2(f.grid_w, f.grid_h) * 0.5):
+		_set_grid_overlay_visible(false)
+		_set_hitbox_highlights_visible(false)
+		_hide_drag_highlight()
+		return
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
 	# Mirrors Furniture.gd's own 2D drag-end (see there for the full
 	# rationale): a red (heavy), non-rail piece shares ONE position across

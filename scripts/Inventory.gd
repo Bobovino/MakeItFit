@@ -4,6 +4,7 @@ class_name Inventory
 signal buy_requested(furniture_id: String)
 signal builder_tool_selected(tool_id: String)   # "" = no tool (back to select/place mode)
 signal close_requested
+signal place_owned_requested(furniture_id: String)   # a piece the player already owns here: placed at no charge
 
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
@@ -344,6 +345,11 @@ func _render() -> void:
 	furniture.sort_custom(by_size)
 	var query := _search.text.strip_edges().to_lower() if is_instance_valid(_search) else ""
 
+	# Pieces already owned here (the level's starting items, and anything
+	# sent over from another apartment) come first in every view.
+	if not _owned_list.is_empty() and _category == Category.FURNITURE:
+		_render_owned_section()
+
 	if query != "":
 		var hits := furniture.filter(func(f):
 			var hay := (f.get("name", "") as String).to_lower() + " " + " ".join(Inventory.provides(f)) \
@@ -384,8 +390,6 @@ func _render() -> void:
 		if shown.is_empty():
 			_add_note("Nothing in this category for this level.")
 
-	if not _owned_list.is_empty():
-		_render_owned_section()
 	scroll.scroll_horizontal = 0
 
 
@@ -1038,68 +1042,72 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 func populate_owned(owned_list: Array, catalog: Array) -> void:
 	_owned_list    = owned_list
 	_owned_catalog = catalog
-	_render_owned_section()
+	if is_instance_valid(_filter_box) and visible:
+		_render()
 
 
+# One card per owned piece: Place puts it down at no charge, Sell turns it
+# into budget.
 func _render_owned_section() -> void:
-	var sep := HSeparator.new()
-	sep.add_theme_constant_override("separation", 4)
-	_row.add_child(sep)
-
-	var hdr := Label.new()
-	hdr.text = "STARTING ITEMS"
-	hdr.add_theme_font_size_override("font_size", 9)
-	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	_row.add_child(hdr)
-
+	var any := false
 	for entry in _owned_list:
 		var fid   := (entry as Dictionary)["id"] as String
 		var count := (entry as Dictionary)["count"] as int
 		var fdata := {}
 		for f in _owned_catalog:
 			if (f as Dictionary)["id"] == fid:
-				fdata = f as Dictionary; break
-		if fdata.is_empty() or _is_builder(fdata) != (_category == Category.BUILDER):
+				fdata = f as Dictionary
+				break
+		if fdata.is_empty() or count <= 0:
 			continue
-
+		if not any:
+			any = true
+			_add_heading("🎁", "Owned")
 		for _i in range(count):
 			var card := PanelContainer.new()
+			card.custom_minimum_size = Vector2(116, 132)
 			card.add_theme_stylebox_override("panel",
-				GameTheme.make_card_stylebox(Color(0.210, 0.185, 0.150), Color(0.320, 0.270, 0.205)))
-
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 8)
-			card.add_child(row)
-
-			row.add_child(_make_item_icon(fdata, 24.0))
-
+				GameTheme.make_card_stylebox(Color(0.12, 0.24, 0.22), Color(0.36, 0.72, 0.56), 8))
+			var vb := VBoxContainer.new()
+			vb.add_theme_constant_override("separation", 3)
+			card.add_child(vb)
+			var icon_row := CenterContainer.new()
+			var holder := Control.new()
+			holder.custom_minimum_size = Vector2(46, 46)
+			holder.add_child(_make_item_icon(fdata, 46.0))
+			icon_row.add_child(holder)
+			vb.add_child(icon_row)
+			var cached := Thumb.get_cached(fid)
+			if cached:
+				for c in holder.get_children():
+					c.queue_free()
+				var tr := TextureRect.new()
+				tr.texture = cached
+				tr.custom_minimum_size = Vector2(46, 46)
+				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				holder.add_child(tr)
 			var name_lbl := Label.new()
 			name_lbl.text = fdata["name"] as String
-			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			name_lbl.add_theme_font_size_override("font_size", 12)
+			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_lbl.clip_text = true
+			name_lbl.add_theme_font_size_override("font_size", 11)
 			name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
-			row.add_child(name_lbl)
-
+			vb.add_child(name_lbl)
+			var place_btn := Button.new()
+			place_btn.text = "Place (free)"
+			place_btn.add_theme_font_size_override("font_size", 11)
+			place_btn.pressed.connect(func(): place_owned_requested.emit(fid))
+			vb.add_child(place_btn)
 			var sell_price := fdata.get("sell_price", fdata.get("buy_price", 0)) as int
 			var sell_btn := Button.new()
 			sell_btn.text = "Sell %d€" % sell_price
 			sell_btn.add_theme_font_size_override("font_size", 10)
-			sell_btn.add_theme_color_override("font_color", Color(0.76, 0.52, 0.28))
+			sell_btn.add_theme_color_override("font_color", Color(0.86, 0.62, 0.38))
 			sell_btn.pressed.connect(func():
 				if _gm and _gm.sell_starting_item(fid):
-					card.queue_free())
-			row.add_child(sell_btn)
-
-			var place_btn := Button.new()
-			place_btn.text = "Place"
-			place_btn.add_theme_font_size_override("font_size", 10)
-			place_btn.pressed.connect(func():
-				if _gm:
-					_gm.consume_starting_item(fid)
-				buy_requested.emit(fid)
-				card.queue_free())
-			row.add_child(place_btn)
-
+					_render())
+			vb.add_child(sell_btn)
 			_row.add_child(card)
 
 
