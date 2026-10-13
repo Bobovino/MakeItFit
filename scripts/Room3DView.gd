@@ -907,7 +907,7 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, fdata.get("model", "") as String, false)
 	else:
-		_apply_item_model(_buying_mesh, fdata.get("model", "") as String, box_size, fdata.get("hide_nodes", []) as Array)
+		_apply_item_model(_buying_mesh, _active_model_path(fdata, false), box_size, fdata.get("hide_nodes", []) as Array)
 	_ghostify(_buying_mesh)
 	_set_grid_overlay_visible(true)
 	_set_hitbox_highlights_visible(true)
@@ -1042,7 +1042,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 			wall_ghost_mat.albedo_color.a = 1.0
 		(_buying_mesh.mesh as BoxMesh).size = xf["size"]
 		_buying_mesh.position = xf["pos"]
-		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, xf["size"], _buying_fdata.get("hide_nodes", []) as Array)
+		_apply_item_model(_buying_mesh, _active_model_path(_buying_fdata, false), xf["size"], _buying_fdata.get("hide_nodes", []) as Array)
 		_solidify(_buying_mesh)
 		_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": _buying_mesh, "size": xf["size"]})
 		_buying_furniture = null
@@ -1073,7 +1073,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	if _buying_fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
-		_apply_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, canon_size, _buying_fdata.get("hide_nodes", []) as Array)
+		_apply_item_model(_buying_mesh, _active_model_path(_buying_fdata, false), canon_size, _buying_fdata.get("hide_nodes", []) as Array)
 	_solidify(_buying_mesh)
 	_furniture_entries.append({"furniture": f, "mesh": _buying_mesh, "pos": _buying_mesh.position, "size": item_size})
 	_add_hitbox_highlight(Vector3(_buying_mesh.position.x, 0.0, _buying_mesh.position.z), Vector2(item_size.x, item_size.z), f)
@@ -1813,6 +1813,10 @@ func _merge_animations(inst: Node3D) -> AnimationPlayer:
 const OPEN_POSE_SUFFIX := "#open"
 
 func _active_model_path(fdata: Dictionary, is_extended: bool) -> String:
+	# "pose_open": the model is built folded away, but the game uses the
+	# piece as an ordinary one (a coffee table), so it is always shown open.
+	if fdata.get("pose_open", false) as bool:
+		return (fdata.get("model", "") as String) + OPEN_POSE_SUFFIX
 	if is_extended and (fdata.get("open_anim", false) as bool):
 		return (fdata.get("model", "") as String) + OPEN_POSE_SUFFIX
 	if is_extended:
@@ -2901,7 +2905,7 @@ func build_single_item(fdata: Dictionary) -> void:
 		var item_size := Vector3(fw, height_m, fd)
 		var item_mi := _box(item_size, Vector3(0.0, height_m * 0.5, 0.0), col)
 		item_mi.set_meta("style_role", _item_role(fdata))
-		_apply_item_model(item_mi, fdata.get("model", "") as String, item_size, fdata.get("hide_nodes", []) as Array)
+		_apply_item_model(item_mi, _active_model_path(fdata, false), item_size, fdata.get("hide_nodes", []) as Array)
 		_style_if_bare(item_mi)
 
 	_update_camera()
@@ -2997,6 +3001,8 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 # Cheap per-frame rescale of an already-instantiated model (used while a drag
 # ghost is resizing, e.g. swapping between floor and wall placement) — avoids
 # reloading/reinstantiating the whole .glb every frame.
+const MODEL_HEIGHT_GIVE := 1.35
+
 func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
 	# An animated-fold piece (futon, sofa bed) carries a model but is never
 	# exact-fit scaled, so it has no "model_native" box to refit from. The
@@ -3035,6 +3041,12 @@ func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
 	else:
 		scale_v = Vector3(box_size.x / native.size.x, box_size.y / native.size.y, box_size.z / native.size.z)
 		rot_y = 0.0
+	# The footprint is exact (it is what the piece collides with); the height
+	# follows the model's own proportions instead of the catalogue's number,
+	# within a third either way, so a piece is never squashed flat or pulled
+	# into a tower to match a height written for a different model.
+	var proportional := sqrt(scale_v.x * scale_v.z)
+	scale_v.y = clampf(scale_v.y, proportional / MODEL_HEIGHT_GIVE, proportional * MODEL_HEIGHT_GIVE)
 	inst.scale = scale_v
 	inst.rotation.y = rot_y
 	var local_center := Vector3(
@@ -4153,6 +4165,6 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	var xf := _wall_item_mesh_transform(edge, origin, iw, ih, depth)
 	var mi := _box(xf["size"], xf["pos"], col)
 	mi.set_meta("style_role", _item_role(fdata))
-	_apply_item_model(mi, fdata.get("model", "") as String, xf["size"], fdata.get("hide_nodes", []) as Array)
+	_apply_item_model(mi, _active_model_path(fdata, false), xf["size"], fdata.get("hide_nodes", []) as Array)
 	_style_if_bare(mi)
 	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": xf["size"]})

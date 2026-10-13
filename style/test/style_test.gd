@@ -189,8 +189,8 @@ func _build_apartment() -> void:
 
 	# A few real kit models, to check the palette mapping on imported meshes
 	# (no vertex colours, several materials each).
-	_model("modular_sofa/_DemoSofa.glb",     1.7, Vector3(3.0, 0, 2.6), 180.0, StyleController.ROLE_FURNITURE)
-	_model("HangOnChairs.glb",      0.5, Vector3(2.0, 0, 1.05), 180.0, StyleController.ROLE_FURNITURE)
+	_model("SofaBed.glb",     1.7, Vector3(3.0, 0, 2.6), 180.0, StyleController.ROLE_FURNITURE)
+	_model("StackableChairs_x3.glb",      0.5, Vector3(2.0, 0, 1.05), 180.0, StyleController.ROLE_FURNITURE)
 	_model("ArcFloorLamp.glb", 0.22, Vector3(1.75, 0.75, 0.38), 0.0, StyleController.ROLE_FURNITURE)
 	_model("PlantLadderShelf.glb",    0.4, Vector3(3.6, 0, 1.35), 0.0, StyleController.ROLE_ACCENT)
 

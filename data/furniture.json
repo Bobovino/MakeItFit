@@ -17,7 +17,7 @@
       "color": "d8c8a0",
       "is_nested_box": true,
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "rental_capsule",
@@ -38,7 +38,7 @@
       "rental": true,
       "child_level_id": "rental:capsule",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "rental_student",
@@ -59,7 +59,7 @@
       "rental": true,
       "child_level_id": "rental:student",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "rental_bunk",
@@ -101,7 +101,7 @@
       "rental": true,
       "child_level_id": "rental:garret",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "rental_nook",
@@ -185,7 +185,7 @@
       "rental": true,
       "child_level_id": "rental:penthouse",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/StorageOttoman.glb"
     },
     {
       "id": "normal_bed",
@@ -212,11 +212,11 @@
       "name": "Storage Bed",
       "placement": "floor",
       "size": {
-        "w": 19,
-        "h": 9
+        "w": 16,
+        "h": 21
       },
-      "wall_h": 6,
-      "floor_depth": 9,
+      "wall_h": 7,
+      "floor_depth": 21,
       "functions": [
         "sleep",
         "storage"
@@ -280,11 +280,11 @@
       "name": "Murphy Bed",
       "placement": "floor",
       "size": {
-        "w": 9,
-        "h": 3
+        "w": 15,
+        "h": 6
       },
-      "wall_h": 19,
-      "floor_depth": 20,
+      "wall_h": 20,
+      "floor_depth": 6,
       "functions": [
         "sleep"
       ],
@@ -377,7 +377,7 @@
       "sell_price": 100,
       "color": "c87848",
       "front": "long",
-      "model": "res://assets/models/furniture/modular_sofa/_DemoSofa.glb"
+      "model": "res://assets/models/furniture/SofaBed.glb"
     },
     {
       "id": "sofa_bed",
@@ -435,11 +435,11 @@
       "name": "Puff",
       "placement": "floor",
       "size": {
-        "w": 6,
-        "h": 6
+        "w": 5,
+        "h": 5
       },
-      "wall_h": 5,
-      "floor_depth": 6,
+      "wall_h": 12,
+      "floor_depth": 5,
       "functions": [
         "sit"
       ],
@@ -454,11 +454,11 @@
       "name": "Ottoman",
       "placement": "floor",
       "size": {
-        "w": 5,
-        "h": 5
+        "w": 7,
+        "h": 7
       },
       "wall_h": 5,
-      "floor_depth": 5,
+      "floor_depth": 7,
       "functions": [
         "sit",
         "storage"
@@ -486,7 +486,8 @@
       "sell_price": 20,
       "color": "c09060",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/FoldingStepStool.glb"
+      "model": "res://assets/models/furniture/FoldingStepStool.glb",
+      "pose_open": true
     },
     {
       "id": "desk",
@@ -529,18 +530,18 @@
       "sell_price": 40,
       "color": "7aae88",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/WindowsillDesk.glb"
+      "model": "res://assets/models/furniture/CornerDesk.glb"
     },
     {
       "id": "murphy_desk",
       "name": "Fold-Down Desk",
       "placement": "wall",
       "size": {
-        "w": 10,
-        "h": 2
+        "w": 12,
+        "h": 7
       },
-      "wall_h": 12,
-      "floor_depth": 8,
+      "wall_h": 21,
+      "floor_depth": 7,
       "foldable": true,
       "extended_add_h": 8,
       "functions": [
@@ -597,7 +598,8 @@
       "sell_price": 40,
       "color": "b09870",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/FoldingCoffeeTable.glb"
+      "model": "res://assets/models/furniture/FoldingCoffeeTable.glb",
+      "pose_open": true
     },
     {
       "id": "kitchen",
@@ -625,11 +627,11 @@
       "name": "Compact Kitchen",
       "placement": "floor",
       "size": {
-        "w": 14,
-        "h": 6
+        "w": 12,
+        "h": 12
       },
-      "wall_h": 20,
-      "floor_depth": 6,
+      "wall_h": 10,
+      "floor_depth": 12,
       "needs_water": true,
       "needs_power": true,
       "functions": [
@@ -724,12 +726,13 @@
       "buy_price": 60,
       "sell_price": 30,
       "size": {
-        "w": 8,
+        "w": 5,
         "h": 1
       },
       "floor_category": "bathroom",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/VerticalTowelRadiator.glb"
+      "model": "res://assets/models/furniture/VerticalTowelRadiator.glb",
+      "wall_h": 16
     },
     {
       "id": "wardrobe",
@@ -797,7 +800,7 @@
       "sell_price": 70,
       "color": "8a7060",
       "zone_divider": true,
-      "model": "res://assets/models/furniture/CeilingHeightCupboards.glb"
+      "model": "res://assets/models/furniture/PullOutPantry.glb"
     },
     {
       "id": "wall_shelf",
@@ -823,11 +826,11 @@
       "name": "Cabinet",
       "placement": "wall",
       "size": {
-        "w": 8,
-        "h": 3
+        "w": 7,
+        "h": 5
       },
-      "wall_h": 6,
-      "floor_depth": 3,
+      "wall_h": 9,
+      "floor_depth": 5,
       "functions": [
         "storage",
         "cook"
@@ -843,11 +846,11 @@
       "name": "Wall Hanger",
       "placement": "wall",
       "size": {
-        "w": 5,
-        "h": 1
+        "w": 12,
+        "h": 2
       },
-      "wall_h": 2,
-      "floor_depth": 1,
+      "wall_h": 10,
+      "floor_depth": 2,
       "functions": [
         "storage"
       ],
@@ -862,11 +865,11 @@
       "name": "TV",
       "placement": "wall",
       "size": {
-        "w": 13,
-        "h": 1
+        "w": 12,
+        "h": 6
       },
-      "wall_h": 8,
-      "floor_depth": 1,
+      "wall_h": 22,
+      "floor_depth": 6,
       "functions": [],
       "buy_price": 350,
       "sell_price": 150,
@@ -879,11 +882,11 @@
       "name": "Mirror",
       "placement": "wall",
       "size": {
-        "w": 6,
-        "h": 1
+        "w": 8,
+        "h": 2
       },
-      "wall_h": 8,
-      "floor_depth": 1,
+      "wall_h": 17,
+      "floor_depth": 2,
       "functions": [],
       "buy_price": 120,
       "sell_price": 50,
@@ -912,11 +915,11 @@
       "name": "Plant",
       "placement": "floor",
       "size": {
-        "w": 3,
-        "h": 3
+        "w": 7,
+        "h": 5
       },
-      "wall_h": 8,
-      "floor_depth": 3,
+      "wall_h": 18,
+      "floor_depth": 5,
       "functions": [],
       "buy_price": 30,
       "sell_price": 10,
@@ -930,11 +933,11 @@
       "name": "Wall Plant",
       "placement": "wall",
       "size": {
-        "w": 3,
-        "h": 1
+        "w": 11,
+        "h": 2
       },
-      "wall_h": 5,
-      "floor_depth": 1,
+      "wall_h": 18,
+      "floor_depth": 2,
       "functions": [],
       "buy_price": 25,
       "sell_price": 8,
@@ -1031,11 +1034,11 @@
       "name": "Laundry Basket",
       "placement": "floor",
       "size": {
-        "w": 5,
-        "h": 5
+        "w": 10,
+        "h": 6
       },
-      "wall_h": 8,
-      "floor_depth": 5,
+      "wall_h": 11,
+      "floor_depth": 6,
       "functions": [],
       "buy_price": 50,
       "sell_price": 20,
@@ -1071,11 +1074,11 @@
       "name": "Towel Set",
       "placement": "wall",
       "size": {
-        "w": 6,
-        "h": 2
+        "w": 5,
+        "h": 3
       },
-      "wall_h": 6,
-      "floor_depth": 2,
+      "wall_h": 18,
+      "floor_depth": 3,
       "functions": [],
       "buy_price": 30,
       "sell_price": 10,
@@ -1106,11 +1109,11 @@
       "name": "Side Table",
       "placement": "floor",
       "size": {
-        "w": 6,
-        "h": 6
+        "w": 7,
+        "h": 5
       },
-      "wall_h": 7,
-      "floor_depth": 6,
+      "wall_h": 5,
+      "floor_depth": 5,
       "functions": [],
       "buy_price": 80,
       "sell_price": 30,
@@ -1118,7 +1121,7 @@
       "mobility_tier": "yellow",
       "is_surface": true,
       "max_support_weight": 8,
-      "model": "res://assets/models/furniture/SlimConsole_20cm.glb"
+      "model": "res://assets/models/furniture/NestingTables_Set3.glb"
     },
     {
       "id": "tv_stand",
@@ -1158,18 +1161,18 @@
       "sell_price": 70,
       "color": "506070",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/HangOnChairs.glb"
+      "model": "res://assets/models/furniture/StackableChairs_x3.glb"
     },
     {
       "id": "filing_cabinet",
       "name": "Filing Cabinet",
       "placement": "floor",
       "size": {
-        "w": 5,
-        "h": 8
+        "w": 4,
+        "h": 6
       },
-      "wall_h": 14,
-      "floor_depth": 8,
+      "wall_h": 8,
+      "floor_depth": 6,
       "functions": [
         "storage"
       ],
@@ -1187,10 +1190,10 @@
       "name": "Whiteboard",
       "placement": "wall",
       "size": {
-        "w": 10,
+        "w": 12,
         "h": 2
       },
-      "wall_h": 10,
+      "wall_h": 9,
       "floor_depth": 2,
       "functions": [],
       "buy_price": 80,
@@ -1260,11 +1263,11 @@
       "name": "Kitchen Rack",
       "placement": "wall",
       "size": {
-        "w": 8,
-        "h": 2
+        "w": 6,
+        "h": 1
       },
-      "wall_h": 8,
-      "floor_depth": 2,
+      "wall_h": 4,
+      "floor_depth": 1,
       "functions": [],
       "buy_price": 50,
       "sell_price": 20,
@@ -1277,11 +1280,11 @@
       "name": "Outdoor Table",
       "placement": "floor",
       "size": {
-        "w": 10,
-        "h": 8
+        "w": 13,
+        "h": 6
       },
-      "wall_h": 8,
-      "floor_depth": 8,
+      "wall_h": 11,
+      "floor_depth": 6,
       "ghost_radius": 2,
       "functions": [
         "dine"
@@ -1291,18 +1294,19 @@
       "color": "607050",
       "floor_category": "balcony",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/RailingFoldTable.glb"
+      "model": "res://assets/models/furniture/RailingFoldTable.glb",
+      "pose_open": true
     },
     {
       "id": "planter_box",
       "name": "Planter Box",
       "placement": "floor",
       "size": {
-        "w": 9,
-        "h": 5
+        "w": 13,
+        "h": 4
       },
-      "wall_h": 8,
-      "floor_depth": 5,
+      "wall_h": 13,
+      "floor_depth": 4,
       "functions": [],
       "buy_price": 60,
       "sell_price": 25,
@@ -1316,11 +1320,11 @@
       "name": "Sun Lounger",
       "placement": "floor",
       "size": {
-        "w": 17,
-        "h": 7
+        "w": 7,
+        "h": 12
       },
       "wall_h": 5,
-      "floor_depth": 7,
+      "floor_depth": 12,
       "ghost_radius": 2,
       "functions": [
         "sit"
@@ -1400,10 +1404,10 @@
       "name": "Clothes Rack",
       "placement": "floor",
       "size": {
-        "w": 9,
+        "w": 12,
         "h": 5
       },
-      "wall_h": 14,
+      "wall_h": 20,
       "floor_depth": 5,
       "functions": [
         "storage",
@@ -1421,11 +1425,11 @@
       "name": "Square Sink",
       "placement": "floor",
       "size": {
-        "w": 6,
-        "h": 5
+        "w": 7,
+        "h": 7
       },
-      "wall_h": 14,
-      "floor_depth": 5,
+      "wall_h": 6,
+      "floor_depth": 7,
       "functions": [
         "hygiene"
       ],
@@ -1461,10 +1465,10 @@
       "placement": "floor",
       "size": {
         "w": 12,
-        "h": 5
+        "h": 4
       },
       "wall_h": 6,
-      "floor_depth": 5,
+      "floor_depth": 4,
       "functions": [
         "sit"
       ],
@@ -1472,18 +1476,18 @@
       "sell_price": 35,
       "color": "8a7050",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/HallTreeBench.glb"
+      "model": "res://assets/models/furniture/StorageBench.glb"
     },
     {
       "id": "cushioned_bench",
       "name": "Cushioned Bench",
       "placement": "floor",
       "size": {
-        "w": 12,
-        "h": 5
+        "w": 25,
+        "h": 6
       },
-      "wall_h": 6,
-      "floor_depth": 5,
+      "wall_h": 21,
+      "floor_depth": 6,
       "functions": [
         "sit"
       ],
@@ -1499,10 +1503,10 @@
       "placement": "floor",
       "size": {
         "w": 12,
-        "h": 4
+        "h": 6
       },
-      "wall_h": 4,
-      "floor_depth": 4,
+      "wall_h": 9,
+      "floor_depth": 6,
       "functions": [
         "sit"
       ],
@@ -1517,11 +1521,11 @@
       "name": "Closed Bookcase",
       "placement": "floor",
       "size": {
-        "w": 8,
-        "h": 3
+        "w": 5,
+        "h": 4
       },
-      "wall_h": 20,
-      "floor_depth": 3,
+      "wall_h": 19,
+      "floor_depth": 4,
       "height_category": "tall",
       "functions": [
         "storage"
@@ -1541,10 +1545,10 @@
       "placement": "floor",
       "size": {
         "w": 14,
-        "h": 3
+        "h": 4
       },
-      "wall_h": 20,
-      "floor_depth": 3,
+      "wall_h": 11,
+      "floor_depth": 4,
       "height_category": "tall",
       "functions": [
         "storage"
@@ -1564,10 +1568,10 @@
       "placement": "floor",
       "size": {
         "w": 5,
-        "h": 5
+        "h": 4
       },
-      "wall_h": 6,
-      "floor_depth": 5,
+      "wall_h": 10,
+      "floor_depth": 4,
       "functions": [
         "storage"
       ],
@@ -1595,7 +1599,7 @@
       "sell_price": 20,
       "color": "8a6848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/HangOnChairs.glb"
+      "model": "res://assets/models/furniture/StackableChairs_x3.glb"
     },
     {
       "id": "keyboard",
@@ -1656,10 +1660,10 @@
       "placement": "floor",
       "size": {
         "w": 6,
-        "h": 6
+        "h": 7
       },
-      "wall_h": 20,
-      "floor_depth": 6,
+      "wall_h": 9,
+      "floor_depth": 7,
       "functions": [
         "storage",
         "cook"
@@ -1674,11 +1678,11 @@
       "name": "Rounded Corner Cabinet",
       "placement": "floor",
       "size": {
-        "w": 6,
-        "h": 6
+        "w": 12,
+        "h": 12
       },
-      "wall_h": 20,
-      "floor_depth": 6,
+      "wall_h": 10,
+      "floor_depth": 12,
       "functions": [
         "storage",
         "cook"
@@ -1713,11 +1717,11 @@
       "name": "Mini Fridge",
       "placement": "floor",
       "size": {
-        "w": 5,
-        "h": 5
+        "w": 6,
+        "h": 7
       },
-      "wall_h": 10,
-      "floor_depth": 5,
+      "wall_h": 9,
+      "floor_depth": 7,
       "functions": [
         "storage"
       ],
@@ -1744,7 +1748,7 @@
       "sell_price": 60,
       "color": "c8ccd0",
       "front": "long",
-      "model": "res://assets/models/furniture/FoldDownUtilitySink.glb"
+      "model": "res://assets/models/furniture/CornerSink.glb"
     },
     {
       "id": "stove",
@@ -1771,11 +1775,11 @@
       "name": "Design Sofa",
       "placement": "floor",
       "size": {
-        "w": 20,
-        "h": 9
+        "w": 24,
+        "h": 16
       },
       "wall_h": 9,
-      "floor_depth": 9,
+      "floor_depth": 16,
       "ghost_radius": 3,
       "functions": [
         "sit"
@@ -1791,11 +1795,11 @@
       "name": "Trash Can",
       "placement": "floor",
       "size": {
-        "w": 2,
-        "h": 2
+        "w": 6,
+        "h": 7
       },
-      "wall_h": 3,
-      "floor_depth": 2,
+      "wall_h": 8,
+      "floor_depth": 7,
       "functions": [],
       "buy_price": 15,
       "sell_price": 5,
@@ -1808,10 +1812,10 @@
       "name": "Washer",
       "placement": "floor",
       "size": {
-        "w": 6,
+        "w": 7,
         "h": 6
       },
-      "wall_h": 14,
+      "wall_h": 9,
       "floor_depth": 6,
       "functions": [
         "laundry"
@@ -1829,11 +1833,11 @@
       "name": "Stacked Washer/Dryer",
       "placement": "floor",
       "size": {
-        "w": 6,
-        "h": 6
+        "w": 8,
+        "h": 7
       },
       "wall_h": 22,
-      "floor_depth": 6,
+      "floor_depth": 7,
       "height_category": "tall",
       "functions": [
         "laundry"
@@ -1851,11 +1855,11 @@
       "id": "murphy_bed_double",
       "name": "Double Murphy Bed",
       "size": {
-        "w": 14,
-        "h": 3
+        "w": 17,
+        "h": 6
       },
-      "wall_h": 20,
-      "floor_depth": 22,
+      "wall_h": 24,
+      "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 19,
       "functions": [
@@ -1877,11 +1881,11 @@
       "id": "murphy_bed_sofa",
       "name": "Murphy Bed + Sofa",
       "size": {
-        "w": 14,
-        "h": 4
+        "w": 19,
+        "h": 15
       },
-      "wall_h": 20,
-      "floor_depth": 20,
+      "wall_h": 24,
+      "floor_depth": 15,
       "foldable": true,
       "extended_add_h": 16,
       "functions": [
@@ -1906,11 +1910,11 @@
       "id": "armchair_bed",
       "name": "Armchair Bed",
       "size": {
-        "w": 8,
-        "h": 8
+        "w": 11,
+        "h": 9
       },
-      "wall_h": 8,
-      "floor_depth": 8,
+      "wall_h": 11,
+      "floor_depth": 9,
       "foldable": true,
       "extended_add_h": 10,
       "functions": [
@@ -1935,10 +1939,10 @@
       "id": "ottoman_bed",
       "name": "Ottoman Bed",
       "size": {
-        "w": 6,
+        "w": 7,
         "h": 6
       },
-      "wall_h": 5,
+      "wall_h": 6,
       "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 12,
@@ -1964,10 +1968,10 @@
       "id": "design_sofa_bed",
       "name": "Design Sofa Bed",
       "size": {
-        "w": 20,
+        "w": 19,
         "h": 9
       },
-      "wall_h": 9,
+      "wall_h": 11,
       "floor_depth": 9,
       "ghost_radius": 3,
       "foldable": true,
@@ -1995,7 +1999,7 @@
       "id": "corner_sofa_bed",
       "name": "Corner Sofa Bed",
       "size": {
-        "w": 22,
+        "w": 24,
         "h": 16
       },
       "wall_h": 9,
@@ -2026,11 +2030,11 @@
       "id": "trundle_bed",
       "name": "Trundle Bed",
       "size": {
-        "w": 19,
-        "h": 9
+        "w": 11,
+        "h": 20
       },
-      "wall_h": 5,
-      "floor_depth": 9,
+      "wall_h": 9,
+      "floor_depth": 20,
       "foldable": true,
       "extended_add_h": 9,
       "functions": [
@@ -2055,11 +2059,11 @@
       "id": "cabinet_guest_bed",
       "name": "Cabinet Guest Bed",
       "size": {
-        "w": 10,
-        "h": 5
+        "w": 11,
+        "h": 9
       },
-      "wall_h": 20,
-      "floor_depth": 5,
+      "wall_h": 12,
+      "floor_depth": 9,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 14,
@@ -2086,11 +2090,11 @@
       "id": "bench_bed",
       "name": "Bench Bed",
       "size": {
-        "w": 12,
-        "h": 5
+        "w": 25,
+        "h": 6
       },
-      "wall_h": 6,
-      "floor_depth": 5,
+      "wall_h": 21,
+      "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 7,
       "functions": [
@@ -2116,11 +2120,11 @@
       "id": "desk_bed_combo",
       "name": "Desk Bed Combo",
       "size": {
-        "w": 19,
-        "h": 9
+        "w": 10,
+        "h": 21
       },
-      "wall_h": 10,
-      "floor_depth": 9,
+      "wall_h": 21,
+      "floor_depth": 21,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 2,
@@ -2171,11 +2175,11 @@
       "id": "extending_table",
       "name": "Extending Table",
       "size": {
-        "w": 16,
-        "h": 10
+        "w": 11,
+        "h": 9
       },
-      "wall_h": 6,
-      "floor_depth": 10,
+      "wall_h": 8,
+      "floor_depth": 9,
       "ghost_radius": 3,
       "foldable": true,
       "extended_add_h": 6,
@@ -2200,11 +2204,11 @@
       "id": "lift_coffee_table",
       "name": "Lift-Top Coffee Table",
       "size": {
-        "w": 8,
-        "h": 5
+        "w": 12,
+        "h": 7
       },
-      "wall_h": 4,
-      "floor_depth": 5,
+      "wall_h": 6,
+      "floor_depth": 7,
       "foldable": true,
       "extended_add_h": 5,
       "functions": [
@@ -2228,11 +2232,11 @@
       "id": "wall_dining_table",
       "name": "Wall Dining Table",
       "size": {
-        "w": 10,
+        "w": 7,
         "h": 2
       },
-      "wall_h": 10,
-      "floor_depth": 10,
+      "wall_h": 11,
+      "floor_depth": 2,
       "foldable": true,
       "extended_add_h": 8,
       "functions": [
@@ -2254,10 +2258,10 @@
       "name": "Nesting Tables",
       "size": {
         "w": 7,
-        "h": 7
+        "h": 5
       },
-      "wall_h": 4,
-      "floor_depth": 7,
+      "wall_h": 5,
+      "floor_depth": 5,
       "foldable": true,
       "extended_add_h": 7,
       "functions": [
@@ -2280,10 +2284,10 @@
       "id": "console_dining_table",
       "name": "Console Dining Table",
       "size": {
-        "w": 10,
+        "w": 11,
         "h": 4
       },
-      "wall_h": 7,
+      "wall_h": 8,
       "floor_depth": 4,
       "foldable": true,
       "extended_add_h": 8,
@@ -2306,11 +2310,11 @@
       "id": "folding_glass_table",
       "name": "Folding Glass Table",
       "size": {
-        "w": 12,
-        "h": 8
+        "w": 10,
+        "h": 6
       },
-      "wall_h": 6,
-      "floor_depth": 8,
+      "wall_h": 1,
+      "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 6,
       "functions": [
@@ -2334,11 +2338,11 @@
       "id": "murphy_table",
       "name": "Murphy Table",
       "size": {
-        "w": 8,
-        "h": 2
+        "w": 11,
+        "h": 3
       },
-      "wall_h": 8,
-      "floor_depth": 9,
+      "wall_h": 11,
+      "floor_depth": 3,
       "foldable": true,
       "extended_add_h": 7,
       "functions": [
@@ -2359,11 +2363,11 @@
       "id": "extending_bar_table",
       "name": "Extending Bar Table",
       "size": {
-        "w": 6,
-        "h": 6
+        "w": 8,
+        "h": 3
       },
-      "wall_h": 9,
-      "floor_depth": 6,
+      "wall_h": 6,
+      "floor_depth": 3,
       "foldable": true,
       "extended_add_h": 8,
       "functions": [
@@ -2385,11 +2389,11 @@
       "id": "secretary_desk",
       "name": "Secretary Desk",
       "size": {
-        "w": 8,
-        "h": 4
+        "w": 9,
+        "h": 5
       },
-      "wall_h": 20,
-      "floor_depth": 4,
+      "wall_h": 12,
+      "floor_depth": 5,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 5,
@@ -2417,11 +2421,11 @@
       "id": "corner_fold_desk",
       "name": "Corner Fold-Out Desk",
       "size": {
-        "w": 8,
-        "h": 8
+        "w": 15,
+        "h": 14
       },
-      "wall_h": 8,
-      "floor_depth": 8,
+      "wall_h": 12,
+      "floor_depth": 14,
       "foldable": true,
       "extended_add_h": 4,
       "functions": [
@@ -2444,11 +2448,11 @@
       "id": "wall_laptop_desk",
       "name": "Wall Laptop Desk",
       "size": {
-        "w": 6,
-        "h": 1
+        "w": 12,
+        "h": 3
       },
-      "wall_h": 8,
-      "floor_depth": 7,
+      "wall_h": 16,
+      "floor_depth": 3,
       "foldable": true,
       "extended_add_h": 6,
       "functions": [
@@ -2469,11 +2473,11 @@
       "id": "standing_desk",
       "name": "Standing Desk",
       "size": {
-        "w": 12,
-        "h": 6
+        "w": 14,
+        "h": 7
       },
-      "wall_h": 12,
-      "floor_depth": 6,
+      "wall_h": 11,
+      "floor_depth": 7,
       "ghost_radius": 3,
       "foldable": true,
       "extended_add_h": 2,
@@ -2500,10 +2504,10 @@
       "name": "Rolling Desk",
       "size": {
         "w": 8,
-        "h": 5
+        "h": 3
       },
-      "wall_h": 8,
-      "floor_depth": 5,
+      "wall_h": 4,
+      "floor_depth": 3,
       "ghost_radius": 2,
       "rail_axis": "h",
       "functions": [
@@ -2521,11 +2525,11 @@
       "id": "vanity_desk",
       "name": "Convertible Vanity",
       "size": {
-        "w": 8,
-        "h": 4
+        "w": 9,
+        "h": 7
       },
       "wall_h": 8,
-      "floor_depth": 4,
+      "floor_depth": 7,
       "foldable": true,
       "extended_add_h": 4,
       "functions": [
@@ -2552,11 +2556,11 @@
       "id": "bookcase_desk",
       "name": "Bookcase Desk",
       "size": {
-        "w": 8,
-        "h": 3
+        "w": 9,
+        "h": 6
       },
-      "wall_h": 22,
-      "floor_depth": 3,
+      "wall_h": 19,
+      "floor_depth": 6,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 5,
@@ -2583,10 +2587,10 @@
       "id": "sliding_wardrobe_tall",
       "name": "Sliding Wardrobe (Vertical)",
       "size": {
-        "w": 10,
+        "w": 16,
         "h": 6
       },
-      "wall_h": 20,
+      "wall_h": 22,
       "floor_depth": 6,
       "height_category": "tall",
       "rail_axis": "v",
@@ -2606,10 +2610,10 @@
       "id": "sliding_bookcase",
       "name": "Sliding Bookcase (Vertical)",
       "size": {
-        "w": 8,
+        "w": 16,
         "h": 3
       },
-      "wall_h": 22,
+      "wall_h": 18,
       "floor_depth": 3,
       "height_category": "tall",
       "rail_axis": "v",
@@ -2629,10 +2633,10 @@
       "name": "Rolling Wide Shelf",
       "size": {
         "w": 14,
-        "h": 3
+        "h": 4
       },
-      "wall_h": 20,
-      "floor_depth": 3,
+      "wall_h": 11,
+      "floor_depth": 4,
       "height_category": "tall",
       "rail_axis": "h",
       "zone_divider": true,
@@ -2651,11 +2655,11 @@
       "id": "rolling_tv_unit",
       "name": "Rolling TV Unit",
       "size": {
-        "w": 18,
-        "h": 5
+        "w": 12,
+        "h": 6
       },
-      "wall_h": 9,
-      "floor_depth": 5,
+      "wall_h": 22,
+      "floor_depth": 6,
       "rail_axis": "h",
       "functions": [
         "storage"
@@ -2672,11 +2676,11 @@
       "id": "rolling_island",
       "name": "Rolling Island",
       "size": {
-        "w": 14,
-        "h": 8
+        "w": 9,
+        "h": 6
       },
       "wall_h": 9,
-      "floor_depth": 8,
+      "floor_depth": 6,
       "rail_axis": "h",
       "functions": [],
       "buy_price": 400,
@@ -2690,10 +2694,10 @@
       "id": "rolling_clothes_rack",
       "name": "Rolling Clothes Rack",
       "size": {
-        "w": 9,
+        "w": 12,
         "h": 5
       },
-      "wall_h": 14,
+      "wall_h": 20,
       "floor_depth": 5,
       "rail_axis": "h",
       "functions": [
@@ -2713,10 +2717,10 @@
       "name": "Folding Storage Bench",
       "size": {
         "w": 12,
-        "h": 5
+        "h": 4
       },
       "wall_h": 6,
-      "floor_depth": 5,
+      "floor_depth": 4,
       "foldable": true,
       "extended_add_h": 3,
       "functions": [
@@ -2741,11 +2745,11 @@
       "id": "expanding_shelf",
       "name": "Expanding Shelf",
       "size": {
-        "w": 8,
-        "h": 3
+        "w": 6,
+        "h": 6
       },
-      "wall_h": 10,
-      "floor_depth": 3,
+      "wall_h": 20,
+      "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 3,
       "functions": [
@@ -2768,11 +2772,11 @@
       "id": "pocket_pantry",
       "name": "Pocket Pantry",
       "size": {
-        "w": 5,
-        "h": 5
+        "w": 4,
+        "h": 6
       },
-      "wall_h": 20,
-      "floor_depth": 5,
+      "wall_h": 21,
+      "floor_depth": 6,
       "height_category": "tall",
       "rail_axis": "v",
       "zone_divider": true,
@@ -2791,10 +2795,10 @@
       "name": "Pull-Out Hamper",
       "size": {
         "w": 5,
-        "h": 5
+        "h": 6
       },
-      "wall_h": 6,
-      "floor_depth": 5,
+      "wall_h": 9,
+      "floor_depth": 6,
       "foldable": true,
       "extended_add_h": 3,
       "functions": [
@@ -2815,11 +2819,11 @@
       "id": "hidden_kitchenette",
       "name": "Hidden Kitchenette",
       "size": {
-        "w": 14,
-        "h": 6
+        "w": 17,
+        "h": 7
       },
-      "wall_h": 20,
-      "floor_depth": 6,
+      "wall_h": 22,
+      "floor_depth": 7,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 2,
@@ -2847,11 +2851,11 @@
       "id": "fold_down_breakfast_bar",
       "name": "Fold-Down Breakfast Bar",
       "size": {
-        "w": 10,
-        "h": 2
+        "w": 12,
+        "h": 8
       },
-      "wall_h": 6,
-      "floor_depth": 7,
+      "wall_h": 9,
+      "floor_depth": 8,
       "foldable": true,
       "extended_add_h": 5,
       "functions": [
@@ -2873,10 +2877,10 @@
       "name": "Rolling Kitchen Cart",
       "size": {
         "w": 6,
-        "h": 5
+        "h": 4
       },
-      "wall_h": 9,
-      "floor_depth": 5,
+      "wall_h": 10,
+      "floor_depth": 4,
       "rail_axis": "h",
       "functions": [],
       "buy_price": 200,
@@ -2890,11 +2894,11 @@
       "id": "kitchen_tower",
       "name": "Kitchen Tower",
       "size": {
-        "w": 7,
-        "h": 8
+        "w": 6,
+        "h": 7
       },
       "wall_h": 22,
-      "floor_depth": 8,
+      "floor_depth": 7,
       "height_category": "tall",
       "foldable": true,
       "extended_add_h": 4,
@@ -2921,11 +2925,11 @@
       "id": "fold_out_counter",
       "name": "Fold-Out Counter",
       "size": {
-        "w": 8,
-        "h": 2
+        "w": 6,
+        "h": 7
       },
-      "wall_h": 8,
-      "floor_depth": 6,
+      "wall_h": 9,
+      "floor_depth": 7,
       "foldable": true,
       "extended_add_h": 4,
       "functions": [
@@ -2946,11 +2950,11 @@
       "id": "folding_shower",
       "name": "Folding Shower",
       "size": {
-        "w": 8,
-        "h": 8
+        "w": 9,
+        "h": 9
       },
       "wall_h": 20,
-      "floor_depth": 8,
+      "floor_depth": 9,
       "floor_category": "bathroom",
       "foldable": true,
       "extended_add_h": 2,
@@ -2973,11 +2977,11 @@
       "id": "mirror_cabinet",
       "name": "Mirror Cabinet",
       "size": {
-        "w": 6,
-        "h": 1
+        "w": 9,
+        "h": 2
       },
-      "wall_h": 8,
-      "floor_depth": 3,
+      "wall_h": 7,
+      "floor_depth": 2,
       "foldable": true,
       "extended_add_h": 2,
       "functions": [
@@ -2998,11 +3002,11 @@
       "id": "sliding_bathroom_cabinet",
       "name": "Sliding Bathroom Cabinet",
       "size": {
-        "w": 7,
-        "h": 5
+        "w": 13,
+        "h": 2
       },
-      "wall_h": 12,
-      "floor_depth": 5,
+      "wall_h": 10,
+      "floor_depth": 2,
       "floor_category": "bathroom",
       "rail_axis": "h",
       "functions": [
@@ -3022,7 +3026,7 @@
         "w": 5,
         "h": 2
       },
-      "wall_h": 8,
+      "wall_h": 11,
       "floor_depth": 2,
       "foldable": true,
       "extended_add_h": 3,
@@ -3046,10 +3050,10 @@
       "name": "Stacking Stools",
       "size": {
         "w": 4,
-        "h": 4
+        "h": 5
       },
-      "wall_h": 10,
-      "floor_depth": 4,
+      "wall_h": 11,
+      "floor_depth": 5,
       "foldable": true,
       "extended_add_h": 4,
       "functions": [
@@ -3073,10 +3077,10 @@
       "name": "Wall Folding Seat",
       "size": {
         "w": 5,
-        "h": 1
+        "h": 2
       },
-      "wall_h": 5,
-      "floor_depth": 5,
+      "wall_h": 11,
+      "floor_depth": 2,
       "foldable": true,
       "extended_add_h": 4,
       "functions": [
@@ -3098,11 +3102,11 @@
       "id": "picnic_bench_table",
       "name": "Convertible Picnic Bench",
       "size": {
-        "w": 12,
-        "h": 5
+        "w": 10,
+        "h": 4
       },
-      "wall_h": 8,
-      "floor_depth": 5,
+      "wall_h": 15,
+      "floor_depth": 4,
       "foldable": true,
       "extended_add_h": 5,
       "functions": [
@@ -3126,11 +3130,11 @@
       "id": "under_counter_table",
       "name": "Pull-Out Table",
       "size": {
-        "w": 12,
-        "h": 6
+        "w": 13,
+        "h": 7
       },
-      "wall_h": 7,
-      "floor_depth": 6,
+      "wall_h": 9,
+      "floor_depth": 7,
       "foldable": true,
       "extended_add_h": 0,
       "functions": [
@@ -3156,11 +3160,11 @@
       "id": "banquette_bench",
       "name": "Banquette Bench",
       "size": {
-        "w": 16,
-        "h": 9
+        "w": 22,
+        "h": 17
       },
-      "wall_h": 8,
-      "floor_depth": 9,
+      "wall_h": 9,
+      "floor_depth": 17,
       "functions": [
         "sit",
         "storage"
@@ -3178,10 +3182,10 @@
       "id": "ceiling_lift_storage",
       "name": "Ceiling Lift Storage",
       "size": {
-        "w": 13,
-        "h": 8
+        "w": 14,
+        "h": 9
       },
-      "wall_h": 26,
+      "wall_h": 5,
       "functions": [
         "storage"
       ],
@@ -3196,10 +3200,10 @@
       "id": "floor_hatch_storage",
       "name": "Floor Hatch Storage",
       "size": {
-        "w": 8,
-        "h": 8
+        "w": 23,
+        "h": 13
       },
-      "wall_h": 1,
+      "wall_h": 6,
       "functions": [
         "storage"
       ],
@@ -3214,10 +3218,10 @@
       "id": "movable_island_wall",
       "name": "Movable Island Wall",
       "size": {
-        "w": 18,
+        "w": 24,
         "h": 8
       },
-      "wall_h": 9,
+      "wall_h": 22,
       "floor_depth": 8,
       "functions": [
         "storage",
@@ -3234,10 +3238,10 @@
       "id": "platform_bed_podium",
       "name": "Platform Bed Podium",
       "size": {
-        "w": 19,
-        "h": 13
+        "w": 30,
+        "h": 22
       },
-      "wall_h": 9,
+      "wall_h": 7,
       "functions": [
         "sleep",
         "sit"
@@ -3254,11 +3258,11 @@
       "id": "sliding_pocket_bed",
       "name": "Sliding Pocket Bed",
       "size": {
-        "w": 19,
-        "h": 4
+        "w": 18,
+        "h": 22
       },
-      "wall_h": 9,
-      "floor_depth": 4,
+      "wall_h": 22,
+      "floor_depth": 22,
       "foldable": true,
       "extended_add_h": 8,
       "functions": [],
