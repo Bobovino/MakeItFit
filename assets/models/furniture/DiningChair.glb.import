@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dcak1ygp1nhfl"
-path="res://.godot/imported/OpenShelfRoomDivider.glb-1af34b596231f1af2d188460274b0d83.scn"
+uid="uid://bt7jci3indhah"
+path="res://.godot/imported/DiningChair.glb-bdae92c780bfd75981a7b667bbd53f2b.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/OpenShelfRoomDivider.glb"
-dest_files=["res://.godot/imported/OpenShelfRoomDivider.glb-1af34b596231f1af2d188460274b0d83.scn"]
+source_file="res://assets/models/furniture/DiningChair.glb"
+dest_files=["res://.godot/imported/DiningChair.glb-bdae92c780bfd75981a7b667bbd53f2b.scn"]
 
 [params]
 

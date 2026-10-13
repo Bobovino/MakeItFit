@@ -191,7 +191,7 @@ func _build_apartment() -> void:
 	# (no vertex colours, several materials each).
 	_model("SofaBed.glb",     1.7, Vector3(3.0, 0, 2.6), 180.0, StyleController.ROLE_FURNITURE)
 	_model("StackableChairs_x3.glb",      0.5, Vector3(2.0, 0, 1.05), 180.0, StyleController.ROLE_FURNITURE)
-	_model("ArcFloorLamp.glb", 0.22, Vector3(1.75, 0.75, 0.38), 0.0, StyleController.ROLE_FURNITURE)
+	_model("FloorLamp.glb", 0.22, Vector3(1.75, 0.75, 0.38), 0.0, StyleController.ROLE_FURNITURE)
 	_model("PlantLadderShelf.glb",    0.4, Vector3(3.6, 0, 1.35), 0.0, StyleController.ROLE_ACCENT)
 
 
@@ -201,7 +201,7 @@ func _build_apartment() -> void:
 
 	# Placement ghosts: a box and a kit model on the transparent variant.
 	_ghosts.append(_box("GhostBox", Vector3(0.9, 0, 1.3), Vector3(1.4, 0.5, 1.65), &""))
-	var ghost_model := _model("OpenShelfRoomDivider.glb", 0.8, Vector3(2.95, 0, 1.75), 90.0, &"")
+	var ghost_model := _model("Bookshelf.glb", 0.8, Vector3(2.95, 0, 1.75), 90.0, &"")
 	if ghost_model != null:
 		_ghosts.append(ghost_model)
 

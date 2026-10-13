@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b5qxpd5ekki06"
-path="res://.godot/imported/ArcFloorLamp.glb-2ea491f16727cdbc42b69ad296cfb279.scn"
+uid="uid://bs2u60e4yylyl"
+path="res://.godot/imported/Bookshelf.glb-dd49f513f6e871ea43aa66a6039ae4be.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/ArcFloorLamp.glb"
-dest_files=["res://.godot/imported/ArcFloorLamp.glb-2ea491f16727cdbc42b69ad296cfb279.scn"]
+source_file="res://assets/models/furniture/Bookshelf.glb"
+dest_files=["res://.godot/imported/Bookshelf.glb-dd49f513f6e871ea43aa66a6039ae4be.scn"]
 
 [params]
 

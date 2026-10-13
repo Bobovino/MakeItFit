@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dbxv0p7crybnw"
-path="res://.godot/imported/TiltOutShoeCabinet.glb-41d69e7c613ae0c623b92ac53bf821b4.scn"
+uid="uid://cxhocghh771yw"
+path="res://.godot/imported/SinkBaseUnit.glb-5bdf7244b14826268fe494d5ebe43abd.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/TiltOutShoeCabinet.glb"
-dest_files=["res://.godot/imported/TiltOutShoeCabinet.glb-41d69e7c613ae0c623b92ac53bf821b4.scn"]
+source_file="res://assets/models/furniture/SinkBaseUnit.glb"
+dest_files=["res://.godot/imported/SinkBaseUnit.glb-5bdf7244b14826268fe494d5ebe43abd.scn"]
 
 [params]
 

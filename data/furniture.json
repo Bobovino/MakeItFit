@@ -17,7 +17,7 @@
       "color": "d8c8a0",
       "is_nested_box": true,
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StorageOttoman.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_capsule",
@@ -38,7 +38,7 @@
       "rental": true,
       "child_level_id": "rental:capsule",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StorageOttoman.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_student",
@@ -59,7 +59,7 @@
       "rental": true,
       "child_level_id": "rental:student",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StorageOttoman.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_bunk",
@@ -80,7 +80,7 @@
       "rental": true,
       "child_level_id": "rental:bunk",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_garret",
@@ -101,7 +101,7 @@
       "rental": true,
       "child_level_id": "rental:garret",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StorageOttoman.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_nook",
@@ -122,7 +122,7 @@
       "rental": true,
       "child_level_id": "rental:nook",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_couple",
@@ -143,7 +143,7 @@
       "rental": true,
       "child_level_id": "rental:couple",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_family",
@@ -164,7 +164,7 @@
       "rental": true,
       "child_level_id": "rental:family",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/DeckTileStorageBox.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "rental_penthouse",
@@ -185,7 +185,7 @@
       "rental": true,
       "child_level_id": "rental:penthouse",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StorageOttoman.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "normal_bed",
@@ -250,7 +250,7 @@
       "color": "6a8eb0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/LoftBed.glb"
+      "model": "res://assets/models/furniture/SingleLoftBed.glb"
     },
     {
       "id": "bunk_bed",
@@ -260,7 +260,7 @@
         "w": 19,
         "h": 9
       },
-      "wall_h": 10,
+      "wall_h": 16,
       "floor_depth": 9,
       "height_category": "tall",
       "z_bottom": 14,
@@ -273,7 +273,7 @@
       "color": "6a8ea8",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/BunkBed.glb"
+      "model": "res://assets/models/furniture/SingleBunkBed.glb"
     },
     {
       "id": "murphy_bed",
@@ -779,7 +779,7 @@
       "zone_divider": true,
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/OpenShelfRoomDivider.glb"
+      "model": "res://assets/models/furniture/Bookshelf.glb"
     },
     {
       "id": "pantry",
@@ -1102,7 +1102,7 @@
       "sell_price": 25,
       "color": "d4c060",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/ArcFloorLamp.glb"
+      "model": "res://assets/models/furniture/FloorLamp.glb"
     },
     {
       "id": "side_table",
@@ -1161,7 +1161,7 @@
       "sell_price": 70,
       "color": "506070",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StackableChairs_x3.glb"
+      "model": "res://assets/models/furniture/OfficeChair.glb"
     },
     {
       "id": "filing_cabinet",
@@ -1238,7 +1238,7 @@
       "sell_price": 140,
       "color": "c0ccd8",
       "front": "long",
-      "model": "res://assets/models/furniture/UnderCounterFridge.glb"
+      "model": "res://assets/models/furniture/TallFridgeFreezer.glb"
     },
     {
       "id": "kitchen_island",
@@ -1376,7 +1376,7 @@
       "is_surface": true,
       "max_support_weight": 15,
       "front": "long",
-      "model": "res://assets/models/furniture/TiltOutShoeCabinet.glb"
+      "model": "res://assets/models/furniture/Dresser.glb"
     },
     {
       "id": "floor_mirror",
@@ -1567,11 +1567,11 @@
       "name": "Moving Box",
       "placement": "floor",
       "size": {
-        "w": 5,
-        "h": 4
+        "w": 10,
+        "h": 10
       },
-      "wall_h": 10,
-      "floor_depth": 4,
+      "wall_h": 6,
+      "floor_depth": 10,
       "functions": [
         "storage"
       ],
@@ -1579,7 +1579,7 @@
       "sell_price": 5,
       "color": "b89868",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StackableCrates_x3.glb"
+      "model": "res://assets/models/furniture/ApartmentBox.glb"
     },
     {
       "id": "dining_chair",
@@ -1599,7 +1599,7 @@
       "sell_price": 20,
       "color": "8a6848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/StackableChairs_x3.glb"
+      "model": "res://assets/models/furniture/DiningChair.glb"
     },
     {
       "id": "keyboard",
@@ -1710,7 +1710,7 @@
       "sell_price": 210,
       "color": "b8c4d0",
       "front": "long",
-      "model": "res://assets/models/furniture/UnderCounterFridge.glb"
+      "model": "res://assets/models/furniture/TallFridgeFreezer.glb"
     },
     {
       "id": "mini_fridge",
@@ -1748,7 +1748,7 @@
       "sell_price": 60,
       "color": "c8ccd0",
       "front": "long",
-      "model": "res://assets/models/furniture/CornerSink.glb"
+      "model": "res://assets/models/furniture/SinkBaseUnit.glb"
     },
     {
       "id": "stove",
@@ -2610,10 +2610,10 @@
       "id": "sliding_bookcase",
       "name": "Sliding Bookcase (Vertical)",
       "size": {
-        "w": 16,
+        "w": 8,
         "h": 3
       },
-      "wall_h": 18,
+      "wall_h": 20,
       "floor_depth": 3,
       "height_category": "tall",
       "rail_axis": "v",
@@ -2625,7 +2625,7 @@
       "sell_price": 80,
       "color": "9a7840",
       "front": "long",
-      "model": "res://assets/models/furniture/OpenShelfRoomDivider.glb"
+      "model": "res://assets/models/furniture/Bookshelf.glb"
     },
     {
       "placement": "floor",

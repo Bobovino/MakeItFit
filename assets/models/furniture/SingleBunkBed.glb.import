@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://j22t47bycvwo"
-path="res://.godot/imported/StackableCrates_x3.glb-a6fe29f1d21ba74f5cf26c8b0d229e71.scn"
+uid="uid://xrwvmqi36qql"
+path="res://.godot/imported/SingleBunkBed.glb-e4f8a13934eda2ccab9f0d5082abd846.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/StackableCrates_x3.glb"
-dest_files=["res://.godot/imported/StackableCrates_x3.glb-a6fe29f1d21ba74f5cf26c8b0d229e71.scn"]
+source_file="res://assets/models/furniture/SingleBunkBed.glb"
+dest_files=["res://.godot/imported/SingleBunkBed.glb-e4f8a13934eda2ccab9f0d5082abd846.scn"]
 
 [params]
 

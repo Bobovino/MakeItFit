@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b7teayjh1hdan"
-path="res://.godot/imported/LoftBed.glb-4e40a4825f2d8157de6330cd1ed2788a.scn"
+uid="uid://dnn8jrwjl86yt"
+path="res://.godot/imported/TallFridgeFreezer.glb-883d77a2f8d6a6f136a9648590ad1ffd.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/LoftBed.glb"
-dest_files=["res://.godot/imported/LoftBed.glb-4e40a4825f2d8157de6330cd1ed2788a.scn"]
+source_file="res://assets/models/furniture/TallFridgeFreezer.glb"
+dest_files=["res://.godot/imported/TallFridgeFreezer.glb-883d77a2f8d6a6f136a9648590ad1ffd.scn"]
 
 [params]
 
