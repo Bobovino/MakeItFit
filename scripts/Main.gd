@@ -245,15 +245,7 @@ func _fit_to_window() -> void:
 	_window_fit_busy = false
 
 
-func _exit_tree() -> void:
-	# Other screens are still laid out for 16:9: give them their bars back.
-	var win := get_window()
-	if win:
-		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
-
-
 func _ready() -> void:
-	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	_fit_to_window()
 	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
@@ -1028,9 +1020,9 @@ func _show_mechanic_intro_if_needed() -> void:
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.09, 0.88)
-	bg.size  = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	cl.add_child(bg)
+	ScreenFit.cover(bg)
 
 	# Card panel (480×300, centred)
 	var card := PanelContainer.new()
@@ -1044,6 +1036,7 @@ func _show_mechanic_intro_if_needed() -> void:
 	card.position           = Vector2(400, 210)
 	card.custom_minimum_size = Vector2(480, 300)
 	cl.add_child(card)
+	ScreenFit.keep_centered(card)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)

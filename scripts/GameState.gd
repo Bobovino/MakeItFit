@@ -99,6 +99,11 @@ const DEFAULT_OWNED := ["beach_house","three_freezers","day_and_night","the_inhe
 
 
 func _ready() -> void:
+	# Every screen fills the window, whatever its shape: the contents are
+	# allowed to extend past the 1280 x 720 design area instead of being
+	# letterboxed, and each screen lays itself out against the real size
+	# (see ScreenFit, Main._fit_to_window, CityMap._on_viewport_resized).
+	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	_apply_global_font()
 	load_game()
 	_apply_ui_scale()

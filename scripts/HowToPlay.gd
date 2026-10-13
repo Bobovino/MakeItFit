@@ -21,9 +21,9 @@ func _build() -> void:
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.09, 0.92)
-	bg.size  = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
+	ScreenFit.cover(bg)
 	bg.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
 				and (e as InputEventMouseButton).button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
@@ -43,6 +43,7 @@ func _build() -> void:
 	card.position            = Vector2(290, 60)
 	card.custom_minimum_size = Vector2(700, 600)
 	add_child(card)
+	ScreenFit.keep_centered(card)
 
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 12)

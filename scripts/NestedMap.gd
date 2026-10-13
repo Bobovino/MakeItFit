@@ -40,9 +40,9 @@ func _build(tree: Dictionary) -> void:
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.09, 0.88)
-	bg.size = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
+	ScreenFit.cover(bg)
 	bg.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed:
 			_close())
@@ -109,7 +109,7 @@ func _build(tree: Dictionary) -> void:
 func _center(card: Control) -> void:
 	await get_tree().process_frame
 	if is_instance_valid(card):
-		card.position = ((Vector2(1280, 720) - card.size) * 0.5).max(Vector2(4, 4))
+		card.position = ((ScreenFit.size_of(card) - card.size) * 0.5).max(Vector2(4, 4))
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

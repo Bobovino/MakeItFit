@@ -28,9 +28,9 @@ func _build() -> void:
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.03, 0.05, 0.09, 0.88)
-	bg.size  = Vector2(1280, 720)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
+	ScreenFit.cover(bg)
 	bg.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
 				and (e as InputEventMouseButton).button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
@@ -50,6 +50,7 @@ func _build() -> void:
 	card.position            = Vector2(390, 130)
 	card.custom_minimum_size = Vector2(500, 0)
 	add_child(card)
+	ScreenFit.keep_centered(card)
 
 	# The list is taller in-level (navigation rows) than from the menus, so it
 	# scrolls rather than run off the 720-high layout; _fit_card() sizes the
@@ -382,7 +383,11 @@ func _fit_card(card: PanelContainer, scroll: ScrollContainer, vb: VBoxContainer)
 	scroll.custom_minimum_size = Vector2(452, minf(vb.get_combined_minimum_size().y, 656.0))
 	await get_tree().process_frame
 	if is_instance_valid(card):
-		card.position.y = maxf(4.0, (720.0 - card.size.y) * 0.5)
+		# Vertically centred in the 720-high design area; keep_centered()
+		# then carries it to the centre of the real window.
+		card.set_meta("design_pos", Vector2((card.get_meta("design_pos", card.position) as Vector2).x,
+			maxf(4.0, (720.0 - card.size.y) * 0.5)))
+		card.position = (card.get_meta("design_pos") as Vector2) + (ScreenFit.size_of(card) - ScreenFit.DESIGN) * 0.5
 
 
 func _build_slider_row(label_text: String, initial: float, on_change: Callable) -> HBoxContainer:

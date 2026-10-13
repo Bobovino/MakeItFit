@@ -30,10 +30,11 @@ var _stamp: Label = null
 func _add_input_blocking_backdrop() -> void:
 	var backdrop := ColorRect.new()
 	backdrop.color = Color(0.02, 0.02, 0.02, 0.45)
-	backdrop.size  = Vector2(1280, 720)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(backdrop)
 	move_child(backdrop, 0)
+	ScreenFit.cover(backdrop)
+	ScreenFit.keep_centered($Panel as Control)
 
 
 func _ready() -> void:
