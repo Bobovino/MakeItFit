@@ -17,6 +17,18 @@ static var is_in_floor_pane: Callable = Callable()
 # took the piece (dropped on a nested box, or on "Back": see
 # Main._on_furniture_dropped), so the ordinary "put it down here" is skipped.
 static var on_drag_dropped: Callable = Callable()
+# (furniture, screen position, the piece's centre in tiles) on every move of
+# a piece being dragged, so Main can show where letting go would send it.
+static var on_drag_moved: Callable = Callable()
+# The same question as on_drag_dropped, for a piece that is still being
+# bought (a placement ghost) and was clicked down on a box or on Back: Main
+# pays for it here and delivers it there.
+static var on_purchase_dropped: Callable = Callable()
+# What the piece being carried is hovering: 0 nothing special, 1 somewhere it
+# can be sent (a box, or Back), 2 somewhere it is not allowed to go. Main sets
+# it; while it is not 0, Main's own tag by the pointer does the explaining and
+# the usual "blocked here" note keeps quiet.
+static var transfer_hover: int = 0
 # Set by Main: called with the box when the player double-clicks a nested box.
 static var on_box_enter_requested: Callable = Callable()
 
@@ -620,7 +632,7 @@ func _draw() -> void:
 	# legend.
 	if _dragging and _wall_ref:
 		var at := Vector2(position.x / TILE_SIZE, position.y / TILE_SIZE)
-		var ok := _wall_ref.can_place(self, at)
+		var ok := Furniture.transfer_hover == 1 or (Furniture.transfer_hover == 0 and _wall_ref.can_place(self, at))
 		var pulse := 0.14 + 0.06 * sin(Time.get_ticks_msec() * 0.008)
 		var vc := Color(0.35, 0.80, 0.38, pulse) if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
 		draw_rect(Rect2(0, 0, w, h), vc)
@@ -632,7 +644,7 @@ func _draw() -> void:
 		# Say *why* it's blocked, not just that it is — a bare red ✗ never told
 		# the player whether it was overlap, wrong floor type, a low ceiling,
 		# or another item's clearance zone, so every miss looked identical.
-		if not ok and _wall_ref.has_method("get_block_reason"):
+		if not ok and Furniture.transfer_hover == 0 and _wall_ref.has_method("get_block_reason"):
 			var reason := _wall_ref.get_block_reason() as String
 			if reason != "":
 				var rfont := ThemeDB.fallback_font
@@ -1360,6 +1372,10 @@ func _input(event: InputEvent) -> void:
 				return   # click landed on another panel (e.g. Wall Inspector) — let it through
 			var sx := position.x / TILE_SIZE
 			var sy := position.y / TILE_SIZE
+			if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(self, event.position,
+					Vector2(sx + grid_w * 0.5, sy + grid_h * 0.5)):
+				get_viewport().set_input_as_handled()
+				return
 			var snap_pos := _wall_ref.snap_to_wall(self, Vector2(sx, sy)) if _wall_ref else Vector2(sx, sy)
 			if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
 				_play("error")
@@ -1503,6 +1519,8 @@ func _drag(mouse_pos: Vector2) -> void:
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var tx := target.x / TILE_SIZE
 	var ty := target.y / TILE_SIZE
+	if Furniture.on_drag_moved.is_valid():
+		Furniture.on_drag_moved.call(self, mouse_pos, Vector2(tx + grid_w * 0.5, ty + grid_h * 0.5))
 	# Holding Ctrl while dragging pops the piece off its rail for good (or
 	# back on, see below) — rail_axis is cleared/restored on this instance
 	# only. _rail_ctrl_latch makes this an EDGE trigger (fires once per

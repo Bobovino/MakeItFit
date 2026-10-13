@@ -2318,3 +2318,11 @@ func _select_custom_level(ld: Dictionary) -> void:
 	_action_btn.text     = "PLAY →"
 	_action_btn.disabled = false
 	_redesign_btn.visible = false
+
+
+# Esc opens the menu here too (the menu closes itself on Esc).
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo \
+			and (event as InputEventKey).keycode == KEY_ESCAPE:
+		SettingsMenu.open(self)
+		get_viewport().set_input_as_handled()

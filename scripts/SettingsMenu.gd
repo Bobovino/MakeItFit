@@ -470,7 +470,11 @@ func _start_rebind_capture() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Esc closes the menu (it is also what opens it, from the game and the map).
 	if not _capturing_rebind:
+		if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo 				and (event as InputEventKey).keycode == KEY_ESCAPE:
+			_close()
+			get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
 		var kc := (event as InputEventKey).keycode

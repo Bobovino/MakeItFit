@@ -826,6 +826,12 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		var mx_y := float(_apt_floor.grid_h - f.grid_h) if f.rail_end < 0 else float(f.rail_end)
 		tile.y = clampf(tile.y, mn_y, mx_y)
 	_drag_last_tile = tile
+	if Furniture.on_drag_moved.is_valid():
+		# Where the pointer is on the floor, not where the piece ended up: a
+		# piece can't be pushed into a box, so its own centre never gets there.
+		var under := _room_local_to_tile(_ground_hit(vp_pos))
+		Furniture.on_drag_moved.call(f, get_viewport().get_mouse_position(), under)
+		_drag_pointer_tile = under
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var item_size: Vector3 = _drag_target["size"]
 	if rail_state_changed:
@@ -836,7 +842,9 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	_drag_target["pos"] = mesh.position
 	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
 
-	if _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, tile)):
+	if Furniture.transfer_hover != 0:
+		_hide_reason()     # Main's tag by the pointer says what will happen
+	elif _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, tile)):
 		_show_reason(_apt_floor.get_block_reason())
 	else:
 		_hide_reason()
@@ -985,6 +993,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		# "pos" key at all. hit["pos"] only ever exists on a genuine
 		# {"mode": "floor", "pos": ...} result.
 		var cursor_tile := _room_local_to_tile(_ground_hit(vp_pos))
+		if Furniture.on_drag_moved.is_valid():
+			Furniture.on_drag_moved.call(_buying_furniture, get_viewport().get_mouse_position(), cursor_tile)
 		var tile := (cursor_tile - Vector2(iw, _buying_furniture.grid_h) * 0.5).round()
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
@@ -1059,6 +1069,10 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	if not _apt_floor:
 		return
 	var cursor_tile := _room_local_to_tile(_ground_hit(vp_pos))
+	# Clicked down on a box, or on Back: bought here, delivered there.
+	if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(_buying_furniture,
+			get_viewport().get_mouse_position(), cursor_tile):
+		return
 	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
@@ -1544,6 +1558,8 @@ func _wall_item_mesh_transform(edge: String, origin: Vector2i, iw: int, ih: int,
 	return {"size": sz, "pos": pos}
 
 
+var _drag_pointer_tile := Vector2(-999, -999)   # floor tile under the pointer during a drag
+
 func _finish_furniture_drag() -> void:
 	_dragging_furniture = false
 	var f: Furniture = _drag_target["furniture"]
@@ -1552,7 +1568,7 @@ func _finish_furniture_drag() -> void:
 	# Dropped on a nested box, or on "Back": Main moves the piece to that
 	# apartment (see Furniture.on_drag_dropped) and it is gone from here.
 	if Furniture.on_drag_dropped.is_valid() and Furniture.on_drag_dropped.call(f, get_viewport().get_mouse_position(),
-			_drag_last_tile + Vector2(f.grid_w, f.grid_h) * 0.5):
+			_drag_pointer_tile):
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
 		_hide_drag_highlight()

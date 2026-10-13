@@ -114,3 +114,10 @@ func _entry(header: String, body: String) -> VBoxContainer:
 
 func _close() -> void:
 	queue_free()
+
+
+# Esc closes this window.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo 			and (event as InputEventKey).keycode == KEY_ESCAPE:
+		_close()
+		get_viewport().set_input_as_handled()

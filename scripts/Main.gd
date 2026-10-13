@@ -296,6 +296,8 @@ func _ready() -> void:
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.on_box_enter_requested = _enter_box_animated
 	Furniture.on_drag_dropped = _on_furniture_dropped
+	Furniture.on_drag_moved = _on_furniture_drag_moved
+	Furniture.on_purchase_dropped = _on_purchase_dropped
 	if not inventory.place_owned_requested.is_connected(_on_place_owned_requested):
 		inventory.place_owned_requested.connect(_on_place_owned_requested)
 	Furniture.is_in_floor_pane = func(pos: Vector2) -> bool:
@@ -2269,7 +2271,7 @@ func _position_tenant_card() -> void:
 	# get_combined_minimum_size() alone re-measures children at the CURRENT
 	# (already-fixed-width) rect without touching offsets.
 	tenant_card.offset_right = RIGHT_X
-	var reserve := 10.0 + 150.0 + 12.0 + 14.0   # edge, Furniture button, gaps
+	var reserve := 10.0 + FURNITURE_BTN_W + 12.0 + 14.0   # edge, Furniture button, gaps
 	if is_instance_valid(budget_label):
 		reserve += budget_label.get_combined_minimum_size().x
 	if is_instance_valid(_comfort_meter) and _comfort_meter.visible:
@@ -2575,16 +2577,19 @@ func _hide_modal_backdrop() -> void:
 # F key (see _input) — same "click it or press a key" access The Sims itself
 # offers for its own build/buy mode; pressing F opens the wheel at the cursor
 # instead of this button's fixed position (see _open_furniture_menu).
+const FURNITURE_BTN_W := 178.0
+
 func _position_furniture_menu_btn() -> void:
 	if not is_instance_valid(_furniture_menu_btn) or not is_instance_valid(tenant_card):
 		return
-	var w := 150.0
+	var owned := _owned_count() if gm != null else 0
+	var w := FURNITURE_BTN_W
 	var h := 28.0
 	_furniture_menu_btn.offset_right  = RIGHT_X - 10.0
 	_furniture_menu_btn.offset_left   = _furniture_menu_btn.offset_right - w
 	_furniture_menu_btn.offset_top    = tenant_card.offset_top + 5.0
 	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
-	_furniture_menu_btn.text = "🛋  Furniture  ▾" if _is_furniture_menu_open() else "🛋  Furniture  ▴"
+	_furniture_menu_btn.text = "🛋  Furniture%s  %s" % [("  🎁%d" % owned) if owned > 0 else "", "▾" if _is_furniture_menu_open() else "▴"]
 	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
 	_position_budget_label()
 
@@ -2786,7 +2791,9 @@ func _make_nav_button(label: String) -> Button:
 func _set_mode_hint(text: String) -> void:
 	# A level with a nested box in it gets told how to get inside.
 	if text != "" and not _collect_nested_boxes().is_empty():
-		text += " · Double-click a box to enter; drop a piece on it to put it in"
+		# Kept to what is particular to boxes: the full line ran under the
+		# buttons in the top-right corner.
+		text = "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
 	if text != "" and not _nested_stack.is_empty():
 		# Inside a box the Map and Back buttons sit top-left, under where
 		# this line would run: keep it to the one thing that is new here.
@@ -2993,6 +3000,8 @@ func _add_owned(list: Array, fid: String, count: int = 1) -> void:
 
 func _refresh_owned_ui() -> void:
 	inventory.populate_owned(gm.starting_inventory, gm.furniture_data["furniture"])
+	_position_furniture_menu_btn()      # its "owned" count
+	_announce_owned.call_deferred()
 
 
 # Where a piece let go at this spot is headed: {level_id, name}, or {}.
@@ -3016,16 +3025,11 @@ func _on_furniture_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vecto
 	var target := _transfer_target_at(f, screen_pos, center_tile)
 	if target.is_empty():
 		return false
-	var why := ""
-	if f.keepsake:
-		why = "♥ %s is a keepsake: it stays in this flat." % f.furniture_name
-	elif f.is_nested_box:
-		why = "A box can't go inside another apartment."
-	elif f.is_stair:
-		why = "Stairs can't be moved to another apartment."
+	_end_transfer_cues()
+	var why := _transfer_refusal(f)
 	if why != "":
 		Audio.play("error")
-		_set_mode_hint(why)
+		_toast(why, true)
 		return false   # falls through to the ordinary drop, which puts it back
 	var fid := f.furniture_id
 	var piece_name := f.furniture_name
@@ -3034,6 +3038,13 @@ func _on_furniture_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vecto
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.remove_furniture_entry(f)
 	f.queue_free()
+	_deliver_piece(fid, piece_name, target)
+	return true
+
+
+# Hands a piece to another apartment: it joins that apartment's owned pieces,
+# and unless Shift is held the player goes along with it in hand.
+func _deliver_piece(fid: String, piece_name: String, target: Dictionary, bought: bool = false) -> void:
 	var to_id := target["level_id"] as String
 	if _level_state_cache.has(to_id):
 		var snap := _level_state_cache[to_id] as Dictionary
@@ -3050,8 +3061,275 @@ func _on_furniture_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vecto
 	_refresh_undo_redo_buttons()
 	Audio.play("place")
 	_refresh_functions()
-	_set_mode_hint("%s moved to %s. It is waiting under “Owned” in the catalogue there." % [piece_name, target["name"]])
+	if Input.is_key_pressed(KEY_SHIFT):
+		_toast("%s %s  →  %s.   It is waiting under “Owned” in the catalogue there." % [
+			"Bought" if bought else "Sent", piece_name, target["name"]])
+	else:
+		_follow_transfer.call_deferred(to_id, fid, piece_name)
+
+
+# Furniture.on_purchase_dropped: a piece still being bought was clicked down
+# on a box (or on Back). It is paid for out of THIS apartment's budget and
+# delivered to that one — buying a lodger a wardrobe their own budget can't
+# stretch to. True when that happened.
+var _pending_purchase: Dictionary = {}    # {fid, owned} for the placement in progress
+
+func _on_purchase_dropped(f: Furniture, screen_pos: Vector2, center_tile: Vector2) -> bool:
+	if not is_instance_valid(f) or _post_win_view or _pending_purchase.is_empty():
+		return false
+	var target := _transfer_target_at(f, screen_pos, center_tile)
+	if target.is_empty():
+		return false
+	_end_transfer_cues()
+	var why := _transfer_refusal(f)
+	if why != "":
+		Audio.play("error")
+		_toast(why, true)
+		return true     # swallowed: the click was on a box, not a place to put it down
+	var fid := _pending_purchase["fid"] as String
+	var owned := _pending_purchase["owned"] as bool
+	var piece_name := f.furniture_name
+	_pending_purchase = {}
+	_settle_placement(fid, owned)          # this apartment pays (or gives up its owned piece)
+	# Put the ghost away; the purchase was already settled above, and
+	# cancelling a ghost never charges or refunds anything.
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view._cancel_buy()
+	else:
+		f.cancel_placement()
+	_deliver_piece(fid, piece_name, target, not owned)
 	return true
+
+
+# Travels to the apartment a piece was just sent to and puts that piece on
+# the pointer. Backing out (Esc) leaves it under "Owned" there.
+func _follow_transfer(to_id: String, fid: String, piece_name: String) -> void:
+	if _nested_transition_busy or _nested_travel_busy or _map_jump_busy:
+		return
+	if not _nested_stack.is_empty() and ((_nested_stack[-1] as Dictionary)["parent_level_id"] as String) == to_id:
+		await _exit_nested_animated()
+	else:
+		var door: Furniture = null
+		for box in _collect_nested_boxes():
+			if box.child_level_id == to_id:
+				door = box
+				break
+		if door == null:
+			return
+		await _enter_box_animated(door)
+	if _current_level_id != to_id:
+		return
+	_owned_announced_for = _level_load_id     # the piece in hand says it already
+	await get_tree().process_frame
+	_on_place_owned_requested(fid)
+	_toast("%s came with you. Click to put it down  ·  Esc leaves it under “Owned”." % piece_name)
+
+
+func _process(_delta: float) -> void:
+	if not _xfer_dragging:
+		return
+	if _xfer_purchase:
+		# A piece being bought follows the pointer with no button held; its
+		# cues last until it is put down or backed out of.
+		if not is_instance_valid(_xfer_piece) or not (_xfer_piece._placement_mode \
+				or (is_instance_valid(_mode3d_view) and _mode3d_view._buying_furniture == _xfer_piece)):
+			_end_transfer_cues()
+	elif not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_end_transfer_cues()
+
+
+func _transfer_refusal(f: Furniture) -> String:
+	if f.keepsake:
+		return "♥ %s is a keepsake: it stays in this flat" % f.furniture_name
+	if f.is_nested_box:
+		return "A box can't go inside another apartment"
+	if f.is_stair:
+		return "Stairs can't move to another apartment"
+	return ""
+
+
+# ── What the player sees while carrying a piece ──────────────────────────────
+# The moment a piece is picked up, every place it could be sent lights up:
+# each box gets a green outline, and inside a box the Back button turns into
+# a labelled drop target. Over one of them, a tag by the pointer says exactly
+# what letting go will do, or why it won't.
+var _xfer_dragging := false
+var _xfer_tag: PanelContainer = null
+var _xfer_outlines: Array = []      # [{box: Furniture, line: Line2D}]
+var _xfer_back_text := ""
+var _xfer_purchase := false         # the piece being carried is one being bought
+var _xfer_piece: Furniture = null
+
+func _on_furniture_drag_moved(f: Furniture, screen_pos: Vector2, center_tile: Vector2) -> void:
+	if not is_instance_valid(f) or _post_win_view:
+		return
+	if not _xfer_dragging:
+		_begin_transfer_cues(f)
+	var target := _transfer_target_at(f, screen_pos, center_tile)
+	var to_parent := not target.is_empty() and not _nested_stack.is_empty() \
+		and (target["level_id"] as String) == ((_nested_stack[-1] as Dictionary)["parent_level_id"] as String) \
+		and _back_btn.get_global_rect().grow(6.0).has_point(screen_pos)
+	for entry in _xfer_outlines:
+		var box: Furniture = entry["box"]
+		var line: Line2D = entry["line"]
+		if not is_instance_valid(box) or not is_instance_valid(line):
+			continue
+		var hot := not target.is_empty() and not to_parent and box.child_level_id == (target["level_id"] as String)
+		line.width = 5.0 if hot else 2.5
+		line.default_color = Color(0.45, 1.0, 0.62) if hot else Color(0.35, 0.86, 0.52, 0.75)
+	if is_instance_valid(_back_btn) and _back_btn.visible:
+		_back_btn.modulate = Color(1.35, 1.35, 1.0) if to_parent else Color(1, 1, 1)
+	if target.is_empty():
+		Furniture.transfer_hover = 0
+		if is_instance_valid(_xfer_tag):
+			_xfer_tag.visible = false
+		return
+	var why := _transfer_refusal(f)
+	var text := why
+	if why == "":
+		if _xfer_purchase and not (not _pending_purchase.is_empty() and (_pending_purchase["owned"] as bool)):
+			# Paid for here, delivered there.
+			text = "%s  Buy it for %s  ·  %d€ from this budget" % ["←" if to_parent else "→", target["name"], f.buy_price]
+		else:
+			text = ("←  Take out to %s" if to_parent else "→  Take into %s") % target["name"]
+		text += "\nShift: send it without going"
+	Furniture.transfer_hover = 2 if why != "" else 1
+	f.queue_redraw()
+	_show_transfer_tag(text, why != "", screen_pos)
+
+
+func _begin_transfer_cues(f: Furniture) -> void:
+	_xfer_dragging = true
+	_xfer_piece = f
+	_xfer_purchase = f._placement_mode or (is_instance_valid(_mode3d_view) and _mode3d_view._buying_furniture == f)
+	if _transfer_refusal(f) != "":
+		return     # nothing to offer this piece; the tag explains if it is tried
+	for box in _collect_nested_boxes():
+		if box == f or box._wall_ref != f._wall_ref:
+			continue
+		var line := Line2D.new()
+		var w := box.grid_w * float(TILE_SIZE)
+		var h := box.grid_h * float(TILE_SIZE)
+		line.points = PackedVector2Array([Vector2(-2, -2), Vector2(w + 2, -2), Vector2(w + 2, h + 2), Vector2(-2, h + 2)])
+		line.closed = true
+		line.width = 2.5
+		line.default_color = Color(0.35, 0.86, 0.52, 0.75)
+		line.z_index = 30
+		box.add_child(line)
+		_xfer_outlines.append({"box": box, "line": line})
+	if is_instance_valid(_back_btn) and _back_btn.visible and not _nested_stack.is_empty():
+		_xfer_back_text = _back_btn.text
+		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
+		_back_btn.text = ("←  Click here to buy it for %s" if _xfer_purchase else "←  Drop here to send to %s") % _level_display_name(parent_id)
+		_back_btn.reset_size()
+
+
+func _end_transfer_cues() -> void:
+	if not _xfer_dragging:
+		return
+	_xfer_dragging = false
+	Furniture.transfer_hover = 0
+	for entry in _xfer_outlines:
+		if is_instance_valid(entry["line"]):
+			(entry["line"] as Line2D).queue_free()
+	_xfer_outlines.clear()
+	if is_instance_valid(_xfer_tag):
+		_xfer_tag.visible = false
+	if is_instance_valid(_back_btn):
+		_back_btn.modulate = Color(1, 1, 1)
+		if _xfer_back_text != "":
+			_back_btn.text = _xfer_back_text
+			_back_btn.reset_size()
+	_xfer_back_text = ""
+
+
+func _show_transfer_tag(text: String, refused: bool, at: Vector2) -> void:
+	if not is_instance_valid(_xfer_tag):
+		_xfer_tag = PanelContainer.new()
+		_xfer_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_xfer_tag.z_index = 200
+		var lbl := Label.new()
+		lbl.name = "Text"
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_xfer_tag.add_child(lbl)
+		ui_layer.add_child(_xfer_tag)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.30, 0.10, 0.09, 0.96) if refused else Color(0.07, 0.24, 0.15, 0.96)
+	sb.border_color = Color(0.98, 0.42, 0.36) if refused else Color(0.45, 1.0, 0.62)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(7)
+	sb.set_content_margin_all(7)
+	_xfer_tag.add_theme_stylebox_override("panel", sb)
+	var label := _xfer_tag.get_node("Text") as Label
+	label.text = text
+	label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.84) if refused else Color(0.86, 1.0, 0.90))
+	_xfer_tag.visible = true
+	_xfer_tag.reset_size()
+	var pos := at + Vector2(18, 18)
+	pos.x = clampf(pos.x, 4.0, RIGHT_X - _xfer_tag.size.x - 4.0)
+	pos.y = clampf(pos.y, 4.0, BOT_Y - _xfer_tag.size.y - 4.0)
+	_xfer_tag.position = pos
+	ui_layer.move_child(_xfer_tag, ui_layer.get_child_count() - 1)
+
+
+# A short message across the bottom of the play area, above the bar. For
+# things that just happened and need saying once.
+var _toast_panel: PanelContainer = null
+var _toast_tween: Tween = null
+
+func _toast(text: String, bad: bool = false) -> void:
+	if not is_instance_valid(_toast_panel):
+		_toast_panel = PanelContainer.new()
+		_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var lbl := Label.new()
+		lbl.name = "Text"
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_toast_panel.add_child(lbl)
+		ui_layer.add_child(_toast_panel)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.28, 0.10, 0.09, 0.96) if bad else Color(0.06, 0.13, 0.22, 0.96)
+	sb.border_color = Color(0.98, 0.42, 0.36) if bad else GameTheme.C_AMBER
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(9)
+	sb.set_content_margin(SIDE_LEFT, 16)
+	sb.set_content_margin(SIDE_RIGHT, 16)
+	sb.set_content_margin(SIDE_TOP, 9)
+	sb.set_content_margin(SIDE_BOTTOM, 9)
+	_toast_panel.add_theme_stylebox_override("panel", sb)
+	var label := _toast_panel.get_node("Text") as Label
+	label.text = text
+	label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.84) if bad else Color(1.0, 0.95, 0.78))
+	_toast_panel.visible = true
+	_toast_panel.modulate.a = 1.0
+	_toast_panel.reset_size()
+	_toast_panel.position = Vector2((RIGHT_X - _toast_panel.size.x) * 0.5, _hud_stack_top() - _toast_panel.size.y - 14.0)
+	ui_layer.move_child(_toast_panel, ui_layer.get_child_count() - 1)
+	if _toast_tween and _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(3.2)
+	_toast_tween.tween_property(_toast_panel, "modulate:a", 0.0, 0.5)
+	_toast_tween.tween_callback(func(): _toast_panel.visible = false)
+
+
+func _owned_count() -> int:
+	var n := 0
+	for entry in gm.starting_inventory:
+		n += (entry as Dictionary)["count"] as int
+	return n
+
+
+# On arriving somewhere pieces are waiting, say so once.
+var _owned_announced_for := -1
+
+func _announce_owned() -> void:
+	var n := _owned_count()
+	if n <= 0 or _owned_announced_for == _level_load_id:
+		return
+	_owned_announced_for = _level_load_id
+	_toast("%d piece%s waiting for you here: open Furniture, they are first under “Owned”." % [n, " is" if n == 1 else "s are"])
 
 
 func _on_place_owned_requested(furniture_id: String) -> void:
@@ -3079,6 +3357,7 @@ func _settle_placement(furniture_id: String, owned: bool) -> void:
 func _on_buy_requested(furniture_id: String) -> void:
 	# The catalogue strip stays open: buy, place, buy the next one.
 	var owned := _place_owned_next
+	_pending_purchase = {"fid": furniture_id, "owned": owned}
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
 		return
@@ -3505,9 +3784,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey:
 		var ke := event as InputEventKey
-		if ke.pressed and not ke.echo and ke.keycode == KEY_ESCAPE \
-				and is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible:
-			_close_furniture_menu()
+		# Esc opens the menu. It only gets this far when nothing else wanted
+		# it: a piece being placed or bought cancels on Esc first, and the
+		# menu and the other windows close themselves on it.
+		if ke.pressed and not ke.echo and ke.keycode == KEY_ESCAPE:
+			if not _intro_modal_open and not result_screen.visible:
+				_on_settings_btn_pressed()
 			get_viewport().set_input_as_handled()
 			return
 		# Undo key is remappable (Settings → Accessibility); Redo is always the
