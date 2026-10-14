@@ -19,7 +19,7 @@ extends Node3D
 # `--tonemap=0` switches to a linear tonemapper for measuring; `--dof` turns
 # the High tier's depth of field on.
 
-const MODEL_DIR   := "res://assets/models/furniture/"
+const MODEL_DIR   := "res://assets/models/furniture/old/"   # the test room was dressed with the earlier kit models
 
 const ROOM_W := 4.0    # metres, along X
 const ROOM_D := 3.2    # along Z
