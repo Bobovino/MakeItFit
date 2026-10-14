@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c2wivq88tfbhj"
-path="res://.godot/imported/FloatingNightstand.glb-9811260b3e793576cddaa31146b767b2.scn"
+path="res://.godot/imported/FloatingNightstand.glb-a2de8807f8b0c2df78f735ca9afb2205.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FloatingNightstand.glb"
-dest_files=["res://.godot/imported/FloatingNightstand.glb-9811260b3e793576cddaa31146b767b2.scn"]
+source_file="res://assets/models/furniture/old/FloatingNightstand.glb"
+dest_files=["res://.godot/imported/FloatingNightstand.glb-a2de8807f8b0c2df78f735ca9afb2205.scn"]
 
 [params]
 

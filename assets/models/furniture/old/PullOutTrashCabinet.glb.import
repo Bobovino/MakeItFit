@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://d3hl2y3tuw3fk"
-path="res://.godot/imported/PullOutTrashCabinet.glb-c3c3ec94de5de2743766b4d8132bb49c.scn"
+path="res://.godot/imported/PullOutTrashCabinet.glb-e9d6aeb3313f21db5d5c140cdc04c99d.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullOutTrashCabinet.glb"
-dest_files=["res://.godot/imported/PullOutTrashCabinet.glb-c3c3ec94de5de2743766b4d8132bb49c.scn"]
+source_file="res://assets/models/furniture/old/PullOutTrashCabinet.glb"
+dest_files=["res://.godot/imported/PullOutTrashCabinet.glb-e9d6aeb3313f21db5d5c140cdc04c99d.scn"]
 
 [params]
 

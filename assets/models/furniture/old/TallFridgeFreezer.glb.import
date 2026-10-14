@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dnn8jrwjl86yt"
-path="res://.godot/imported/TallFridgeFreezer.glb-883d77a2f8d6a6f136a9648590ad1ffd.scn"
+path="res://.godot/imported/TallFridgeFreezer.glb-9c52775b6357c98bd7c3709bab78877b.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/TallFridgeFreezer.glb"
-dest_files=["res://.godot/imported/TallFridgeFreezer.glb-883d77a2f8d6a6f136a9648590ad1ffd.scn"]
+source_file="res://assets/models/furniture/old/TallFridgeFreezer.glb"
+dest_files=["res://.godot/imported/TallFridgeFreezer.glb-9c52775b6357c98bd7c3709bab78877b.scn"]
 
 [params]
 

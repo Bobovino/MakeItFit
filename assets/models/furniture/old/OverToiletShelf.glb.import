@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c22g1j2xvxpdj"
-path="res://.godot/imported/OverToiletShelf.glb-7891bc1af7c208db14e98cae24497d7a.scn"
+path="res://.godot/imported/OverToiletShelf.glb-b6517bc06644a953886372bf0dc0c485.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/OverToiletShelf.glb"
-dest_files=["res://.godot/imported/OverToiletShelf.glb-7891bc1af7c208db14e98cae24497d7a.scn"]
+source_file="res://assets/models/furniture/old/OverToiletShelf.glb"
+dest_files=["res://.godot/imported/OverToiletShelf.glb-b6517bc06644a953886372bf0dc0c485.scn"]
 
 [params]
 

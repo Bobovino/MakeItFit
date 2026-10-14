@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://b3o6g1api4qmm"
-path="res://.godot/imported/Curtain.glb-2b0a064f72896db15539a6e3d7108651.scn"
+path="res://.godot/imported/Curtain.glb-f2fffdc12203cf957c62d8bab9a05663.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/Curtain.glb"
-dest_files=["res://.godot/imported/Curtain.glb-2b0a064f72896db15539a6e3d7108651.scn"]
+source_file="res://assets/models/furniture/old/Curtain.glb"
+dest_files=["res://.godot/imported/Curtain.glb-f2fffdc12203cf957c62d8bab9a05663.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bt7jci3indhah"
-path="res://.godot/imported/DiningChair.glb-bdae92c780bfd75981a7b667bbd53f2b.scn"
+path="res://.godot/imported/DiningChair.glb-3091211266594d17854378ee14612159.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/DiningChair.glb"
-dest_files=["res://.godot/imported/DiningChair.glb-bdae92c780bfd75981a7b667bbd53f2b.scn"]
+source_file="res://assets/models/furniture/old/DiningChair.glb"
+dest_files=["res://.godot/imported/DiningChair.glb-3091211266594d17854378ee14612159.scn"]
 
 [params]
 

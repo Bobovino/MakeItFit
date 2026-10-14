@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://covkgbjso0w4f"
-path="res://.godot/imported/OpenClothesRail.glb-ff1d269927d3c7f67eacdf45b9696ca2.scn"
+path="res://.godot/imported/OpenClothesRail.glb-40e50ee2cf734d7729b1d5b9e967ae68.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/OpenClothesRail.glb"
-dest_files=["res://.godot/imported/OpenClothesRail.glb-ff1d269927d3c7f67eacdf45b9696ca2.scn"]
+source_file="res://assets/models/furniture/old/OpenClothesRail.glb"
+dest_files=["res://.godot/imported/OpenClothesRail.glb-40e50ee2cf734d7729b1d5b9e967ae68.scn"]
 
 [params]
 

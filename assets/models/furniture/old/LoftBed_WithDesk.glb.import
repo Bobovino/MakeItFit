@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://chls1c5qnwgj5"
-path="res://.godot/imported/LoftBed_WithDesk.glb-df177a9c9d5f3a95f2cb4965b13bda0c.scn"
+path="res://.godot/imported/LoftBed_WithDesk.glb-54faaed48f1762b3661d0f6f58aefc07.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/LoftBed_WithDesk.glb"
-dest_files=["res://.godot/imported/LoftBed_WithDesk.glb-df177a9c9d5f3a95f2cb4965b13bda0c.scn"]
+source_file="res://assets/models/furniture/old/LoftBed_WithDesk.glb"
+dest_files=["res://.godot/imported/LoftBed_WithDesk.glb-54faaed48f1762b3661d0f6f58aefc07.scn"]
 
 [params]
 

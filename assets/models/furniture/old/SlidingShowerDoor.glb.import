@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://4h86tmps75cm"
-path="res://.godot/imported/SlidingShowerDoor.glb-82c52556f361e1ebb05fb31ba284ebd9.scn"
+path="res://.godot/imported/SlidingShowerDoor.glb-dc6996b0121af135c9edb0b301adc510.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SlidingShowerDoor.glb"
-dest_files=["res://.godot/imported/SlidingShowerDoor.glb-82c52556f361e1ebb05fb31ba284ebd9.scn"]
+source_file="res://assets/models/furniture/old/SlidingShowerDoor.glb"
+dest_files=["res://.godot/imported/SlidingShowerDoor.glb-dc6996b0121af135c9edb0b301adc510.scn"]
 
 [params]
 

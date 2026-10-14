@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://hgj8yrtdt11l"
-path="res://.godot/imported/WallHungToilet.glb-1b1c62b06afb0ba885bab3472e6ab09e.scn"
+path="res://.godot/imported/WallHungToilet.glb-3871718b0d4b6b48376b0759f6a76a8a.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallHungToilet.glb"
-dest_files=["res://.godot/imported/WallHungToilet.glb-1b1c62b06afb0ba885bab3472e6ab09e.scn"]
+source_file="res://assets/models/furniture/old/WallHungToilet.glb"
+dest_files=["res://.godot/imported/WallHungToilet.glb-3871718b0d4b6b48376b0759f6a76a8a.scn"]
 
 [params]
 

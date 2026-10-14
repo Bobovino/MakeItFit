@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dslol6njjpyic"
-path="res://.godot/imported/MagicCornerPullout.glb-05e4a9a58d5111712714dab62544e36e.scn"
+path="res://.godot/imported/MagicCornerPullout.glb-25f7cf9655e743c6b7243e180d7ca91e.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MagicCornerPullout.glb"
-dest_files=["res://.godot/imported/MagicCornerPullout.glb-05e4a9a58d5111712714dab62544e36e.scn"]
+source_file="res://assets/models/furniture/old/MagicCornerPullout.glb"
+dest_files=["res://.godot/imported/MagicCornerPullout.glb-25f7cf9655e743c6b7243e180d7ca91e.scn"]
 
 [params]
 

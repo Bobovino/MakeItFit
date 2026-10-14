@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://kqwufkamdqf"
-path="res://.godot/imported/RailingFoldTable.glb-3289aea8c09c1fd2713222112590ba80.scn"
+path="res://.godot/imported/RailingFoldTable.glb-733ab33e51320ddb223f1c6f336e0dad.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/RailingFoldTable.glb"
-dest_files=["res://.godot/imported/RailingFoldTable.glb-3289aea8c09c1fd2713222112590ba80.scn"]
+source_file="res://assets/models/furniture/old/RailingFoldTable.glb"
+dest_files=["res://.godot/imported/RailingFoldTable.glb-733ab33e51320ddb223f1c6f336e0dad.scn"]
 
 [params]
 

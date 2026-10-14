@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cqqgxaxybyenh"
-path="res://.godot/imported/WallFoldingChair.glb-5e10e558456970b9452adb33824d32bd.scn"
+path="res://.godot/imported/WallFoldingChair.glb-af13c1d3db81848ea38a1cd7b2d034f7.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallFoldingChair.glb"
-dest_files=["res://.godot/imported/WallFoldingChair.glb-5e10e558456970b9452adb33824d32bd.scn"]
+source_file="res://assets/models/furniture/old/WallFoldingChair.glb"
+dest_files=["res://.godot/imported/WallFoldingChair.glb-af13c1d3db81848ea38a1cd7b2d034f7.scn"]
 
 [params]
 

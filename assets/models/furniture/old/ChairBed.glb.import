@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://da4sdw63hjicm"
-path="res://.godot/imported/ChairBed.glb-f8abbaacc13d2e48c16eaa5454285001.scn"
+path="res://.godot/imported/ChairBed.glb-97235a802027359492184fdc53289c5a.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/ChairBed.glb"
-dest_files=["res://.godot/imported/ChairBed.glb-f8abbaacc13d2e48c16eaa5454285001.scn"]
+source_file="res://assets/models/furniture/old/ChairBed.glb"
+dest_files=["res://.godot/imported/ChairBed.glb-97235a802027359492184fdc53289c5a.scn"]
 
 [params]
 

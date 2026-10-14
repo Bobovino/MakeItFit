@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://b2b4p3cnkc13c"
-path="res://.godot/imported/SingleLoftBed.glb-df7f668f5e0c8bee3cca682cafac78c4.scn"
+path="res://.godot/imported/SingleLoftBed.glb-2348673441c99c6b9a29d21e5eb7a8c9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SingleLoftBed.glb"
-dest_files=["res://.godot/imported/SingleLoftBed.glb-df7f668f5e0c8bee3cca682cafac78c4.scn"]
+source_file="res://assets/models/furniture/old/SingleLoftBed.glb"
+dest_files=["res://.godot/imported/SingleLoftBed.glb-2348673441c99c6b9a29d21e5eb7a8c9.scn"]
 
 [params]
 

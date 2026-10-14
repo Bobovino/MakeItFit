@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bica8wseam27l"
-path="res://.godot/imported/PullOutLaundryHamper.glb-341f8a4c24f0f6ef97646af086e43287.scn"
+path="res://.godot/imported/PullOutLaundryHamper.glb-0d1cb9cd92827a142b185ffe6dba38ca.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullOutLaundryHamper.glb"
-dest_files=["res://.godot/imported/PullOutLaundryHamper.glb-341f8a4c24f0f6ef97646af086e43287.scn"]
+source_file="res://assets/models/furniture/old/PullOutLaundryHamper.glb"
+dest_files=["res://.godot/imported/PullOutLaundryHamper.glb-0d1cb9cd92827a142b185ffe6dba38ca.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bi1e23oitcn0v"
-path="res://.godot/imported/MirrorJewelryCabinet.glb-865b4f8e6bf08d02416a255fbe4f5398.scn"
+path="res://.godot/imported/MirrorJewelryCabinet.glb-d46d816b35045ce018c73a598af29476.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MirrorJewelryCabinet.glb"
-dest_files=["res://.godot/imported/MirrorJewelryCabinet.glb-865b4f8e6bf08d02416a255fbe4f5398.scn"]
+source_file="res://assets/models/furniture/old/MirrorJewelryCabinet.glb"
+dest_files=["res://.godot/imported/MirrorJewelryCabinet.glb-d46d816b35045ce018c73a598af29476.scn"]
 
 [params]
 

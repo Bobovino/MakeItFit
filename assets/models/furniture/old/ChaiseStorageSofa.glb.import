@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cqvun1uyytpjk"
-path="res://.godot/imported/ChaiseStorageSofa.glb-be584ee2851b2056fdd1f9a06e7c559e.scn"
+path="res://.godot/imported/ChaiseStorageSofa.glb-d25404cdb92327315e7cd856edec68b6.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/ChaiseStorageSofa.glb"
-dest_files=["res://.godot/imported/ChaiseStorageSofa.glb-be584ee2851b2056fdd1f9a06e7c559e.scn"]
+source_file="res://assets/models/furniture/old/ChaiseStorageSofa.glb"
+dest_files=["res://.godot/imported/ChaiseStorageSofa.glb-d25404cdb92327315e7cd856edec68b6.scn"]
 
 [params]
 

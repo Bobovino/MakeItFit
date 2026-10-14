@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://fik45d0weraf"
-path="res://.godot/imported/FloatingVanity.glb-b419988f6ee022193699080d81367a68.scn"
+path="res://.godot/imported/FloatingVanity.glb-4c0b124936acab3ed2cbf915d47e2075.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FloatingVanity.glb"
-dest_files=["res://.godot/imported/FloatingVanity.glb-b419988f6ee022193699080d81367a68.scn"]
+source_file="res://assets/models/furniture/old/FloatingVanity.glb"
+dest_files=["res://.godot/imported/FloatingVanity.glb-4c0b124936acab3ed2cbf915d47e2075.scn"]
 
 [params]
 

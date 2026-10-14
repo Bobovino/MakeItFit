@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://yug7al0nn6m1"
-path="res://.godot/imported/FloatingWallShelves.glb-959786a6a3dc0e60816221450f64fd32.scn"
+path="res://.godot/imported/FloatingWallShelves.glb-4008a68348ee46727dba00b1e1005bca.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FloatingWallShelves.glb"
-dest_files=["res://.godot/imported/FloatingWallShelves.glb-959786a6a3dc0e60816221450f64fd32.scn"]
+source_file="res://assets/models/furniture/old/FloatingWallShelves.glb"
+dest_files=["res://.godot/imported/FloatingWallShelves.glb-4008a68348ee46727dba00b1e1005bca.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cs7t0ql1pi4nc"
-path="res://.godot/imported/StackedWasherDryer.glb-f827e05977dbf0f0c25ff8607390f39e.scn"
+path="res://.godot/imported/StackedWasherDryer.glb-1db86be4cd72b2a0c92fcb8c5c2642e5.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/StackedWasherDryer.glb"
-dest_files=["res://.godot/imported/StackedWasherDryer.glb-f827e05977dbf0f0c25ff8607390f39e.scn"]
+source_file="res://assets/models/furniture/old/StackedWasherDryer.glb"
+dest_files=["res://.godot/imported/StackedWasherDryer.glb-1db86be4cd72b2a0c92fcb8c5c2642e5.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cmi8re3h11w78"
-path="res://.godot/imported/WindowSeatStorage.glb-66b5df35c11260b2b985c0d140f4fb35.scn"
+path="res://.godot/imported/WindowSeatStorage.glb-85c16e5878f0c24a776006ae0957f6ba.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WindowSeatStorage.glb"
-dest_files=["res://.godot/imported/WindowSeatStorage.glb-66b5df35c11260b2b985c0d140f4fb35.scn"]
+source_file="res://assets/models/furniture/old/WindowSeatStorage.glb"
+dest_files=["res://.godot/imported/WindowSeatStorage.glb-85c16e5878f0c24a776006ae0957f6ba.scn"]
 
 [params]
 

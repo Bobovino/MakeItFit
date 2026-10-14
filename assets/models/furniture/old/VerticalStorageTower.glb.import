@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dxj1250bdrsay"
-path="res://.godot/imported/VerticalStorageTower.glb-336abf33d589a6e7cd0f1256d7d41451.scn"
+path="res://.godot/imported/VerticalStorageTower.glb-9f190a15e9931dcb0e85edc1b4ca5f4c.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/VerticalStorageTower.glb"
-dest_files=["res://.godot/imported/VerticalStorageTower.glb-336abf33d589a6e7cd0f1256d7d41451.scn"]
+source_file="res://assets/models/furniture/old/VerticalStorageTower.glb"
+dest_files=["res://.godot/imported/VerticalStorageTower.glb-9f190a15e9931dcb0e85edc1b4ca5f4c.scn"]
 
 [params]
 

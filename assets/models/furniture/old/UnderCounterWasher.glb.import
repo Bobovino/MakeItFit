@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bf521uprqwqe1"
-path="res://.godot/imported/UnderCounterWasher.glb-6917ead482fceeac0ef7dfdec4ec2126.scn"
+path="res://.godot/imported/UnderCounterWasher.glb-757fd05c0d38efb6033aa541bc870de6.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/UnderCounterWasher.glb"
-dest_files=["res://.godot/imported/UnderCounterWasher.glb-6917ead482fceeac0ef7dfdec4ec2126.scn"]
+source_file="res://assets/models/furniture/old/UnderCounterWasher.glb"
+dest_files=["res://.godot/imported/UnderCounterWasher.glb-757fd05c0d38efb6033aa541bc870de6.scn"]
 
 [params]
 

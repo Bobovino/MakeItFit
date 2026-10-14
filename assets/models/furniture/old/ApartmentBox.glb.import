@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cw53khb32e2sw"
-path="res://.godot/imported/ApartmentBox.glb-e161b247c0cd453752ae515fd6cf42b6.scn"
+path="res://.godot/imported/ApartmentBox.glb-44a26d6e5a0df46f57206a925e953e1d.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/ApartmentBox.glb"
-dest_files=["res://.godot/imported/ApartmentBox.glb-e161b247c0cd453752ae515fd6cf42b6.scn"]
+source_file="res://assets/models/furniture/old/ApartmentBox.glb"
+dest_files=["res://.godot/imported/ApartmentBox.glb-44a26d6e5a0df46f57206a925e953e1d.scn"]
 
 [params]
 

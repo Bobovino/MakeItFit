@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://da702gg8wdhq2"
-path="res://.godot/imported/SwivelTVMount.glb-5d01c541642a312ca4b47e45c1854720.scn"
+path="res://.godot/imported/SwivelTVMount.glb-a19ce297329f3ab82861c826422fd409.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SwivelTVMount.glb"
-dest_files=["res://.godot/imported/SwivelTVMount.glb-5d01c541642a312ca4b47e45c1854720.scn"]
+source_file="res://assets/models/furniture/old/SwivelTVMount.glb"
+dest_files=["res://.godot/imported/SwivelTVMount.glb-a19ce297329f3ab82861c826422fd409.scn"]
 
 [params]
 

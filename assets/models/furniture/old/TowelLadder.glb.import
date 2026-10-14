@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://6ban33uf2r0q"
-path="res://.godot/imported/TowelLadder.glb-61e52850aa3f39f0d92236759fc608ba.scn"
+path="res://.godot/imported/TowelLadder.glb-8c9d0a2df2d5c31d21b530bdbc73f6b3.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/TowelLadder.glb"
-dest_files=["res://.godot/imported/TowelLadder.glb-61e52850aa3f39f0d92236759fc608ba.scn"]
+source_file="res://assets/models/furniture/old/TowelLadder.glb"
+dest_files=["res://.godot/imported/TowelLadder.glb-8c9d0a2df2d5c31d21b530bdbc73f6b3.scn"]
 
 [params]
 

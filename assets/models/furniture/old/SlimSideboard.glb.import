@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c7jhrhgh2a7ut"
-path="res://.godot/imported/SlimSideboard.glb-86ac80c907de359006b4d1793f411ffa.scn"
+path="res://.godot/imported/SlimSideboard.glb-85473083ca73498fbb146c12709d7efa.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SlimSideboard.glb"
-dest_files=["res://.godot/imported/SlimSideboard.glb-86ac80c907de359006b4d1793f411ffa.scn"]
+source_file="res://assets/models/furniture/old/SlimSideboard.glb"
+dest_files=["res://.godot/imported/SlimSideboard.glb-85473083ca73498fbb146c12709d7efa.scn"]
 
 [params]
 

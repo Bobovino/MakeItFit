@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://blw07hpefkk53"
-path="res://.godot/imported/PlatformBedPodium.glb-a11b02801b23039e939ea13dd0092adf.scn"
+path="res://.godot/imported/PlatformBedPodium.glb-52d25fca351c934117d1cac990b159f9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PlatformBedPodium.glb"
-dest_files=["res://.godot/imported/PlatformBedPodium.glb-a11b02801b23039e939ea13dd0092adf.scn"]
+source_file="res://assets/models/furniture/old/PlatformBedPodium.glb"
+dest_files=["res://.godot/imported/PlatformBedPodium.glb-52d25fca351c934117d1cac990b159f9.scn"]
 
 [params]
 

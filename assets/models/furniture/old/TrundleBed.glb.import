@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://by4ua2eb8o4qc"
-path="res://.godot/imported/TrundleBed.glb-2464f9540306228da7da3f23f8b4f179.scn"
+path="res://.godot/imported/TrundleBed.glb-3a351859f34360d586bca24808d35cef.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/TrundleBed.glb"
-dest_files=["res://.godot/imported/TrundleBed.glb-2464f9540306228da7da3f23f8b4f179.scn"]
+source_file="res://assets/models/furniture/old/TrundleBed.glb"
+dest_files=["res://.godot/imported/TrundleBed.glb-3a351859f34360d586bca24808d35cef.scn"]
 
 [params]
 

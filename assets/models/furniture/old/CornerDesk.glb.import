@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://b3e4qhxfv6ih7"
-path="res://.godot/imported/CornerDesk.glb-f177d03b9bfd32909e90f9444614313a.scn"
+path="res://.godot/imported/CornerDesk.glb-12e573f95458bb22c774494fed96bcd3.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CornerDesk.glb"
-dest_files=["res://.godot/imported/CornerDesk.glb-f177d03b9bfd32909e90f9444614313a.scn"]
+source_file="res://assets/models/furniture/old/CornerDesk.glb"
+dest_files=["res://.godot/imported/CornerDesk.glb-12e573f95458bb22c774494fed96bcd3.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cyt1tkxffvxag"
-path="res://.godot/imported/FoldingStepStool.glb-7b636b709b88e2332f55d9ca478490fe.scn"
+path="res://.godot/imported/FoldingStepStool.glb-4adfbb562d7a0c6c801a3a3f4ba10887.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingStepStool.glb"
-dest_files=["res://.godot/imported/FoldingStepStool.glb-7b636b709b88e2332f55d9ca478490fe.scn"]
+source_file="res://assets/models/furniture/old/FoldingStepStool.glb"
+dest_files=["res://.godot/imported/FoldingStepStool.glb-4adfbb562d7a0c6c801a3a3f4ba10887.scn"]
 
 [params]
 

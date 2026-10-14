@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://df43p2qee1efd"
-path="res://.godot/imported/RollingFileCart.glb-a1da537b412a95cbdebc0d484f66758a.scn"
+path="res://.godot/imported/RollingFileCart.glb-01f678902208e7603d514ebfa3d7dc7c.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/RollingFileCart.glb"
-dest_files=["res://.godot/imported/RollingFileCart.glb-a1da537b412a95cbdebc0d484f66758a.scn"]
+source_file="res://assets/models/furniture/old/RollingFileCart.glb"
+dest_files=["res://.godot/imported/RollingFileCart.glb-01f678902208e7603d514ebfa3d7dc7c.scn"]
 
 [params]
 

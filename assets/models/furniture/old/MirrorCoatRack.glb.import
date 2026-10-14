@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cr6uvpcorukd2"
-path="res://.godot/imported/MirrorCoatRack.glb-d8f3d5c469b8de3c92622386f75a1625.scn"
+path="res://.godot/imported/MirrorCoatRack.glb-71894f806c270407c1bd8beca53c8b3e.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MirrorCoatRack.glb"
-dest_files=["res://.godot/imported/MirrorCoatRack.glb-d8f3d5c469b8de3c92622386f75a1625.scn"]
+source_file="res://assets/models/furniture/old/MirrorCoatRack.glb"
+dest_files=["res://.godot/imported/MirrorCoatRack.glb-71894f806c270407c1bd8beca53c8b3e.scn"]
 
 [params]
 

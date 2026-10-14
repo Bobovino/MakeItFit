@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://crrxwyg2juj7m"
-path="res://.godot/imported/RailingPlanter.glb-3215be701301dfa31bb5929bc0d1cdc2.scn"
+path="res://.godot/imported/RailingPlanter.glb-ddc48c3163789e5371a765641890fdcc.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/RailingPlanter.glb"
-dest_files=["res://.godot/imported/RailingPlanter.glb-3215be701301dfa31bb5929bc0d1cdc2.scn"]
+source_file="res://assets/models/furniture/old/RailingPlanter.glb"
+dest_files=["res://.godot/imported/RailingPlanter.glb-ddc48c3163789e5371a765641890fdcc.scn"]
 
 [params]
 

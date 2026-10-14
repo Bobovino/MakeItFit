@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://ct2unqmnwphhm"
-path="res://.godot/imported/CornerShelfUnit.glb-64a8ddbfd29b3f8078fe6ad8551b311d.scn"
+path="res://.godot/imported/CornerShelfUnit.glb-f524e83e29898110f95a74dbd3ca8a4f.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CornerShelfUnit.glb"
-dest_files=["res://.godot/imported/CornerShelfUnit.glb-64a8ddbfd29b3f8078fe6ad8551b311d.scn"]
+source_file="res://assets/models/furniture/old/CornerShelfUnit.glb"
+dest_files=["res://.godot/imported/CornerShelfUnit.glb-f524e83e29898110f95a74dbd3ca8a4f.scn"]
 
 [params]
 

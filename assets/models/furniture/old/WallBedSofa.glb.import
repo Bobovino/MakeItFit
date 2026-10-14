@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://citydm00hallf"
-path="res://.godot/imported/WallBedSofa.glb-a9e42ceede58def2ca0301efcefde72a.scn"
+path="res://.godot/imported/WallBedSofa.glb-a1c1d6a951e08fa350bd7c1f4c7f19ab.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallBedSofa.glb"
-dest_files=["res://.godot/imported/WallBedSofa.glb-a9e42ceede58def2ca0301efcefde72a.scn"]
+source_file="res://assets/models/furniture/old/WallBedSofa.glb"
+dest_files=["res://.godot/imported/WallBedSofa.glb-a1c1d6a951e08fa350bd7c1f4c7f19ab.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bei6i1px2665p"
-path="res://.godot/imported/WallHookRail.glb-6d1a7be13d39f5e8e13fb5ac01bc809f.scn"
+path="res://.godot/imported/WallHookRail.glb-f33568d44e547a73de967d0864590941.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallHookRail.glb"
-dest_files=["res://.godot/imported/WallHookRail.glb-6d1a7be13d39f5e8e13fb5ac01bc809f.scn"]
+source_file="res://assets/models/furniture/old/WallHookRail.glb"
+dest_files=["res://.godot/imported/WallHookRail.glb-f33568d44e547a73de967d0864590941.scn"]
 
 [params]
 

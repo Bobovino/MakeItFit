@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bd753kybc1lwb"
-path="res://.godot/imported/FoldingShowerScreen.glb-83074240f72214d59d554e84e3308686.scn"
+path="res://.godot/imported/FoldingShowerScreen.glb-c0444978e30ad4265a779469771f7c58.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingShowerScreen.glb"
-dest_files=["res://.godot/imported/FoldingShowerScreen.glb-83074240f72214d59d554e84e3308686.scn"]
+source_file="res://assets/models/furniture/old/FoldingShowerScreen.glb"
+dest_files=["res://.godot/imported/FoldingShowerScreen.glb-c0444978e30ad4265a779469771f7c58.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c1h40nsmqqf3d"
-path="res://.godot/imported/WallPegboard.glb-f42217dba82a1fc32e02d309219f47d2.scn"
+path="res://.godot/imported/WallPegboard.glb-5b7ef0bc943cb672562b3d8af7d8cc01.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallPegboard.glb"
-dest_files=["res://.godot/imported/WallPegboard.glb-f42217dba82a1fc32e02d309219f47d2.scn"]
+source_file="res://assets/models/furniture/old/WallPegboard.glb"
+dest_files=["res://.godot/imported/WallPegboard.glb-5b7ef0bc943cb672562b3d8af7d8cc01.scn"]
 
 [params]
 

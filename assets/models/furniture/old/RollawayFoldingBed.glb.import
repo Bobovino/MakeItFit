@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bw7ph2ulgocls"
-path="res://.godot/imported/RollawayFoldingBed.glb-cc2a134e54c2f1f48af3992ce2b8cc5d.scn"
+path="res://.godot/imported/RollawayFoldingBed.glb-32e5f36407abded1463d86ce04b76cd8.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/RollawayFoldingBed.glb"
-dest_files=["res://.godot/imported/RollawayFoldingBed.glb-cc2a134e54c2f1f48af3992ce2b8cc5d.scn"]
+source_file="res://assets/models/furniture/old/RollawayFoldingBed.glb"
+dest_files=["res://.godot/imported/RollawayFoldingBed.glb-32e5f36407abded1463d86ce04b76cd8.scn"]
 
 [params]
 

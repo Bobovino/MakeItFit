@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cskenyoehi3s6"
-path="res://.godot/imported/FoldDownBreakfastBar.glb-5e5c37095442e31a67eca6bbe4cde4d9.scn"
+path="res://.godot/imported/FoldDownBreakfastBar.glb-e4fa402bd581af7276dbc222310d95a9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldDownBreakfastBar.glb"
-dest_files=["res://.godot/imported/FoldDownBreakfastBar.glb-5e5c37095442e31a67eca6bbe4cde4d9.scn"]
+source_file="res://assets/models/furniture/old/FoldDownBreakfastBar.glb"
+dest_files=["res://.godot/imported/FoldDownBreakfastBar.glb-e4fa402bd581af7276dbc222310d95a9.scn"]
 
 [params]
 

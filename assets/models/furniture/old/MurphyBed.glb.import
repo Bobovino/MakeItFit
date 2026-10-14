@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://ctxsj5jjnchq5"
-path="res://.godot/imported/MurphyBed.glb-a939113e7c69d929ebb2527ad006477b.scn"
+path="res://.godot/imported/MurphyBed.glb-25e2d693f8a5ac5051fefe4439c745bd.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MurphyBed.glb"
-dest_files=["res://.godot/imported/MurphyBed.glb-a939113e7c69d929ebb2527ad006477b.scn"]
+source_file="res://assets/models/furniture/old/MurphyBed.glb"
+dest_files=["res://.godot/imported/MurphyBed.glb-25e2d693f8a5ac5051fefe4439c745bd.scn"]
 
 [params]
 

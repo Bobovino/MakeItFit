@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bacv8t8iu2ktd"
-path="res://.godot/imported/FloatingMediaUnit.glb-9e30007158bb3f4e4bbd824060e1e651.scn"
+path="res://.godot/imported/FloatingMediaUnit.glb-07f71787982202cdbe269731421e60a4.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FloatingMediaUnit.glb"
-dest_files=["res://.godot/imported/FloatingMediaUnit.glb-9e30007158bb3f4e4bbd824060e1e651.scn"]
+source_file="res://assets/models/furniture/old/FloatingMediaUnit.glb"
+dest_files=["res://.godot/imported/FloatingMediaUnit.glb-07f71787982202cdbe269731421e60a4.scn"]
 
 [params]
 

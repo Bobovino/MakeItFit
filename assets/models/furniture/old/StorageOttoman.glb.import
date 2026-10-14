@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dyfu6auwki700"
-path="res://.godot/imported/StorageOttoman.glb-64aa1ee988021dce9473e0a7e5cb72dd.scn"
+path="res://.godot/imported/StorageOttoman.glb-15ba038af67316b23c0b585c3ff15af0.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/StorageOttoman.glb"
-dest_files=["res://.godot/imported/StorageOttoman.glb-64aa1ee988021dce9473e0a7e5cb72dd.scn"]
+source_file="res://assets/models/furniture/old/StorageOttoman.glb"
+dest_files=["res://.godot/imported/StorageOttoman.glb-15ba038af67316b23c0b585c3ff15af0.scn"]
 
 [params]
 

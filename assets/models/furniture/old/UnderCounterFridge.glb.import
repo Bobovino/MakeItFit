@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bxvlpwkygsojk"
-path="res://.godot/imported/UnderCounterFridge.glb-427f45f8491cdc582d71e9656f562ad0.scn"
+path="res://.godot/imported/UnderCounterFridge.glb-27d8bad50e3024f908849f56b1e8c2b8.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/UnderCounterFridge.glb"
-dest_files=["res://.godot/imported/UnderCounterFridge.glb-427f45f8491cdc582d71e9656f562ad0.scn"]
+source_file="res://assets/models/furniture/old/UnderCounterFridge.glb"
+dest_files=["res://.godot/imported/UnderCounterFridge.glb-27d8bad50e3024f908849f56b1e8c2b8.scn"]
 
 [params]
 

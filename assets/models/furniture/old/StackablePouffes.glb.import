@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dy23ckdq7q2tx"
-path="res://.godot/imported/StackablePouffes.glb-52d6060811ee2d35959b48a513870661.scn"
+path="res://.godot/imported/StackablePouffes.glb-9b29a36d24089fd50c91f9c786a730cc.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/StackablePouffes.glb"
-dest_files=["res://.godot/imported/StackablePouffes.glb-52d6060811ee2d35959b48a513870661.scn"]
+source_file="res://assets/models/furniture/old/StackablePouffes.glb"
+dest_files=["res://.godot/imported/StackablePouffes.glb-9b29a36d24089fd50c91f9c786a730cc.scn"]
 
 [params]
 

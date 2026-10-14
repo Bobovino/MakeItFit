@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://caksj22jlrjru"
-path="res://.godot/imported/PullDownCabinetShelf.glb-915fab9ea05008f7930fc6bf718b99d1.scn"
+path="res://.godot/imported/PullDownCabinetShelf.glb-0264046c0ed3d43401130c9b83799a14.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullDownCabinetShelf.glb"
-dest_files=["res://.godot/imported/PullDownCabinetShelf.glb-915fab9ea05008f7930fc6bf718b99d1.scn"]
+source_file="res://assets/models/furniture/old/PullDownCabinetShelf.glb"
+dest_files=["res://.godot/imported/PullDownCabinetShelf.glb-0264046c0ed3d43401130c9b83799a14.scn"]
 
 [params]
 

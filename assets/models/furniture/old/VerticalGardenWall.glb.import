@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://doldlaolm2bsy"
-path="res://.godot/imported/VerticalGardenWall.glb-c3e8490cad8679506c3f0ae16584cf46.scn"
+path="res://.godot/imported/VerticalGardenWall.glb-bb2b9f4b7c977989bd550f9a5c6fe8f7.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/VerticalGardenWall.glb"
-dest_files=["res://.godot/imported/VerticalGardenWall.glb-c3e8490cad8679506c3f0ae16584cf46.scn"]
+source_file="res://assets/models/furniture/old/VerticalGardenWall.glb"
+dest_files=["res://.godot/imported/VerticalGardenWall.glb-bb2b9f4b7c977989bd550f9a5c6fe8f7.scn"]
 
 [params]
 

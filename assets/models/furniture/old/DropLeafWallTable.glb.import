@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c2p5nfio1bwav"
-path="res://.godot/imported/DropLeafWallTable.glb-5d184ea4b5a29550dbe3e0360a5b8dd9.scn"
+path="res://.godot/imported/DropLeafWallTable.glb-8a69fe51c83c46aa6d93bfbf28b13bd7.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/DropLeafWallTable.glb"
-dest_files=["res://.godot/imported/DropLeafWallTable.glb-5d184ea4b5a29550dbe3e0360a5b8dd9.scn"]
+source_file="res://assets/models/furniture/old/DropLeafWallTable.glb"
+dest_files=["res://.godot/imported/DropLeafWallTable.glb-8a69fe51c83c46aa6d93bfbf28b13bd7.scn"]
 
 [params]
 

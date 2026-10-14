@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://71h8xmvts3d0"
-path="res://.godot/imported/CornerSink.glb-b75a2da5e5a367ff48f9b3b9ce52cb98.scn"
+path="res://.godot/imported/CornerSink.glb-b019e620b0293f2910b7742c4e11bd6e.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CornerSink.glb"
-dest_files=["res://.godot/imported/CornerSink.glb-b75a2da5e5a367ff48f9b3b9ce52cb98.scn"]
+source_file="res://assets/models/furniture/old/CornerSink.glb"
+dest_files=["res://.godot/imported/CornerSink.glb-b019e620b0293f2910b7742c4e11bd6e.scn"]
 
 [params]
 

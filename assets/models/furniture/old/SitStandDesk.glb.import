@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://pmnk4nmi75qw"
-path="res://.godot/imported/SitStandDesk.glb-15744adbaa67b7f4c46ee4e8aad4b2e3.scn"
+path="res://.godot/imported/SitStandDesk.glb-f6a6034010dcde64c02deef664277256.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SitStandDesk.glb"
-dest_files=["res://.godot/imported/SitStandDesk.glb-15744adbaa67b7f4c46ee4e8aad4b2e3.scn"]
+source_file="res://assets/models/furniture/old/SitStandDesk.glb"
+dest_files=["res://.godot/imported/SitStandDesk.glb-f6a6034010dcde64c02deef664277256.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://diinsdxoa6jq6"
-path="res://.godot/imported/CeilingLiftStorage.glb-efb08d0956ca45e1f1e6389a22ac5450.scn"
+path="res://.godot/imported/CeilingLiftStorage.glb-a3ec5d83fd211facab87f74b3ef0db96.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CeilingLiftStorage.glb"
-dest_files=["res://.godot/imported/CeilingLiftStorage.glb-efb08d0956ca45e1f1e6389a22ac5450.scn"]
+source_file="res://assets/models/furniture/old/CeilingLiftStorage.glb"
+dest_files=["res://.godot/imported/CeilingLiftStorage.glb-a3ec5d83fd211facab87f74b3ef0db96.scn"]
 
 [params]
 

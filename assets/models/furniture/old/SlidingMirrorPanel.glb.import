@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://0ydbtmkjibmp"
-path="res://.godot/imported/SlidingMirrorPanel.glb-d9487d25511f02d555cb8d00c5554382.scn"
+path="res://.godot/imported/SlidingMirrorPanel.glb-8dfed232fba2fddca75386767c9b9150.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SlidingMirrorPanel.glb"
-dest_files=["res://.godot/imported/SlidingMirrorPanel.glb-d9487d25511f02d555cb8d00c5554382.scn"]
+source_file="res://assets/models/furniture/old/SlidingMirrorPanel.glb"
+dest_files=["res://.godot/imported/SlidingMirrorPanel.glb-8dfed232fba2fddca75386767c9b9150.scn"]
 
 [params]
 

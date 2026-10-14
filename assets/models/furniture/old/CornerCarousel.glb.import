@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://byeba6b5v5gbw"
-path="res://.godot/imported/CornerCarousel.glb-24ee094e4ab1106fe58fb1c0061b0c60.scn"
+path="res://.godot/imported/CornerCarousel.glb-4659289715c23d022b74cb1ae5eb6a02.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CornerCarousel.glb"
-dest_files=["res://.godot/imported/CornerCarousel.glb-24ee094e4ab1106fe58fb1c0061b0c60.scn"]
+source_file="res://assets/models/furniture/old/CornerCarousel.glb"
+dest_files=["res://.godot/imported/CornerCarousel.glb-4659289715c23d022b74cb1ae5eb6a02.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://di4sclby56tin"
-path="res://.godot/imported/MovableIslandWall.glb-c54e9b6c8aa7a4b9297024859684b8e4.scn"
+path="res://.godot/imported/MovableIslandWall.glb-837868fecd8c2cd3bb049ba5e33cc181.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MovableIslandWall.glb"
-dest_files=["res://.godot/imported/MovableIslandWall.glb-c54e9b6c8aa7a4b9297024859684b8e4.scn"]
+source_file="res://assets/models/furniture/old/MovableIslandWall.glb"
+dest_files=["res://.godot/imported/MovableIslandWall.glb-837868fecd8c2cd3bb049ba5e33cc181.scn"]
 
 [params]
 

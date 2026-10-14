@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cr5slxfun0c4f"
-path="res://.godot/imported/KitchenettePod.glb-ba4ae37631807c81c73738fc258582ad.scn"
+path="res://.godot/imported/KitchenettePod.glb-565729d4ea94e4308b5bf729aa7eaae9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/KitchenettePod.glb"
-dest_files=["res://.godot/imported/KitchenettePod.glb-ba4ae37631807c81c73738fc258582ad.scn"]
+source_file="res://assets/models/furniture/old/KitchenettePod.glb"
+dest_files=["res://.godot/imported/KitchenettePod.glb-565729d4ea94e4308b5bf729aa7eaae9.scn"]
 
 [params]
 

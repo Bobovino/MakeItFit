@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://btmaat6bb5jg"
-path="res://.godot/imported/HangingEggChair.glb-9e11fceebe85f87904953cb815892d5e.scn"
+path="res://.godot/imported/HangingEggChair.glb-f96de95aac73156620a715b64e66c189.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/HangingEggChair.glb"
-dest_files=["res://.godot/imported/HangingEggChair.glb-9e11fceebe85f87904953cb815892d5e.scn"]
+source_file="res://assets/models/furniture/old/HangingEggChair.glb"
+dest_files=["res://.godot/imported/HangingEggChair.glb-f96de95aac73156620a715b64e66c189.scn"]
 
 [params]
 

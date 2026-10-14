@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dxjl0ms675bu7"
-path="res://.godot/imported/PullOutWorktop.glb-3aa4253d4f27fa535f4be7814954ec45.scn"
+path="res://.godot/imported/PullOutWorktop.glb-40a2afc82010a47b4d9f77b62d5a5d2e.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullOutWorktop.glb"
-dest_files=["res://.godot/imported/PullOutWorktop.glb-3aa4253d4f27fa535f4be7814954ec45.scn"]
+source_file="res://assets/models/furniture/old/PullOutWorktop.glb"
+dest_files=["res://.godot/imported/PullOutWorktop.glb-40a2afc82010a47b4d9f77b62d5a5d2e.scn"]
 
 [params]
 

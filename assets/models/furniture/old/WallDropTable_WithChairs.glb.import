@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cbx4thswprul4"
-path="res://.godot/imported/WallDropTable_WithChairs.glb-88e1f0a69a60b5110bfcf05453769757.scn"
+path="res://.godot/imported/WallDropTable_WithChairs.glb-bf019cd8d33a82c2dc68813a4ee14f27.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/WallDropTable_WithChairs.glb"
-dest_files=["res://.godot/imported/WallDropTable_WithChairs.glb-88e1f0a69a60b5110bfcf05453769757.scn"]
+source_file="res://assets/models/furniture/old/WallDropTable_WithChairs.glb"
+dest_files=["res://.godot/imported/WallDropTable_WithChairs.glb-bf019cd8d33a82c2dc68813a4ee14f27.scn"]
 
 [params]
 

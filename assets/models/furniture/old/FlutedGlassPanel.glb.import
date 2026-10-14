@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c754p61uy1267"
-path="res://.godot/imported/FlutedGlassPanel.glb-a2499bc4e706031e858cb313dffdc081.scn"
+path="res://.godot/imported/FlutedGlassPanel.glb-d779f342323201324ff6807f90c10e8b.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FlutedGlassPanel.glb"
-dest_files=["res://.godot/imported/FlutedGlassPanel.glb-a2499bc4e706031e858cb313dffdc081.scn"]
+source_file="res://assets/models/furniture/old/FlutedGlassPanel.glb"
+dest_files=["res://.godot/imported/FlutedGlassPanel.glb-d779f342323201324ff6807f90c10e8b.scn"]
 
 [params]
 

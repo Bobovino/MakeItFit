@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cdlqrsp31kvfx"
-path="res://.godot/imported/NestingTables_Set3.glb-a246a63a87bcb870c05b56e4b8f9a33e.scn"
+path="res://.godot/imported/NestingTables_Set3.glb-2a99a93a2be8e15ca5534919c3975034.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/NestingTables_Set3.glb"
-dest_files=["res://.godot/imported/NestingTables_Set3.glb-a246a63a87bcb870c05b56e4b8f9a33e.scn"]
+source_file="res://assets/models/furniture/old/NestingTables_Set3.glb"
+dest_files=["res://.godot/imported/NestingTables_Set3.glb-2a99a93a2be8e15ca5534919c3975034.scn"]
 
 [params]
 

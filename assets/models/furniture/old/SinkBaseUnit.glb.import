@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cxhocghh771yw"
-path="res://.godot/imported/SinkBaseUnit.glb-5bdf7244b14826268fe494d5ebe43abd.scn"
+path="res://.godot/imported/SinkBaseUnit.glb-2375558aaadadca25d7fb19941beea5f.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SinkBaseUnit.glb"
-dest_files=["res://.godot/imported/SinkBaseUnit.glb-5bdf7244b14826268fe494d5ebe43abd.scn"]
+source_file="res://assets/models/furniture/old/SinkBaseUnit.glb"
+dest_files=["res://.godot/imported/SinkBaseUnit.glb-2375558aaadadca25d7fb19941beea5f.scn"]
 
 [params]
 

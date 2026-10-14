@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dy74t6xxc1pob"
-path="res://.godot/imported/FoldDownWallDesk.glb-7f9176bedc77b07b54a6823ea6011c02.scn"
+path="res://.godot/imported/FoldDownWallDesk.glb-181df6976946b64844c2dc5150b689cb.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldDownWallDesk.glb"
-dest_files=["res://.godot/imported/FoldDownWallDesk.glb-7f9176bedc77b07b54a6823ea6011c02.scn"]
+source_file="res://assets/models/furniture/old/FoldDownWallDesk.glb"
+dest_files=["res://.godot/imported/FoldDownWallDesk.glb-181df6976946b64844c2dc5150b689cb.scn"]
 
 [params]
 

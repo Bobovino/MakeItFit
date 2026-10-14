@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cycwme2vp2563"
-path="res://.godot/imported/SlidingPocketBed.glb-203ba29885c510aaa7ab18cabcc05ca5.scn"
+path="res://.godot/imported/SlidingPocketBed.glb-6614620ef37114ec3611ebb08f8b3f68.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SlidingPocketBed.glb"
-dest_files=["res://.godot/imported/SlidingPocketBed.glb-203ba29885c510aaa7ab18cabcc05ca5.scn"]
+source_file="res://assets/models/furniture/old/SlidingPocketBed.glb"
+dest_files=["res://.godot/imported/SlidingPocketBed.glb-6614620ef37114ec3611ebb08f8b3f68.scn"]
 
 [params]
 

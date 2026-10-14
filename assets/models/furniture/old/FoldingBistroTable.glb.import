@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://jo04cw0em8il"
-path="res://.godot/imported/FoldingBistroTable.glb-3185a23ee80bff888bb14a1c1ad1523c.scn"
+path="res://.godot/imported/FoldingBistroTable.glb-153bbc4d030a88a809e314b9777b838a.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingBistroTable.glb"
-dest_files=["res://.godot/imported/FoldingBistroTable.glb-3185a23ee80bff888bb14a1c1ad1523c.scn"]
+source_file="res://assets/models/furniture/old/FoldingBistroTable.glb"
+dest_files=["res://.godot/imported/FoldingBistroTable.glb-153bbc4d030a88a809e314b9777b838a.scn"]
 
 [params]
 

@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dh0lpgsbqgcab"
-path="res://.godot/imported/BuiltInOvenTower.glb-69123c0e53e0ddc27d538067c70f496e.scn"
+path="res://.godot/imported/BuiltInOvenTower.glb-b94e162e731ae78e43a4ec89177d9463.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/BuiltInOvenTower.glb"
-dest_files=["res://.godot/imported/BuiltInOvenTower.glb-69123c0e53e0ddc27d538067c70f496e.scn"]
+source_file="res://assets/models/furniture/old/BuiltInOvenTower.glb"
+dest_files=["res://.godot/imported/BuiltInOvenTower.glb-b94e162e731ae78e43a4ec89177d9463.scn"]
 
 [params]
 

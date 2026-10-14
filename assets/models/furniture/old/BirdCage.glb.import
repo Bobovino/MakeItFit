@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bed3imc2so5pj"
-path="res://.godot/imported/BirdCage.glb-998efa866bf9e7b60220b9128d1e4231.scn"
+path="res://.godot/imported/BirdCage.glb-e9fdaa225aa595ae79ea0de4de823dc0.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/BirdCage.glb"
-dest_files=["res://.godot/imported/BirdCage.glb-998efa866bf9e7b60220b9128d1e4231.scn"]
+source_file="res://assets/models/furniture/old/BirdCage.glb"
+dest_files=["res://.godot/imported/BirdCage.glb-e9fdaa225aa595ae79ea0de4de823dc0.scn"]
 
 [params]
 

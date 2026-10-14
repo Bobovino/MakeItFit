@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://duiyjlysisd8p"
-path="res://.godot/imported/FoldDownBarShelf.glb-31f0bfd20efad6151e0ecdd00c1d9e73.scn"
+path="res://.godot/imported/FoldDownBarShelf.glb-461db609881dafeb0c0d1863d83dbed8.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldDownBarShelf.glb"
-dest_files=["res://.godot/imported/FoldDownBarShelf.glb-31f0bfd20efad6151e0ecdd00c1d9e73.scn"]
+source_file="res://assets/models/furniture/old/FoldDownBarShelf.glb"
+dest_files=["res://.godot/imported/FoldDownBarShelf.glb-461db609881dafeb0c0d1863d83dbed8.scn"]
 
 [params]
 

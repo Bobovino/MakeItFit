@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dbcg1x5vka3aq"
-path="res://.godot/imported/UtensilRail.glb-2584cda168f44f8320d5b0c8f55efd75.scn"
+path="res://.godot/imported/UtensilRail.glb-b82684cd6c1c160bf138580169a51345.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/UtensilRail.glb"
-dest_files=["res://.godot/imported/UtensilRail.glb-2584cda168f44f8320d5b0c8f55efd75.scn"]
+source_file="res://assets/models/furniture/old/UtensilRail.glb"
+dest_files=["res://.godot/imported/UtensilRail.glb-b82684cd6c1c160bf138580169a51345.scn"]
 
 [params]
 

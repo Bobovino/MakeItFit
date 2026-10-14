@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://byq2y1okm440v"
-path="res://.godot/imported/CapsuleWardrobe_Freestanding.glb-13f18f23edc0068735417e1c2d9f41e0.scn"
+path="res://.godot/imported/CapsuleWardrobe_Freestanding.glb-13bb8bb10fc0f15e30a8fdc1c9e05d65.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/CapsuleWardrobe_Freestanding.glb"
-dest_files=["res://.godot/imported/CapsuleWardrobe_Freestanding.glb-13f18f23edc0068735417e1c2d9f41e0.scn"]
+source_file="res://assets/models/furniture/old/CapsuleWardrobe_Freestanding.glb"
+dest_files=["res://.godot/imported/CapsuleWardrobe_Freestanding.glb-13bb8bb10fc0f15e30a8fdc1c9e05d65.scn"]
 
 [params]
 

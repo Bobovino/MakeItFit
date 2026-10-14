@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cbmwahpukv5xh"
-path="res://.godot/imported/SoakingTub_Short.glb-2cbf0d90143eedb7255be74151b9441d.scn"
+path="res://.godot/imported/SoakingTub_Short.glb-176ccb87307f6963385b18b9a68a0cf9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SoakingTub_Short.glb"
-dest_files=["res://.godot/imported/SoakingTub_Short.glb-2cbf0d90143eedb7255be74151b9441d.scn"]
+source_file="res://assets/models/furniture/old/SoakingTub_Short.glb"
+dest_files=["res://.godot/imported/SoakingTub_Short.glb-176ccb87307f6963385b18b9a68a0cf9.scn"]
 
 [params]
 

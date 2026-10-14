@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://yufm3watb6ws"
-path="res://.godot/imported/GrowingDesk.glb-77e05840b6cfcf132938a916b3df2183.scn"
+path="res://.godot/imported/GrowingDesk.glb-cb4184aa784c39e305b9655e8230718d.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/GrowingDesk.glb"
-dest_files=["res://.godot/imported/GrowingDesk.glb-77e05840b6cfcf132938a916b3df2183.scn"]
+source_file="res://assets/models/furniture/old/GrowingDesk.glb"
+dest_files=["res://.godot/imported/GrowingDesk.glb-cb4184aa784c39e305b9655e8230718d.scn"]
 
 [params]
 

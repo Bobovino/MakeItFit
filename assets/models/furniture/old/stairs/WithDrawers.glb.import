@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://ctsvu107qt5y7"
-path="res://.godot/imported/WithDrawers.glb-5a4d8162b1680967b9a9fac117316a5b.scn"
+path="res://.godot/imported/WithDrawers.glb-bd0d079fdd1ade4d453d9b4d9566955c.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/stairs/WithDrawers.glb"
-dest_files=["res://.godot/imported/WithDrawers.glb-5a4d8162b1680967b9a9fac117316a5b.scn"]
+source_file="res://assets/models/furniture/old/stairs/WithDrawers.glb"
+dest_files=["res://.godot/imported/WithDrawers.glb-bd0d079fdd1ade4d453d9b4d9566955c.scn"]
 
 [params]
 

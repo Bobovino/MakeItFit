@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://chllsmd48sjjc"
-path="res://.godot/imported/OutdoorStorageBench.glb-eec8f0649699c8afa8d20d862cecb9e8.scn"
+path="res://.godot/imported/OutdoorStorageBench.glb-6a095c7e4166436aad5bf2ccf365db06.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/OutdoorStorageBench.glb"
-dest_files=["res://.godot/imported/OutdoorStorageBench.glb-eec8f0649699c8afa8d20d862cecb9e8.scn"]
+source_file="res://assets/models/furniture/old/OutdoorStorageBench.glb"
+dest_files=["res://.godot/imported/OutdoorStorageBench.glb-6a095c7e4166436aad5bf2ccf365db06.scn"]
 
 [params]
 

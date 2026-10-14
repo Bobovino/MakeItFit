@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c501eaqwrdtdh"
-path="res://.godot/imported/OfficeChair.glb-4f70a71fd7c8b60fc9c8464b00214f72.scn"
+path="res://.godot/imported/OfficeChair.glb-5d1731c5fb4211e202f9c84b5ccd0864.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/OfficeChair.glb"
-dest_files=["res://.godot/imported/OfficeChair.glb-4f70a71fd7c8b60fc9c8464b00214f72.scn"]
+source_file="res://assets/models/furniture/old/OfficeChair.glb"
+dest_files=["res://.godot/imported/OfficeChair.glb-5d1731c5fb4211e202f9c84b5ccd0864.scn"]
 
 [params]
 

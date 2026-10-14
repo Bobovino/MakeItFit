@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://rlaoje4u7c0i"
-path="res://.godot/imported/FloorHatchStorage.glb-04bcf9186366235fed240903e6be87f5.scn"
+path="res://.godot/imported/FloorHatchStorage.glb-4fa102e0c09d464ec865945baac1720e.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FloorHatchStorage.glb"
-dest_files=["res://.godot/imported/FloorHatchStorage.glb-04bcf9186366235fed240903e6be87f5.scn"]
+source_file="res://assets/models/furniture/old/FloorHatchStorage.glb"
+dest_files=["res://.godot/imported/FloorHatchStorage.glb-4fa102e0c09d464ec865945baac1720e.scn"]
 
 [params]
 

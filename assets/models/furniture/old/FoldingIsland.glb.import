@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cywgmrf6ronw4"
-path="res://.godot/imported/FoldingIsland.glb-c8a474e86112a12f08e8df59038ae1f4.scn"
+path="res://.godot/imported/FoldingIsland.glb-97c61a8bd5ad505e6a7cec1512ffed4f.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingIsland.glb"
-dest_files=["res://.godot/imported/FoldingIsland.glb-c8a474e86112a12f08e8df59038ae1f4.scn"]
+source_file="res://assets/models/furniture/old/FoldingIsland.glb"
+dest_files=["res://.godot/imported/FoldingIsland.glb-97c61a8bd5ad505e6a7cec1512ffed4f.scn"]
 
 [params]
 

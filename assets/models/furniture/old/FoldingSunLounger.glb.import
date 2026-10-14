@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bgnw4h4l8a0b7"
-path="res://.godot/imported/FoldingSunLounger.glb-2572bab301f7946a22e19e123ce33304.scn"
+path="res://.godot/imported/FoldingSunLounger.glb-5a189cf8875fb5faa7420a2d760fd005.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingSunLounger.glb"
-dest_files=["res://.godot/imported/FoldingSunLounger.glb-2572bab301f7946a22e19e123ce33304.scn"]
+source_file="res://assets/models/furniture/old/FoldingSunLounger.glb"
+dest_files=["res://.godot/imported/FoldingSunLounger.glb-5a189cf8875fb5faa7420a2d760fd005.scn"]
 
 [params]
 

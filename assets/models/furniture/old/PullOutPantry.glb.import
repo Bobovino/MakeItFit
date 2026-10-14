@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cprrb566e4hfe"
-path="res://.godot/imported/PullOutPantry.glb-1809abdd2891570f00fc64d9daec1e74.scn"
+path="res://.godot/imported/PullOutPantry.glb-23fe75c01e907f94dd891c8584d4ab8c.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullOutPantry.glb"
-dest_files=["res://.godot/imported/PullOutPantry.glb-1809abdd2891570f00fc64d9daec1e74.scn"]
+source_file="res://assets/models/furniture/old/PullOutPantry.glb"
+dest_files=["res://.godot/imported/PullOutPantry.glb-23fe75c01e907f94dd891c8584d4ab8c.scn"]
 
 [params]
 

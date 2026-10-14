@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://8rv6u50fi587"
-path="res://.godot/imported/SlidingDoorWardrobe.glb-7bf583915b21a3e8a042290617c1ef93.scn"
+path="res://.godot/imported/SlidingDoorWardrobe.glb-f7194f709e0729bb147af2f875f8af01.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/SlidingDoorWardrobe.glb"
-dest_files=["res://.godot/imported/SlidingDoorWardrobe.glb-7bf583915b21a3e8a042290617c1ef93.scn"]
+source_file="res://assets/models/furniture/old/SlidingDoorWardrobe.glb"
+dest_files=["res://.godot/imported/SlidingDoorWardrobe.glb-f7194f709e0729bb147af2f875f8af01.scn"]
 
 [params]
 

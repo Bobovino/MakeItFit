@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://fte4ebutuxoo"
-path="res://.godot/imported/MurphyDesk_Cabinet.glb-ea9ff2716555fce5708f0f912a85c6d7.scn"
+path="res://.godot/imported/MurphyDesk_Cabinet.glb-fc4bd7d4e81a8c671ecc8953cc3aa6e2.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/MurphyDesk_Cabinet.glb"
-dest_files=["res://.godot/imported/MurphyDesk_Cabinet.glb-ea9ff2716555fce5708f0f912a85c6d7.scn"]
+source_file="res://assets/models/furniture/old/MurphyDesk_Cabinet.glb"
+dest_files=["res://.godot/imported/MurphyDesk_Cabinet.glb-fc4bd7d4e81a8c671ecc8953cc3aa6e2.scn"]
 
 [params]
 

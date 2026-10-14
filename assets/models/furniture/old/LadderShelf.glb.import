@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cu3fxqvfvrsda"
-path="res://.godot/imported/LadderShelf.glb-60c63dcf2e28190f202e776288dd558e.scn"
+path="res://.godot/imported/LadderShelf.glb-3528b79bfbe43d9f7953d01e4805ece9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/LadderShelf.glb"
-dest_files=["res://.godot/imported/LadderShelf.glb-60c63dcf2e28190f202e776288dd558e.scn"]
+source_file="res://assets/models/furniture/old/LadderShelf.glb"
+dest_files=["res://.godot/imported/LadderShelf.glb-3528b79bfbe43d9f7953d01e4805ece9.scn"]
 
 [params]
 

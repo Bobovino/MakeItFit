@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://cc5etfeuv13vg"
-path="res://.godot/imported/PouffeBed.glb-2bdc6524e0fa5e9d77f4d290a4c03c74.scn"
+path="res://.godot/imported/PouffeBed.glb-480e2ed616b400644b4487d27a9da8f1.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PouffeBed.glb"
-dest_files=["res://.godot/imported/PouffeBed.glb-2bdc6524e0fa5e9d77f4d290a4c03c74.scn"]
+source_file="res://assets/models/furniture/old/PouffeBed.glb"
+dest_files=["res://.godot/imported/PouffeBed.glb-480e2ed616b400644b4487d27a9da8f1.scn"]
 
 [params]
 

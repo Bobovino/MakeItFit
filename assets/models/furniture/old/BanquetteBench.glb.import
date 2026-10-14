@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://eomww5vuikv8"
-path="res://.godot/imported/BanquetteBench.glb-9f6f55d58b13797677ab31e484e75189.scn"
+path="res://.godot/imported/BanquetteBench.glb-002b3376de7f8057729c07f3689275c0.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/BanquetteBench.glb"
-dest_files=["res://.godot/imported/BanquetteBench.glb-9f6f55d58b13797677ab31e484e75189.scn"]
+source_file="res://assets/models/furniture/old/BanquetteBench.glb"
+dest_files=["res://.godot/imported/BanquetteBench.glb-002b3376de7f8057729c07f3689275c0.scn"]
 
 [params]
 

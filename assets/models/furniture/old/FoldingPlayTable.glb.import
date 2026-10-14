@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bw7k70wtotbaa"
-path="res://.godot/imported/FoldingPlayTable.glb-e0372252b47097a08778b2f950f08af3.scn"
+path="res://.godot/imported/FoldingPlayTable.glb-c428c1e80de47ee20d4d07e5ce700dd9.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldingPlayTable.glb"
-dest_files=["res://.godot/imported/FoldingPlayTable.glb-e0372252b47097a08778b2f950f08af3.scn"]
+source_file="res://assets/models/furniture/old/FoldingPlayTable.glb"
+dest_files=["res://.godot/imported/FoldingPlayTable.glb-c428c1e80de47ee20d4d07e5ce700dd9.scn"]
 
 [params]
 

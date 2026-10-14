@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dvdslgx2uxki1"
-path="res://.godot/imported/FoldOutVanityDesk.glb-852bac5a194003505ec19dc894115b56.scn"
+path="res://.godot/imported/FoldOutVanityDesk.glb-7f54a8f61d7870bccf33fa97b241dcf5.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/FoldOutVanityDesk.glb"
-dest_files=["res://.godot/imported/FoldOutVanityDesk.glb-852bac5a194003505ec19dc894115b56.scn"]
+source_file="res://assets/models/furniture/old/FoldOutVanityDesk.glb"
+dest_files=["res://.godot/imported/FoldOutVanityDesk.glb-7f54a8f61d7870bccf33fa97b241dcf5.scn"]
 
 [params]
 

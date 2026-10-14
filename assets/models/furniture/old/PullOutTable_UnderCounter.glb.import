@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://wh1miavpdjef"
-path="res://.godot/imported/PullOutTable_UnderCounter.glb-634a73be3ef735188d7dc2be51d8b73b.scn"
+path="res://.godot/imported/PullOutTable_UnderCounter.glb-a4ca187d521ff484895e28ac7464ed56.scn"
 
 [deps]
 
-source_file="res://assets/models/furniture/PullOutTable_UnderCounter.glb"
-dest_files=["res://.godot/imported/PullOutTable_UnderCounter.glb-634a73be3ef735188d7dc2be51d8b73b.scn"]
+source_file="res://assets/models/furniture/old/PullOutTable_UnderCounter.glb"
+dest_files=["res://.godot/imported/PullOutTable_UnderCounter.glb-a4ca187d521ff484895e28ac7464ed56.scn"]
 
 [params]
 
