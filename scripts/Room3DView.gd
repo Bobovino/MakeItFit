@@ -1668,21 +1668,25 @@ func _wall_item_mesh_transform(edge: String, origin: Vector2i, iw: int, ih: int,
 	var top_from_floor_m := WALL_H_M - origin.y * TILE_M
 	var center_y := top_from_floor_m - ih_m * 0.5
 	var along    := origin.x * TILE_M + iw_m * 0.5
+	# The perimeter walls are WALL_THICK deep and stand inside the room's
+	# outline, so a hung piece starts at the wall's inner face, not at the
+	# outline: without the offset its back 10 cm (a whole mirror, a painting,
+	# a towel rail) is buried in the wall.
 	var sz: Vector3
 	var pos: Vector3
 	match edge:
 		"north":
 			sz  = Vector3(iw_m, ih_m, depth_m)
-			pos = Vector3(along, center_y, depth_m * 0.5)
+			pos = Vector3(along, center_y, WALL_THICK + depth_m * 0.5)
 		"south":
 			sz  = Vector3(iw_m, ih_m, depth_m)
-			pos = Vector3(along, center_y, _room_d_m - depth_m * 0.5)
+			pos = Vector3(along, center_y, _room_d_m - WALL_THICK - depth_m * 0.5)
 		"west":
 			sz  = Vector3(depth_m, ih_m, iw_m)
-			pos = Vector3(depth_m * 0.5, center_y, along)
+			pos = Vector3(WALL_THICK + depth_m * 0.5, center_y, along)
 		_:   # "east"
 			sz  = Vector3(depth_m, ih_m, iw_m)
-			pos = Vector3(_room_w_m - depth_m * 0.5, center_y, along)
+			pos = Vector3(_room_w_m - WALL_THICK - depth_m * 0.5, center_y, along)
 	return {"size": sz, "pos": pos}
 
 
@@ -3540,6 +3544,14 @@ func _add_stairs(bounds: Rect2i) -> void:
 		return
 	var full_h := Floor.FLOOR_HEIGHT_TILES * TILE_M
 	for entry in _apt_floor.stairs_data:
+		# A staircase placed as furniture brings its own model, drawn with the
+		# rest of the furniture; the plain block flight is for stairs that
+		# have none (the level's own, or a piece whose model is missing).
+		var stair_f: Variant = (entry as Dictionary).get("furniture")
+		if is_instance_valid(stair_f):
+			var stair_model := _find_furniture_data(_catalog, (stair_f as Furniture).furniture_id).get("model", "") as String
+			if not stair_model.is_empty() and ResourceLoader.exists(stair_model):
+				continue
 		_add_stair_flight(entry as Dictionary, bounds, full_h, 0.0, false)
 
 
