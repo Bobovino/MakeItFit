@@ -250,6 +250,7 @@ func _fit_to_window() -> void:
 
 
 func _ready() -> void:
+	Audio.play_music("level")
 	# The desk the plan lies on, behind everything else on this screen.
 	var desk_layer := CanvasLayer.new()
 	desk_layer.layer = -10
