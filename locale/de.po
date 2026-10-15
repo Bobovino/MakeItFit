@@ -876,27 +876,27 @@ msgstr ""
 "Manche Möbel sind komplett zugestellt.\n"
 "Lass mindestens ein Feld Platz zum Gehen um sie herum."
 
-#: scripts/Main.gd:4039
+#: scripts/Main.gd:4041
 msgid "✕ Back to Results"
 msgstr "✕ Zurück zum Ergebnis"
 
-#: scripts/Main.gd:4159
+#: scripts/Main.gd:4161
 msgid "CUSTOM BUILD"
 msgstr "EIGENBAU"
 
-#: scripts/Main.gd:4171
+#: scripts/Main.gd:4173
 msgid "LMB paint · RMB erase"
 msgstr "LMT malen · RMT löschen"
 
-#: scripts/Main.gd:4183
+#: scripts/Main.gd:4185
 msgid "Move"
 msgstr "Bewegen"
 
-#: scripts/Main.gd:4207
+#: scripts/Main.gd:4209
 msgid "%s  %d€/tile"
 msgstr "%s  %d€/Feld"
 
-#: scripts/Main.gd:4841
+#: scripts/Main.gd:4843
 msgid "Paint tiles on the floor"
 msgstr "Felder auf den Boden malen"
 

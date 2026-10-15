@@ -18,10 +18,17 @@ class_name TenantLayer
 #     requirement's icon and, when the checker knows what is in the way, an
 #     ink line from that piece to them. One reaction at a time; a new
 #     placement replaces it.
+#   - When the player leaves things alone for a few seconds, one resident
+#     goes to see about one of their needs: walks to whatever provides it and
+#     acts it out if it's there and works, or gets as close as they can and
+#     shrugs. Any input, or picking up a piece, sends them back to standing.
 
 const REACTION_TIME := 2.8
 const PATCH := Floor.WALK_WIDTH            # a resident stands on a PATCH x PATCH patch of floor
 const HOP_TIME := 0.5                       # the hop to a new spot, before anyone reacts
+const IDLE_TIME := 6.0                      # seconds without input before someone runs an errand
+const STEP_TILES := 3                       # tiles per hop when walking (30 cm)
+const STEP_TIME := 0.16
 
 var main: Node                              # Main (no class_name)
 var gm: GameManager
@@ -44,6 +51,11 @@ var _link2d: Line2D
 var _link3d: Node3D
 var _seen_bounds := Rect2i()
 var _commit_pending := false
+var _reacting := false
+var _idle := 0.0
+var _errand_gen := 0
+var _errand_rid: StringName = &""           # who is out on an errand, if anyone
+var _last_errand_req := ""
 
 
 func _ready() -> void:
@@ -143,7 +155,7 @@ func resync() -> void:
 	_scatter(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _app == null:
 		return
 	var placing: bool = main.is_placing_furniture()
@@ -157,6 +169,23 @@ func _process(_delta: float) -> void:
 			(p as TenantPawn3D).set_present(not placing)
 	if is_instance_valid(_view3d) and _view3d._room_bounds != _seen_bounds:
 		_place_pawns(false)
+	if _placing or _reacting or _errand_rid != &"" or main._blocking_modal_open():
+		_idle = 0.0
+		return
+	_idle += delta
+	if _idle >= IDLE_TIME:
+		_idle = 0.0
+		_run_errand()
+
+
+# Main passes every input event here: the player is busy, so nobody starts
+# an errand, and one under way stops where it is.
+func note_activity(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and (event as InputEventMouseMotion).relative.length() < 4.0:
+		return
+	_idle = 0.0
+	if _errand_rid != &"":
+		_cancel_errand()
 
 
 # ── where everyone stands ────────────────────────────────────────────────────
@@ -338,6 +367,7 @@ func _center(f: Furniture) -> Vector2:
 # ── the reaction ─────────────────────────────────────────────────────────────
 
 func _react(req: String, cause: Furniture) -> void:
+	_reacting = true
 	var rid := _who_minds(req, cause)
 	var token := _tokens.get(rid) as TenantToken2D
 	if token:
@@ -358,6 +388,8 @@ func _react(req: String, cause: Furniture) -> void:
 
 
 func _clear_reaction() -> void:
+	_cancel_errand()
+	_reacting = false
 	_reaction_gen += 1
 	for t in _tokens.values():
 		if is_instance_valid(t):
@@ -430,3 +462,252 @@ func _draw_link_3d(cause: Furniture, pawn: TenantPawn3D) -> void:
 func _tint(r: TenantResident) -> Color:
 	var hue := float(absi(("%s/%s" % [_app.level_id, r.id]).hash()) % 360) / 360.0
 	return Color.from_hsv(hue, 0.5, 0.88)
+
+
+# ── errands: showing what they need ─────────────────────────────────────────
+
+# `pick` ([resident id, requirement id]) chooses the errand instead of chance.
+func _run_errand(pick: Array = []) -> void:
+	if pick.is_empty():
+		pick = _pick_errand()
+	if pick.is_empty():
+		# Only the need just shown was left: it may come round again next time.
+		_last_errand_req = ""
+		return
+	var rid: StringName = pick[0]
+	var req: String = pick[1]
+	var token := _tokens.get(rid) as TenantToken2D
+	if token == null:
+		return
+	_errand_rid = rid
+	_errand_gen += 1
+	var gen := _errand_gen
+	_last_errand_req = req
+	var pawn := _pawns.get(rid) as TenantPawn3D
+
+	var plan := _errand_plan(req, _tiles[rid] as Vector2)
+	var path: Array = plan["path"]
+	if not path.is_empty():
+		var tw := token.walk(path, STEP_TIME)
+		if pawn and is_instance_valid(_pawn_root):
+			pawn.walk(path.map(func(t): return _tile_to_3d((t as Vector2) + Vector2(PATCH, PATCH) * 0.5)), STEP_TIME)
+		await tw.finished
+		if gen != _errand_gen:
+			return
+		_tiles[rid] = token.tile
+	var act: Tween
+	if plan["success"]:
+		act = token.perform(plan["kind"], req)
+		if pawn:
+			pawn.perform(plan["kind"], req)
+	else:
+		act = token.shrug(req)
+		if pawn:
+			pawn.shrug(req)
+	await act.finished
+	if gen != _errand_gen:
+		return
+	token.clear_reaction()
+	if pawn:
+		pawn.clear_reaction()
+	_errand_rid = &""
+
+
+func _cancel_errand() -> void:
+	if _errand_rid == &"":
+		return
+	_errand_gen += 1
+	var token := _tokens.get(_errand_rid) as TenantToken2D
+	if token:
+		token.stop_moving()
+		token.clear_reaction()
+		_tiles[_errand_rid] = token.tile
+		token.place(token.tile, false)
+	var pawn := _pawns.get(_errand_rid) as TenantPawn3D
+	if pawn:
+		pawn.stop_moving()
+		pawn.clear_reaction()
+	_errand_rid = &""
+	_place_pawns(false)
+
+
+# A random resident and one of their needs: the requirements their own lines
+# ask for (the household's, for someone without lines), never hidden ones,
+# only what the moment on screen asks for, and not the same need twice in a
+# row. Returns [resident id, requirement id], or [] when there is nothing to do.
+func _pick_errand() -> Array:
+	var ids := Requirements.ids_for_level(gm.current_level)
+	var moment := main._active_moment_id as String
+	var residents := _app.residents.duplicate()
+	_shuffle(residents)
+	for r in residents:
+		var rid := (r as TenantResident).id
+		var mine: Array = []
+		for line in _app.lines:
+			if line.hidden or line.requirement not in ids:
+				continue
+			if line.speaker == rid or rid in line.owners:
+				mine.append(line.requirement)
+		if mine.is_empty():
+			for line in _app.printed_lines():
+				if line.requirement in ids:
+					mine.append(line.requirement)
+		var options: Array = []
+		for req in mine:
+			var q := _for_moment(req as String, moment, ids)
+			if q != "" and q != _last_errand_req and not card.is_hidden_requirement(q):
+				options.append(q)
+		if not options.is_empty():
+			return [rid, options[_rng.randi_range(0, options.size() - 1)]]
+	return []
+
+
+# "need:sleep" on a level with moments means sleep in the moment on screen.
+func _for_moment(req: String, moment: String, ids: Array) -> String:
+	if moment == "" or not req.begins_with("need:"):
+		return req
+	var q := "moment:%s:%s" % [moment, req.trim_prefix("need:")]
+	return q if q in ids else ""
+
+
+# Where to go for `req` and whether it will work out there:
+# {path: Array of patch tiles, success: bool, kind: "lie" | "sit" | "spin"}.
+func _errand_plan(req: String, from: Vector2) -> Dictionary:
+	var met: bool = Requirements.status(gm).get(req, false)
+	var parts := req.split(":")
+	var none := {"path": [], "success": met, "kind": "spin"}
+	match parts[0]:
+		"need", "moment":
+			var fn := parts[-1]
+			var kind := "lie" if fn == "sleep" else ("sit" if fn in ["sit", "dine", "work"] else "spin")
+			var target := _provider(fn, from, true)
+			if target == null:
+				target = _provider(fn, from, false)   # there, but not doing its job: go and find out
+			if target == null:
+				return {"path": [], "success": false, "kind": kind}   # nothing in the flat for it
+			var walk := _walk_to(from, _approach_tiles(target))
+			return {"path": walk["path"], "success": met and walk["arrived"], "kind": kind}
+		"sight":
+			var i := int(parts[1]) - 1
+			if i >= gm.sightline_status.size():
+				return none
+			var st := gm.sightline_status[i] as Dictionary
+			var at := Vector2(st["from"] as Vector2i) - Vector2(PATCH, PATCH) * 0.5
+			var walk := _walk_to(from, [at.round()])
+			return {"path": walk["path"], "success": met and walk["arrived"], "kind": "spin"}
+	return none   # zones: nothing to walk to, a bubble where they stand
+
+
+# The piece nearest `from` that provides `fn`: doing so right now
+# (`working`), or merely able to (folded away, too close to a noisy neighbour).
+func _provider(fn: String, from: Vector2, working: bool) -> Furniture:
+	var best: Furniture = null
+	var best_d := INF
+	var moment := main._active_moment_id as String
+	for entry in _floor.get_all_furniture():
+		var f := entry as Furniture
+		var fns: Array = gm._functions_of(f, moment) if working \
+			else f.functions + f.folded_functions_arr + f.extended_functions_arr
+		if fn not in fns:
+			continue
+		var d := _center(f).distance_to(from + Vector2(2, 2))
+		if d < best_d:
+			best_d = d
+			best = f
+	return best
+
+
+# Patch tiles from which a piece is used: beside its usable sides.
+func _approach_tiles(f: Furniture) -> Array:
+	var out: Array = []
+	var x0 := floori(f.grid_pos.x)
+	var y0 := floori(f.grid_pos.y)
+	for side in _floor._front_sides(f):
+		match side:
+			0:
+				for x in range(x0 - PATCH + 1, x0 + f.grid_w):
+					out.append(Vector2(x, y0 - PATCH))
+			2:
+				for x in range(x0 - PATCH + 1, x0 + f.grid_w):
+					out.append(Vector2(x, y0 + f.grid_h))
+			1:
+				for y in range(y0 - PATCH + 1, y0 + f.grid_h):
+					out.append(Vector2(x0 + f.grid_w, y))
+			3:
+				for y in range(y0 - PATCH + 1, y0 + f.grid_h):
+					out.append(Vector2(x0 - PATCH, y))
+	return out
+
+
+# A path over walkable patches from `from` to the nearest of `goals`, or as
+# close as the floor allows. {path: hop waypoints, arrived: bool}.
+func _walk_to(from: Vector2, goals: Array) -> Dictionary:
+	var grid := _patch_grid()
+	var start := Vector2i(from)
+	if not grid.region.has_point(start) or grid.is_point_solid(start):
+		return {"path": [], "arrived": false}
+	var best: Array[Vector2i] = []
+	var arrived := false
+	for g in goals:
+		var goal := Vector2i(g as Vector2)
+		if not grid.region.has_point(goal) or grid.is_point_solid(goal):
+			continue
+		var p := grid.get_id_path(start, goal)
+		if not p.is_empty() and (best.is_empty() or p.size() < best.size() or not arrived):
+			best = p
+			arrived = true
+	if not arrived and not goals.is_empty():
+		# Unreachable: head for the walkable patch closest to the target.
+		var aim := Vector2i(goals[0] as Vector2)
+		best = grid.get_id_path(start, _nearest_open(grid, aim), true)
+	var hops: Array = []
+	for i in range(STEP_TILES, best.size(), STEP_TILES):
+		hops.append(Vector2(best[i]))
+	if best.size() > 1 and (hops.is_empty() or hops[-1] != Vector2(best[-1])):
+		hops.append(Vector2(best[-1]))
+	return {"path": hops, "arrived": arrived}
+
+
+func _nearest_open(grid: AStarGrid2D, aim: Vector2i) -> Vector2i:
+	var r := grid.region
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for y in range(r.position.y, r.end.y):
+		for x in range(r.position.x, r.end.x):
+			var c := Vector2i(x, y)
+			if not grid.is_point_solid(c):
+				var d := Vector2(c).distance_squared_to(Vector2(aim))
+				if d < best_d:
+					best_d = d
+					best = c
+	return best
+
+
+# Where a resident's patch can be: every top-left tile whose PATCH x PATCH
+# patch is all walkable floor. A summed-area table keeps it to one pass.
+func _patch_grid() -> AStarGrid2D:
+	var reached := _floor.get_reachable_floor()
+	var b := _floor.get_room_bounds()
+	var w := b.size.x
+	var h := b.size.y
+	var sums := PackedInt32Array()
+	sums.resize((w + 1) * (h + 1))
+	for y in h:
+		for x in w:
+			var t := Vector2i(b.position.x + x, b.position.y + y)
+			var ok := reached.has(t) if not reached.is_empty() else _tile_free(t)
+			sums[(y + 1) * (w + 1) + x + 1] = (1 if ok else 0) + sums[y * (w + 1) + x + 1] \
+				+ sums[(y + 1) * (w + 1) + x] - sums[y * (w + 1) + x]
+	var grid := AStarGrid2D.new()
+	grid.region = b
+	grid.cell_size = Vector2.ONE
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.update()
+	for y in h:
+		for x in w:
+			var fits := x + PATCH <= w and y + PATCH <= h and (sums[(y + PATCH) * (w + 1) + x + PATCH] \
+				- sums[y * (w + 1) + x + PATCH] - sums[(y + PATCH) * (w + 1) + x] + sums[y * (w + 1) + x]) == PATCH * PATCH
+			if not fits:
+				grid.set_point_solid(Vector2i(b.position.x + x, b.position.y + y))
+	return grid
+

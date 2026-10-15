@@ -258,6 +258,11 @@ func _t_tenants_are_cosmetic() -> void:
 		main.tenant_layer.resync()
 	main.tenant_layer._react("sight:1", fl.get_all_furniture()[0])
 	await get_tree().create_timer(0.7).timeout
+	# An errand: walking across the flat to see about a need.
+	main.tenant_layer._clear_reaction()
+	main.tenant_layer._run_errand([&"montse", "sight:1"])
+	await get_tree().create_timer(1.5).timeout
+	main.tenant_layer._cancel_errand()
 	var actual_rand := randf()
 	main._refresh_functions()
 	var with := _puzzle_state(main, fl)

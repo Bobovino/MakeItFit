@@ -866,27 +866,27 @@ msgid ""
 "Leave at least 1 tile of walking space around it."
 msgstr ""
 
-#: scripts/Main.gd:4039
+#: scripts/Main.gd:4041
 msgid "✕ Back to Results"
 msgstr ""
 
-#: scripts/Main.gd:4159
+#: scripts/Main.gd:4161
 msgid "CUSTOM BUILD"
 msgstr ""
 
-#: scripts/Main.gd:4171
+#: scripts/Main.gd:4173
 msgid "LMB paint · RMB erase"
 msgstr ""
 
-#: scripts/Main.gd:4183
+#: scripts/Main.gd:4185
 msgid "Move"
 msgstr ""
 
-#: scripts/Main.gd:4207
+#: scripts/Main.gd:4209
 msgid "%s  %d€/tile"
 msgstr ""
 
-#: scripts/Main.gd:4841
+#: scripts/Main.gd:4843
 msgid "Paint tiles on the floor"
 msgstr ""
 

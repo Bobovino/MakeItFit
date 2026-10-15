@@ -109,10 +109,90 @@ func react(req_id: String, mood: int) -> void:
 		_mood_tween.tween_property(_body, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 
+# Walks a path of patch tiles in small hops, ending on the last one.
+func walk(points: Array, step_time: float) -> Tween:
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	_move_tween = create_tween()
+	var from := position
+	for p in points:
+		var t := p as Vector2
+		var a := from
+		var b := center_of(t)
+		_move_tween.tween_method(func(k: float):
+			position = a.lerp(b, k)
+			_body.position = Vector2(0, -sin(k * PI) * TILE * 0.9), 0.0, 1.0, step_time)
+		_move_tween.tween_callback(func(): tile = t)
+		from = b
+	return _move_tween
+
+
+# A need met: a happy bubble, and the need acted out (lying down for sleep,
+# sitting for a seat, a little spin for anything else).
+func perform(kind: String, req_id: String) -> Tween:
+	_show_bubble(req_id, TenantBubble.Mood.HAPPY)
+	_mood_tween = create_tween()
+	if GameState.reduce_motion:
+		_mood_tween.tween_interval(1.2)
+		return _mood_tween
+	match kind:
+		"lie":
+			_mood_tween.tween_property(_body, "scale", Vector2(1.3, 0.55), 0.18)
+			_mood_tween.tween_interval(0.9)
+			_mood_tween.tween_property(_body, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK)
+		"sit":
+			_mood_tween.tween_property(_body, "scale", Vector2(1.12, 0.8), 0.14)
+			_mood_tween.tween_interval(0.9)
+			_mood_tween.tween_property(_body, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK)
+		_:
+			_mood_tween.tween_property(_body, "rotation_degrees", 360.0, 0.45).set_trans(Tween.TRANS_QUAD)
+			_mood_tween.tween_callback(func(): _body.rotation_degrees = 0.0)
+			_mood_tween.tween_property(_body, "position:y", -TILE * 2.0, 0.12).set_ease(Tween.EASE_OUT)
+			_mood_tween.tween_property(_body, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			_mood_tween.tween_interval(0.5)
+	return _mood_tween
+
+
+# A need not met (or out of reach): a shrug, and the need's icon with a "?".
+func shrug(req_id: String) -> Tween:
+	_show_bubble(req_id, TenantBubble.Mood.UNSURE)
+	_mood_tween = create_tween()
+	if GameState.reduce_motion:
+		_mood_tween.tween_interval(1.2)
+		return _mood_tween
+	for i in 2:
+		_mood_tween.tween_property(_body, "scale", Vector2(0.9, 1.15), 0.12)
+		_mood_tween.parallel().tween_property(_body, "rotation_degrees", 8.0 if i == 0 else -8.0, 0.12)
+		_mood_tween.tween_property(_body, "scale", Vector2.ONE, 0.16)
+		_mood_tween.parallel().tween_property(_body, "rotation_degrees", 0.0, 0.16)
+	_mood_tween.tween_interval(0.8)
+	return _mood_tween
+
+
+func _show_bubble(req_id: String, mood: int) -> void:
+	clear_reaction()
+	_bubble = TenantBubble.make(req_id, mood)
+	_bubble_anchor.add_child(_bubble)
+	_bubble.position = Vector2(-_bubble.get_combined_minimum_size().x * 0.5, -_bubble.get_combined_minimum_size().y - 10)
+	if GameState.reduce_motion:
+		return
+	_bubble.pivot_offset = _bubble.get_combined_minimum_size() * Vector2(0.5, 1.0)
+	_bubble.scale = Vector2(0.3, 0.3)
+	_bubble.create_tween().tween_property(_bubble, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func stop_moving() -> void:
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	_body.position = Vector2.ZERO
+	_body.scale = Vector2.ONE
+
+
 func clear_reaction() -> void:
 	if _mood_tween and _mood_tween.is_valid():
 		_mood_tween.kill()
 	_body.rotation_degrees = 0.0
+	_body.scale = Vector2.ONE
 	_annoyed = false
 	_body.queue_redraw()
 	if is_instance_valid(_bubble):

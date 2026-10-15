@@ -3908,6 +3908,8 @@ func _has_foldable_furniture() -> bool:
 
 
 func _input(event: InputEvent) -> void:
+	if tenant_layer:
+		tenant_layer.note_activity(event)
 	# While the player is typing (the catalogue's search box), letters are
 	# text, not shortcuts. Escape still closes the catalogue.
 	if event is InputEventKey and get_viewport().gui_get_focus_owner() is LineEdit:

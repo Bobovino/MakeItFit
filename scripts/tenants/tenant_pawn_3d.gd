@@ -119,6 +119,20 @@ func head_point() -> Vector3:
 
 
 func react(req_id: String, mood: int) -> void:
+	_show_bubble(req_id, mood)
+	if GameState.reduce_motion:
+		return
+	_mood_tween = create_tween()
+	if mood == TenantBubble.Mood.ANNOYED:
+		for i in 4:
+			_mood_tween.tween_property(_figure, "rotation_degrees:z", 10.0 if i % 2 == 0 else -10.0, 0.06)
+		_mood_tween.tween_property(_figure, "rotation_degrees:z", 0.0, 0.06)
+	else:
+		_mood_tween.tween_property(_figure, "position:y", 0.25, 0.12).set_ease(Tween.EASE_OUT)
+		_mood_tween.tween_property(_figure, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+
+
+func _show_bubble(req_id: String, mood: int) -> void:
 	clear_reaction()
 	_bubble_vp = SubViewport.new()
 	_bubble_vp.transparent_bg = true
@@ -142,16 +156,70 @@ func react(req_id: String, mood: int) -> void:
 	_bubble_sprite.offset = Vector2(0, _bubble_vp.size.y * 0.5)
 	_bubble_sprite.position.y = _height + 0.1
 	add_child(_bubble_sprite)
-	if GameState.reduce_motion:
-		return
+
+
+func walk(points: Array, step_time: float) -> Tween:
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	_move_tween = create_tween()
+	var from := position
+	for p in points:
+		var a := from
+		var b := p as Vector3
+		_move_tween.tween_method(func(k: float):
+			position = a.lerp(b, k)
+			_figure.position.y = sin(k * PI) * 0.09, 0.0, 1.0, step_time)
+		from = b
+	return _move_tween
+
+
+func perform(kind: String, req_id: String) -> Tween:
+	_show_bubble(req_id, TenantBubble.Mood.HAPPY)
 	_mood_tween = create_tween()
-	if mood == TenantBubble.Mood.ANNOYED:
-		for i in 4:
-			_mood_tween.tween_property(_figure, "rotation_degrees:z", 10.0 if i % 2 == 0 else -10.0, 0.06)
-		_mood_tween.tween_property(_figure, "rotation_degrees:z", 0.0, 0.06)
-	else:
-		_mood_tween.tween_property(_figure, "position:y", 0.25, 0.12).set_ease(Tween.EASE_OUT)
-		_mood_tween.tween_property(_figure, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	if GameState.reduce_motion:
+		_mood_tween.tween_interval(1.2)
+		return _mood_tween
+	match kind:
+		"lie":
+			_mood_tween.tween_property(_figure, "rotation_degrees:x", -80.0, 0.25)
+			_mood_tween.parallel().tween_property(_figure, "position:y", 0.25, 0.25)
+			_mood_tween.tween_interval(0.9)
+			_mood_tween.tween_property(_figure, "rotation_degrees:x", 0.0, 0.2)
+			_mood_tween.parallel().tween_property(_figure, "position:y", 0.0, 0.2)
+		"sit":
+			_mood_tween.tween_property(_figure, "scale", Vector3(1.08, 0.72, 1.08), 0.14)
+			_mood_tween.tween_interval(0.9)
+			_mood_tween.tween_property(_figure, "scale", Vector3.ONE, 0.18).set_trans(Tween.TRANS_BACK)
+		_:
+			_mood_tween.tween_property(_figure, "rotation_degrees:y", 360.0, 0.45).set_trans(Tween.TRANS_QUAD)
+			_mood_tween.tween_callback(func(): _figure.rotation_degrees.y = 0.0)
+			_mood_tween.tween_property(_figure, "position:y", 0.25, 0.12).set_ease(Tween.EASE_OUT)
+			_mood_tween.tween_property(_figure, "position:y", 0.0, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			_mood_tween.tween_interval(0.5)
+	return _mood_tween
+
+
+func shrug(req_id: String) -> Tween:
+	_show_bubble(req_id, TenantBubble.Mood.UNSURE)
+	_mood_tween = create_tween()
+	if GameState.reduce_motion:
+		_mood_tween.tween_interval(1.2)
+		return _mood_tween
+	for i in 2:
+		_mood_tween.tween_property(_figure, "scale", Vector3(0.92, 1.1, 0.92), 0.12)
+		_mood_tween.parallel().tween_property(_figure, "rotation_degrees:z", 7.0 if i == 0 else -7.0, 0.12)
+		_mood_tween.tween_property(_figure, "scale", Vector3.ONE, 0.16)
+		_mood_tween.parallel().tween_property(_figure, "rotation_degrees:z", 0.0, 0.16)
+	_mood_tween.tween_interval(0.8)
+	return _mood_tween
+
+
+func stop_moving() -> void:
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	if _figure:
+		_figure.position = Vector3.ZERO
+		_figure.scale = Vector3.ONE
 
 
 func clear_reaction() -> void:
@@ -159,6 +227,8 @@ func clear_reaction() -> void:
 		_mood_tween.kill()
 	if _figure:
 		_figure.rotation_degrees = Vector3.ZERO
+		_figure.position = Vector3.ZERO
+		_figure.scale = Vector3.ONE
 	if is_instance_valid(_bubble_sprite):
 		_bubble_sprite.queue_free()
 	if is_instance_valid(_bubble_vp):
