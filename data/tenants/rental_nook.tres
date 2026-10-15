@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_tomasz"]
+script = ExtResource("2_res")
+id = &"tomasz"
+display_name = "Tomasz"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "I sleep while you are all awake. A proper bed, please."
+requirement = "need:sleep"
+speaker = &"tomasz"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "A chair to sit in when I get back at dawn."
+requirement = "need:sit"
+speaker = &"tomasz"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "Somewhere for my work boots and my oilskins."
+requirement = "need:storage"
+speaker = &"tomasz"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "rental:nook"
+residents = Array[ExtResource("2_res")]([SubResource("res_tomasz")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3")])

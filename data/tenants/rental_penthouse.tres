@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_hagen"]
+script = ExtResource("2_res")
+id = &"hagen"
+display_name = "Frau von Hagen"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "A bed befitting a penthouse."
+requirement = "need:sleep"
+speaker = &"hagen"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "A seat with a view. There must be a view."
+requirement = "need:sit"
+speaker = &"hagen"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "Storage for my hats. Penthouse residents have hats."
+requirement = "need:storage"
+speaker = &"hagen"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "rental:penthouse"
+residents = Array[ExtResource("2_res")]([SubResource("res_hagen")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3")])

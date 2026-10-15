@@ -69,6 +69,9 @@ var _back_btn: Button = null          # "← Back to <parent>" — shown only in
 var _breadcrumb_lbl: Label = null     # "Root > Shoebox > Shoebox Interior" — which apartment we're actually in, since nested boxes are otherwise only inferable from the mini-plan cards
 var _comfort_meter: Control = null   # live gm.comfort_pct fill bar (ComfortMeter.gd) — only shown when the level actually has yellow-tier furniture placed
 var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoom/pan everywhere
+var _application: TenantApplication = null   # the level's rental application, if it has one
+var _application_fax: ApplicationFax = null  # the fax printing/showing it, while it is up
+var _applications_shown: Dictionary = {}     # level id -> true: printed once per visit, like the intro card
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -256,6 +259,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
+	tenant_card.application_requested.connect(_reopen_application)
 	# The bar grows upward when its chips wrap (rule chips arrive after the
 	# needs): everything that sits on it or under it follows.
 	tenant_card.height_changed.connect(func(): _relayout_bottom_bar.call_deferred())
@@ -697,6 +701,9 @@ func _load_level(level_id: String) -> void:
 	# transition is in flight any more, so it's safe to clear here.
 	_nested_transition_busy = false
 	_current_level_id  = level_id
+	if is_instance_valid(_application_fax):
+		_application_fax.queue_free()
+	_application_fax = null
 	if is_instance_valid(_editor_back_btn):
 		# Stays visible through the WHOLE test session, not just while on the
 		# root ("_custom") level — GameState.testing_from_editor is set once
@@ -904,10 +911,15 @@ func _load_level(level_id: String) -> void:
 		Furniture.moment_labels[md["id"] as String] = md.get("label", md["id"]) as String
 	tenant_card.setup(level["tenant"])
 	tenant_card.setup_moments(gm.moments)
+	_application = TenantApplication.for_level(level_id)
+	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
+	tenant_card.set_application(_application != null, hidden_reqs)
 	if not gm.moments.is_empty():
 		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
 		_on_moment_selected(_first_mid)
 	inventory.setup(gm)
+	inventory.hidden_needs = hidden_reqs.filter(func(r): return (r as String).begins_with("need:")) \
+		.map(func(r): return (r as String).trim_prefix("need:"))
 	var shop_list: Array = gm.furniture_data["furniture"]
 	if not gm.allowed_furniture.is_empty():
 		shop_list = shop_list.filter(func(f): return (f["id"] as String) in gm.allowed_furniture)
@@ -975,7 +987,7 @@ func _load_level(level_id: String) -> void:
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
 
-	_show_mechanic_intro_if_needed()
+	_show_application_if_needed()
 	_refresh_undo_redo_buttons()
 	# Establish the correct disabled/available baseline from however the level
 	# actually loaded (freshly, or via "Revisar Plano Actual" resuming an
@@ -1019,6 +1031,25 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 
 
 var _intros_shown: Dictionary = {}   # level id -> true, for this session in the play screen
+
+# The tenant's rental application prints the first time a level is opened in
+# a visit (not again on restarting it or coming back out of a box, and not on
+# a level already rented out); the mechanic card, if any, follows it.
+func _show_application_if_needed() -> void:
+	var lid := gm.current_level.get("id", "") as String
+	if _application == null or lid in GameState.completed or _applications_shown.has(lid):
+		_show_mechanic_intro_if_needed()
+		return
+	_applications_shown[lid] = true
+	_application_fax = ApplicationFax.open(self, _application, tenant_card, true)
+	_application_fax.closed.connect(_show_mechanic_intro_if_needed)
+
+
+func _reopen_application() -> void:
+	if _application == null or is_instance_valid(_application_fax) or _blocking_modal_open():
+		return
+	_application_fax = ApplicationFax.open(self, _application, tenant_card, false)
+
 
 func _show_mechanic_intro_if_needed() -> void:
 	var intro: Dictionary = gm.current_level.get("mechanic_intro", {}) as Dictionary
@@ -2866,6 +2897,7 @@ func _floor_pane_bottom_y() -> float:
 # mode), and the win/fail result screen.
 func _blocking_modal_open() -> bool:
 	return _intro_modal_open \
+		or is_instance_valid(_application_fax) \
 		or (is_instance_valid(_modal_backdrop) and _modal_backdrop.visible) \
 		or (is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible) \
 		or result_screen.visible
@@ -3849,7 +3881,9 @@ func _input(event: InputEvent) -> void:
 		# it: a piece being placed or bought cancels on Esc first, and the
 		# menu and the other windows close themselves on it.
 		if ke.pressed and not ke.echo and ke.keycode == KEY_ESCAPE:
-			if not _intro_modal_open and not result_screen.visible:
+			if is_instance_valid(_application_fax):
+				_application_fax.skip_or_close()
+			elif not _intro_modal_open and not result_screen.visible:
 				_on_settings_btn_pressed()
 			get_viewport().set_input_as_handled()
 			return

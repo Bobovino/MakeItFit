@@ -1,0 +1,86 @@
+extends RefCounted
+class_name Requirements
+
+# Stable ids for the requirements a level shows in its needs bar, so data
+# (an application line) can point at one:
+#
+#   need:<function>          a furniture need ("need:sleep"); on a level with
+#                            moments, that need in every moment that has it
+#   moment:<moment>:<fn>     the need in one moment only ("moment:night:sleep")
+#   sight:<n>                the n-th line of sight (1-based, as numbered on
+#                            the plan and on its chip)
+#   zones:<n>                the n-th zone separation (1-based)
+#
+# These name what the checker (GameManager) already evaluates; nothing here
+# changes how a level is solved.
+
+const ICON_DIR := "res://assets/icons/requirements/"
+
+
+# Every id the needs bar of `level` (a levels.json entry) can show.
+static func ids_for_level(level: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var tenant := level.get("tenant", {}) as Dictionary
+	var moments := level.get("moments", []) as Array
+	if moments.is_empty():
+		for fn in tenant.get("required_functions", []) as Array:
+			_add(out, "need:" + str(fn))
+	else:
+		for m in moments:
+			for fn in (m as Dictionary).get("needs", []) as Array:
+				_add(out, "need:" + str(fn))
+				_add(out, "moment:%s:%s" % [(m as Dictionary)["id"], fn])
+	for i in (tenant.get("sightline_requirements", []) as Array).size():
+		_add(out, "sight:%d" % (i + 1))
+	for i in (tenant.get("zone_separations", []) as Array).size():
+		_add(out, "zones:%d" % (i + 1))
+	return out
+
+
+static func _add(list: Array[String], id: String) -> void:
+	if id not in list:
+		list.append(id)
+
+
+# The icon key of a requirement: its function for needs, else its kind.
+static func icon_key(id: String) -> String:
+	var parts := id.split(":")
+	match parts[0]:
+		"need":   return parts[1] if parts.size() > 1 else ""
+		"moment": return parts[2] if parts.size() > 2 else ""
+	return parts[0]
+
+
+# A drawn icon when assets/icons/requirements/<key>.png exists (the final
+# icon pack drops in there), else null and callers fall back to glyph().
+static func icon(id: String) -> Texture2D:
+	var path := ICON_DIR + icon_key(id) + ".png"
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+
+static func glyph(id: String) -> String:
+	var key := icon_key(id)
+	match key:
+		"sight": return "👁"
+		"zones": return "🚧"
+	return TenantCard.NEED_GLYPH.get(key, "❔") as String
+
+
+# A control showing the requirement's icon at `px` pixels.
+static func make_icon(id: String, px: int) -> Control:
+	var tex := icon(id)
+	if tex:
+		var rect := TextureRect.new()
+		rect.texture = tex
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.custom_minimum_size = Vector2(px, px)
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return rect
+	var lbl := Label.new()
+	lbl.text = glyph(id)
+	lbl.add_theme_font_size_override("font_size", px)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return lbl

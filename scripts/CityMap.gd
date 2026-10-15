@@ -471,24 +471,15 @@ func _build_ui() -> void:
 	_fax_paper.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fax_paper.offset_left = 16
 	_fax_paper.offset_right = -16
-	var paper_sb := StyleBoxFlat.new()
-	paper_sb.bg_color = Color(0.965, 0.955, 0.925)
-	paper_sb.set_content_margin(SIDE_LEFT, 18)
-	paper_sb.set_content_margin(SIDE_RIGHT, 18)
-	paper_sb.set_content_margin(SIDE_TOP, 16)
-	paper_sb.set_content_margin(SIDE_BOTTOM, 20)
-	paper_sb.shadow_color = Color(0, 0, 0, 0.30)
-	paper_sb.shadow_size = 6
-	paper_sb.shadow_offset = Vector2(2, 3)
-	_fax_paper.add_theme_stylebox_override("panel", paper_sb)
+	_fax_paper.add_theme_stylebox_override("panel", FaxStyle.paper())
 	_fax_clip.add_child(_fax_paper)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 8)
 	_fax_paper.add_child(vb)
 
-	const FAX_INK := Color(0.16, 0.15, 0.14)
-	const FAX_INK_SOFT := Color(0.40, 0.38, 0.35)
+	const FAX_INK := FaxStyle.INK
+	const FAX_INK_SOFT := FaxStyle.INK_SOFT
 	var fax_head := _make_info_label(vb, 9, FAX_INK_SOFT)
 	fax_head.text = tr("FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1")
 	var head_rule := HSeparator.new()
@@ -562,45 +553,14 @@ func _build_ui() -> void:
 
 	# ── the machine ──
 	var machine := PanelContainer.new()
-	var body := StyleBoxFlat.new()
-	body.bg_color = Color(0.205, 0.215, 0.230)
-	body.border_color = Color(0.11, 0.12, 0.13)
-	body.set_border_width_all(2)
-	body.set_corner_radius_all(14)
-	body.set_content_margin(SIDE_LEFT, 18)
-	body.set_content_margin(SIDE_RIGHT, 18)
-	body.set_content_margin(SIDE_TOP, 12)
-	body.set_content_margin(SIDE_BOTTOM, 16)
-	body.shadow_color = Color(0, 0, 0, 0.45)
-	body.shadow_size = 12
-	body.shadow_offset = Vector2(3, 6)
-	body.anti_aliasing = true
-	machine.add_theme_stylebox_override("panel", body)
+	machine.add_theme_stylebox_override("panel", FaxStyle.machine())
 	column.add_child(machine)
 	vb = VBoxContainer.new()                 # from here on, things go on the machine
 	vb.add_theme_constant_override("separation", 9)
 	machine.add_child(vb)
 
-	var slot := Panel.new()                  # the slot the paper comes out of
-	slot.custom_minimum_size = Vector2(0, 10)
-	var slot_sb := StyleBoxFlat.new()
-	slot_sb.bg_color = Color(0.04, 0.04, 0.05)
-	slot_sb.set_corner_radius_all(4)
-	slot.add_theme_stylebox_override("panel", slot_sb)
-	vb.add_child(slot)
-
-	var lcd := Label.new()                   # the little green display
-	lcd.text = tr("READY")
-	lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lcd.add_theme_font_size_override("font_size", 11)
-	lcd.add_theme_color_override("font_color", Color(0.20, 0.34, 0.16))
-	var lcd_sb := StyleBoxFlat.new()
-	lcd_sb.bg_color = Color(0.62, 0.74, 0.52)
-	lcd_sb.border_color = Color(0.10, 0.11, 0.10)
-	lcd_sb.set_border_width_all(2)
-	lcd_sb.set_corner_radius_all(3)
-	lcd_sb.set_content_margin_all(4)
-	lcd.add_theme_stylebox_override("normal", lcd_sb)
+	vb.add_child(FaxStyle.slot())            # the slot the paper comes out of
+	var lcd := FaxStyle.lcd(tr("READY"))     # the little green display
 	vb.add_child(lcd)
 	_fax_lcd = lcd
 
@@ -652,25 +612,7 @@ var _fax_tween: Tween = null
 
 # A key on the fax machine: a raised cap in `face`, pressed in when clicked.
 func _fax_key(btn: Button, face: Color, text: Color) -> void:
-	for state in ["normal", "hover", "pressed", "disabled"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = face
-		if state == "hover":
-			sb.bg_color = face.lightened(0.12)
-		elif state == "pressed":
-			sb.bg_color = face.darkened(0.15)
-		elif state == "disabled":
-			sb.bg_color = Color(0.30, 0.31, 0.33)
-		sb.border_color = face.darkened(0.45)
-		sb.set_border_width_all(1)
-		sb.set_border_width(SIDE_BOTTOM, 1 if state == "pressed" else 4)
-		sb.set_corner_radius_all(7)
-		sb.set_content_margin_all(6)
-		sb.anti_aliasing = true
-		btn.add_theme_stylebox_override(state, sb)
-	for c in ["font_color", "font_hover_color", "font_pressed_color"]:
-		btn.add_theme_color_override(c, text)
-	btn.add_theme_color_override("font_disabled_color", Color(0.60, 0.60, 0.60))
+	FaxStyle.key(btn, face, text)
 
 
 # The machine prints the chosen home: the sheet feeds up out of the slot.

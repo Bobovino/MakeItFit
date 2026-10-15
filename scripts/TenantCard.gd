@@ -4,6 +4,7 @@ class_name TenantCard
 signal moment_selected(moment_id: String)
 signal need_clicked(need: String)   # a need chip was clicked: show what provides it
 signal height_changed               # the chips wrapped onto more or fewer rows
+signal application_requested        # the fax button: show the tenant's rental application again
 
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
@@ -35,6 +36,15 @@ var _moment_header_btns: Dictionary = {}  # moment_id -> Button
 var _moment_group := ButtonGroup.new()
 var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
 
+# Every chip by the requirement id(s) it shows (see Requirements): one chip
+# can answer to several, e.g. "need:sleep" and "moment:night:sleep".
+var _chips_by_req: Dictionary = {}        # id -> Array[Control]
+var _hidden_reqs: Array = []              # ids whose chips stay out of the bar (hidden requirements)
+var _has_application := false             # show the fax button in front of the bar
+# While the application prints, chips wait invisible (keeping their place,
+# so the line drawn to them lands right) until their line stamps them in.
+var _stamping := false
+
 
 # Blueprint drafting-table palette — matches GridDraw.gd's corner title block
 # (tenant/area/scale/sheet#), which used to draw directly on the 2D floor
@@ -59,6 +69,9 @@ const NEED_GLYPH := {
 	"sit":     "🛋",
 	"storage": "📦",
 	"eat":     "🍽",
+	"dine":    "🍽",
+	"dress":   "👕",
+	"laundry": "🧺",
 	"social":  "🎉",
 	"pet":     "🐦",
 }
@@ -169,6 +182,7 @@ func _clear_checklist() -> void:
 	_moment_rows.clear()
 	_moment_group = ButtonGroup.new()
 	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
+	_chips_by_req.clear()
 
 
 # The bar is the level's goal, so it says so: "ALEX NEEDS" in front of the
@@ -176,6 +190,8 @@ func _clear_checklist() -> void:
 # player looking at two unlabelled squares with no idea they were the
 # objective.
 func _add_goal_label() -> void:
+	if _has_application:
+		_add_application_button()
 	var lbl := Label.new()
 	lbl.text = (tr("%s NEEDS") % _tenant_name.to_upper()) if _tenant_name != "" else tr("NEEDS")
 	lbl.add_theme_font_size_override("font_size", 11)
@@ -203,7 +219,9 @@ func _build_checklist(required: Array) -> void:
 		var chip := _make_need_chip(func_name, false)
 		row.add_child(chip)
 		_check_chips[func_name] = chip
+		_register_chip("need:" + str(func_name), chip)
 	_rule_row = row
+	_apply_requirement_state()
 
 
 func _build_moment_checklist() -> void:
@@ -244,8 +262,12 @@ func _build_moment_checklist() -> void:
 		_moment_check_chips[mid] = {}
 		for func_name in needs:
 			var chip := _make_need_chip(func_name, false)
+			chip.set_meta("moment", mid)
 			row.add_child(chip)
 			(_moment_check_chips[mid] as Dictionary)[func_name] = chip
+			_register_chip("need:" + str(func_name), chip)
+			_register_chip("moment:%s:%s" % [mid, func_name], chip)
+	_apply_requirement_state()
 
 
 func _make_section_label(text: String) -> Label:
@@ -318,7 +340,7 @@ func highlight_moment(moment_id: String) -> void:
 # a glance as a WoW-style quest tracker instead of a text checklist. Native
 # tooltip_text carries the need's name on hover since there's little more to
 # say about a need than "done or not."
-func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
+func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.custom_minimum_size = Vector2(0, 30)
 	chip.tooltip_text = tr("%s — click to see the furniture that provides it") % Loc.need_name(func_name)
@@ -336,12 +358,7 @@ func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(row)
 
-	var glyph := Label.new()
-	glyph.text = NEED_GLYPH.get(func_name, "❔") as String
-	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	glyph.add_theme_font_size_override("font_size", 15)
-	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(glyph)
+	row.add_child(Requirements.make_icon(req_id if req_id != "" else "need:" + func_name, 15))
 
 	var name_lbl := Label.new()
 	name_lbl.text = Loc.need_name(func_name)
@@ -473,22 +490,27 @@ func update_rules(rules: Array) -> void:
 			_rule_row = HBoxContainer.new()
 			_rule_row.add_theme_constant_override("separation", 7)
 			checklist_container.add_child(_rule_row)
+		var zone_number := 0
 		for r in rules:
 			var rule := r as Dictionary
-			var chip := _make_need_chip("rule", false)
 			var is_sight := (rule["kind"] as String) == "sight"
+			if not is_sight:
+				zone_number += 1
+			var req_id := ("sight:%d" % rule["number"]) if is_sight else ("zones:%d" % zone_number)
+			var chip := _make_need_chip("rule", false, req_id)
 			var text := rule.get("short", "") as String
 			if text == "":
 				text = rule["label"] as String
 			if is_sight:
 				text = "%d  %s" % [rule["number"], text]
-			(chip.get_child(0).get_child(0) as Label).text = "👁" if is_sight else "🚧"
 			(chip.get_child(0).get_child(1) as Label).text = text
 			chip.tooltip_text = (rule["label"] as String) + (
 				"\n" + tr("The numbered line on the plan shows it.") if is_sight
 				else "\n" + tr("Tall storage splits a room into zones."))
 			_rule_row.add_child(chip)
 			_rule_chips.append(chip)
+			_register_chip(req_id, chip)
+		_apply_requirement_state()
 	for i in rules.size():
 		_set_need_chip(_rule_chips[i] as PanelContainer, (rules[i] as Dictionary)["ok"] as bool)
 
@@ -516,3 +538,130 @@ func update_moments(results: Dictionary) -> void:
 		for func_name in needs:
 			if chips.has(func_name):
 				_set_need_chip(chips[func_name] as PanelContainer, func_name in mfulfilled)
+
+
+# ── Requirement ids, hidden requirements, the application ───────────────────
+
+func _register_chip(req_id: String, chip: Control) -> void:
+	if not _chips_by_req.has(req_id):
+		_chips_by_req[req_id] = []
+	(_chips_by_req[req_id] as Array).append(chip)
+	if _stamping:
+		chip.set_meta("unstamped", true)
+
+
+# Called by Main after setup()/setup_moments(): whether the level has an
+# application (puts the fax button in front of the bar) and which
+# requirements it keeps hidden.
+func set_application(available: bool, hidden_requirements: Array) -> void:
+	_has_application = available
+	_hidden_reqs = hidden_requirements.duplicate()
+	var existing := checklist_container.get_node_or_null("ApplicationButton")
+	if available and existing == null and checklist_container.get_child_count() > 0:
+		_add_application_button()
+		checklist_container.move_child(checklist_container.get_node("ApplicationButton"), 0)
+	elif not available and existing != null:
+		existing.queue_free()
+	_apply_requirement_state()
+
+
+func _add_application_button() -> void:
+	var btn := Button.new()
+	btn.name = "ApplicationButton"
+	btn.text = "📠"
+	btn.tooltip_text = tr("Read the tenant's rental application again")
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.custom_minimum_size = Vector2(34, 30)
+	btn.add_theme_font_size_override("font_size", 15)
+	btn.pressed.connect(func(): application_requested.emit())
+	checklist_container.add_child(btn)
+
+
+func _apply_requirement_state() -> void:
+	var hidden_chips: Array = []
+	for req_id in _hidden_reqs:
+		hidden_chips.append_array(_chips_by_req.get(req_id, []) as Array)
+	for list in _chips_by_req.values():
+		for chip in list:
+			var c := chip as Control
+			if not is_instance_valid(c):
+				continue
+			c.visible = c not in hidden_chips
+			c.modulate.a = 0.0 if c.get_meta("unstamped", false) else 1.0
+
+
+func is_hidden_requirement(req_id: String) -> bool:
+	return req_id in _hidden_reqs
+
+
+# Every chip goes invisible until stamp() brings it in.
+func begin_stamping() -> void:
+	_stamping = true
+	for list in _chips_by_req.values():
+		for chip in list:
+			(chip as Control).set_meta("unstamped", true)
+	_apply_requirement_state()
+
+
+# Stamps in the chips of `req_id`; returns the control on screen the
+# application's line should point at (the chip, or its moment's tab when that
+# moment's row isn't the one showing), or null.
+func stamp(req_id: String, animate: bool = true) -> Control:
+	for chip in _chips_by_req.get(req_id, []) as Array:
+		var c := chip as Control
+		if c.get_meta("unstamped", false):
+			c.set_meta("unstamped", false)
+			c.modulate.a = 1.0
+			if animate:
+				_stamp_chip(c)
+	return requirement_anchor(req_id)
+
+
+# Stamps whatever is left (requirements no line mentions) and stops holding
+# back new chips.
+func finish_stamping() -> void:
+	_stamping = false
+	for list in _chips_by_req.values():
+		for chip in list:
+			(chip as Control).set_meta("unstamped", false)
+	_apply_requirement_state()
+
+
+func requirement_anchor(req_id: String) -> Control:
+	var chips := _chips_by_req.get(req_id, []) as Array
+	for chip in chips:
+		if (chip as Control).is_visible_in_tree():
+			return chip
+	for chip in chips:
+		var mid := (chip as Control).get_meta("moment", "") as String
+		if _moment_header_btns.has(mid) and not is_hidden_requirement(req_id):
+			return _moment_header_btns[mid]
+	return null
+
+
+# A chip pointed at from the application: a quick pop, no sound.
+func flash_requirement(req_id: String) -> Control:
+	for chip in _chips_by_req.get(req_id, []) as Array:
+		if (chip as Control).is_visible_in_tree() and not GameState.reduce_motion:
+			var c := chip as Control
+			c.pivot_offset = c.size * 0.5
+			var tw := c.create_tween()
+			tw.tween_property(c, "scale", Vector2(1.18, 1.18), 0.08)
+			tw.tween_property(c, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return requirement_anchor(req_id)
+
+
+# A rubber stamp coming down: big and tilted, then flat on the paper.
+func _stamp_chip(chip: Control) -> void:
+	Audio.play("place")
+	if GameState.reduce_motion:
+		return
+	chip.pivot_offset = chip.size * 0.5
+	chip.scale = Vector2(1.7, 1.7)
+	chip.rotation_degrees = -9.0
+	chip.modulate.a = 0.0
+	var tw := chip.create_tween().set_parallel()
+	tw.tween_property(chip, "modulate:a", 1.0, 0.07)
+	tw.tween_property(chip, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(chip, "rotation_degrees", 0.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

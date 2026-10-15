@@ -7,47 +7,47 @@ msgstr ""
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: scripts/CityMap.gd:978
+#: scripts/CityMap.gd:920
 msgid "Park"
 msgstr "Park"
 
-#: scripts/CityMap.gd:978
+#: scripts/CityMap.gd:920
 msgid "Lake"
 msgstr "See"
 
-#: scripts/CityMap.gd:978
+#: scripts/CityMap.gd:920
 msgid "Plaza"
 msgstr "Platz"
 
-#: scripts/CityMap.gd:978
+#: scripts/CityMap.gd:920
 msgid "Monument"
 msgstr "Denkmal"
 
-#: scripts/CityMap.gd:979
+#: scripts/CityMap.gd:921
 msgid "Church"
 msgstr "Kirche"
 
-#: scripts/CityMap.gd:979
+#: scripts/CityMap.gd:921
 msgid "Fountain"
 msgstr "Brunnen"
 
-#: scripts/CityMap.gd:979
+#: scripts/CityMap.gd:921
 msgid "Parking"
 msgstr "Parkplatz"
 
-#: scripts/CityMap.gd:980
+#: scripts/CityMap.gd:922
 msgid "Sports Field"
 msgstr "Sportplatz"
 
-#: scripts/CityMap.gd:980
+#: scripts/CityMap.gd:922
 msgid "Cemetery"
 msgstr "Friedhof"
 
-#: scripts/CityMap.gd:980
+#: scripts/CityMap.gd:922
 msgid "Building"
 msgstr "Gebäude"
 
-#: scripts/CityMap.gd:981
+#: scripts/CityMap.gd:923
 msgid "Roundabout"
 msgstr "Kreisverkehr"
 
@@ -55,138 +55,142 @@ msgstr "Kreisverkehr"
 msgid "PROJECTS"
 msgstr "PROJEKTE"
 
-#: scripts/CityMap.gd:493
+#: scripts/CityMap.gd:484
 msgid "FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1"
 msgstr "FAX  ·  KÖNIGSBERG PROJEKTE  ·  SEITE 1/1"
 
-#: scripts/CityMap.gd:593
-#: scripts/CityMap.gd:696
+#: scripts/CityMap.gd:563
+#: scripts/CityMap.gd:638
+#: scripts/ui/ApplicationFax.gd:107
+#: scripts/ui/ApplicationFax.gd:312
+#: scripts/ui/ApplicationFax.gd:317
 msgid "READY"
 msgstr "BEREIT"
 
-#: scripts/CityMap.gd:618
+#: scripts/CityMap.gd:578
 msgid "Redesign from Scratch"
 msgstr "Neu einrichten"
 
-#: scripts/CityMap.gd:630
+#: scripts/CityMap.gd:590
 msgid "⚙ Settings"
 msgstr "⚙ Einstellungen"
 
-#: scripts/CityMap.gd:638
+#: scripts/CityMap.gd:598
 msgid "⏻ Quit"
 msgstr "⏻ Beenden"
 
-#: scripts/CityMap.gd:639
+#: scripts/CityMap.gd:599
 msgid "Quit to desktop"
 msgstr "Zum Desktop beenden"
 
-#: scripts/CityMap.gd:691
+#: scripts/CityMap.gd:633
+#: scripts/ui/ApplicationFax.gd:241
 msgid "RECEIVING…"
 msgstr "EMPFANG…"
 
-#: scripts/CityMap.gd:1337
+#: scripts/CityMap.gd:1279
 msgid "BLOCK %d — %s"
 msgstr "BLOCK %d — %s"
 
-#: scripts/CityMap.gd:1662
+#: scripts/CityMap.gd:1604
 msgid "Locked — needs %d ★"
 msgstr "Gesperrt — braucht %d ★"
 
-#: scripts/CityMap.gd:1666
+#: scripts/CityMap.gd:1608
 msgid "Available"
 msgstr "Verfügbar"
 
-#: scripts/CityMap.gd:1668
+#: scripts/CityMap.gd:1610
 msgid "Locked — %d€"
 msgstr "Gesperrt — %d€"
 
-#: scripts/CityMap.gd:1800
+#: scripts/CityMap.gd:1742
 msgid "%s  ·  %s  ·  Budget: %d€"
 msgstr "%s  ·  %s  ·  Budget: %d€"
 
-#: scripts/CityMap.gd:1828
+#: scripts/CityMap.gd:1770
 msgid "Requires: (see Moments)"
 msgstr "Braucht: (siehe Momente)"
 
-#: scripts/CityMap.gd:1830
-#: scripts/CityMap.gd:2419
+#: scripts/CityMap.gd:1772
+#: scripts/CityMap.gd:2361
 msgid "Requires: %s"
 msgstr "Braucht: %s"
 
-#: scripts/CityMap.gd:1832
-#: scripts/TenantCard.gd:147
+#: scripts/CityMap.gd:1774
+#: scripts/TenantCard.gd:157
 msgid "%d€ / month"
 msgstr "%d€ / Monat"
 
-#: scripts/CityMap.gd:1835
+#: scripts/CityMap.gd:1777
 msgid "Locked — need %d total ★"
 msgstr "Gesperrt — insgesamt %d ★ nötig"
 
-#: scripts/CityMap.gd:1836
+#: scripts/CityMap.gd:1778
 msgid "LOCKED"
 msgstr "GESPERRT"
 
-#: scripts/CityMap.gd:1841
+#: scripts/CityMap.gd:1783
 msgid "Reward: ~%d€ Studio Funds"
 msgstr "Belohnung: ~%d€ Studiokapital"
 
-#: scripts/CityMap.gd:1846
+#: scripts/CityMap.gd:1788
 msgid "Review Current Plan"
 msgstr "Aktuellen Plan ansehen"
 
-#: scripts/CityMap.gd:1851
+#: scripts/CityMap.gd:1793
 msgid "ENTER  →"
 msgstr "BETRETEN  →"
 
-#: scripts/CityMap.gd:1855
+#: scripts/CityMap.gd:1797
 msgid "Acquisition: %d€ Studio Funds"
 msgstr "Erwerb: %d€ Studiokapital"
 
-#: scripts/CityMap.gd:1856
+#: scripts/CityMap.gd:1798
 msgid "BUY — %d€"
 msgstr "KAUFEN — %d€"
 
-#: scripts/CityMap.gd:1870
+#: scripts/CityMap.gd:1812
 msgid "Studio Funds: %d€"
 msgstr "Studiokapital: %d€"
 
-#: scripts/CityMap.gd:2235
+#: scripts/CityMap.gd:2177
 msgid "Debug"
 msgstr "Debug"
 
-#: scripts/CityMap.gd:2236
+#: scripts/CityMap.gd:2178
 msgid "DEBUG LEVELS  (Ctrl+Shift+Alt+D)"
 msgstr "DEBUG-LEVEL  (Strg+Umschalt+Alt+D)"
 
-#: scripts/CityMap.gd:2272
+#: scripts/CityMap.gd:2214
 msgid "MY LEVELS"
 msgstr "MEINE LEVEL"
 
-#: scripts/CityMap.gd:2313
+#: scripts/CityMap.gd:2255
 msgid "Unnamed"
 msgstr "Unbenannt"
 
-#: scripts/CityMap.gd:2320
+#: scripts/CityMap.gd:2262
 msgid "CUSTOM"
 msgstr "EIGENES"
 
-#: scripts/CityMap.gd:2374
+#: scripts/CityMap.gd:2316
 msgid "New Level"
 msgstr "Neues Level"
 
-#: scripts/CityMap.gd:2396
+#: scripts/CityMap.gd:2338
 msgid "Unnamed Level"
 msgstr "Unbenanntes Level"
 
-#: scripts/CityMap.gd:2397
+#: scripts/CityMap.gd:2339
 msgid "Custom Level  ·  %s  ·  Budget: %d€"
 msgstr "Eigenes Level  ·  %s  ·  Budget: %d€"
 
-#: scripts/CityMap.gd:2406
+#: scripts/CityMap.gd:2348
 msgid "No tenant defined"
 msgstr "Kein Mieter festgelegt"
 
-#: scripts/CityMap.gd:2424
+#: scripts/CityMap.gd:2366
 msgid "PLAY →"
 msgstr "SPIELEN →"
 
@@ -365,206 +369,206 @@ msgstr "Bedürfnisse"
 msgid "Mechanics"
 msgstr "Mechaniken"
 
-#: scripts/Inventory.gd:141
+#: scripts/Inventory.gd:144
 msgid "Search…"
 msgstr "Suchen…"
 
-#: scripts/Inventory.gd:298
+#: scripts/Inventory.gd:301
 msgid "Needed"
 msgstr "Benötigt"
 
-#: scripts/Inventory.gd:299
+#: scripts/Inventory.gd:302
 msgid "All"
 msgstr "Alle"
 
-#: scripts/Inventory.gd:300
+#: scripts/Inventory.gd:303
 msgid "Bedroom"
 msgstr "Schlafzimmer"
 
-#: scripts/Inventory.gd:301
-#: scripts/Inventory.gd:470
+#: scripts/Inventory.gd:304
+#: scripts/Inventory.gd:473
 msgid "Bathroom"
 msgstr "Bad"
 
-#: scripts/Inventory.gd:302
+#: scripts/Inventory.gd:305
 msgid "Kitchen"
 msgstr "Küche"
 
-#: scripts/Inventory.gd:303
+#: scripts/Inventory.gd:306
 msgid "Living"
 msgstr "Wohnen"
 
-#: scripts/Inventory.gd:304
+#: scripts/Inventory.gd:307
 msgid "Storage"
 msgstr "Stauraum"
 
-#: scripts/Inventory.gd:305
+#: scripts/Inventory.gd:308
 msgid "Folding"
 msgstr "Klappbar"
 
-#: scripts/Inventory.gd:306
+#: scripts/Inventory.gd:309
 msgid "Rentals"
 msgstr "Mietobjekte"
 
-#: scripts/Inventory.gd:307
+#: scripts/Inventory.gd:310
 msgid "Build"
 msgstr "Bauen"
 
-#: scripts/Inventory.gd:379
+#: scripts/Inventory.gd:382
 msgid "%d found"
 msgstr "%d gefunden"
 
-#: scripts/Inventory.gd:382
+#: scripts/Inventory.gd:385
 msgid "Nothing matches. Try a need (sleep, sit, work, storage) or part of a name."
 msgstr "Keine Treffer. Versuch es mit einem Bedürfnis (Schlafen, Sitzen, Arbeiten, Stauraum) oder einem Teil des Namens."
 
-#: scripts/Inventory.gd:388
+#: scripts/Inventory.gd:391
 msgid "No piece in this level provides it."
 msgstr "Kein Stück in diesem Level erfüllt das."
 
-#: scripts/Inventory.gd:395
+#: scripts/Inventory.gd:398
 msgid "The tenant has everything they asked for. Pick a tab to browse."
 msgstr "Der Mieter hat alles, was er wollte. Wähl einen Reiter zum Stöbern."
 
-#: scripts/Inventory.gd:400
+#: scripts/Inventory.gd:403
 msgid "Nothing in this level provides it."
 msgstr "Nichts in diesem Level erfüllt das."
 
-#: scripts/Inventory.gd:409
+#: scripts/Inventory.gd:412
 msgid "Nothing in this category for this level."
 msgstr "Nichts in dieser Kategorie für dieses Level."
 
-#: scripts/Inventory.gd:459
+#: scripts/Inventory.gd:462
 msgid "TOOLS  (drag on the floor plan to build)"
 msgstr "WERKZEUGE  (zum Bauen auf dem Grundriss ziehen)"
 
-#: scripts/Inventory.gd:469
+#: scripts/Inventory.gd:472
 msgid "Select"
 msgstr "Auswählen"
 
-#: scripts/Inventory.gd:469
+#: scripts/Inventory.gd:472
 msgid "Wall"
 msgstr "Wand"
 
-#: scripts/Inventory.gd:469
+#: scripts/Inventory.gd:472
 msgid "Glass Wall"
 msgstr "Glaswand"
 
-#: scripts/Inventory.gd:469
+#: scripts/Inventory.gd:472
 msgid "Column"
 msgstr "Säule"
 
-#: scripts/Inventory.gd:469
+#: scripts/Inventory.gd:472
 msgid "Erase"
 msgstr "Löschen"
 
-#: scripts/Inventory.gd:470
+#: scripts/Inventory.gd:473
 msgid "Balcony"
 msgstr "Balkon"
 
-#: scripts/Inventory.gd:470
+#: scripts/Inventory.gd:473
 msgid "Window"
 msgstr "Fenster"
 
-#: scripts/Inventory.gd:470
+#: scripts/Inventory.gd:473
 msgid "Door"
 msgstr "Tür"
 
-#: scripts/Inventory.gd:471
+#: scripts/Inventory.gd:474
 msgid "Rail"
 msgstr "Schiene"
 
-#: scripts/Inventory.gd:471
+#: scripts/Inventory.gd:474
 msgid "Reveal Zone"
 msgstr "Enthüllungszone"
 
-#: scripts/Inventory.gd:472
+#: scripts/Inventory.gd:475
 msgid "Pipe: Water"
 msgstr "Leitung: Wasser"
 
-#: scripts/Inventory.gd:472
+#: scripts/Inventory.gd:475
 msgid "Pipe: Power"
 msgstr "Leitung: Strom"
 
-#: scripts/Inventory.gd:677
+#: scripts/Inventory.gd:680
 msgid "%d×%d cm"
 msgstr "%d×%d cm"
 
-#: scripts/Inventory.gd:781
-#: scripts/Inventory.gd:1146
+#: scripts/Inventory.gd:784
+#: scripts/Inventory.gd:1149
 msgid "Costs %d€ — you have %d€"
 msgstr "Kostet %d€ — du hast %d€"
 
-#: scripts/Inventory.gd:855
+#: scripts/Inventory.gd:858
 msgid "🪶 Light — freely movable"
 msgstr "🪶 Leicht — frei beweglich"
 
-#: scripts/Inventory.gd:858
+#: scripts/Inventory.gd:861
 msgid "🪶🪶 Medium — uncomfortable to move"
 msgstr "🪶🪶 Mittel — unbequem zu bewegen"
 
-#: scripts/Inventory.gd:861
+#: scripts/Inventory.gd:864
 msgid "🪶🪶🪶 Heavy — fixed in place"
 msgstr "🪶🪶🪶 Schwer — fest an seinem Platz"
 
-#: scripts/Inventory.gd:869
+#: scripts/Inventory.gd:872
 msgid "Satisfies: %s"
 msgstr "Erfüllt: %s"
 
-#: scripts/Inventory.gd:878
+#: scripts/Inventory.gd:881
 msgid "Foldable"
 msgstr "Klappbar"
 
-#: scripts/Inventory.gd:880
+#: scripts/Inventory.gd:883
 msgid "Slides on a rail"
 msgstr "Gleitet auf einer Schiene"
 
-#: scripts/Inventory.gd:882
+#: scripts/Inventory.gd:885
 msgid "Needs plumbing"
 msgstr "Braucht Wasseranschluss"
 
-#: scripts/Inventory.gd:884
+#: scripts/Inventory.gd:887
 msgid "Needs power"
 msgstr "Braucht Strom"
 
-#: scripts/Inventory.gd:886
+#: scripts/Inventory.gd:889
 msgid "Creates a loft level"
 msgstr "Erzeugt eine Hochebene"
 
-#: scripts/Inventory.gd:901
+#: scripts/Inventory.gd:904
 msgid "Rent: +%d€ — a tenant pays you for the space"
 msgstr "Miete: +%d€ — ein Mieter zahlt dir für den Platz"
 
-#: scripts/Inventory.gd:901
+#: scripts/Inventory.gd:904
 msgid "Buy: %d€"
 msgstr "Kaufen: %d€"
 
-#: scripts/Inventory.gd:913
-#: scripts/Main.gd:410
+#: scripts/Inventory.gd:916
+#: scripts/Main.gd:414
 msgid "Floor Plan"
 msgstr "Grundriss"
 
-#: scripts/Inventory.gd:914
+#: scripts/Inventory.gd:917
 msgid "Wall View"
 msgstr "Wandansicht"
 
-#: scripts/Inventory.gd:1047
+#: scripts/Inventory.gd:1050
 msgid "Buy"
 msgstr "Kaufen"
 
-#: scripts/Inventory.gd:1083
+#: scripts/Inventory.gd:1086
 msgid "Owned"
 msgstr "Vorhanden"
 
-#: scripts/Inventory.gd:1116
+#: scripts/Inventory.gd:1119
 msgid "Place (free)"
 msgstr "Platzieren (gratis)"
 
-#: scripts/Inventory.gd:1122
+#: scripts/Inventory.gd:1125
 msgid "Sell %d€"
 msgstr "Verkaufen %d€"
 
-#: scripts/Inventory.gd:1134
+#: scripts/Inventory.gd:1137
 msgid "decor"
 msgstr "Deko"
 
@@ -672,171 +676,171 @@ msgstr "Normal"
 msgid "%s and %s"
 msgstr "%s und %s"
 
-#: scripts/Main.gd:387
+#: scripts/Main.gd:391
 msgid "Test Layout"
 msgstr "Einrichtung testen"
 
-#: scripts/Main.gd:410
+#: scripts/Main.gd:414
 msgid "Blueprint view — place and move furniture from above"
 msgstr "Grundriss-Ansicht — Möbel von oben platzieren und verschieben"
 
-#: scripts/Main.gd:411
+#: scripts/Main.gd:415
 msgid "Walk around and place items in 3D — drag onto a wall to hang them"
 msgstr "Herumgehen und in 3D platzieren — zum Aufhängen auf eine Wand ziehen"
 
-#: scripts/Main.gd:449
+#: scripts/Main.gd:453
 msgid "Menu — settings, back to projects, quit"
 msgstr "Menü — Einstellungen, zurück zu den Projekten, beenden"
 
-#: scripts/Main.gd:473
+#: scripts/Main.gd:477
 msgid "← Back to Editor"
 msgstr "← Zurück zum Editor"
 
-#: scripts/Main.gd:474
+#: scripts/Main.gd:478
 msgid "Return to the Level Editor, resuming the level you were testing"
 msgstr "Zurück zum Level-Editor, mit dem Level, das du getestet hast"
 
-#: scripts/Main.gd:491
-#: scripts/Main.gd:2615
+#: scripts/Main.gd:495
+#: scripts/Main.gd:2646
 #: scenes/Furniture.tscn:18
 msgid "Furniture"
 msgstr "Möbel"
 
-#: scripts/Main.gd:492
+#: scripts/Main.gd:496
 msgid "Open or close the furniture catalogue (F)"
 msgstr "Möbelkatalog öffnen oder schließen (F)"
 
-#: scripts/Main.gd:522
+#: scripts/Main.gd:526
 msgid "Undo last action (Ctrl+%s)"
 msgstr "Letzte Aktion rückgängig (Strg+%s)"
 
-#: scripts/Main.gd:532
+#: scripts/Main.gd:536
 msgid "Redo (Ctrl+Shift+%s)"
 msgstr "Wiederherstellen (Strg+Umschalt+%s)"
 
-#: scripts/Main.gd:923
-#: scripts/Main.gd:3633
+#: scripts/Main.gd:935
+#: scripts/Main.gd:3665
 msgid "Budget: %d€"
 msgstr "Budget: %d€"
 
-#: scripts/Main.gd:1069
+#: scripts/Main.gd:1100
 msgid "NEW MECHANIC"
 msgstr "NEUE MECHANIK"
 
-#: scripts/Main.gd:1097
+#: scripts/Main.gd:1128
 msgid "Got it — let's go!"
 msgstr "Verstanden — los geht's!"
 
-#: scripts/Main.gd:2056
+#: scripts/Main.gd:2087
 msgid "%s (Loft)"
 msgstr "%s (Hochebene)"
 
-#: scripts/Main.gd:2413
-#: scripts/Main.gd:2991
+#: scripts/Main.gd:2444
+#: scripts/Main.gd:3023
 msgid "Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"
 msgstr "Möbel ziehen zum Verschieben · R dreht ein Stück · In 3D wechseln, um Dinge an Wände zu hängen"
 
-#: scripts/Main.gd:2422
+#: scripts/Main.gd:2453
 msgid "Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"
 msgstr "Gegenstände auf den Boden oder eine Wand ziehen · R dreht ein Stück · Q/E drehen die Ansicht · WASD verschiebt sie"
 
-#: scripts/Main.gd:2773
+#: scripts/Main.gd:2804
 msgid "Map"
 msgstr "Karte"
 
-#: scripts/Main.gd:2775
+#: scripts/Main.gd:2806
 msgid "See every apartment in this project and jump to any of them"
 msgstr "Alle Wohnungen dieses Projekts ansehen und zu jeder springen"
 
-#: scripts/Main.gd:2779
+#: scripts/Main.gd:2810
 msgid "Back"
 msgstr "Zurück"
 
-#: scripts/Main.gd:2781
+#: scripts/Main.gd:2812
 msgid "Step back out to the apartment this box sits in"
 msgstr "Zurück hinaus in die Wohnung, in der diese Kiste steht"
 
-#: scripts/Main.gd:2797
+#: scripts/Main.gd:2828
 msgid "←  Back to %s"
 msgstr "←  Zurück nach %s"
 
-#: scripts/Main.gd:2819
+#: scripts/Main.gd:2850
 msgid "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
 msgstr "Doppelklick auf eine Kiste zum Betreten · ein Stück auf eine Kiste ziehen, um es hineinzulegen · R dreht ein Stück"
 
-#: scripts/Main.gd:2823
+#: scripts/Main.gd:2854
 msgid "Drop a piece on “Back” to send it out · R rotates a piece"
 msgstr "Ein Stück auf „Zurück“ ziehen, um es hinauszuschicken · R dreht ein Stück"
 
-#: scripts/Main.gd:2977
+#: scripts/Main.gd:3009
 msgid "No wall inspected on this floor yet"
 msgstr "Auf diesem Stockwerk wurde noch keine Wand angesehen"
 
-#: scripts/Main.gd:3092
+#: scripts/Main.gd:3124
 msgid "%s needs daylight: stand it where the window's light reaches."
 msgstr "%s braucht Tageslicht: Stell es dorthin, wo das Fensterlicht hinkommt."
 
-#: scripts/Main.gd:3123
+#: scripts/Main.gd:3155
 msgid "Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr "%s gekauft  →  %s.   Es wartet dort im Katalog unter „Vorhanden“."
 
-#: scripts/Main.gd:3124
+#: scripts/Main.gd:3156
 msgid "Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr "%s geschickt  →  %s.   Es wartet dort im Katalog unter „Vorhanden“."
 
-#: scripts/Main.gd:3184
+#: scripts/Main.gd:3216
 msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned”."
 msgstr "%s ist mitgekommen. Klick, um es abzustellen  ·  Esc legt es unter „Vorhanden“ ab."
 
-#: scripts/Main.gd:3202
+#: scripts/Main.gd:3234
 msgid "♥ %s is a keepsake: it stays in this flat"
 msgstr "♥ %s ist ein Erbstück: Es bleibt in dieser Wohnung"
 
-#: scripts/Main.gd:3204
+#: scripts/Main.gd:3236
 msgid "A box can't go inside another apartment"
 msgstr "Eine Kiste kann nicht in eine andere Wohnung"
 
-#: scripts/Main.gd:3206
+#: scripts/Main.gd:3238
 msgid "Stairs can't move to another apartment"
 msgstr "Treppen können nicht in eine andere Wohnung umziehen"
 
-#: scripts/Main.gd:3251
+#: scripts/Main.gd:3283
 msgid "%s  Buy it for %s  ·  %d€ from this budget"
 msgstr "%s  Für %s kaufen  ·  %d€ aus diesem Budget"
 
-#: scripts/Main.gd:3253
+#: scripts/Main.gd:3285
 msgid "←  Take out to %s"
 msgstr "←  Hinaus nach %s"
 
-#: scripts/Main.gd:3253
+#: scripts/Main.gd:3285
 msgid "→  Take into %s"
 msgstr "→  Hinein nach %s"
 
-#: scripts/Main.gd:3254
+#: scripts/Main.gd:3286
 msgid "Shift: send it without going"
 msgstr "Umschalt: schicken, ohne mitzugehen"
 
-#: scripts/Main.gd:3282
+#: scripts/Main.gd:3314
 msgid "←  Click here to buy it for %s"
 msgstr "←  Hier klicken, um es für %s zu kaufen"
 
-#: scripts/Main.gd:3282
+#: scripts/Main.gd:3314
 msgid "←  Drop here to send to %s"
 msgstr "←  Hier ablegen, um es nach %s zu schicken"
 
-#: scripts/Main.gd:3435
+#: scripts/Main.gd:3467
 msgid "%s is already renting here — pick a different box."
 msgstr "%s wohnt hier schon zur Miete — wähl eine andere Kiste."
 
-#: scripts/Main.gd:3534
+#: scripts/Main.gd:3566
 msgid "♥ %s is a keepsake: it can be moved, not sold."
 msgstr "♥ %s ist ein Erbstück: Es lässt sich bewegen, aber nicht verkaufen."
 
-#: scripts/Main.gd:3539
+#: scripts/Main.gd:3571
 msgid "Removing %s means repaying its %d€ rent — you only have %d€."
 msgstr "%s zu entfernen heißt, seine %d€ Miete zurückzuzahlen — du hast nur %d€."
 
-#: scripts/Main.gd:3692
+#: scripts/Main.gd:3724
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too much furniture has been rearranged — try keeping heavier pieces closer to where they started."
@@ -844,7 +848,7 @@ msgstr ""
 "Der Mieter fühlt sich mit dieser Einrichtung nicht wohl.\n"
 "Zu viele Möbel wurden umgestellt — lass schwerere Stücke näher an ihrem Ausgangsplatz."
 
-#: scripts/Main.gd:3699
+#: scripts/Main.gd:3731
 msgid ""
 "Not all tenant requirements are met.\n"
 "Try again."
@@ -852,11 +856,11 @@ msgstr ""
 "Nicht alle Wünsche des Mieters sind erfüllt.\n"
 "Versuch es noch einmal."
 
-#: scripts/Main.gd:3701
+#: scripts/Main.gd:3733
 msgid "Not yet:"
 msgstr "Noch nicht:"
 
-#: scripts/Main.gd:3711
+#: scripts/Main.gd:3743
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
@@ -864,7 +868,7 @@ msgstr ""
 "Der Mieter kommt nicht heran an: %s.\n"
 "Lass einen mindestens 40 cm breiten Weg von der Tür zu der Seite, von der aus jedes Stück benutzt wird."
 
-#: scripts/Main.gd:3713
+#: scripts/Main.gd:3745
 msgid ""
 "Some furniture is completely blocked.\n"
 "Leave at least 1 tile of walking space around it."
@@ -872,31 +876,31 @@ msgstr ""
 "Manche Möbel sind komplett zugestellt.\n"
 "Lass mindestens ein Feld Platz zum Gehen um sie herum."
 
-#: scripts/Main.gd:3962
+#: scripts/Main.gd:3996
 msgid "✕ Back to Results"
 msgstr "✕ Zurück zum Ergebnis"
 
-#: scripts/Main.gd:4081
+#: scripts/Main.gd:4115
 msgid "CUSTOM BUILD"
 msgstr "EIGENBAU"
 
-#: scripts/Main.gd:4093
+#: scripts/Main.gd:4127
 msgid "LMB paint · RMB erase"
 msgstr "LMT malen · RMT löschen"
 
-#: scripts/Main.gd:4105
+#: scripts/Main.gd:4139
 msgid "Move"
 msgstr "Bewegen"
 
-#: scripts/Main.gd:4129
+#: scripts/Main.gd:4163
 msgid "%s  %d€/tile"
 msgstr "%s  %d€/Feld"
 
-#: scripts/Main.gd:4757
+#: scripts/Main.gd:4791
 msgid "Paint tiles on the floor"
 msgstr "Felder auf den Boden malen"
 
-#: scripts/Main.gd:3391
+#: scripts/Main.gd:3423
 msgid "%d piece is waiting for you here: open Furniture, it is first under “Owned”."
 msgid_plural "%d pieces are waiting for you here: open Furniture, they are first under “Owned”."
 msgstr[0] "%d Stück wartet hier auf dich: Öffne Möbel, es steht ganz oben unter „Vorhanden“."
@@ -1283,29 +1287,33 @@ msgstr "Fügt Kontaktschatten in Ecken hinzu. Braucht eine eigene Grafikkarte."
 msgid "Press any key…"
 msgstr "Drück eine beliebige Taste…"
 
-#: scripts/TenantCard.gd:180
+#: scripts/TenantCard.gd:193
 msgid "%s NEEDS"
-msgstr "%s BRAUCHT"
+msgstr "BEDÜRFNISSE VON %s"
 
-#: scripts/TenantCard.gd:180
+#: scripts/TenantCard.gd:193
 msgid "NEEDS"
 msgstr "BRAUCHT"
 
-#: scripts/TenantCard.gd:185
+#: scripts/TenantCard.gd:198
 msgid "Furnish the apartment so every need here is ticked"
 msgstr "Richte die Wohnung so ein, dass jedes Bedürfnis hier abgehakt ist"
 
-#: scripts/TenantCard.gd:324
+#: scripts/TenantCard.gd:343
 msgid "%s — click to see the furniture that provides it"
 msgstr "%s — klicken, um die Möbel zu sehen, die das erfüllen"
 
-#: scripts/TenantCard.gd:488
+#: scripts/TenantCard.gd:505
 msgid "The numbered line on the plan shows it."
 msgstr "Die nummerierte Linie im Grundriss zeigt sie."
 
-#: scripts/TenantCard.gd:489
+#: scripts/TenantCard.gd:506
 msgid "Tall storage splits a room into zones."
 msgstr "Hoher Stauraum teilt einen Raum in Zonen."
+
+#: scripts/TenantCard.gd:569
+msgid "Read the tenant's rental application again"
+msgstr "Den Mietantrag noch einmal lesen"
 
 #: scripts/Wall.gd:197
 msgid "needs %s flooring"
@@ -1381,6 +1389,29 @@ msgstr "Osten"
 msgid "West"
 msgstr "Westen"
 
+#: scripts/ui/ApplicationFax.gd:102
+msgid "RENTAL APPLICATION"
+msgstr "MIETANTRAG"
+
+#: scripts/ui/ApplicationFax.gd:146
+msgid "FAX  ·  RE: RENTAL APPLICATION  ·  PAGE 1/1"
+msgstr "FAX  ·  BETREFF: MIETANTRAG  ·  SEITE 1/1"
+
+#: scripts/ui/ApplicationFax.gd:240
+msgid "Skip"
+msgstr "Überspringen"
+
+#: scripts/ui/ApplicationFax.gd:313
+#: scripts/ui/ApplicationFax.gd:318
+msgid "OK"
+msgstr "OK"
+
+#: scripts/ui/ApplicationFax.gd:155
+msgid "Applicant: %s"
+msgid_plural "Applicants: %s"
+msgstr[0] "Antragsteller: %s"
+msgstr[1] "Antragsteller: %s"
+
 #: style/style_quality.gd:18
 msgid "Low"
 msgstr "Niedrig"
@@ -1455,6 +1486,7 @@ msgid "The Beach House"
 msgstr "Das Strandhaus"
 
 #: data/levels.json:beach_house
+#: data/tenants/beach_house.tres:10
 msgid "Marisol"
 msgstr "Marisol"
 
@@ -1506,6 +1538,7 @@ msgid "Three Freezers"
 msgstr "Drei Gefriertruhen"
 
 #: data/levels.json:three_freezers
+#: data/tenants/three_freezers.tres:10
 msgid "Dani"
 msgstr "Dani"
 
@@ -1545,6 +1578,7 @@ msgid "Day and Night"
 msgstr "Tag und Nacht"
 
 #: data/levels.json:day_and_night
+#: data/tenants/day_and_night.tres:10
 msgid "Noor"
 msgstr "Noor"
 
@@ -1583,6 +1617,7 @@ msgid "The Inheritance"
 msgstr "Das Erbe"
 
 #: data/levels.json:the_inheritance
+#: data/tenants/the_inheritance.tres:10
 msgid "Irene"
 msgstr "Irene"
 
@@ -1609,6 +1644,7 @@ msgid "Sneeze Girl"
 msgstr "Das Nies-Mädchen"
 
 #: data/levels.json:sneeze_girl
+#: data/tenants/sneeze_girl.tres:10
 msgid "Achís"
 msgstr "Achís"
 
@@ -1647,6 +1683,7 @@ msgid "The Tower"
 msgstr "Der Turm"
 
 #: data/levels.json:the_tower
+#: data/tenants/the_tower.tres:10
 msgid "Sir Guillem"
 msgstr "Sir Guillem"
 
@@ -1739,6 +1776,7 @@ msgid "The Border House"
 msgstr "Das Grenzhaus"
 
 #: data/levels.json:border_house
+#: data/tenants/border_house.tres:10
 msgid "Bruna"
 msgstr "Bruna"
 
@@ -1770,6 +1808,7 @@ msgid "Capsule Pod"
 msgstr "Schlafkapsel"
 
 #: data/levels.json:rental:capsule
+#: data/tenants/rental_capsule.tres:10
 msgid "Kenji"
 msgstr "Kenji"
 
@@ -1783,6 +1822,7 @@ msgid "Student Shoebox"
 msgstr "Studenten-Schuhkarton"
 
 #: data/levels.json:rental:student
+#: data/tenants/rental_student.tres:10
 msgid "Imke"
 msgstr "Imke"
 
@@ -1809,6 +1849,7 @@ msgid "Artist's Garret"
 msgstr "Künstlerdachkammer"
 
 #: data/levels.json:rental:garret
+#: data/tenants/rental_garret.tres:10
 msgid "Odile"
 msgstr "Odile"
 
@@ -1822,6 +1863,7 @@ msgid "Night-Shift Nook"
 msgstr "Nachtschicht-Nische"
 
 #: data/levels.json:rental:nook
+#: data/tenants/rental_nook.tres:10
 msgid "Tomasz"
 msgstr "Tomasz"
 
@@ -1861,12 +1903,337 @@ msgid "Penthouse-in-a-Box"
 msgstr "Penthouse im Karton"
 
 #: data/levels.json:rental:penthouse
+#: data/tenants/rental_penthouse.tres:10
 msgid "Frau von Hagen"
 msgstr "Frau von Hagen"
 
 #: data/levels.json:rental:penthouse
 msgid "Insists it is a penthouse. Pays as if it were one."
 msgstr "Besteht darauf, dass es ein Penthouse ist. Zahlt auch so."
+
+#: data/tenants/beach_house.tres:16
+msgid "Lucía"
+msgstr "Lucía"
+
+#: data/tenants/beach_house.tres:22
+msgid "Tito"
+msgstr "Tito"
+
+#: data/tenants/beach_house.tres:27
+msgid "The bathroom is perfect. Please don't touch the bathroom."
+msgstr "Das Bad ist perfekt. Bitte fasst das Bad nicht an."
+
+#: data/tenants/beach_house.tres:33
+msgid "The kitchen stays too. I cook for everyone on two rings, and I like it that way."
+msgstr "Die Küche bleibt auch. Ich koche für alle auf zwei Platten, und das mag ich so."
+
+#: data/tenants/beach_house.tres:39
+msgid "Somewhere for the beach stuff, or it all ends up on my bed."
+msgstr "Irgendwo Platz für das Strandzeug, sonst landet alles auf meinem Bett."
+
+#: data/tenants/beach_house.tres:45
+msgid "We need beds. Real ones, not towels on the floor."
+msgstr "Wir brauchen Betten. Echte, keine Handtücher auf dem Boden."
+
+#: data/tenants/beach_house.tres:51
+msgid "And somewhere to sit down after a day at the beach. One seat would be a miracle."
+msgstr "Und etwas zum Hinsetzen nach einem Tag am Strand. Ein Sitzplatz wäre ein Wunder."
+
+#: data/tenants/border_house.tres:15
+msgid "One council says I can't sleep in the same room as a kitchen. So make it two rooms."
+msgstr "Die eine Gemeinde sagt, ich darf nicht im selben Raum wie eine Küche schlafen. Also macht zwei Räume daraus."
+
+#: data/tenants/border_house.tres:21
+msgid "The other council owns the kitchen. It stays exactly where it is."
+msgstr "Der anderen Gemeinde gehört die Küche. Sie bleibt genau, wo sie ist."
+
+#: data/tenants/border_house.tres:27
+msgid "I still need a bed, on my side of the line."
+msgstr "Ich brauche trotzdem ein Bett, auf meiner Seite der Grenze."
+
+#: data/tenants/border_house.tres:33
+msgid "Somewhere to sit and read the by-laws. There are a lot of them."
+msgstr "Einen Platz zum Sitzen und Satzungen-Lesen. Es sind viele."
+
+#: data/tenants/border_house.tres:39
+msgid "Storage for the paperwork. Did I mention there is paperwork?"
+msgstr "Stauraum für den Papierkram. Hatte ich erwähnt, dass es Papierkram gibt?"
+
+#: data/tenants/day_and_night.tres:15
+msgid "A bathroom, morning and night. That part never changes."
+msgstr "Ein Bad, morgens und abends. Das ändert sich nie."
+
+#: data/tenants/day_and_night.tres:21
+msgid "By day I live on the sofa: laptop on my knees, tea within reach."
+msgstr "Tagsüber lebe ich auf dem Sofa: Laptop auf den Knien, Tee in Reichweite."
+
+#: data/tenants/day_and_night.tres:27
+msgid "I also need somewhere to work during the day that isn't my lap."
+msgstr "Außerdem brauche ich tagsüber einen Arbeitsplatz, der nicht mein Schoß ist."
+
+#: data/tenants/day_and_night.tres:33
+msgid "At night the same room has to become a bedroom. I can't afford two rooms."
+msgstr "Nachts muss derselbe Raum ein Schlafzimmer werden. Zwei Zimmer kann ich mir nicht leisten."
+
+#: data/tenants/overprotective.tres:10
+msgid "Montse"
+msgstr "Montse"
+
+#: data/tenants/overprotective.tres:16
+msgid "Jordi"
+msgstr "Jordi"
+
+#: data/tenants/overprotective.tres:22
+msgid "Laia"
+msgstr "Laia"
+
+#: data/tenants/overprotective.tres:27
+msgid "From the sofa I want to see who comes through the front door."
+msgstr "Vom Sofa aus will ich sehen, wer zur Wohnungstür hereinkommt."
+
+#: data/tenants/overprotective.tres:33
+msgid "From the computer I want to see her bedroom door. Just in case."
+msgstr "Vom Computer aus will ich ihre Zimmertür sehen. Nur für alle Fälle."
+
+#: data/tenants/overprotective.tres:39
+msgid "If they open my door, they must not be able to see my window. Long story."
+msgstr "Wenn sie meine Tür aufmachen, dürfen sie mein Fenster nicht sehen. Lange Geschichte."
+
+#: data/tenants/overprotective.tres:45
+msgid "A sofa, obviously. That's where the watching happens."
+msgstr "Ein Sofa, natürlich. Von dort aus wird aufgepasst."
+
+#: data/tenants/overprotective.tres:51
+msgid "A computer desk. I work from home. I also watch from home."
+msgstr "Einen Computertisch. Ich arbeite von zu Hause. Ich passe auch von zu Hause auf."
+
+#: data/tenants/overprotective.tres:57
+msgid "Beds for all of us. Mine as far from theirs as possible."
+msgstr "Betten für uns alle. Meins so weit wie möglich von ihren entfernt."
+
+#: data/tenants/rental_bunk.tres:10
+msgid "Sven"
+msgstr "Sven"
+
+#: data/tenants/rental_bunk.tres:16
+msgid "Aiko"
+msgstr "Aiko"
+
+#: data/tenants/rental_bunk.tres:22
+msgid "Mateo"
+msgstr "Mateo"
+
+#: data/tenants/rental_bunk.tres:27
+msgid "Three beds. Stacked is fine, we're used to it."
+msgstr "Drei Betten. Gestapelt ist okay, wir sind das gewohnt."
+
+#: data/tenants/rental_bunk.tres:33
+msgid "Somewhere to sit and plan tomorrow's route."
+msgstr "Einen Platz zum Sitzen, um die Route für morgen zu planen."
+
+#: data/tenants/rental_bunk.tres:39
+msgid "Somewhere for the backpacks that isn't the beds."
+msgstr "Einen Platz für die Rucksäcke, der nicht die Betten ist."
+
+#: data/tenants/rental_capsule.tres:15
+msgid "A bed. I am only here to sleep."
+msgstr "Ein Bett. Ich bin nur zum Schlafen hier."
+
+#: data/tenants/rental_capsule.tres:21
+msgid "Somewhere to sit and take my shoes off."
+msgstr "Einen Platz zum Sitzen und Schuhe-Ausziehen."
+
+#: data/tenants/rental_capsule.tres:27
+msgid "A shelf for my suit. I have one suit."
+msgstr "Ein Regal für meinen Anzug. Ich habe einen Anzug."
+
+#: data/tenants/rental_couple.tres:10
+msgid "Lena"
+msgstr "Lena"
+
+#: data/tenants/rental_couple.tres:16
+msgid "Aron"
+msgstr "Aron"
+
+#: data/tenants/rental_couple.tres:21
+msgid "One bed is enough. We checked."
+msgstr "Ein Bett reicht. Haben wir geprüft."
+
+#: data/tenants/rental_couple.tres:27
+msgid "Two seats, though. We are not that close."
+msgstr "Aber zwei Sitzplätze. So nah stehen wir uns nicht."
+
+#: data/tenants/rental_couple.tres:33
+msgid "Storage, because we're saving, not spending."
+msgstr "Stauraum, denn wir sparen, statt auszugeben."
+
+#: data/tenants/rental_family.tres:10
+msgid "Petra"
+msgstr "Petra"
+
+#: data/tenants/rental_family.tres:16
+msgid "Jonas"
+msgstr "Jonas"
+
+#: data/tenants/rental_family.tres:22
+msgid "Mia"
+msgstr "Mia"
+
+#: data/tenants/rental_family.tres:28
+msgid "Ben"
+msgstr "Ben"
+
+#: data/tenants/rental_family.tres:33
+msgid "Four of us need somewhere to sleep. We have done the sums."
+msgstr "Wir vier brauchen einen Schlafplatz. Wir haben nachgerechnet."
+
+#: data/tenants/rental_family.tres:39
+msgid "Somewhere we can all sit down at once, now and then."
+msgstr "Irgendwo, wo wir uns ab und zu alle gleichzeitig hinsetzen können."
+
+#: data/tenants/rental_family.tres:45
+msgid "And a place for my toys that Ben can't reach."
+msgstr "Und einen Platz für meine Spielsachen, an den Ben nicht rankommt."
+
+#: data/tenants/rental_garret.tres:15
+msgid "A bed for noon, when the light is wrong for painting."
+msgstr "Ein Bett für mittags, wenn das Licht zum Malen nicht taugt."
+
+#: data/tenants/rental_garret.tres:21
+msgid "A stool by the window. The window is the whole point."
+msgstr "Einen Hocker am Fenster. Um das Fenster geht es ja."
+
+#: data/tenants/rental_garret.tres:27
+msgid "Room for canvases. They multiply."
+msgstr "Platz für Leinwände. Sie vermehren sich."
+
+#: data/tenants/rental_nook.tres:15
+msgid "I sleep while you are all awake. A proper bed, please."
+msgstr "Ich schlafe, während ihr alle wach seid. Ein richtiges Bett, bitte."
+
+#: data/tenants/rental_nook.tres:21
+msgid "A chair to sit in when I get back at dawn."
+msgstr "Einen Stuhl, wenn ich im Morgengrauen heimkomme."
+
+#: data/tenants/rental_nook.tres:27
+msgid "Somewhere for my work boots and my oilskins."
+msgstr "Einen Platz für meine Arbeitsstiefel und mein Ölzeug."
+
+#: data/tenants/rental_penthouse.tres:15
+msgid "A bed befitting a penthouse."
+msgstr "Ein Bett, das eines Penthouse würdig ist."
+
+#: data/tenants/rental_penthouse.tres:21
+msgid "A seat with a view. There must be a view."
+msgstr "Ein Sitzplatz mit Aussicht. Es muss eine Aussicht geben."
+
+#: data/tenants/rental_penthouse.tres:27
+msgid "Storage for my hats. Penthouse residents have hats."
+msgstr "Stauraum für meine Hüte. Penthouse-Bewohnerinnen haben Hüte."
+
+#: data/tenants/rental_student.tres:15
+msgid "A chair at a desk comes first. I'm here to study. Mostly."
+msgstr "Zuerst ein Stuhl am Schreibtisch. Ich bin zum Studieren hier. Meistens."
+
+#: data/tenants/rental_student.tres:21
+msgid "Shelves for the books I will definitely read."
+msgstr "Regale für die Bücher, die ich ganz bestimmt lesen werde."
+
+#: data/tenants/rental_student.tres:27
+msgid "A bed, if there's any room left after the desk."
+msgstr "Ein Bett, falls nach dem Schreibtisch noch Platz ist."
+
+#: data/tenants/sneeze_girl.tres:15
+msgid "All of me agree on one thing: a bathroom."
+msgstr "Alle von mir sind sich in einem einig: ein Bad."
+
+#: data/tenants/sneeze_girl.tres:21
+msgid "The bookworm in me needs a desk. Achoo! Sorry."
+msgstr "Die Leseratte in mir braucht einen Schreibtisch. Hatschi! Entschuldigung."
+
+#: data/tenants/sneeze_girl.tres:27
+msgid "She also needs shelves. She has so many books."
+msgstr "Sie braucht auch Regale. Sie hat so viele Bücher."
+
+#: data/tenants/sneeze_girl.tres:33
+msgid "When I'm the host, there has to be a table for my guests."
+msgstr "Wenn ich die Gastgeberin bin, muss es einen Tisch für meine Gäste geben."
+
+#: data/tenants/sneeze_girl.tres:39
+msgid "And chairs! Guests can't eat standing up. Achoo!"
+msgstr "Und Stühle! Gäste können nicht im Stehen essen. Hatschi!"
+
+#: data/tenants/sneeze_girl.tres:45
+msgid "And when I'm sleepy, which is now, a bed."
+msgstr "Und wenn ich müde bin, also jetzt, ein Bett."
+
+#: data/tenants/the_inheritance.tres:15
+msgid "Grandma's wardrobe stays. So do her chests, her shelves and her opinions."
+msgstr "Omas Kleiderschrank bleibt. Genau wie ihre Truhen, ihre Regale und ihre Meinungen."
+
+#: data/tenants/the_inheritance.tres:21
+msgid "I'll sleep in her bed. It creaks in a comforting way."
+msgstr "Ich schlafe in ihrem Bett. Es knarrt auf eine tröstliche Art."
+
+#: data/tenants/the_inheritance.tres:27
+msgid "Sunday lunch happens at her table, like it always has."
+msgstr "Das Sonntagsessen findet an ihrem Tisch statt, wie schon immer."
+
+#: data/tenants/the_inheritance.tres:33
+msgid "But I work from home now, and I need a desk somewhere in all this."
+msgstr "Aber ich arbeite jetzt von zu Hause und brauche irgendwo in all dem einen Schreibtisch."
+
+#: data/tenants/the_inheritance.tres:39
+msgid "A chair to work in, please. Not the rocking chair."
+msgstr "Einen Stuhl zum Arbeiten, bitte. Nicht den Schaukelstuhl."
+
+#: data/tenants/the_inheritance.tres:45
+msgid "The bathroom works. It is pink. It stays pink."
+msgstr "Das Bad funktioniert. Es ist rosa. Es bleibt rosa."
+
+#: data/tenants/the_tower.tres:15
+msgid "A knight sleeps at the top of his tower. Or at least somewhere in it."
+msgstr "Ein Ritter schläft oben in seinem Turm. Oder wenigstens irgendwo darin."
+
+#: data/tenants/the_tower.tres:21
+msgid "A kitchen, for I intend to roast things."
+msgstr "Eine Küche, denn ich gedenke, Dinge zu braten."
+
+#: data/tenants/the_tower.tres:27
+msgid "A desk, from which to write strongly worded letters to the council."
+msgstr "Einen Schreibtisch, um dem Stadtrat geharnischte Briefe zu schreiben."
+
+#: data/tenants/the_tower.tres:33
+msgid "A seat. My knees have climbed enough stairs for one lifetime."
+msgstr "Einen Sitz. Meine Knie sind genug Treppen für ein Leben gestiegen."
+
+#: data/tenants/the_tower.tres:39
+msgid "Somewhere to keep my armour. It is mostly decorative."
+msgstr "Einen Platz für meine Rüstung. Sie ist hauptsächlich Dekoration."
+
+#: data/tenants/the_tower.tres:45
+msgid "And a privy. A modern one, if it please you."
+msgstr "Und einen Abort. Einen modernen, wenn es beliebt."
+
+#: data/tenants/three_freezers.tres:15
+msgid "The freezers come with me. All three. This is not up for discussion."
+msgstr "Die Gefriertruhen kommen mit. Alle drei. Darüber wird nicht diskutiert."
+
+#: data/tenants/three_freezers.tres:21
+msgid "I stream twelve hours a day, so I need a real desk. The floor is not a desk."
+msgstr "Ich streame zwölf Stunden am Tag, also brauche ich einen echten Schreibtisch. Der Boden ist kein Schreibtisch."
+
+#: data/tenants/three_freezers.tres:27
+msgid "And a chair. My back has opinions."
+msgstr "Und einen Stuhl. Mein Rücken hat da eine Meinung."
+
+#: data/tenants/three_freezers.tres:33
+msgid "Somewhere to sleep. Up high is fine. Up high is actually cool."
+msgstr "Irgendwo zum Schlafen. Hoch oben ist okay. Hoch oben ist sogar cool."
+
+#: data/tenants/three_freezers.tres:39
+msgid "A working bathroom, for the four minutes a day I'm not live."
+msgstr "Ein funktionierendes Bad, für die vier Minuten am Tag, in denen ich nicht live bin."
 
 #: data/furniture.json:shoebox_apartment
 msgid "Nested Apartment (Shoebox)"

@@ -38,6 +38,9 @@ static func price_text(price: int) -> String:
 	return ("+%d€" % -price) if price < 0 else ("%d€" % price)
 
 var _gm: GameManager = null
+# Needs the tenant hasn't mentioned yet (hidden requirements): "Needed" must
+# not give them away.
+var hidden_needs: Array = []
 var _category: int = Category.FURNITURE
 var _sub_category: String = "All"
 var _full_list: Array = []
@@ -262,7 +265,7 @@ func unmet_needs() -> Array:
 					if need not in wanted:
 						wanted.append(need)
 	for need in wanted:
-		if need not in _gm.fulfilled_functions:
+		if need not in _gm.fulfilled_functions and need not in hidden_needs:
 			out.append(need)
 	return out
 

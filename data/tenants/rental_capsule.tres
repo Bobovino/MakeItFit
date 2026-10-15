@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_kenji"]
+script = ExtResource("2_res")
+id = &"kenji"
+display_name = "Kenji"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "A bed. I am only here to sleep."
+requirement = "need:sleep"
+speaker = &"kenji"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "Somewhere to sit and take my shoes off."
+requirement = "need:sit"
+speaker = &"kenji"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "A shelf for my suit. I have one suit."
+requirement = "need:storage"
+speaker = &"kenji"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "rental:capsule"
+residents = Array[ExtResource("2_res")]([SubResource("res_kenji")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3")])

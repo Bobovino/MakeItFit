@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_noor"]
+script = ExtResource("2_res")
+id = &"noor"
+display_name = "Noor"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "A bathroom, morning and night. That part never changes."
+requirement = "need:hygiene"
+speaker = &"noor"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "By day I live on the sofa: laptop on my knees, tea within reach."
+requirement = "need:sit"
+speaker = &"noor"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "I also need somewhere to work during the day that isn't my lap."
+requirement = "need:work"
+speaker = &"noor"
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("3_line")
+text = "At night the same room has to become a bedroom. I can't afford two rooms."
+requirement = "need:sleep"
+speaker = &"noor"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "day_and_night"
+residents = Array[ExtResource("2_res")]([SubResource("res_noor")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4")])

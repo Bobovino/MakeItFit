@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_achis"]
+script = ExtResource("2_res")
+id = &"achis"
+display_name = "Achís"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "All of me agree on one thing: a bathroom."
+requirement = "need:hygiene"
+speaker = &"achis"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "The bookworm in me needs a desk. Achoo! Sorry."
+requirement = "need:work"
+speaker = &"achis"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "She also needs shelves. She has so many books."
+requirement = "need:storage"
+speaker = &"achis"
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("3_line")
+text = "When I'm the host, there has to be a table for my guests."
+requirement = "need:dine"
+speaker = &"achis"
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("3_line")
+text = "And chairs! Guests can't eat standing up. Achoo!"
+requirement = "need:sit"
+speaker = &"achis"
+
+[sub_resource type="Resource" id="line_6"]
+script = ExtResource("3_line")
+text = "And when I'm sleepy, which is now, a bed."
+requirement = "need:sleep"
+speaker = &"achis"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "sneeze_girl"
+residents = Array[ExtResource("2_res")]([SubResource("res_achis")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6")])

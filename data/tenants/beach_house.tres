@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_marisol"]
+script = ExtResource("2_res")
+id = &"marisol"
+display_name = "Marisol"
+body = "adult"
+
+[sub_resource type="Resource" id="res_lucia"]
+script = ExtResource("2_res")
+id = &"lucia"
+display_name = "Lucía"
+body = "teen"
+
+[sub_resource type="Resource" id="res_tito"]
+script = ExtResource("2_res")
+id = &"tito"
+display_name = "Tito"
+body = "child"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "The bathroom is perfect. Please don't touch the bathroom."
+requirement = "need:hygiene"
+speaker = &"marisol"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "The kitchen stays too. I cook for everyone on two rings, and I like it that way."
+requirement = "need:cook"
+speaker = &"marisol"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "Somewhere for the beach stuff, or it all ends up on my bed."
+requirement = "need:storage"
+speaker = &"lucia"
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("3_line")
+text = "We need beds. Real ones, not towels on the floor."
+requirement = "need:sleep"
+speaker = &"tito"
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("3_line")
+text = "And somewhere to sit down after a day at the beach. One seat would be a miracle."
+requirement = "need:sit"
+speaker = &"marisol"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "beach_house"
+residents = Array[ExtResource("2_res")]([SubResource("res_marisol"), SubResource("res_lucia"), SubResource("res_tito")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5")])

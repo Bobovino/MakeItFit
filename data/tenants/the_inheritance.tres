@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_irene"]
+script = ExtResource("2_res")
+id = &"irene"
+display_name = "Irene"
+body = "adult"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "Grandma's wardrobe stays. So do her chests, her shelves and her opinions."
+requirement = "need:storage"
+speaker = &"irene"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "I'll sleep in her bed. It creaks in a comforting way."
+requirement = "need:sleep"
+speaker = &"irene"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "Sunday lunch happens at her table, like it always has."
+requirement = "need:dine"
+speaker = &"irene"
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("3_line")
+text = "But I work from home now, and I need a desk somewhere in all this."
+requirement = "need:work"
+speaker = &"irene"
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("3_line")
+text = "A chair to work in, please. Not the rocking chair."
+requirement = "need:sit"
+speaker = &"irene"
+
+[sub_resource type="Resource" id="line_6"]
+script = ExtResource("3_line")
+text = "The bathroom works. It is pink. It stays pink."
+requirement = "need:hygiene"
+speaker = &"irene"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "the_inheritance"
+residents = Array[ExtResource("2_res")]([SubResource("res_irene")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6")])

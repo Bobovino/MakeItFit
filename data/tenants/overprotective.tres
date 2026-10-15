@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="TenantApplication" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/tenants/tenant_application.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/tenants/tenant_resident.gd" id="2_res"]
+[ext_resource type="Script" path="res://scripts/tenants/application_line.gd" id="3_line"]
+
+[sub_resource type="Resource" id="res_montse"]
+script = ExtResource("2_res")
+id = &"montse"
+display_name = "Montse"
+body = "adult"
+
+[sub_resource type="Resource" id="res_jordi"]
+script = ExtResource("2_res")
+id = &"jordi"
+display_name = "Jordi"
+body = "adult"
+
+[sub_resource type="Resource" id="res_laia"]
+script = ExtResource("2_res")
+id = &"laia"
+display_name = "Laia"
+body = "teen"
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("3_line")
+text = "From the sofa I want to see who comes through the front door."
+requirement = "sight:1"
+speaker = &"montse"
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("3_line")
+text = "From the computer I want to see her bedroom door. Just in case."
+requirement = "sight:2"
+speaker = &"jordi"
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("3_line")
+text = "If they open my door, they must not be able to see my window. Long story."
+requirement = "sight:3"
+speaker = &"laia"
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("3_line")
+text = "A sofa, obviously. That's where the watching happens."
+requirement = "need:sit"
+speaker = &"montse"
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("3_line")
+text = "A computer desk. I work from home. I also watch from home."
+requirement = "need:work"
+speaker = &"jordi"
+
+[sub_resource type="Resource" id="line_6"]
+script = ExtResource("3_line")
+text = "Beds for all of us. Mine as far from theirs as possible."
+requirement = "need:sleep"
+speaker = &"laia"
+
+[resource]
+script = ExtResource("1_app")
+level_id = "overprotective"
+residents = Array[ExtResource("2_res")]([SubResource("res_montse"), SubResource("res_jordi"), SubResource("res_laia")])
+lines = Array[ExtResource("3_line")]([SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6")])

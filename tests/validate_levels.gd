@@ -23,6 +23,8 @@ const ERROR_PREFIXES := ["Overlaps", "Outside the room", "Blocked by a wall", "N
 
 
 func _ready() -> void:
+	# Block reasons are matched against their English source text below.
+	TranslationServer.set_locale("en")
 	var only := ""
 	var strict := false
 	for arg in OS.get_cmdline_user_args():
@@ -97,6 +99,10 @@ func _ready() -> void:
 			for line in lines:
 				print(line)
 
+	var app_counts := _check_applications(levels, only)
+	errors += app_counts[0]
+	warnings += app_counts[1]
+
 	var failed := errors > 0 or (strict and warnings > 0)
 	print("\nWalking-paths rule: %s" % ("ON" if Floor.pathing_enabled else "off"))
 	print("%d level(s) checked: %d error(s), %d warning(s)" % [checked, errors, warnings])
@@ -119,3 +125,70 @@ func _is_stack(fl: Floor, f: Furniture) -> bool:
 			return false   # a real overlap with something that isn't a stack
 		found = true
 	return found
+
+
+# Rental applications (data/tenants/*.tres): every line must point at a
+# requirement its level really has and be spoken by one of its residents.
+# Warnings: a requirement no line mentions (it still appears in the bar, just
+# without an introduction), or a level whose application is not 4-6 lines
+# long when it has that many requirements. Returns [errors, warnings].
+func _check_applications(levels: Array, only: String) -> Array:
+	var errors := 0
+	var warnings := 0
+	var level_ids: Array = []
+	for lv in levels:
+		level_ids.append((lv as Dictionary)["id"])
+		var id: String = (lv as Dictionary)["id"]
+		if only != "" and id != only:
+			continue
+		var app := TenantApplication.for_level(id)
+		if app == null:
+			continue
+		var out: PackedStringArray = []
+		var ids := Requirements.ids_for_level(lv as Dictionary)
+		if app.level_id != id:
+			out.append("    ERROR  application says level_id \"%s\"" % app.level_id)
+			errors += 1
+		var resident_ids: Array = []
+		for r in app.residents:
+			if r.id == &"" or r.id in resident_ids:
+				out.append("    ERROR  resident with a missing or repeated id (\"%s\")" % r.id)
+				errors += 1
+			resident_ids.append(r.id)
+		var covered: Array = []
+		for line in app.lines:
+			if line.requirement not in ids:
+				out.append("    ERROR  line \"%s\" points at %s, which this level doesn't have" % [line.text.left(40), line.requirement])
+				errors += 1
+			if line.speaker != &"" and line.speaker not in resident_ids:
+				out.append("    ERROR  line \"%s\" is spoken by unknown resident %s" % [line.text.left(40), line.speaker])
+				errors += 1
+			if not line.hidden and line.text.strip_edges() == "":
+				out.append("    ERROR  a printed line has no text (%s)" % line.requirement)
+				errors += 1
+			covered.append(line.requirement)
+		# A need line on a level with moments covers that need in every moment.
+		for req in ids:
+			var parts := req.split(":")
+			var is_covered := req in covered or (parts[0] == "moment" and ("need:" + parts[2]) in covered) \
+				or (parts[0] == "need" and covered.any(func(c): return (c as String).begins_with("moment:") and (c as String).ends_with(":" + parts[1])))
+			if not is_covered:
+				out.append("    warn   no line mentions %s" % req)
+				warnings += 1
+		var printed := app.printed_lines().size()
+		var distinct := ids.filter(func(r): return not (r as String).begins_with("moment:")).size()
+		if distinct >= 4 and (printed < 4 or printed > 6):
+			out.append("    warn   %d printed lines (aim for 4-6)" % printed)
+			warnings += 1
+		if not out.is_empty():
+			print("%s  (application)" % id)
+			for l in out:
+				print(l)
+	for f in DirAccess.get_files_at(TenantApplication.DIR):
+		if f.ends_with(".tres"):
+			var app := load(TenantApplication.DIR + f) as TenantApplication
+			if app == null or app.level_id not in level_ids:
+				print("%s  (application)\n    ERROR  no level \"%s\" in levels.json" % [f, app.level_id if app else "?"])
+				errors += 1
+	return [errors, warnings]
+

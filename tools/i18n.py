@@ -10,6 +10,7 @@ collected from:
   - text/tooltip_text/placeholder_text properties in scenes/*.tscn
   - the player-facing fields of data/levels.json and data/furniture.json,
     which scripts show through Loc.data()
+  - line texts and resident names in the rental applications, data/tenants/*.tres
 Developer-only screens (the level editor, dev screenshots) are not collected.
 
 Run from the project root. No dependencies beyond the standard library.
@@ -205,6 +206,14 @@ def collect():
         for fl in lv.get("apartment", {}).get("floors", []):
             if fl.get("label"):
                 add(fl["label"], "", ref)
+
+    # Rental applications: line texts and resident names, shown through tr().
+    tres_re = re.compile(r'^(text|display_name) = ' + STR, re.M | re.S)
+    for path in sorted(glob.glob(os.path.join(ROOT, "data/tenants/*.tres"))):
+        rel = os.path.relpath(path, ROOT).replace("\\", "/")
+        text = open(path, encoding="utf-8").read()
+        for m in tres_re.finditer(text):
+            add(gd_unescape(m.group(2)), "", "%s:%d" % (rel, line_of(text, m.start())))
 
     furniture = json.load(open(os.path.join(ROOT, "data/furniture.json"), encoding="utf-8"))
     for f in furniture.get("furniture", []):
