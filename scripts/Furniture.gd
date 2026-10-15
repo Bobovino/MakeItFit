@@ -228,6 +228,11 @@ var _dragging: bool = false
 var _placement_mode: bool = false   # true while waiting for initial click-to-place
 var _drag_offset: Vector2 = Vector2.ZERO
 var _original_pos: Vector2 = Vector2.ZERO
+var _press_ms := 0                       # when the current press began, for a touch long-press
+var _press_moved := false                # the pointer has left the press spot since
+# Main's handler for a touch long-press on a piece (TouchControls shows its
+# actions: rotate, fold, sell).
+static var on_long_press: Callable
 var _press_pos: Vector2 = Vector2.ZERO   # viewport-space position at mouse-down, for click-vs-drag detection
 const CLICK_MOVE_THRESHOLD := 10.0       # px; below this, a release counts as a click, not a drag — 4px was tight enough that an ordinary click's natural hand jitter routinely misfired as "moved it", especially when the intent was just to fold/unfold
 var _wall_ref: Floor = null
@@ -474,6 +479,13 @@ func _process(delta: float) -> void:
 	# Keep the drag validity tint pulsing while a piece is held
 	if _dragging:
 		queue_redraw()
+		# A finger held still on a piece: not a move but a request for its
+		# actions (what right-click and R do with a mouse).
+		if TouchControls.active and not _placement_mode and not _press_moved \
+				and Time.get_ticks_msec() - _press_ms > TouchControls.LONG_PRESS_MS:
+			cancel_drag()
+			if Furniture.on_long_press.is_valid():
+				Furniture.on_long_press.call(self)
 	if _error_flash_t > 0.0:
 		_error_flash_t -= delta
 		if _error_flash_t <= 0.0:
@@ -1410,26 +1422,13 @@ func _input(event: InputEvent) -> void:
 		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			if Furniture.is_in_floor_pane.is_valid() and not Furniture.is_in_floor_pane.call(event.position):
 				return   # click landed on another panel (e.g. Wall Inspector) — let it through
-			var sx := position.x / TILE_SIZE
-			var sy := position.y / TILE_SIZE
-			if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(self, event.position,
-					Vector2(sx + grid_w * 0.5, sy + grid_h * 0.5)):
+			if TouchControls.active:
+				# A finger has no hover: touching moves the piece there, and it
+				# is put down with the Place button (see confirm_placement()).
+				_drag(event.position)
 				get_viewport().set_input_as_handled()
 				return
-			var snap_pos := _wall_ref.snap_to_wall(self, Vector2(sx, sy)) if _wall_ref else Vector2(sx, sy)
-			if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
-				_play("error")
-				get_viewport().set_input_as_handled()
-				return
-			_placement_mode = false
-			_dragging = false
-			_wall_ref.place_furniture(self, snap_pos)
-			_wall_ref.grid_draw.show_grid = false
-			_wall_ref.grid_draw.queue_redraw()
-			_play("place")
-			_pop_on_place()
-			placement_confirmed.emit()
-			queue_redraw()
+			confirm_placement(event.position)
 			get_viewport().set_input_as_handled()
 		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			cancel_placement()
@@ -1446,8 +1445,12 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed and _is_mouse_over():
+			# The press's own position, not the live pointer: a finger has no
+			# hover, so the pointer is still wherever the last touch left it.
+			if event.pressed and _contains_screen_point(event.position):
 				_press_pos = event.position
+				_press_ms = Time.get_ticks_msec()
+				_press_moved = false
 				_start_drag(event.position)
 			elif _dragging and not event.pressed:
 				var release_pos: Vector2 = (event as InputEventMouseButton).position
@@ -1469,6 +1472,8 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion and _dragging:
+		if (event as InputEventMouseMotion).position.distance_to(_press_pos) >= CLICK_MOVE_THRESHOLD:
+			_press_moved = true
 		_drag(event.position)
 
 
@@ -1641,8 +1646,9 @@ func set_rot_steps(n: int) -> void:
 	queue_redraw()
 
 
-func _rotate() -> void:
-	_play("rotate")
+func _rotate(quiet: bool = false) -> void:
+	if not quiet:
+		_play("rotate")
 	rot_steps = (rot_steps + 1) % 4
 	var new_w := grid_h
 	var new_h := grid_w
@@ -1729,6 +1735,53 @@ func _pop_on_place() -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "position", base_pos, 0.16) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# Puts a piece being bought down where it stands. `screen_pos` is where the
+# player clicked (or, by touch, the piece's own centre on screen), for drops
+# on a box or on Back. Returns whether it went down.
+func confirm_placement(screen_pos: Vector2 = Vector2.INF) -> bool:
+	if not _placement_mode:
+		return false
+	if screen_pos == Vector2.INF:
+		screen_pos = get_global_transform_with_canvas() * (Vector2(grid_w, grid_h) * TILE_SIZE * 0.5)
+	var sx := position.x / TILE_SIZE
+	var sy := position.y / TILE_SIZE
+	if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(self, screen_pos,
+			Vector2(sx + grid_w * 0.5, sy + grid_h * 0.5)):
+		return true
+	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(sx, sy)) if _wall_ref else Vector2(sx, sy)
+	if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
+		_play("error")
+		if _wall_ref:
+			_error_reason = _wall_ref.get_block_reason()
+			_error_flash_t = ERROR_FLASH_DURATION
+		return false
+	_placement_mode = false
+	_dragging = false
+	_wall_ref.place_furniture(self, snap_pos)
+	_wall_ref.grid_draw.show_grid = false
+	_wall_ref.grid_draw.queue_redraw()
+	_play("place")
+	_pop_on_place()
+	placement_confirmed.emit()
+	queue_redraw()
+	return true
+
+
+# Lets go of a piece being dragged without moving it (a second finger came
+# down to zoom, or a long-press turned out to be a request for its actions).
+func cancel_drag() -> void:
+	if not _dragging or _placement_mode:
+		return
+	_dragging = false
+	z_index = 0
+	if _wall_ref:
+		_wall_ref.grid_draw.show_grid = false
+		_wall_ref.grid_draw.queue_redraw()
+		_wall_ref.clear_floor_drag_ghost()
+	position = _original_pos
+	queue_redraw()
 
 
 func cancel_placement() -> void:

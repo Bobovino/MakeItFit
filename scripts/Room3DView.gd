@@ -18,6 +18,8 @@ signal wall_sell_requested(edge: String, origin: Vector2i)   # right-click on a 
 signal furniture_moved(furniture: Furniture)   # an existing piece was dragged to a new spot and committed
 signal reveal_finished   # a play_reveal() flythrough finished its scripted camera move
 signal box_enter_requested(furniture: Furniture)   # a nested box was double-clicked — Main.gd steps into it
+signal piece_long_pressed(furniture: Furniture)   # a finger held still on a floor piece: show its actions
+signal wall_item_long_pressed(hit: Dictionary)    # ...or on a wall piece
 signal showcase_stop_changed(moment_id: String, needs: Array)   # tenant showcase moved to a new stop — Main.gd rings the matching TenantCard chip(s)
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
@@ -81,6 +83,9 @@ var _dragging: bool   = false   # middle-drag — orbits yaw/pitch (Blender-styl
 var _panning: bool    = false   # left-drag over empty floor — translates _center
 var _auto_spin: bool  = false
 var _press_pos: Vector2 = Vector2.ZERO
+var _press_ms := 0                       # when the current press began, for a touch long-press
+var _press_moved := false                # the pointer has left the press spot since
+var _buy_touch_vp := Vector2.INF         # where a finger last put the piece being bought
 var _orbit_press_pos: Vector2 = Vector2.ZERO   # separate from _press_pos so a MMB click-to-recenter doesn't fight LMB click tracking
 const CLICK_MOVE_THRESHOLD := 10.0   # px; was 6 — tight enough that an ordinary click's natural hand jitter routinely misfired as "dragged it", especially when the intent was just to fold/unfold a piece
 
@@ -562,6 +567,7 @@ func _process(delta: float) -> void:
 			_tenant_stop_t = 0.0
 			var prev_moment: String = (_tenant_stops[_tenant_stop_idx] as Dictionary).get("moment_id", "")
 			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
+	_check_long_press()
 			var stop: Dictionary = _tenant_stops[_tenant_stop_idx]
 			var moment_id: String = stop.get("moment_id", "")
 			if moment_id != prev_moment:
@@ -616,11 +622,19 @@ func _on_container_input(event: InputEvent) -> void:
 				else:
 					var vp_pos := _to_vp(mb.position)
 					var wall_hit := _pick_wall_item(vp_pos)
+				_press_ms = Time.get_ticks_msec()
+				_press_moved = false
 					if not wall_hit.is_empty():
 						_begin_wall_item_drag(wall_hit, vp_pos)
 					else:
 						var hit := _pick_furniture(vp_pos)
 						if not hit.is_empty():
+					if TouchControls.active:
+						# No hover with a finger: touching moves the piece there; the
+						# Place button puts it down (confirm_buy_touch()).
+						_buy_touch_vp = _to_vp(mb.position)
+						_update_buy_ghost(_buy_touch_vp)
+						return
 							_begin_furniture_drag(hit, vp_pos)
 						else:
 							_panning = true
@@ -683,6 +697,8 @@ func _on_container_input(event: InputEvent) -> void:
 			# to do with a deliberate cursor position over the room.
 			if _mouse_over_own_view():
 				_hide_hover_highlight()
+		if mm.position.distance_to(_press_pos) >= CLICK_MOVE_THRESHOLD:
+			_press_moved = true
 				_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
 			_hide_hover_highlight()
@@ -1038,6 +1054,7 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	_buying_furniture = furniture
 	_buying_fdata     = fdata
 	_buying_on_wall   = false
+	_buy_touch_vp = Vector2.INF
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	col.a = 0.55

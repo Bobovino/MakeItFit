@@ -73,6 +73,7 @@ var _application: TenantApplication = null   # the level's rental application, i
 var _application_fax: ApplicationFax = null  # the fax printing/showing it, while it is up
 var _applications_shown: Dictionary = {}     # level id -> true: printed once per visit, like the intro card
 var tenant_layer: TenantLayer = null          # the household living in the apartment on screen (cosmetic)
+var touch_controls: TouchControls = null      # gestures and the action bar for touch play
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -312,6 +313,10 @@ func _ready() -> void:
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
 		divider.gui_input.connect(_on_divider_gui_input)
 	Furniture.on_box_enter_requested = _enter_box_animated
+	touch_controls = TouchControls.new()
+	touch_controls.main = self
+	add_child(touch_controls)
+	Furniture.on_long_press = func(f: Furniture): touch_controls.show_piece(f)
 	Furniture.on_drag_dropped = _on_furniture_dropped
 	Furniture.on_drag_moved = _on_furniture_drag_moved
 	Furniture.on_purchase_dropped = _on_purchase_dropped
@@ -715,6 +720,8 @@ func _load_level(level_id: String) -> void:
 	_application_fax = null
 	if tenant_layer:
 		tenant_layer.stop()
+	if touch_controls:
+		touch_controls.close_actions()
 	if is_instance_valid(_editor_back_btn):
 		# Stays visible through the WHOLE test session, not just while on the
 		# root ("_custom") level — GameState.testing_from_editor is set once
@@ -2208,6 +2215,132 @@ func _start_tenants() -> void:
 		_mode3d_view if is_instance_valid(_mode3d_view) else null)
 
 
+# ── Touch (TouchControls calls these) ─────────────────────────────────────────
+
+# The line of help at the top of each view, in mouse-and-keyboard or touch terms.
+func _plan_hint() -> String:
+	if TouchControls.active:
+		return tr("Drag furniture to move it · hold a piece to rotate, fold or sell it · pinch to zoom")
+	return tr("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls")
+
+
+func _view3d_hint() -> String:
+	if TouchControls.active:
+		return tr("Drag items onto the floor or a wall · hold a piece for its options · pinch to zoom, twist to turn")
+	return tr("Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it")
+
+
+# Two fingers: pinch, drag and twist. The plan ignores the twist.
+func touch_gesture(zoom: float, pan: Vector2, twist: float, center: Vector2) -> void:
+	if _blocking_modal_open():
+		return
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view.touch_camera(zoom, pan, twist)
+		return
+	_zoom_floor(_manual_zoom * (zoom - 1.0), center)
+	_manual_pan += pan
+	_apply_room_transform()
+
+
+# A second finger landed: whatever the first one had started is called off.
+func touch_cancel_pointer() -> void:
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl:
+		for c in fl.get_children():
+			if c is Furniture:
+				(c as Furniture).cancel_drag()
+	if _xfer_dragging and not _xfer_purchase:
+		_end_transfer_cues()
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.touch_cancel_drag()
+
+
+# The piece being bought on the plan, if any.
+func _placing_piece() -> Furniture:
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl:
+		for c in fl.get_children():
+			if c is Furniture and (c as Furniture)._placement_mode:
+				return c
+	return null
+
+
+func touch_is_placing() -> bool:
+	if is_instance_valid(_mode3d_view) and _view_mode == ViewMode.VIEW3D and _mode3d_view.is_buying():
+		return true
+	return _placing_piece() != null
+
+
+func touch_rotate_placing() -> void:
+	if is_instance_valid(_mode3d_view) and _view_mode == ViewMode.VIEW3D and _mode3d_view.is_buying():
+		_mode3d_view.rotate_buying()
+	elif _placing_piece():
+		_placing_piece()._rotate()
+
+
+func touch_confirm_placing() -> void:
+	if is_instance_valid(_mode3d_view) and _view_mode == ViewMode.VIEW3D and _mode3d_view.is_buying():
+		_mode3d_view.confirm_buy_touch()
+	elif _placing_piece():
+		_placing_piece().confirm_placement()
+
+
+func touch_cancel_placing() -> void:
+	if is_instance_valid(_mode3d_view) and _view_mode == ViewMode.VIEW3D and _mode3d_view.is_buying():
+		_mode3d_view.cancel_buying()
+	elif _placing_piece():
+		_placing_piece().cancel_placement()
+
+
+# Rotate a placed piece where it stands (R over it, with a mouse); turned
+# back if the new footprint doesn't fit there.
+func touch_rotate_piece(f: Furniture) -> void:
+	if not is_instance_valid(f) or Furniture.read_only:
+		return
+	var fl := f._wall_ref
+	if fl == null or not fl.is_registered(f):
+		return
+	f._rotate()
+	if not fl.can_place(f, f.grid_pos):
+		var why := fl.get_block_reason()
+		for i in 3:
+			f._rotate(true)
+		Audio.play("error")
+		_set_mode_hint(why)
+		return
+	f.placed.emit(f)
+	if _view_mode == ViewMode.VIEW3D:
+		_ensure_mode3d_view()
+
+
+func touch_fold_piece(f: Furniture) -> void:
+	if not is_instance_valid(f) or Furniture.read_only:
+		return
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view.touch_fold(f)
+	else:
+		f.toggle_fold()
+
+
+func touch_sell_piece(f: Furniture) -> void:
+	if not is_instance_valid(f) or Furniture.read_only:
+		return
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view.touch_sell(f)
+	else:
+		_on_sell_pressed(f, f._wall_ref)
+
+
+func touch_sell_wall_item(hit: Dictionary) -> void:
+	if is_instance_valid(_mode3d_view) and not Furniture.read_only:
+		_mode3d_view.touch_sell_wall_item(hit)
+
+
+# The action bar sits just above the needs bar.
+func touch_bar_bottom() -> float:
+	return tenant_card.get_global_rect().position.y if is_instance_valid(tenant_card) else get_viewport().get_visible_rect().size.y
+
+
 # Whether a piece is in the player's hand: being dragged or bought, in either
 # view. The tenants keep out of the way meanwhile.
 func is_placing_furniture() -> bool:
@@ -2480,7 +2613,7 @@ func _set_view_mode(mode: int) -> void:
 			else:
 				wall_inspector.hide()
 				_hide_modal_backdrop()
-				_set_mode_hint(tr("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"))
+				_set_mode_hint(_plan_hint())
 		ViewMode.VIEW3D:
 			# Wall items are placed/moved directly in the 3D view here (drag onto
 			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
@@ -2489,7 +2622,7 @@ func _set_view_mode(mode: int) -> void:
 			wall_inspector.hide()
 			_hide_modal_backdrop()
 			_ensure_mode3d_view()
-			_set_mode_hint(tr("Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"))
+			_set_mode_hint(_view3d_hint())
 
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:
@@ -2515,6 +2648,8 @@ func _ensure_mode3d_view() -> void:
 		_mode3d_view.anchor_bottom = 0.0
 		if _mode3d_view.has_node("CloseBtn"):
 			(_mode3d_view.get_node("CloseBtn") as Control).visible = false
+		_mode3d_view.piece_long_pressed.connect(func(f: Furniture): touch_controls.show_piece(f))
+		_mode3d_view.wall_item_long_pressed.connect(func(hit: Dictionary): touch_controls.show_wall_item(hit))
 		_mode3d_view.furniture_moved.connect(func(f: Furniture):
 			_on_furniture_action_changed()
 			# Mirrors the 2D drag-end path (f.placed above, gated the same way):
@@ -3068,7 +3203,7 @@ func _on_inspector_visibility_changed() -> void:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 		_hide_modal_backdrop()
 		if _view_mode == ViewMode.TOPDOWN:
-			_set_mode_hint(tr("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"))
+			_set_mode_hint(_plan_hint())
 
 
 func _on_wall_item_placed(furniture_id: String) -> void:
