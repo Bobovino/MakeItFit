@@ -61,6 +61,17 @@ static func describe(level: Level, want_dof: bool = false) -> String:
 	return ", ".join(parts)
 
 
+# Edge smoothing for the viewport the room is drawn in. Each 3D view renders
+# into its own SubViewport, which does not inherit the project's settings, so
+# without this every silhouette is stair-stepped. MSAA works on every
+# renderer, Compatibility included, and is cheap on the tile-based GPUs of
+# phones; Low still gets 2x since aliasing is the most visible flaw of all.
+static func apply_viewport(vp: Viewport, level: Level) -> void:
+	if vp == null:
+		return
+	vp.msaa_3d = Viewport.MSAA_2X if level == Level.LOW else Viewport.MSAA_4X
+
+
 static func apply_environment(env: Environment, level: Level) -> void:
 	# Additive glow with no bloom and an HDR threshold of 1: only emissive
 	# surfaces brighter than white (windows, lamps) contribute, so the rest of

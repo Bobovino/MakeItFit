@@ -455,6 +455,8 @@ func _apply_environment() -> void:
 
 	StyleQuality.apply_environment(env, quality)
 	StyleQuality.apply_camera(camera, quality, high_depth_of_field, _focus_depth(), scene_radius)
+	if camera != null:
+		StyleQuality.apply_viewport(camera.get_viewport(), quality)
 	if manage_global_shadows:
 		StyleQuality.apply_global_shadows(quality)
 
