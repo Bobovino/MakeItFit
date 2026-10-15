@@ -18,7 +18,7 @@ var _pulse_t: float = 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	tooltip_text = "Comfort. Below the warning line the apartment can't be rented like this. Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out."
+	tooltip_text = tr("Comfort. Below the warning line the apartment can't be rented like this. Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out.")
 	set_process(false)
 
 
@@ -65,7 +65,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	const FSIZE := 10
 	# Short enough for the bar; the tooltip carries the explanation.
-	var label := "Comfort %d%%" % roundi(_pct)
+	var label := tr("Comfort %d%%") % roundi(_pct)
 	if failing:
 		label += "  ✗"
 	var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x

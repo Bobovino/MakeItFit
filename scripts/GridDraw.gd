@@ -1189,7 +1189,7 @@ func _draw_slope_info(axis: String, low_s: int, high_e: int, min_h: float,
 	var px_start := low_s * TILE_SIZE
 	var px_end   := high_e * TILE_SIZE
 
-	var label := "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)" % \
+	var label := tr("%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)") % \
 		[angle_deg, min_h, max_h, span_m, low_s, high_e]
 
 	if axis == "x":

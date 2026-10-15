@@ -14,6 +14,7 @@ extends RefCounted
 
 enum Level { LOW, MEDIUM, HIGH }
 
+# i18n-const
 const LEVEL_NAMES := ["Low", "Medium", "High"]
 
 

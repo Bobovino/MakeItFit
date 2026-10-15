@@ -384,7 +384,7 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_test_btn):
 		_test_btn = Button.new()
 		_test_btn.name        = "TestBtn"
-		_test_btn.text        = "Test Layout"
+		_test_btn.text        = tr("Test Layout")
 		_test_btn.toggle_mode = true
 		_test_btn.add_theme_font_size_override("font_size", 11)
 		_test_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
@@ -407,8 +407,8 @@ func _apply_ui_theme() -> void:
 		box.add_theme_constant_override("separation", 0)
 		var group := ButtonGroup.new()
 		var specs := [
-			[ViewMode.TOPDOWN, "Floor Plan", "Blueprint view — place and move furniture from above"],
-			[ViewMode.VIEW3D,  "3D",         "Walk around and place items in 3D — drag onto a wall to hang them"],
+			[ViewMode.TOPDOWN, tr("Floor Plan"), tr("Blueprint view — place and move furniture from above")],
+			[ViewMode.VIEW3D,  "3D",         tr("Walk around and place items in 3D — drag onto a wall to hang them")],
 		]
 		for i in specs.size():
 			var spec: Array = specs[i]
@@ -446,7 +446,7 @@ func _apply_ui_theme() -> void:
 		# to read as a button at all; alone in the corner the gear reads fine
 		# by itself, same as any other icon-only HUD button.
 		_settings_btn.text = "⚙"
-		_settings_btn.tooltip_text = "Menu — settings, back to projects, quit"
+		_settings_btn.tooltip_text = tr("Menu — settings, back to projects, quit")
 		_settings_btn.add_theme_font_size_override("font_size", 16)
 		_settings_btn.custom_minimum_size = Vector2(32, 0)
 		_settings_btn.pressed.connect(_on_settings_btn_pressed)
@@ -470,8 +470,8 @@ func _apply_ui_theme() -> void:
 		add_child(canvas)
 		_editor_back_btn = Button.new()
 		_editor_back_btn.name = "EditorBackBtn"
-		_editor_back_btn.text = "← Back to Editor"
-		_editor_back_btn.tooltip_text = "Return to the Level Editor, resuming the level you were testing"
+		_editor_back_btn.text = tr("← Back to Editor")
+		_editor_back_btn.tooltip_text = tr("Return to the Level Editor, resuming the level you were testing")
 		_editor_back_btn.add_theme_font_size_override("font_size", 12)
 		_editor_back_btn.visible = false
 		_editor_back_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -488,8 +488,8 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn = Button.new()
 		_furniture_menu_btn.name = "FurnitureMenuBtn"
-		_furniture_menu_btn.text = "🛋  Furniture  ▴"
-		_furniture_menu_btn.tooltip_text = "Open or close the furniture catalogue (F)"
+		_furniture_menu_btn.text = "🛋  %s  ▴" % tr("Furniture")
+		_furniture_menu_btn.tooltip_text = tr("Open or close the furniture catalogue (F)")
 		_furniture_menu_btn.add_theme_font_size_override("font_size", 13)
 		# It sits at the right-hand end of the needs bar and is drawn as part
 		# of it: the bar is the handle of the catalogue that opens under it.
@@ -519,7 +519,7 @@ func _apply_ui_theme() -> void:
 		_undo_btn = Button.new()
 		_undo_btn.name = "UndoBtn"
 		_undo_btn.text = "↶"
-		_undo_btn.tooltip_text = "Undo last action (Ctrl+%s)" % OS.get_keycode_string(GameState.undo_keycode)
+		_undo_btn.tooltip_text = tr("Undo last action (Ctrl+%s)") % OS.get_keycode_string(GameState.undo_keycode)
 		_undo_btn.add_theme_font_size_override("font_size", 16)
 		_undo_btn.custom_minimum_size = Vector2(32, 0)
 		_undo_btn.offset_top = TOP_Y + 8.0
@@ -529,7 +529,7 @@ func _apply_ui_theme() -> void:
 		_redo_btn = Button.new()
 		_redo_btn.name = "RedoBtn"
 		_redo_btn.text = "↷"
-		_redo_btn.tooltip_text = "Redo (Ctrl+Shift+%s)" % OS.get_keycode_string(GameState.undo_keycode)
+		_redo_btn.tooltip_text = tr("Redo (Ctrl+Shift+%s)") % OS.get_keycode_string(GameState.undo_keycode)
 		_redo_btn.add_theme_font_size_override("font_size", 16)
 		_redo_btn.custom_minimum_size = Vector2(32, 0)
 		_redo_btn.offset_top = TOP_Y + 8.0
@@ -920,7 +920,7 @@ func _load_level(level_id: String) -> void:
 	_refresh_owned_ui()
 	if _reopen_catalog:
 		_open_furniture_menu.call_deferred()
-	budget_label.text = "Budget: %d€" % gm.budget
+	budget_label.text = tr("Budget: %d€") % gm.budget
 	wall_inspector.setup(gm.furniture_data["furniture"])
 
 	# Start on the first visible floor (skip hidden ones)
@@ -1066,7 +1066,7 @@ func _show_mechanic_intro_if_needed() -> void:
 
 	# "NEW MECHANIC" chip
 	var chip := Label.new()
-	chip.text = "  NEW MECHANIC  "
+	chip.text = "  %s  " % tr("NEW MECHANIC")
 	chip.add_theme_font_size_override("font_size", 9)
 	chip.add_theme_color_override("font_color", Color(0.120, 0.100, 0.080))
 	var chip_s := StyleBoxFlat.new()
@@ -1094,7 +1094,7 @@ func _show_mechanic_intro_if_needed() -> void:
 
 	# Dismiss button
 	var btn := Button.new()
-	btn.text = "Got it — let's go!"
+	btn.text = tr("Got it — let's go!")
 	btn.add_theme_font_size_override("font_size", 13)
 	var rs := GameTheme.make_rent_btn_style()
 	btn.add_theme_stylebox_override("normal",  rs[0])
@@ -2053,7 +2053,7 @@ func _get_or_create_loft_floor(base_floor: Floor) -> Floor:
 
 	var fd := {
 		"id": loft_id,
-		"label": base_floor.floor_label + " (Loft)",
+		"label": tr("%s (Loft)") % base_floor.floor_label,
 		"type": "loft",
 		"parent_id": base_floor.floor_id,
 		"grid_w": base_floor.grid_w,
@@ -2410,7 +2410,7 @@ func _set_view_mode(mode: int) -> void:
 			else:
 				wall_inspector.hide()
 				_hide_modal_backdrop()
-				_set_mode_hint("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls")
+				_set_mode_hint(tr("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"))
 		ViewMode.VIEW3D:
 			# Wall items are placed/moved directly in the 3D view here (drag onto
 			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
@@ -2419,7 +2419,7 @@ func _set_view_mode(mode: int) -> void:
 			wall_inspector.hide()
 			_hide_modal_backdrop()
 			_ensure_mode3d_view()
-			_set_mode_hint("Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it")
+			_set_mode_hint(tr("Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"))
 
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and mode != ViewMode.VIEW3D:
@@ -2612,7 +2612,7 @@ func _position_furniture_menu_btn() -> void:
 	_furniture_menu_btn.offset_left   = _furniture_menu_btn.offset_right - w
 	_furniture_menu_btn.offset_top    = tenant_card.offset_top + 5.0
 	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
-	_furniture_menu_btn.text = "🛋  Furniture%s  %s" % [("  🎁%d" % owned) if owned > 0 else "", "▾" if _is_furniture_menu_open() else "▴"]
+	_furniture_menu_btn.text = "🛋  %s%s  %s" % [tr("Furniture"), ("  🎁%d" % owned) if owned > 0 else "", "▾" if _is_furniture_menu_open() else "▴"]
 	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
 	_position_budget_label()
 
@@ -2770,15 +2770,15 @@ func _update_breadcrumb() -> void:
 func _update_nested_nav() -> void:
 	var nav_layer := _ensure_nested_ui_layer()
 	if not is_instance_valid(_map_btn):
-		_map_btn = _make_nav_button("Map")
+		_map_btn = _make_nav_button(tr("Map"))
 		_map_btn.name = "NestedMapBtn"
-		_map_btn.tooltip_text = "See every apartment in this project and jump to any of them"
+		_map_btn.tooltip_text = tr("See every apartment in this project and jump to any of them")
 		_map_btn.pressed.connect(_open_nested_map)
 		nav_layer.add_child(_map_btn)
 	if not is_instance_valid(_back_btn):
-		_back_btn = _make_nav_button("Back")
+		_back_btn = _make_nav_button(tr("Back"))
 		_back_btn.name = "BackToParentBtn"
-		_back_btn.tooltip_text = "Step back out to the apartment this box sits in"
+		_back_btn.tooltip_text = tr("Step back out to the apartment this box sits in")
 		_back_btn.pressed.connect(_exit_nested_animated)
 		nav_layer.add_child(_back_btn)
 
@@ -2794,7 +2794,7 @@ func _update_nested_nav() -> void:
 		x += _map_btn.size.x + 6.0
 	if _back_btn.visible:
 		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
-		_back_btn.text = "←  Back to %s" % _level_display_name(parent_id)
+		_back_btn.text = tr("←  Back to %s") % _level_display_name(parent_id)
 		_back_btn.reset_size()
 		_back_btn.position = Vector2(x, y)
 
@@ -2816,11 +2816,11 @@ func _set_mode_hint(text: String) -> void:
 	if text != "" and not _collect_nested_boxes().is_empty():
 		# Kept to what is particular to boxes: the full line ran under the
 		# buttons in the top-right corner.
-		text = "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
+		text = tr("Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece")
 	if text != "" and not _nested_stack.is_empty():
 		# Inside a box the Map and Back buttons sit top-left, under where
 		# this line would run: keep it to the one thing that is new here.
-		text = "Drop a piece on “Back” to send it out · R rotates a piece"
+		text = tr("Drop a piece on “Back” to send it out · R rotates a piece")
 	if text == "":
 		if is_instance_valid(_mode_hint_lbl):
 			_mode_hint_lbl.visible = false
@@ -2974,7 +2974,7 @@ func _step_moment(direction: int) -> void:
 func _reopen_last_wall() -> void:
 	var last := _last_wall_click_by_floor.get(_current_floor_id, {}) as Dictionary
 	if last.is_empty():
-		_set_mode_hint("No wall inspected on this floor yet")
+		_set_mode_hint(tr("No wall inspected on this floor yet"))
 		return
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
@@ -2988,7 +2988,7 @@ func _on_inspector_visibility_changed() -> void:
 			(_floors[fid] as Floor).set_active_wall_edge("")
 		_hide_modal_backdrop()
 		if _view_mode == ViewMode.TOPDOWN:
-			_set_mode_hint("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls")
+			_set_mode_hint(tr("Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"))
 
 
 func _on_wall_item_placed(furniture_id: String) -> void:
@@ -3089,7 +3089,7 @@ func _recompute_pet_effects() -> void:
 							reaching = maxf(reaching, fl.get_light(Vector2i(x, y)))
 				var starved := reaching < DAYLIGHT_NEEDED
 				if starved and not pet._daylight_starved:
-					_toast("%s needs daylight: stand it where the window's light reaches." % pet.furniture_name, true)
+					_toast(tr("%s needs daylight: stand it where the window's light reaches.") % pet.furniture_name, true)
 				pet._daylight_starved = starved
 			if pet.noise_radius <= 0 or not pet.is_noisy:
 				continue
@@ -3120,8 +3120,9 @@ func _deliver_piece(fid: String, piece_name: String, target: Dictionary, bought:
 	Audio.play("place")
 	_refresh_functions()
 	if Input.is_key_pressed(KEY_SHIFT):
-		_toast("%s %s  →  %s.   It is waiting under “Owned” in the catalogue there." % [
-			"Bought" if bought else "Sent", piece_name, target["name"]])
+		var msg := tr("Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there.") if bought \
+			else tr("Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there.")
+		_toast(msg % [piece_name, target["name"]])
 	else:
 		_follow_transfer.call_deferred(to_id, fid, piece_name)
 
@@ -3180,7 +3181,7 @@ func _follow_transfer(to_id: String, fid: String, piece_name: String) -> void:
 	_owned_announced_for = _level_load_id     # the piece in hand says it already
 	await get_tree().process_frame
 	_on_place_owned_requested(fid)
-	_toast("%s came with you. Click to put it down  ·  Esc leaves it under “Owned”." % piece_name)
+	_toast(tr("%s came with you. Click to put it down  ·  Esc leaves it under “Owned”.") % piece_name)
 
 
 func _process(_delta: float) -> void:
@@ -3198,11 +3199,11 @@ func _process(_delta: float) -> void:
 
 func _transfer_refusal(f: Furniture) -> String:
 	if f.keepsake:
-		return "♥ %s is a keepsake: it stays in this flat" % f.furniture_name
+		return tr("♥ %s is a keepsake: it stays in this flat") % f.furniture_name
 	if f.is_nested_box:
-		return "A box can't go inside another apartment"
+		return tr("A box can't go inside another apartment")
 	if f.is_stair:
-		return "Stairs can't move to another apartment"
+		return tr("Stairs can't move to another apartment")
 	return ""
 
 
@@ -3247,10 +3248,10 @@ func _on_furniture_drag_moved(f: Furniture, screen_pos: Vector2, center_tile: Ve
 	if why == "":
 		if _xfer_purchase and not (not _pending_purchase.is_empty() and (_pending_purchase["owned"] as bool)):
 			# Paid for here, delivered there.
-			text = "%s  Buy it for %s  ·  %d€ from this budget" % ["←" if to_parent else "→", target["name"], f.buy_price]
+			text = tr("%s  Buy it for %s  ·  %d€ from this budget") % ["←" if to_parent else "→", target["name"], f.buy_price]
 		else:
-			text = ("←  Take out to %s" if to_parent else "→  Take into %s") % target["name"]
-		text += "\nShift: send it without going"
+			text = (tr("←  Take out to %s") if to_parent else tr("→  Take into %s")) % target["name"]
+		text += "\n" + tr("Shift: send it without going")
 	Furniture.transfer_hover = 2 if why != "" else 1
 	f.queue_redraw()
 	_show_transfer_tag(text, why != "", screen_pos)
@@ -3278,7 +3279,7 @@ func _begin_transfer_cues(f: Furniture) -> void:
 	if is_instance_valid(_back_btn) and _back_btn.visible and not _nested_stack.is_empty():
 		_xfer_back_text = _back_btn.text
 		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
-		_back_btn.text = ("←  Click here to buy it for %s" if _xfer_purchase else "←  Drop here to send to %s") % _level_display_name(parent_id)
+		_back_btn.text = (tr("←  Click here to buy it for %s") if _xfer_purchase else tr("←  Drop here to send to %s")) % _level_display_name(parent_id)
 		_back_btn.reset_size()
 
 
@@ -3387,7 +3388,8 @@ func _announce_owned() -> void:
 	if n <= 0 or _owned_announced_for == _level_load_id:
 		return
 	_owned_announced_for = _level_load_id
-	_toast("%d piece%s waiting for you here: open Furniture, they are first under “Owned”." % [n, " is" if n == 1 else "s are"])
+	_toast(tr_n("%d piece is waiting for you here: open Furniture, it is first under “Owned”.",
+		"%d pieces are waiting for you here: open Furniture, they are first under “Owned”.", n) % n)
 
 
 func _on_place_owned_requested(furniture_id: String) -> void:
@@ -3430,7 +3432,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 		for box in _collect_nested_boxes():
 			if box.furniture_id == furniture_id:
 				Audio.play("error")
-				_set_mode_hint("%s is already renting here — pick a different box." % (fdata.get("name", "") as String))
+				_set_mode_hint(tr("%s is already renting here — pick a different box.") % (fdata.get("name", "") as String))
 				return
 	# Something that only goes on a wall can't be placed from the plan now
 	# that walls aren't opened there: go to the 3D view, where it can be
@@ -3529,12 +3531,12 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 	# piece from its own cache; this is the plan's path and the backstop.)
 	if is_instance_valid(furniture) and furniture.keepsake:
 		Audio.play("error")
-		_set_mode_hint("♥ %s is a keepsake: it can be moved, not sold." % furniture.furniture_name)
+		_set_mode_hint(tr("♥ %s is a keepsake: it can be moved, not sold.") % furniture.furniture_name)
 		return
 	# Taking a rental box back out means handing its rent back.
 	if is_instance_valid(furniture) and furniture.buy_price < 0 and gm.budget < -furniture.buy_price:
 		Audio.play("error")
-		_set_mode_hint("Removing %s means repaying its %d€ rent — you only have %d€." % [
+		_set_mode_hint(tr("Removing %s means repaying its %d€ rent — you only have %d€.") % [
 			furniture.furniture_name, -furniture.buy_price, gm.budget])
 		return
 	Audio.play("sell")
@@ -3628,7 +3630,7 @@ func _refresh_functions() -> void:
 
 
 func _on_budget_changed(new_budget: int) -> void:
-	budget_label.text = "Budget: %d€" % new_budget
+	budget_label.text = tr("Budget: %d€") % new_budget
 
 
 func _on_functions_updated(fulfilled: Array, required: Array) -> void:
@@ -3687,16 +3689,16 @@ func _on_rent_pressed() -> void:
 	if not gm.check_win():
 		Audio.play("error")
 		if gm.comfort_pct < gm.COMFORT_WARN_THRESHOLD:
-			result_screen.show_failure("The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started.")
+			result_screen.show_failure(tr("The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started."))
 		else:
 			var unmet: PackedStringArray = []
 			for rule in gm.rule_status():
 				if not ((rule as Dictionary)["ok"] as bool):
 					unmet.append((rule as Dictionary)["label"] as String)
 			if unmet.is_empty():
-				result_screen.show_failure("Not all tenant requirements are met.\nTry again.")
+				result_screen.show_failure(tr("Not all tenant requirements are met.\nTry again."))
 			else:
-				result_screen.show_failure("Not yet:\n" + "\n".join(unmet))
+				result_screen.show_failure(tr("Not yet:") + "\n" + "\n".join(unmet))
 		_refresh_undo_redo_buttons()
 		return
 	if not _all_furniture_accessible():
@@ -3706,9 +3708,9 @@ func _on_rent_pressed() -> void:
 			for fid in _floors:
 				for f in (_floors[fid] as Floor).get_inaccessible_furniture():
 					stuck.append((f as Furniture).furniture_name)
-			result_screen.show_failure("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from." % ", ".join(stuck))
+			result_screen.show_failure(tr("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from.") % ", ".join(stuck))
 		else:
-			result_screen.show_failure("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it.")
+			result_screen.show_failure(tr("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it."))
 		_refresh_undo_redo_buttons()
 		return
 
@@ -3763,7 +3765,8 @@ func _play_completion_reveal() -> void:
 func _start_tenant_showcase() -> void:
 	if not is_instance_valid(_mode3d_view):
 		return
-	var tenant_name: String = gm.current_level.get("tenant", {}).get("name", "Tenant")
+	var tenant: Dictionary = gm.current_level.get("tenant", {})
+	var tenant_name: String = tenant.get("key_name", tenant.get("name", "Tenant"))
 	var hue := float(tenant_name.hash() % 360) / 360.0
 	var color := Color.from_hsv(hue, 0.55, 0.85)
 	_mode3d_view.start_tenant_showcase(gm.moments, color)
@@ -3956,7 +3959,7 @@ func _show_watch_done_button() -> void:
 	if is_instance_valid(_watch_done_btn):
 		_watch_done_btn.queue_free()
 	_watch_done_btn = Button.new()
-	_watch_done_btn.text = "✕ Back to Results"
+	_watch_done_btn.text = tr("✕ Back to Results")
 	_watch_done_btn.add_theme_font_size_override("font_size", 13)
 	_watch_done_btn.custom_minimum_size = Vector2(200, 40)
 	ui_layer.add_child(_watch_done_btn)
@@ -4075,7 +4078,7 @@ func _build_paint_panel(types: Array) -> void:
 	vb.add_child(header)
 
 	var chip := Label.new()
-	chip.text = "  CUSTOM BUILD  "
+	chip.text = "  %s  " % tr("CUSTOM BUILD")
 	chip.add_theme_font_size_override("font_size", 9)
 	chip.add_theme_color_override("font_color", Color(0.08, 0.08, 0.12))
 	var cs := StyleBoxFlat.new()
@@ -4087,7 +4090,7 @@ func _build_paint_panel(types: Array) -> void:
 	header.add_child(chip)
 
 	var hint := Label.new()
-	hint.text = "LMB paint · RMB erase"
+	hint.text = tr("LMB paint · RMB erase")
 	hint.add_theme_font_size_override("font_size", 9)
 	hint.add_theme_color_override("font_color", Color(0.45, 0.48, 0.52))
 	header.add_child(hint)
@@ -4099,7 +4102,7 @@ func _build_paint_panel(types: Array) -> void:
 	var bg_group := ButtonGroup.new()
 
 	var move_btn := Button.new()
-	move_btn.text           = "Move"
+	move_btn.text           = tr("Move")
 	move_btn.toggle_mode    = true
 	move_btn.button_group   = bg_group
 	move_btn.button_pressed = true
@@ -4123,7 +4126,7 @@ func _build_paint_panel(types: Array) -> void:
 		var lbl := cfg.get("label", type_id) as String
 		var cpt := cfg.get("cost_per_tile", 30) as int
 		var btn := Button.new()
-		btn.text         = "%s  %d€/tile" % [lbl, cpt]
+		btn.text         = tr("%s  %d€/tile") % [lbl, cpt]
 		btn.toggle_mode  = true
 		btn.button_group = bg_group
 		btn.add_theme_font_size_override("font_size", 11)
@@ -4751,7 +4754,7 @@ func _update_paint_status() -> void:
 		return
 	var floor_id := _current_floor_id
 	if floor_id not in _paint_pieces or _active_paint_type not in _paint_pieces[floor_id]:
-		_paint_status_lbl.text = "Paint tiles on the floor"
+		_paint_status_lbl.text = tr("Paint tiles on the floor")
 		return
 	var piece := _paint_pieces[floor_id][_active_paint_type] as PaintedFurniture
 	if not is_instance_valid(piece):

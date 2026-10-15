@@ -144,7 +144,7 @@ func setup(tenant: Dictionary) -> void:
 	_tenant_name = str(tenant.get("name", ""))
 	tenant_name_label.text = "%s, %d" % [tenant["name"], int(str(tenant["age"]))]
 	flavor_label.text = tenant["flavor"]
-	rent_label.text = "%d€ / month" % tenant["monthly_rent"]
+	rent_label.text = tr("%d€ / month") % tenant["monthly_rent"]
 	_moments = []
 	_setup_ticks = Time.get_ticks_msec()
 	_build_checklist(tenant["required_functions"])
@@ -177,12 +177,12 @@ func _clear_checklist() -> void:
 # objective.
 func _add_goal_label() -> void:
 	var lbl := Label.new()
-	lbl.text = ("%s NEEDS" % _tenant_name.to_upper()) if _tenant_name != "" else "NEEDS"
+	lbl.text = (tr("%s NEEDS") % _tenant_name.to_upper()) if _tenant_name != "" else tr("NEEDS")
 	lbl.add_theme_font_size_override("font_size", 11)
 	lbl.add_theme_color_override("font_color", INK_MUTED)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	lbl.tooltip_text = "Furnish the apartment so every need here is ticked"
+	lbl.tooltip_text = tr("Furnish the apartment so every need here is ticked")
 	lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	checklist_container.add_child(lbl)
 
@@ -321,7 +321,7 @@ func highlight_moment(moment_id: String) -> void:
 func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.custom_minimum_size = Vector2(0, 30)
-	chip.tooltip_text = "%s — click to see the furniture that provides it" % func_name.capitalize()
+	chip.tooltip_text = tr("%s — click to see the furniture that provides it") % Loc.need_name(func_name)
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	if func_name != "rule":
 		chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -344,7 +344,7 @@ func _make_need_chip(func_name: String, satisfied: bool) -> PanelContainer:
 	row.add_child(glyph)
 
 	var name_lbl := Label.new()
-	name_lbl.text = func_name.capitalize()
+	name_lbl.text = Loc.need_name(func_name)
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_font_size_override("font_size", 12)
 	name_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
@@ -485,8 +485,8 @@ func update_rules(rules: Array) -> void:
 			(chip.get_child(0).get_child(0) as Label).text = "👁" if is_sight else "🚧"
 			(chip.get_child(0).get_child(1) as Label).text = text
 			chip.tooltip_text = (rule["label"] as String) + (
-				"\nThe numbered line on the plan shows it." if is_sight
-				else "\nTall storage splits a room into zones.")
+				"\n" + tr("The numbered line on the plan shows it.") if is_sight
+				else "\n" + tr("Tall storage splits a room into zones."))
 			_rule_row.add_child(chip)
 			_rule_chips.append(chip)
 	for i in rules.size():

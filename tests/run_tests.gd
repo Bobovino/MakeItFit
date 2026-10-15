@@ -19,6 +19,9 @@ var _current := ""
 
 
 func _ready() -> void:
+	# The checks compare against the English source text (block reasons), so
+	# they must not follow the machine's language.
+	TranslationServer.set_locale("en")
 	_run_all()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)

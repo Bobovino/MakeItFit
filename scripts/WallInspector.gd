@@ -107,7 +107,7 @@ func refit() -> void:
 func _show_placeholder() -> void:
 	hint_lbl.visible   = true
 	draw_area.visible  = false
-	title_lbl.text     = "Wall Inspector"
+	title_lbl.text     = tr("Wall Inspector")
 
 
 # True only while an actual wall is open for inspection — unlike `visible`,
@@ -146,7 +146,7 @@ func show_wall(apt_floor: Floor, edge: String, other_floor: Floor = null,
 	if _other_floor:
 		_other_floor.furniture_changed.connect(_on_floor_changed)
 
-	title_lbl.text = "Wall: " + _edge_label(edge) + "  (scroll to zoom, middle-drag to pan)"
+	title_lbl.text = tr("Wall: %s  (scroll to zoom, middle-drag to pan)") % _edge_label(edge)
 	hint_lbl.visible  = false
 	draw_area.visible = true
 	call_deferred("refit")
@@ -749,14 +749,14 @@ func _draw_elevation() -> void:
 				draw_area.draw_rect(Rect2(sx, 0, sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
 				draw_area.draw_line(Vector2(sx, mezz_y), Vector2(sx + sw, mezz_y), mezz_fg, 2.0)
 				draw_area.draw_string(ThemeDB.fallback_font, Vector2(sx + 2, mezz_y - 3),
-					"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
+					tr("MEZZ"), HORIZONTAL_ALIGNMENT_LEFT, sw - 4, 7, mezz_fg)
 				run_s = wc; run_e = wc + 1
 		var last_sx := run_s * TILE_SIZE; var last_sw := (run_e - run_s) * TILE_SIZE
 		draw_area.draw_rect(Rect2(last_sx, mezz_y, last_sw, 3), mezz_col)
 		draw_area.draw_rect(Rect2(last_sx, 0, last_sw, mezz_y), Color(0.85, 0.78, 0.55, 0.10))
 		draw_area.draw_line(Vector2(last_sx, mezz_y), Vector2(last_sx + last_sw, mezz_y), mezz_fg, 2.0)
 		draw_area.draw_string(ThemeDB.fallback_font, Vector2(last_sx + 2, mezz_y - 3),
-			"MEZZ", HORIZONTAL_ALIGNMENT_LEFT, last_sw - 4, 7, mezz_fg)
+			tr("MEZZ"), HORIZONTAL_ALIGNMENT_LEFT, last_sw - 4, 7, mezz_fg)
 
 	# ── Hung wall items ───────────────────────────────────────────────────────
 	var placed := _visible_wall_items()
@@ -1098,10 +1098,10 @@ func _ceiling_cut_tiles(col: int) -> int:
 
 func _edge_label(edge: String) -> String:
 	match edge:
-		"north": return "North" + (" (windows)" if _has_feature(edge, "has_window") else "")
-		"south": return "South" + (" (entrance)" if _has_feature(edge, "has_door") else "")
-		"east":  return "East"
-		"west":  return "West"
+		"north": return tr("North (windows)") if _has_feature(edge, "has_window") else tr("North")
+		"south": return tr("South (entrance)") if _has_feature(edge, "has_door") else tr("South")
+		"east":  return tr("East")
+		"west":  return tr("West")
 	return edge
 
 

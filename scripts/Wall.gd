@@ -194,7 +194,7 @@ func floor_category_problem(furn_category: String, at: Vector2i, w: int, h: int)
 	for dx in range(w):
 		for dy in range(h):
 			if not _floor_category_ok(furn_category, get_tile_kind(Vector2i(at.x + dx, at.y + dy))):
-				return "needs %s flooring" % furn_category
+				return tr("needs %s flooring") % Loc.floor_kind_name(furn_category)
 	return ""
 
 
@@ -1020,17 +1020,17 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	var blocked := _partition_tile_set()
 	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
 		if not is_floor_tile(tile):
-			_block_reason = "Outside the room"
+			_block_reason = tr("Outside the room")
 			return false
 		# Nested/parabox boxes are a structural container, not furniture with
 		# a real usage tied to floor type — a balcony or bathroom is exactly
 		# as valid a spot for one as any other room, so it's exempt from the
 		# balcony/bathroom flooring restriction below.
 		if not furniture.is_nested_box and not _floor_category_ok(furniture.floor_category, get_tile_kind(tile)):
-			_block_reason = "Needs %s flooring" % furniture.floor_category
+			_block_reason = tr("Needs %s flooring") % Loc.floor_kind_name(furniture.floor_category)
 			return false
 		if tile in blocked:
-			_block_reason = "Blocked by a wall"
+			_block_reason = tr("Blocked by a wall")
 			return false
 
 	if furniture.wall_flush_required:
@@ -1042,7 +1042,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			or (b.position.y + b.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP
 		)
 		if not touches_wall:
-			_block_reason = "Must be placed against a wall"
+			_block_reason = tr("Must be placed against a wall")
 			return false
 
 	# Weight & structural support (see Furniture.gd's weight/is_surface/
@@ -1065,17 +1065,17 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	if on_mezzanine and mezzanine_max_load > 0.0:
 		var projected_load := _mezzanine_load(furniture) + furniture.weight
 		if projected_load > mezzanine_max_load:
-			_block_reason = "Too heavy for this loft (%.0f / %.0f)" % [projected_load, mezzanine_max_load]
+			_block_reason = tr("Too heavy for this loft (%.0f / %.0f)") % [projected_load, mezzanine_max_load]
 			return false
 
 	var stacked_on := _surface_support_at(target_tiles, furniture)
 	if furniture.requires_surface and stacked_on == null:
-		_block_reason = "Needs a table or shelf underneath"
+		_block_reason = tr("Needs a table or shelf underneath")
 		return false
 	if stacked_on != null:
 		var spare: float = stacked_on.max_support_weight - _surface_load(stacked_on, furniture)
 		if furniture.weight > spare:
-			_block_reason = "Too heavy for %s — it would break (%.0f / %.0f)" % [
+			_block_reason = tr("Too heavy for %s — it would break (%.0f / %.0f)") % [
 				stacked_on.furniture_name, furniture.weight, stacked_on.max_support_weight]
 			return false
 
@@ -1097,7 +1097,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			continue   # different Z layers (e.g. loft above, ground below) never collide
 		var other_rect := Rect2(entry["pos"] as Vector2, Vector2(f.grid_w, f.grid_h))
 		if new_rect.intersects(other_rect):
-			_block_reason = "Overlaps " + f.furniture_name
+			_block_reason = tr("Overlaps %s") % f.furniture_name
 			return false
 
 	# Sloped ceiling: any furniture taller than the local ceiling height is blocked
@@ -1123,7 +1123,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 					var frac := (coord - low_s) / span
 					ceil_h = min_h + frac * (max_h - min_h)
 				if ceil_h < furn_h_m:
-					_block_reason = "Ceiling too low here"
+					_block_reason = tr("Ceiling too low here")
 					return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
@@ -1140,7 +1140,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			Vector2(f.grid_w + f.ghost_radius * 2, f.grid_h + f.ghost_radius * 2)
 		)
 		if ghost.intersects(new_rect):
-			_block_reason = "Needs clearance around " + f.furniture_name
+			_block_reason = tr("Needs clearance around %s") % f.furniture_name
 			return false
 
 	return true
@@ -1166,7 +1166,7 @@ func can_place_across_moments(furniture: Furniture, at: Vector2, all_moments: Ar
 				continue
 			if new_rect.intersects(other.get_moment_rect(mid_s)):
 				var mid_label: String = Furniture.moment_labels.get(mid_s, mid_s)
-				_block_reason = "Would overlap %s during \"%s\"" % [other.furniture_name, mid_label]
+				_block_reason = tr("Would overlap %s during \"%s\"") % [other.furniture_name, mid_label]
 				return false
 	return true
 

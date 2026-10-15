@@ -53,6 +53,7 @@ var _cam_dist_scale: float = 1.0
 # _update_wall_visibility(). Static, so the choice survives this view being
 # torn down and rebuilt (switching to the floor plan and back, a new level).
 enum WallMode { UP, CUTAWAY, DOWN }
+# i18n-const
 const WALL_MODE_LABELS := ["Walls: Up", "Walls: Cutaway", "Walls: Down"]
 static var wall_mode: int = WallMode.CUTAWAY
 var _walls_btn: Button = null
@@ -182,7 +183,7 @@ func _ready() -> void:
 	_walls_btn.name = "WallModeBtn"
 	_walls_btn.focus_mode = Control.FOCUS_NONE   # must never take the keyboard: Q/E/WASD belong to the view
 	_walls_btn.add_theme_font_size_override("font_size", 12)
-	_walls_btn.tooltip_text = "How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered"
+	_walls_btn.tooltip_text = tr("How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered")
 	_walls_btn.anchor_left = 1.0
 	_walls_btn.anchor_right = 1.0
 	_walls_btn.offset_left = -152.0
@@ -1151,7 +1152,7 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 			# or placement against. Hide the box itself in that case; the
 			# reason label alone ("Outside the room") already tells the player
 			# why nothing is being placed.
-			if reason == "Outside the room":
+			if reason == tr("Outside the room"):
 				_buying_mesh.visible = false
 				_hide_drag_highlight()
 			else:
@@ -1170,7 +1171,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		var iw: int = _buying_furniture.grid_w
 		var ih: int = _buying_fdata.get("wall_h", 8) as int
 		if edge == "" or not _can_place_wall_item(edge, origin, iw, ih, Vector2i(-999999, -999999)):
-			_flash_reason(_wall_block_reason if edge != "" else "Can't place here")
+			_flash_reason(_wall_block_reason if edge != "" else tr("Can't place here"))
 			return
 		_hide_reason()
 		var fid := _buying_furniture.furniture_id
@@ -1271,10 +1272,10 @@ func _sell_furniture(hit: Dictionary) -> void:
 	var f: Furniture = hit["furniture"]
 	if f.keepsake:
 		# Refused here, before the piece is dropped from this view's cache.
-		_flash_reason("♥ %s is a keepsake: it can be moved, not sold" % f.furniture_name)
+		_flash_reason(tr("♥ %s is a keepsake: it can be moved, not sold") % f.furniture_name)
 		return
 	if f.buy_price < 0 and budget_getter.is_valid() and (budget_getter.call() as int) < -f.buy_price:
-		_flash_reason("Removing %s means repaying its %d€ rent" % [f.furniture_name, -f.buy_price])
+		_flash_reason(tr("Removing %s means repaying its %d€ rent") % [f.furniture_name, -f.buy_price])
 		return
 	remove_furniture_entry(f)
 	_set_grid_overlay_visible(false)
@@ -1604,19 +1605,19 @@ func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_o
 	var item_rect := Rect2i(at.x, at.y, iw, ih)
 	for zone in _wall_restricted_zones(edge):
 		if (zone as Rect2i).intersects(item_rect):
-			_wall_block_reason = "Too close to a window or door"
+			_wall_block_reason = tr("Too close to a window or door")
 			return false
 	if _apt_floor and not _apt_floor.sloped_ceiling.is_empty():
 		for tx in range(iw):
 			if at.y < _wall_ceiling_cut_tiles(edge, at.x + tx):
-				_wall_block_reason = "Ceiling too low here"
+				_wall_block_reason = tr("Ceiling too low here")
 				return false
 	if _wall_floor_occludes(edge, at, iw, ih):
-		_wall_block_reason = "Blocked by furniture on the floor"
+		_wall_block_reason = tr("Blocked by furniture on the floor")
 		return false
 	var wall_w := _wall_usable_width(edge)
 	if at.x < 0 or at.x + iw > wall_w or at.y < 0 or at.y + ih > WALL_HEIGHT_TILES:
-		_wall_block_reason = "Doesn't fit on this wall"
+		_wall_block_reason = tr("Doesn't fit on this wall")
 		return false
 	if not _apt_floor:
 		return true
@@ -1634,7 +1635,7 @@ func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_o
 				var pw: int = (pf.get("size", {}) as Dictionary).get("w", 1) as int
 				var ph: int = pf.get("wall_h", 1) as int
 				if check.x >= o.x and check.x < o.x + pw and check.y >= o.y and check.y < o.y + ph:
-					_wall_block_reason = "Overlaps " + (pf.get("name", "another item") as String)
+					_wall_block_reason = tr("Overlaps %s") % (pf.get("name", tr("another item")) as String)
 					return false
 	return true
 
@@ -2497,7 +2498,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 func set_wall_mode(mode: int) -> void:
 	wall_mode = clampi(mode, 0, WallMode.size() - 1)
 	if is_instance_valid(_walls_btn):
-		_walls_btn.text = WALL_MODE_LABELS[wall_mode]
+		_walls_btn.text = tr(WALL_MODE_LABELS[wall_mode])
 	if is_node_ready() and _room_w_m > 0.0:
 		_update_camera()   # re-evaluates every wall against the new mode
 
@@ -2773,7 +2774,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	cancel_camera_travel()
 	_stop_turn()
 	if is_instance_valid(_walls_btn):
-		_walls_btn.text = WALL_MODE_LABELS[wall_mode]
+		_walls_btn.text = tr(WALL_MODE_LABELS[wall_mode])
 		_walls_btn.visible = true
 	_auto_spin = false
 	_foldable  = false
@@ -3484,7 +3485,7 @@ func _update_hover(vp_pos: Vector2) -> void:
 	_hover_highlight.position.z = pos.z - item_size.z * 0.5
 	build_root.add_child(_hover_highlight)
 	_hover_furniture = f
-	container.tooltip_text = "Double-click to step inside" if (f.is_nested_box and not f.child_level_id.is_empty()) else ""
+	container.tooltip_text = tr("Double-click to step inside") if (f.is_nested_box and not f.child_level_id.is_empty()) else ""
 
 
 func _hide_hover_highlight() -> void:
@@ -3979,13 +3980,13 @@ func _add_reveal_zone_markers(bounds: Rect2i) -> void:
 # 2D-only pipe/duct overlays and have no walls or columns of their own.
 func _add_special_layer_label(floor_type: String, w: float, d: float) -> void:
 	var names := {
-		"ceiling":   "Ceiling / Ducts",
-		"subfloor":  "Building Subfloor",
-		"floor_sub": "Floor Subfloor / Pipes",
-		"roof":      "Roof",
+		"ceiling":   tr("Ceiling / Ducts"),
+		"subfloor":  tr("Building Subfloor"),
+		"floor_sub": tr("Floor Subfloor / Pipes"),
+		"roof":      tr("Roof"),
 	}
 	var lbl := Label3D.new()
-	lbl.text = (names.get(floor_type, floor_type.capitalize()) as String) + "\n(view in 2D for detail)"
+	lbl.text = (names.get(floor_type, floor_type.capitalize()) as String) + "\n" + tr("(view in 2D for detail)")
 	lbl.font_size = 48
 	lbl.modulate = Color(0.35, 0.40, 0.48)
 	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED

@@ -65,19 +65,19 @@ func bounding_box() -> Rect2i:
 
 func validation_message() -> String:
 	if tiles.is_empty():
-		return "Paint tiles on the floor  (LMB add · RMB erase)"
+		return tr("Paint tiles on the floor  (LMB add · RMB erase)")
 	if tiles.size() < min_tiles:
-		return "%d more tiles needed  (min %d)" % [min_tiles - tiles.size(), min_tiles]
+		return tr("%d more tiles needed  (min %d)") % [min_tiles - tiles.size(), min_tiles]
 	if not _is_contiguous():
-		return "Shape must be one connected region"
+		return tr("Shape must be one connected region")
 	var bb      := bounding_box()
 	var shorter := mini(bb.size.x, bb.size.y)
 	var longer  := maxi(bb.size.x, bb.size.y)
 	if shorter < min_short_side:
-		return "Too narrow — needs ≥ %d tiles on short side" % min_short_side
+		return tr("Too narrow — needs ≥ %d tiles on short side") % min_short_side
 	if shorter > 0 and float(longer) / float(shorter) > max_aspect:
-		return "Too elongated — max ratio %.0f:1" % max_aspect
-	return "✓  Valid — costs %d€" % total_cost()
+		return tr("Too elongated — max ratio %.0f:1") % max_aspect
+	return tr("✓  Valid — costs %d€") % total_cost()
 
 
 func _is_contiguous() -> bool:

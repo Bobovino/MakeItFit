@@ -94,7 +94,7 @@ var _stars_label:   Label
 
 
 func _ready() -> void:
-	_levels_data = _load_json("res://data/levels.json")
+	_levels_data = Loc.localize_levels(_load_json("res://data/levels.json"))
 	_load_furniture_catalog()
 	_build_ui()
 	_rebuild_tabs()
@@ -119,7 +119,7 @@ func _load_json(path: String) -> Dictionary:
 
 
 func _load_furniture_catalog() -> void:
-	var data := _load_json("res://data/furniture.json")
+	var data := Loc.localize_furniture(_load_json("res://data/furniture.json"))
 	for f in data.get("furniture", []) as Array:
 		var fd := f as Dictionary
 		_furniture_catalog[fd.get("id", "") as String] = fd
@@ -276,7 +276,7 @@ func _build_ui() -> void:
 	top_row.add_child(motif)
 
 	var title_lbl := Label.new()
-	title_lbl.text = "PROJECTS"
+	title_lbl.text = tr("PROJECTS")
 	title_lbl.add_theme_font_size_override("font_size", 15)
 	title_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
 	var tape := StyleBoxFlat.new()          # a strip of masking tape, written on
@@ -490,7 +490,7 @@ func _build_ui() -> void:
 	const FAX_INK := Color(0.16, 0.15, 0.14)
 	const FAX_INK_SOFT := Color(0.40, 0.38, 0.35)
 	var fax_head := _make_info_label(vb, 9, FAX_INK_SOFT)
-	fax_head.text = "FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1"
+	fax_head.text = tr("FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1")
 	var head_rule := HSeparator.new()
 	head_rule.add_theme_color_override("color", FAX_INK_SOFT)
 	vb.add_child(head_rule)
@@ -590,7 +590,7 @@ func _build_ui() -> void:
 	vb.add_child(slot)
 
 	var lcd := Label.new()                   # the little green display
-	lcd.text = "READY"
+	lcd.text = tr("READY")
 	lcd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lcd.add_theme_font_size_override("font_size", 11)
 	lcd.add_theme_color_override("font_color", Color(0.20, 0.34, 0.16))
@@ -615,7 +615,7 @@ func _build_ui() -> void:
 	# layout (i.e. won at least once) — lets the player start over from
 	# scratch instead of reopening the layout they won with.
 	_redesign_btn = Button.new()
-	_redesign_btn.text = "Redesign from Scratch"
+	_redesign_btn.text = tr("Redesign from Scratch")
 	_redesign_btn.custom_minimum_size = Vector2(210, 32)
 	_redesign_btn.add_theme_font_size_override("font_size", 11)
 	_redesign_btn.visible = false
@@ -627,7 +627,7 @@ func _build_ui() -> void:
 	keys.add_theme_constant_override("separation", 9)
 	vb.add_child(keys)
 	var settings_btn := Button.new()
-	settings_btn.text = "⚙ Settings"
+	settings_btn.text = tr("⚙ Settings")
 	settings_btn.custom_minimum_size = Vector2(0, 34)
 	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_btn.add_theme_font_size_override("font_size", 12)
@@ -635,8 +635,8 @@ func _build_ui() -> void:
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	keys.add_child(settings_btn)
 	var quit_btn := Button.new()
-	quit_btn.text = "⏻ Quit"
-	quit_btn.tooltip_text = "Quit to desktop"
+	quit_btn.text = tr("⏻ Quit")
+	quit_btn.tooltip_text = tr("Quit to desktop")
 	quit_btn.custom_minimum_size = Vector2(0, 34)
 	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quit_btn.add_theme_font_size_override("font_size", 12)
@@ -688,12 +688,12 @@ func _fax_print() -> void:
 	var from := maxf(_fax_clip.size.y, 200.0)
 	feed.call(from)
 	if is_instance_valid(_fax_lcd):
-		_fax_lcd.text = "RECEIVING…"
+		_fax_lcd.text = tr("RECEIVING…")
 	_fax_tween = create_tween()
 	_fax_tween.tween_method(feed, from, 0.0, 0.55).set_trans(Tween.TRANS_LINEAR)
 	_fax_tween.tween_callback(func():
 		if is_instance_valid(_fax_lcd):
-			_fax_lcd.text = "READY")
+			_fax_lcd.text = tr("READY"))
 
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
@@ -784,6 +784,8 @@ func _make_shadow_blob_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+# tenant_name is the English one (levels.json's "key_name"), so a tenant
+# keeps the same colour in every language.
 func _update_portrait(tenant_name: String) -> void:
 	if not is_instance_valid(_portrait_mii):
 		return
@@ -971,6 +973,7 @@ func _rebuild_levels_ui() -> void:
 # their own muted color palette (park green, plaza tan, ...) versus real
 # apartments' amber is what makes it obvious they're not clickable.
 const DECORATION_TYPES := ["park", "lake", "plaza", "monument", "church", "fountain", "parking", "sports", "cemetery", "building"]
+# i18n-const
 const DECOR_LABELS := {
 	"park": "Park", "lake": "Lake", "plaza": "Plaza", "monument": "Monument",
 	"church": "Church", "fountain": "Fountain", "parking": "Parking",
@@ -1222,7 +1225,7 @@ func _create_decoration(kind: String, dsize: Vector2) -> Control:
 	# you can tell a plaza from a monument, not just the symbol.
 	if dsize.y >= 24.0:
 		var cap := Label.new()
-		cap.text = DECOR_LABELS.get(kind, kind.capitalize())
+		cap.text = tr(DECOR_LABELS.get(kind, kind.capitalize()))
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cap.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 		# The handwriting font below renders at 13px, but this box was only
@@ -1331,7 +1334,7 @@ func _build_district_block(start_y: float, bd: Dictionary, levels: Array, header
 
 	var hdr := Label.new()
 	hdr.text = header_override if header_override != "" else \
-		"BLOCK %d — %s" % [bid, (bd.get("name", "") as String).to_upper()] + \
+		tr("BLOCK %d — %s") % [bid, (bd.get("name", "") as String).to_upper()] + \
 		("  ·  " + subtitle if subtitle != "" else "")
 	hdr.position = Vector2(H_PAD + BLOCK_PAD, start_y)
 	hdr.size     = Vector2(block_w - BLOCK_PAD * 2, 16)
@@ -1656,13 +1659,13 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 	var tenant := ld.get("tenant", {}) as Dictionary
 	var status_line: String
 	if not level_visible:
-		status_line = "Locked — needs %d ★" % min_stars
+		status_line = tr("Locked — needs %d ★") % min_stars
 	elif stars > 0:
 		status_line = "★".repeat(stars) + "☆".repeat(3 - stars)
 	elif is_owned:
-		status_line = "Available"
+		status_line = tr("Available")
 	else:
-		status_line = ("%d€" if can_buy else "Locked — %d€") % cost
+		status_line = ("%d€" if can_buy else tr("Locked — %d€")) % cost
 	btn.tooltip_text = "%s — %s\n%s" % [
 		ld.get("name", "") as String, tenant.get("name", "") as String, status_line,
 	]
@@ -1794,7 +1797,7 @@ func _select_level(ld: Dictionary) -> void:
 	# Requires/rent/Reward for attention when it's the one number a player
 	# actually needs before picking furniture — folded into the header line
 	# instead, right next to the size it's meant to be read alongside.
-	_info_district.text = "%s  ·  %s  ·  Budget: %d€" % [
+	_info_district.text = tr("%s  ·  %s  ·  Budget: %d€") % [
 		ld.get("district", "?") as String,
 		_sqm_label(ld),
 		ld.get("starting_budget", 0) as int,
@@ -1803,7 +1806,7 @@ func _select_level(ld: Dictionary) -> void:
 	var plan := _floor_plan_data(ld)
 	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld))
 	_tenant_portrait.visible = true
-	_update_portrait(tenant.get("name", "?") as String)
+	_update_portrait(tenant.get("key_name", tenant.get("name", "?")) as String)
 
 	var star_suffix := ""
 	if stars > 0:
@@ -1822,35 +1825,35 @@ func _select_level(ld: Dictionary) -> void:
 		var intro_title := mechanic_intro.get("title", "") as String
 		_info_reqs.text = "★ " + intro_title
 	elif funcs.is_empty():
-		_info_reqs.text = "Requires: (see Moments)"
+		_info_reqs.text = tr("Requires: (see Moments)")
 	else:
-		_info_reqs.text = "Requires: " + ", ".join(funcs)
+		_info_reqs.text = tr("Requires: %s") % ", ".join(funcs.map(Loc.need_name))
 	_info_budget.visible = false
-	_info_rent.text   = "%d€ / month" % (tenant.get("monthly_rent", 0) as int)
+	_info_rent.text   = tr("%d€ / month") % (tenant.get("monthly_rent", 0) as int)
 
 	if not level_visible:
-		_info_cost.text    = "Locked — need %d total ★" % min_st
-		_action_btn.text   = "LOCKED"
+		_info_cost.text    = tr("Locked — need %d total ★") % min_st
+		_action_btn.text   = tr("LOCKED")
 		_action_btn.disabled = true
 		_redesign_btn.visible = false
 	elif is_owned:
 		var reward := ld.get("funds_base_reward", 0) as int
-		_info_cost.text    = "Reward: ~%d€ Studio Funds" % reward
+		_info_cost.text    = tr("Reward: ~%d€ Studio Funds") % reward
 		if stars > 0 and GameState.has_level_layout(lid):
 			# Already won at least once — default to reopening it exactly as
 			# left, with "start over" as an explicit secondary choice rather
 			# than the only option.
-			_action_btn.text   = "Review Current Plan"
+			_action_btn.text   = tr("Review Current Plan")
 			_action_btn.disabled = false
 			_redesign_btn.visible = true
 			_redesign_btn.disabled = false
 		else:
-			_action_btn.text   = "ENTER  →"
+			_action_btn.text   = tr("ENTER  →")
 			_action_btn.disabled = false
 			_redesign_btn.visible = false
 	else:
-		_info_cost.text    = "Acquisition: %d€ Studio Funds" % cost
-		_action_btn.text   = "BUY — %d€" % cost
+		_info_cost.text    = tr("Acquisition: %d€ Studio Funds") % cost
+		_action_btn.text   = tr("BUY — %d€") % cost
 		_action_btn.disabled = not can_buy
 		_redesign_btn.visible = false
 
@@ -1864,7 +1867,7 @@ func _update_top_bar_counters() -> void:
 	if _stars_label:
 		_stars_label.text = "★ %d  |  " % GameState.total_stars()
 	if _funds_label:
-		_funds_label.text = "Studio Funds: %d€" % GameState.company_funds
+		_funds_label.text = tr("Studio Funds: %d€") % GameState.company_funds
 
 
 # ── Signals ──────────────────────────────────────────────────────────────────
@@ -2229,8 +2232,8 @@ func _build_debug_section(start_y: float) -> float:
 	if debug_levels.is_empty():
 		return start_y
 
-	var bd := {"id": 0, "name": "Debug", "subtitle": "", "color": "#D8944A"}
-	return _build_district_block(start_y, bd, debug_levels, "DEBUG LEVELS  (Ctrl+Shift+Alt+D)")
+	var bd := {"id": 0, "name": tr("Debug"), "subtitle": "", "color": "#D8944A"}
+	return _build_district_block(start_y, bd, debug_levels, tr("DEBUG LEVELS  (Ctrl+Shift+Alt+D)"))
 
 
 # ── My Levels (custom / player-created) ──────────────────────────────────────
@@ -2266,7 +2269,7 @@ func _build_custom_section() -> void:
 	_map_content.add_child(line)
 
 	var hdr := Label.new()
-	hdr.text = "MY LEVELS"
+	hdr.text = tr("MY LEVELS")
 	hdr.position = Vector2(H_PAD, sy + 10.0)
 	hdr.size     = Vector2(MAP_W - H_PAD * 2, 16)
 	hdr.add_theme_font_size_override("font_size", 9)
@@ -2307,14 +2310,14 @@ func _create_custom_card(index: int, ld: Dictionary) -> void:
 	card.add_child(vb)
 
 	var nm := Label.new()
-	nm.text              = ld.get("name", "Unnamed") as String
+	nm.text              = ld.get("name", tr("Unnamed")) as String
 	nm.autowrap_mode     = TextServer.AUTOWRAP_WORD_SMART
 	nm.add_theme_font_size_override("font_size", 11)
 	nm.add_theme_color_override("font_color", Color(0.38, 0.80, 0.54))
 	vb.add_child(nm)
 
 	var badge := Label.new()
-	badge.text = "CUSTOM"
+	badge.text = tr("CUSTOM")
 	badge.add_theme_font_size_override("font_size", 8)
 	badge.add_theme_color_override("font_color", Color(0.28, 0.55, 0.40, 0.70))
 	vb.add_child(badge)
@@ -2368,7 +2371,7 @@ func _create_new_level_card(index: int) -> void:
 	card.add_child(plus)
 
 	var lbl := Label.new()
-	lbl.text                  = "New Level"
+	lbl.text                  = tr("New Level")
 	lbl.horizontal_alignment  = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.set_anchor(SIDE_TOP,    1.0)
 	lbl.set_anchor(SIDE_RIGHT,  1.0)
@@ -2390,8 +2393,8 @@ func _select_custom_level(ld: Dictionary) -> void:
 	_selected_is_custom   = true
 	_selected_custom_data = ld
 
-	_info_title.text    = ld.get("name", "Unnamed Level") as String
-	_info_district.text = "Custom Level  ·  %s  ·  Budget: %d€" % [
+	_info_title.text    = ld.get("name", tr("Unnamed Level")) as String
+	_info_district.text = tr("Custom Level  ·  %s  ·  Budget: %d€") % [
 		_sqm_label(ld), ld.get("starting_budget", 0) as int,
 	]
 
@@ -2400,11 +2403,11 @@ func _select_custom_level(ld: Dictionary) -> void:
 
 	var tenant := ld.get("tenant", {}) as Dictionary
 	if tenant.is_empty():
-		_info_tenant.text = "No tenant defined"
+		_info_tenant.text = tr("No tenant defined")
 		_tenant_portrait.visible = false
 	else:
 		_tenant_portrait.visible = true
-		_update_portrait(tenant.get("name", "?") as String)
+		_update_portrait(tenant.get("key_name", tenant.get("name", "?")) as String)
 		var flavor := tenant.get("flavor", "") as String
 		var flavor_line := "\n\"%s\"" % flavor if flavor != "" else ""
 		_info_tenant.text = "%s, %d%s" % [
@@ -2413,12 +2416,12 @@ func _select_custom_level(ld: Dictionary) -> void:
 		]
 
 	var funcs := tenant.get("required_functions", []) as Array
-	_info_reqs.text   = ("Requires: " + ", ".join(funcs)) if not funcs.is_empty() else ""
+	_info_reqs.text   = (tr("Requires: %s") % ", ".join(funcs.map(Loc.need_name))) if not funcs.is_empty() else ""
 	_info_budget.visible = false
 	_info_rent.text   = ""
 	_info_cost.text   = ""
 
-	_action_btn.text     = "PLAY →"
+	_action_btn.text     = tr("PLAY →")
 	_action_btn.disabled = false
 	_redesign_btn.visible = false
 

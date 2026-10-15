@@ -68,19 +68,19 @@ func _build() -> void:
 	var title_row := HBoxContainer.new()
 	vb.add_child(title_row)
 	var title := Label.new()
-	title.text = "SETTINGS"
+	title.text = tr("SETTINGS")
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
 	var help_btn := Button.new()
-	help_btn.text = "❓ How to Play"
+	help_btn.text = tr("❓ How to Play")
 	help_btn.add_theme_font_size_override("font_size", 12)
 	help_btn.pressed.connect(func(): HowToPlay.open(self))
 	title_row.add_child(help_btn)
 
 	var credits_btn := Button.new()
-	credits_btn.text = "🖋 Credits"
+	credits_btn.text = tr("🖋 Credits")
 	credits_btn.add_theme_font_size_override("font_size", 12)
 	credits_btn.pressed.connect(func(): CreditsMenuScript.open(self))
 	title_row.add_child(credits_btn)
@@ -91,16 +91,20 @@ func _build() -> void:
 
 	var audio := get_node_or_null("/root/Audio")
 
-	vb.add_child(_section_title("AUDIO"))
+	vb.add_child(_section_title(tr("LANGUAGE")))
+	_build_language_row(vb, host)
 
-	vb.add_child(_build_slider_row("Master Volume",
+	vb.add_child(HSeparator.new())
+	vb.add_child(_section_title(tr("AUDIO")))
+
+	vb.add_child(_build_slider_row(tr("Master Volume"),
 		audio.master_volume if audio else 1.0,
 		func(v: float):
 			if audio:
 				audio.set_master_volume(v)
 			GameState.save_game()))
 
-	var sfx_row := _build_slider_row("SFX Volume",
+	var sfx_row := _build_slider_row(tr("SFX Volume"),
 		audio.sfx_volume if audio else 1.0,
 		func(v: float):
 			if audio:
@@ -113,7 +117,7 @@ func _build() -> void:
 		if audio:
 			audio.play("click"))
 
-	vb.add_child(_build_slider_row("Music Volume",
+	vb.add_child(_build_slider_row(tr("Music Volume"),
 		audio.music_volume if audio else 0.7,
 		func(v: float):
 			if audio:
@@ -121,7 +125,7 @@ func _build() -> void:
 			GameState.save_game()))
 
 	var mute_chk := CheckBox.new()
-	mute_chk.text = "Mute all sound"
+	mute_chk.text = tr("Mute all sound")
 	mute_chk.add_theme_font_size_override("font_size", 12)
 	mute_chk.button_pressed = audio.muted if audio else false
 	mute_chk.toggled.connect(func(on: bool):
@@ -131,18 +135,18 @@ func _build() -> void:
 	vb.add_child(mute_chk)
 
 	vb.add_child(HSeparator.new())
-	vb.add_child(_section_title("GRAPHICS"))
+	vb.add_child(_section_title(tr("GRAPHICS")))
 	_build_quality_rows(vb)
 
 	var sep0 := HSeparator.new()
 	vb.add_child(sep0)
 
-	vb.add_child(_section_title("ACCESSIBILITY"))
+	vb.add_child(_section_title(tr("ACCESSIBILITY")))
 
 	# UI scale — a blunt global zoom (see GameState._apply_ui_scale) rather
 	# than a per-label font setting, since font sizes are hardcoded ad-hoc
 	# throughout the codebase and there's no single themed size to scale.
-	vb.add_child(_build_pct_slider_row("UI Scale", GameState.ui_scale,
+	vb.add_child(_build_pct_slider_row(tr("UI Scale"), GameState.ui_scale,
 		GameState.UI_SCALE_MIN, GameState.UI_SCALE_MAX,
 		func(v: float): GameState.set_ui_scale(v)))
 
@@ -150,7 +154,7 @@ func _build() -> void:
 	motion_row.add_theme_constant_override("separation", 10)
 	vb.add_child(motion_row)
 	var motion_chk := CheckBox.new()
-	motion_chk.text = "Reduce motion (skip pop/pulse animations)"
+	motion_chk.text = tr("Reduce motion (skip pop/pulse animations)")
 	motion_chk.add_theme_font_size_override("font_size", 12)
 	motion_chk.button_pressed = GameState.reduce_motion
 	motion_chk.toggled.connect(func(on: bool): GameState.set_reduce_motion(on))
@@ -160,13 +164,13 @@ func _build() -> void:
 	rebind_row.add_theme_constant_override("separation", 10)
 	vb.add_child(rebind_row)
 	var rebind_lbl := Label.new()
-	rebind_lbl.text = "Undo key"
+	rebind_lbl.text = tr("Undo key")
 	rebind_lbl.add_theme_font_size_override("font_size", 13)
 	rebind_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 	rebind_lbl.custom_minimum_size.x = 120
 	rebind_row.add_child(rebind_lbl)
 	_rebind_btn = Button.new()
-	_rebind_btn.text = "Ctrl+%s  (Shift+ = Redo)" % OS.get_keycode_string(GameState.undo_keycode)
+	_rebind_btn.text = tr("Ctrl+%s  (Shift+ = Redo)") % OS.get_keycode_string(GameState.undo_keycode)
 	_rebind_btn.add_theme_font_size_override("font_size", 12)
 	_rebind_btn.pressed.connect(_start_rebind_capture)
 	rebind_row.add_child(_rebind_btn)
@@ -182,14 +186,14 @@ func _build() -> void:
 	# button only appears when the host actually supports it.
 	if (host and host.has_method("_go_back")) or (host and host.has_method("_restart_level")):
 		var nav_title := Label.new()
-		nav_title.text = "NAVIGATION"
+		nav_title.text = tr("NAVIGATION")
 		nav_title.add_theme_font_size_override("font_size", 13)
 		nav_title.add_theme_color_override("font_color", GameTheme.C_MUTED)
 		vb.add_child(nav_title)
 
 	if host and host.has_method("_go_back"):
 		var back_btn := Button.new()
-		back_btn.text = "← Projects"
+		back_btn.text = tr("← Projects")
 		back_btn.add_theme_font_size_override("font_size", 13)
 		back_btn.pressed.connect(func():
 			_close()
@@ -206,7 +210,7 @@ func _build() -> void:
 		vb.add_child(restart_row)
 
 		var restart_btn := Button.new()
-		restart_btn.text = "↻ Restart Level"
+		restart_btn.text = tr("↻ Restart Level")
 		restart_btn.add_theme_font_size_override("font_size", 13)
 		restart_row.add_child(restart_btn)
 
@@ -216,14 +220,14 @@ func _build() -> void:
 		restart_row.add_child(r_confirm_row)
 
 		var r_confirm_lbl := Label.new()
-		r_confirm_lbl.text = "Discard this layout and start over?"
+		r_confirm_lbl.text = tr("Discard this layout and start over?")
 		r_confirm_lbl.add_theme_font_size_override("font_size", 12)
 		r_confirm_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
 		r_confirm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r_confirm_row.add_child(r_confirm_lbl)
 
 		var r_yes_btn := Button.new()
-		r_yes_btn.text = "Yes, restart"
+		r_yes_btn.text = tr("Yes, restart")
 		r_yes_btn.add_theme_font_size_override("font_size", 12)
 		r_yes_btn.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
 		r_yes_btn.pressed.connect(func():
@@ -232,7 +236,7 @@ func _build() -> void:
 		r_confirm_row.add_child(r_yes_btn)
 
 		var r_cancel_btn := Button.new()
-		r_cancel_btn.text = "Cancel"
+		r_cancel_btn.text = tr("Cancel")
 		r_cancel_btn.add_theme_font_size_override("font_size", 12)
 		r_cancel_btn.pressed.connect(func():
 			r_confirm_row.visible = false
@@ -252,7 +256,7 @@ func _build() -> void:
 	vb.add_child(quit_row)
 
 	var quit_btn := Button.new()
-	quit_btn.text = "Quit to Desktop"
+	quit_btn.text = tr("Quit to Desktop")
 	quit_btn.add_theme_font_size_override("font_size", 13)
 	quit_row.add_child(quit_btn)
 
@@ -262,21 +266,21 @@ func _build() -> void:
 	quit_row.add_child(confirm_row)
 
 	var confirm_lbl := Label.new()
-	confirm_lbl.text = "Quit for real?"
+	confirm_lbl.text = tr("Quit for real?")
 	confirm_lbl.add_theme_font_size_override("font_size", 12)
 	confirm_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	confirm_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	confirm_row.add_child(confirm_lbl)
 
 	var yes_btn := Button.new()
-	yes_btn.text = "Yes, quit"
+	yes_btn.text = tr("Yes, quit")
 	yes_btn.add_theme_font_size_override("font_size", 12)
 	yes_btn.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
 	yes_btn.pressed.connect(func(): get_tree().quit())
 	confirm_row.add_child(yes_btn)
 
 	var cancel_btn := Button.new()
-	cancel_btn.text = "Cancel"
+	cancel_btn.text = tr("Cancel")
 	cancel_btn.add_theme_font_size_override("font_size", 12)
 	cancel_btn.pressed.connect(func():
 		confirm_row.visible = false
@@ -293,7 +297,7 @@ func _build() -> void:
 	vb.add_child(push)
 
 	var close_btn := Button.new()
-	close_btn.text = "Close"
+	close_btn.text = tr("Close")
 	close_btn.add_theme_font_size_override("font_size", 13)
 	var rs := GameTheme.make_rent_btn_style()
 	close_btn.add_theme_stylebox_override("normal",  rs[0])
@@ -315,13 +319,52 @@ func _section_title(text: String) -> Label:
 # 3D view quality. Only tiers that add something on the running renderer are
 # offered (High is the SSAO tier, which this renderer may not have), and the
 # line underneath says what the chosen tier turns on.
+# Most text is set once when a screen is built, so a new language needs the
+# screen rebuilt: outside a level that is just a reload; inside one it would
+# throw away the layout in progress, so the level keeps its text until the
+# player leaves it and only this menu is rebuilt straight away.
+func _build_language_row(vb: VBoxContainer, host: Node) -> void:
+	var picker := OptionButton.new()
+	picker.add_theme_font_size_override("font_size", 12)
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.add_item(tr("Device language"))
+	picker.set_item_metadata(0, "")
+	for code in Loc.LANGUAGES:
+		picker.add_item(Loc.LANGUAGES[code] as String)
+		picker.set_item_metadata(picker.item_count - 1, code)
+	for i in picker.item_count:
+		if (picker.get_item_metadata(i) as String) == GameState.language:
+			picker.select(i)
+	vb.add_child(picker)
+	var in_level := _in_level()
+	if in_level:
+		var hint := Label.new()
+		hint.add_theme_font_size_override("font_size", 11)
+		hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.text = tr("The rest of the level changes language when you leave it.")
+		vb.add_child(hint)
+	picker.item_selected.connect(func(index: int):
+		GameState.set_language(picker.get_item_metadata(index) as String)
+		_close()
+		if in_level:
+			SettingsMenu.open(host)
+		else:
+			Transition.change_scene(get_tree().current_scene.scene_file_path))
+
+
+func _in_level() -> bool:
+	var scene := get_tree().current_scene
+	return scene != null and scene.scene_file_path == "res://scenes/Main.tscn"
+
+
 func _build_quality_rows(vb: VBoxContainer) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	vb.add_child(row)
 
 	var lbl := Label.new()
-	lbl.text = "3D Quality"
+	lbl.text = tr("3D Quality")
 	lbl.add_theme_font_size_override("font_size", 13)
 	lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 	lbl.custom_minimum_size.x = 120
@@ -336,7 +379,7 @@ func _build_quality_rows(vb: VBoxContainer) -> void:
 	picker.add_theme_font_size_override("font_size", 12)
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for tier in tiers:
-		picker.add_item(StyleQuality.LEVEL_NAMES[tier], tier)
+		picker.add_item(tr(StyleQuality.LEVEL_NAMES[tier]), tier)
 	picker.select(picker.get_item_index(current))
 	row.add_child(picker)
 
@@ -351,9 +394,9 @@ func _build_quality_rows(vb: VBoxContainer) -> void:
 		GameState.set_graphics_quality(tier)
 		hint.text = _quality_hint(tier))
 
-	vb.add_child(_section_title("EXPERIMENTAL"))
+	vb.add_child(_section_title(tr("EXPERIMENTAL")))
 	var path_toggle := CheckButton.new()
-	path_toggle.text = "Walking paths"
+	path_toggle.text = tr("Walking paths")
 	path_toggle.add_theme_font_size_override("font_size", 13)
 	path_toggle.add_theme_color_override("font_color", GameTheme.C_TEXT)
 	path_toggle.button_pressed = GameState.pathing_rule
@@ -363,15 +406,15 @@ func _build_quality_rows(vb: VBoxContainer) -> void:
 	path_hint.add_theme_font_size_override("font_size", 11)
 	path_hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	path_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	path_hint.text = "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
+	path_hint.text = tr("The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm.")
 	vb.add_child(path_hint)
 
 
 func _quality_hint(tier: int) -> String:
 	match tier:
-		StyleQuality.Level.LOW:    return "Fastest. Flat lighting and shadows only."
-		StyleQuality.Level.MEDIUM: return "Adds glow on lamps and windows, and a soft vignette."
-		_:                         return "Adds contact shading in corners. Needs a dedicated GPU."
+		StyleQuality.Level.LOW:    return tr("Fastest. Flat lighting and shadows only.")
+		StyleQuality.Level.MEDIUM: return tr("Adds glow on lamps and windows, and a soft vignette.")
+		_:                         return tr("Adds contact shading in corners. Needs a dedicated GPU.")
 
 
 # Sizes the scroll area to its content (capped to fit the 720-high layout) and
@@ -466,7 +509,7 @@ func _build_pct_slider_row(label_text: String, initial: float, min_v: float, max
 # ── Undo key rebinding ───────────────────────────────────────────────────────
 func _start_rebind_capture() -> void:
 	_capturing_rebind = true
-	_rebind_btn.text = "Press any key…"
+	_rebind_btn.text = tr("Press any key…")
 
 
 func _input(event: InputEvent) -> void:
@@ -483,7 +526,7 @@ func _input(event: InputEvent) -> void:
 		if kc in [KEY_CTRL, KEY_SHIFT, KEY_ALT, KEY_META]:
 			return
 		GameState.set_undo_keycode(kc)
-		_rebind_btn.text = "Ctrl+%s  (Shift+ = Redo)" % OS.get_keycode_string(kc)
+		_rebind_btn.text = tr("Ctrl+%s  (Shift+ = Redo)") % OS.get_keycode_string(kc)
 		_capturing_rebind = false
 		get_viewport().set_input_as_handled()
 

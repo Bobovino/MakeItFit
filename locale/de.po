@@ -1,0 +1,2469 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Make It Fit\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8-bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: scripts/CityMap.gd:978
+msgid "Park"
+msgstr "Park"
+
+#: scripts/CityMap.gd:978
+msgid "Lake"
+msgstr "See"
+
+#: scripts/CityMap.gd:978
+msgid "Plaza"
+msgstr "Platz"
+
+#: scripts/CityMap.gd:978
+msgid "Monument"
+msgstr "Denkmal"
+
+#: scripts/CityMap.gd:979
+msgid "Church"
+msgstr "Kirche"
+
+#: scripts/CityMap.gd:979
+msgid "Fountain"
+msgstr "Brunnen"
+
+#: scripts/CityMap.gd:979
+msgid "Parking"
+msgstr "Parkplatz"
+
+#: scripts/CityMap.gd:980
+msgid "Sports Field"
+msgstr "Sportplatz"
+
+#: scripts/CityMap.gd:980
+msgid "Cemetery"
+msgstr "Friedhof"
+
+#: scripts/CityMap.gd:980
+msgid "Building"
+msgstr "Gebäude"
+
+#: scripts/CityMap.gd:981
+msgid "Roundabout"
+msgstr "Kreisverkehr"
+
+#: scripts/CityMap.gd:279
+msgid "PROJECTS"
+msgstr "PROJEKTE"
+
+#: scripts/CityMap.gd:493
+msgid "FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1"
+msgstr "FAX  ·  KÖNIGSBERG PROJEKTE  ·  SEITE 1/1"
+
+#: scripts/CityMap.gd:593
+#: scripts/CityMap.gd:696
+msgid "READY"
+msgstr "BEREIT"
+
+#: scripts/CityMap.gd:618
+msgid "Redesign from Scratch"
+msgstr "Neu einrichten"
+
+#: scripts/CityMap.gd:630
+msgid "⚙ Settings"
+msgstr "⚙ Einstellungen"
+
+#: scripts/CityMap.gd:638
+msgid "⏻ Quit"
+msgstr "⏻ Beenden"
+
+#: scripts/CityMap.gd:639
+msgid "Quit to desktop"
+msgstr "Zum Desktop beenden"
+
+#: scripts/CityMap.gd:691
+msgid "RECEIVING…"
+msgstr "EMPFANG…"
+
+#: scripts/CityMap.gd:1337
+msgid "BLOCK %d — %s"
+msgstr "BLOCK %d — %s"
+
+#: scripts/CityMap.gd:1662
+msgid "Locked — needs %d ★"
+msgstr "Gesperrt — braucht %d ★"
+
+#: scripts/CityMap.gd:1666
+msgid "Available"
+msgstr "Verfügbar"
+
+#: scripts/CityMap.gd:1668
+msgid "Locked — %d€"
+msgstr "Gesperrt — %d€"
+
+#: scripts/CityMap.gd:1800
+msgid "%s  ·  %s  ·  Budget: %d€"
+msgstr "%s  ·  %s  ·  Budget: %d€"
+
+#: scripts/CityMap.gd:1828
+msgid "Requires: (see Moments)"
+msgstr "Braucht: (siehe Momente)"
+
+#: scripts/CityMap.gd:1830
+#: scripts/CityMap.gd:2419
+msgid "Requires: %s"
+msgstr "Braucht: %s"
+
+#: scripts/CityMap.gd:1832
+#: scripts/TenantCard.gd:147
+msgid "%d€ / month"
+msgstr "%d€ / Monat"
+
+#: scripts/CityMap.gd:1835
+msgid "Locked — need %d total ★"
+msgstr "Gesperrt — insgesamt %d ★ nötig"
+
+#: scripts/CityMap.gd:1836
+msgid "LOCKED"
+msgstr "GESPERRT"
+
+#: scripts/CityMap.gd:1841
+msgid "Reward: ~%d€ Studio Funds"
+msgstr "Belohnung: ~%d€ Studiokapital"
+
+#: scripts/CityMap.gd:1846
+msgid "Review Current Plan"
+msgstr "Aktuellen Plan ansehen"
+
+#: scripts/CityMap.gd:1851
+msgid "ENTER  →"
+msgstr "BETRETEN  →"
+
+#: scripts/CityMap.gd:1855
+msgid "Acquisition: %d€ Studio Funds"
+msgstr "Erwerb: %d€ Studiokapital"
+
+#: scripts/CityMap.gd:1856
+msgid "BUY — %d€"
+msgstr "KAUFEN — %d€"
+
+#: scripts/CityMap.gd:1870
+msgid "Studio Funds: %d€"
+msgstr "Studiokapital: %d€"
+
+#: scripts/CityMap.gd:2235
+msgid "Debug"
+msgstr "Debug"
+
+#: scripts/CityMap.gd:2236
+msgid "DEBUG LEVELS  (Ctrl+Shift+Alt+D)"
+msgstr "DEBUG-LEVEL  (Strg+Umschalt+Alt+D)"
+
+#: scripts/CityMap.gd:2272
+msgid "MY LEVELS"
+msgstr "MEINE LEVEL"
+
+#: scripts/CityMap.gd:2313
+msgid "Unnamed"
+msgstr "Unbenannt"
+
+#: scripts/CityMap.gd:2320
+msgid "CUSTOM"
+msgstr "EIGENES"
+
+#: scripts/CityMap.gd:2374
+msgid "New Level"
+msgstr "Neues Level"
+
+#: scripts/CityMap.gd:2396
+msgid "Unnamed Level"
+msgstr "Unbenanntes Level"
+
+#: scripts/CityMap.gd:2397
+msgid "Custom Level  ·  %s  ·  Budget: %d€"
+msgstr "Eigenes Level  ·  %s  ·  Budget: %d€"
+
+#: scripts/CityMap.gd:2406
+msgid "No tenant defined"
+msgstr "Kein Mieter festgelegt"
+
+#: scripts/CityMap.gd:2424
+msgid "PLAY →"
+msgstr "SPIELEN →"
+
+#: scripts/ComfortMeter.gd:21
+msgid "Comfort. Below the warning line the apartment can't be rented like this. Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out."
+msgstr "Komfort. Unter der Warnlinie lässt sich die Wohnung so nicht vermieten. Gelbe Möbel sind unbequem zu bewegen — jedes Stück, das nicht mehr an seinem Ausgangsplatz steht, kostet Komfort. Stell es zurück, und der Komfort kehrt zurück. Unter der Warnlinie ist diese Einrichtung nicht vermietbar."
+
+#: scripts/ComfortMeter.gd:68
+msgid "Comfort %d%%"
+msgstr "Komfort %d%%"
+
+#: scripts/CreditsMenu.gd:58
+msgid "CREDITS"
+msgstr "MITWIRKENDE"
+
+#: scripts/CreditsMenu.gd:63
+msgid "Fonts"
+msgstr "Schriften"
+
+#: scripts/CreditsMenu.gd:66
+msgid "Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)"
+msgstr "Lizenziert unter der SIL Open Font License 1.1 (scripts.sil.org/OFL)"
+
+#: scripts/CreditsMenu.gd:70
+msgid "Art & Sound"
+msgstr "Grafik & Ton"
+
+#: scripts/CreditsMenu.gd:71
+msgid "Interface sounds and casino/UI audio by Kenney (kenney.nl)"
+msgstr "Interface-Sounds und Casino-/UI-Audio von Kenney (kenney.nl)"
+
+#: scripts/CreditsMenu.gd:72
+msgid "Released under Creative Commons Zero (CC0)"
+msgstr "Veröffentlicht unter Creative Commons Zero (CC0)"
+
+#: scripts/CreditsMenu.gd:76
+msgid "Ambient Rain"
+msgstr "Regen-Atmosphäre"
+
+#: scripts/CreditsMenu.gd:77
+msgid "Original work created for this project — no attribution required."
+msgstr "Eigens für dieses Projekt erstellt — keine Namensnennung nötig."
+
+#: scripts/CreditsMenu.gd:84
+#: scripts/HowToPlay.gd:97
+#: scripts/NestedMap.gd:88
+#: scripts/SettingsMenu.gd:300
+msgid "Close"
+msgstr "Schließen"
+
+#: scripts/Furniture.gd:590
+msgid "▲ FOLD"
+msgstr "▲ ZUSAMMENKLAPPEN"
+
+#: scripts/Furniture.gd:604
+msgid "▼ CLICK TO UNFOLD"
+msgstr "▼ KLICKEN ZUM AUSKLAPPEN"
+
+#: scripts/Furniture.gd:1698
+msgid "Moved for every moment"
+msgstr "Für jeden Moment verschoben"
+
+#: scripts/GameManager.gd:413
+msgid "%s and %s must be in different zones"
+msgstr "%s und %s müssen in verschiedenen Zonen liegen"
+
+#: scripts/GameManager.gd:414
+msgid "%s apart from %s"
+msgstr "%s getrennt von %s"
+
+#: scripts/GameManager.gd:444
+msgid "%s share this zone"
+msgstr "%s teilen sich diese Zone"
+
+#: scripts/GameManager.gd:446
+msgid "%s zone"
+msgstr "Zone: %s"
+
+#: scripts/GridDraw.gd:1192
+msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
+msgstr "%.1f° Neigung  |  %.2f m → %.2f m auf %.1f m  (Felder %d–%d)"
+
+#: scripts/HowToPlay.gd:53
+msgid "HOW TO PLAY"
+msgstr "SO WIRD GESPIELT"
+
+#: scripts/HowToPlay.gd:67
+msgid "Controls"
+msgstr "Steuerung"
+
+#: scripts/HowToPlay.gd:68
+msgid "Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."
+msgstr "Dinge werden in der 3D-Ansicht an Wände gehängt: Zieh einen Gegenstand auf eine Wand. Wenn du im Grundriss etwas nur für Wände kaufst, wechselt das Spiel für dich in die 3D-Ansicht."
+
+#: scripts/HowToPlay.gd:69
+msgid "In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."
+msgstr "In der 3D-Ansicht drehen Q und E die Ansicht um jeweils eine Vierteldrehung, W/A/S/D verschieben sie. Mausrad zoomt, Ziehen mit links auf freiem Boden verschiebt, Ziehen mit der mittleren Taste dreht frei, Klick mit der mittleren Taste zentriert neu."
+
+#: scripts/HowToPlay.gd:70
+msgid "The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."
+msgstr "Der Wände-Knopf (oder Pos1/Ende) schaltet die Wände zwischen Oben, Schnitt und Unten. Schnitt senkt nur die Wände vor deinem Blick ab."
+
+#: scripts/HowToPlay.gd:71
+msgid "Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them."
+msgstr "Doppelklicke eine Kiste mit einer Wohnung darin, um hineinzugehen. Zurück bringt dich eine Ebene nach draußen; die Karte zeigt jede Wohnung und springt zu jeder davon."
+
+#: scripts/HowToPlay.gd:72
+msgid "Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip."
+msgstr "Drück R, um ein Stück zu drehen — es durchläuft alle 4 Ausrichtungen, auch eine echte 180°-Wendung."
+
+#: scripts/HowToPlay.gd:73
+msgid "Click a foldable piece (like a sofa bed) to fold or unfold it."
+msgstr "Klick ein klappbares Stück (z. B. ein Schlafsofa) an, um es zusammen- oder auszuklappen."
+
+#: scripts/HowToPlay.gd:74
+msgid "The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom."
+msgstr "Der Bauen-Reiter (neben Möbel) fügt Wände, Säulen, Fenster und Türen hinzu und malt Bodenarten wie Balkon oder Bad."
+
+#: scripts/HowToPlay.gd:75
+msgid "The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing."
+msgstr "Der Punkt in der Ecke eines Stücks zeigt, wie leicht es sich bewegen lässt: Grün bewegt sich frei, Gelb lässt sich bewegen, macht den Mieter aber unzufriedener, Rot bleibt den ganzen Tag an einem Platz, außer es steht auf einer Schiene. Bei größeren Stücken sagen ein bis drei Federn neben dem Punkt dasselbe."
+
+#: scripts/HowToPlay.gd:76
+msgid "The bar at the bottom is the goal: every need listed there has to be ticked."
+msgstr "Die Leiste unten ist das Ziel: Jedes Bedürfnis darin muss abgehakt sein."
+
+#: scripts/HowToPlay.gd:77
+msgid "A piece with a heart after its name is a keepsake: it can be moved but never sold."
+msgstr "Ein Stück mit einem Herz hinter dem Namen ist ein Erbstück: Es lässt sich bewegen, aber nie verkaufen."
+
+#: scripts/HowToPlay.gd:78
+msgid "Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are."
+msgstr "Möbel können zwischen einer Wohnung und den Kisten darin wandern: Zieh ein Stück auf eine Kiste oder, aus einer Kiste heraus, auf den Zurück-Knopf. Du gehst mit, und es hängt bereit zum Abstellen an deinem Zeiger. Halte beim Loslassen Umschalt gedrückt, um es zu schicken, ohne mitzugehen: Es wartet dann unter Vorhanden im Katalog jener Wohnung und kann kostenlos platziert werden. Erbstücke bleiben, wo sie sind."
+
+#: scripts/HowToPlay.gd:79
+msgid "Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark."
+msgstr "Bauen hat neben der normalen Wand eine Glaswand: eine echte Wand, an die man nichts stellen und durch die man nicht sehen kann, die aber Tageslicht durchlässt. Gut für ein Gästezimmer, das sonst dunkel wäre."
+
+#: scripts/HowToPlay.gd:80
+msgid "Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back)."
+msgstr "Riffelglas und Vorhänge verbergen, was dahinter liegt, ohne den Raum zu verdunkeln: Sie unterbrechen eine Sichtlinie und teilen einen Raum in Zonen, lassen aber Tageslicht durch. Ein Vorhang tut das nur, solange er zugezogen ist (klick ihn an, um ihn zu- oder aufzuziehen)."
+
+#: scripts/HowToPlay.gd:81
+msgid "A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep."
+msgstr "Ein Käfigvogel braucht Tageslicht, und er singt: Ein Bett im Umkreis von einem halben Meter ist kein Ort zum Schlafen."
+
+#: scripts/HowToPlay.gd:82
+msgid "You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch."
+msgstr "Du kannst auch für eine andere Wohnung kaufen: Wähl ein Stück im Katalog und klick es auf eine Kiste (oder auf Zurück). Bezahlt wird aus dem Budget der Wohnung, in der du bist, geliefert wird in die andere — für einen Untermieter, dessen eigenes Budget nicht reicht."
+
+#: scripts/HowToPlay.gd:83
+msgid "Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside."
+msgstr "Mietobjekte im Möbelkatalog sind Wohnungen in Kisten: Stellst du eine ab, zahlt sie dir ihre Miete, im Tausch gegen die Fläche, die sie belegt. Entfernst du sie, zahlst du die Miete zurück. Doppelklick auf eine Kiste zeigt ihr Inneres."
+
+#: scripts/HowToPlay.gd:84
+msgid "Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it."
+msgstr "Strg+%s macht deine letzte Aktion rückgängig, Strg+Umschalt+%s stellt sie wieder her."
+
+#: scripts/HowToPlay.gd:88
+msgid "Press T to switch between the Floor Plan and 3D view."
+msgstr "Drück T, um zwischen Grundriss und 3D-Ansicht zu wechseln."
+
+#: scripts/HowToPlay.gd:89
+msgid "Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."
+msgstr "Drück 1–9, um direkt zu einem Moment (Tag, Nacht, …) zu springen, ohne seinen Reiter anzuklicken."
+
+#: scripts/HowToPlay.gd:90
+msgid "Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."
+msgstr "Hoch oder Runter wechselt zum Stockwerk darüber oder darunter, Links oder Rechts zum vorigen oder nächsten Moment. Im Grundriss tun W/S und A/D dasselbe."
+
+#: scripts/HowToPlay.gd:136
+msgid "Needs"
+msgstr "Bedürfnisse"
+
+#: scripts/HowToPlay.gd:163
+msgid "Mechanics"
+msgstr "Mechaniken"
+
+#: scripts/Inventory.gd:141
+msgid "Search…"
+msgstr "Suchen…"
+
+#: scripts/Inventory.gd:298
+msgid "Needed"
+msgstr "Benötigt"
+
+#: scripts/Inventory.gd:299
+msgid "All"
+msgstr "Alle"
+
+#: scripts/Inventory.gd:300
+msgid "Bedroom"
+msgstr "Schlafzimmer"
+
+#: scripts/Inventory.gd:301
+#: scripts/Inventory.gd:470
+msgid "Bathroom"
+msgstr "Bad"
+
+#: scripts/Inventory.gd:302
+msgid "Kitchen"
+msgstr "Küche"
+
+#: scripts/Inventory.gd:303
+msgid "Living"
+msgstr "Wohnen"
+
+#: scripts/Inventory.gd:304
+msgid "Storage"
+msgstr "Stauraum"
+
+#: scripts/Inventory.gd:305
+msgid "Folding"
+msgstr "Klappbar"
+
+#: scripts/Inventory.gd:306
+msgid "Rentals"
+msgstr "Mietobjekte"
+
+#: scripts/Inventory.gd:307
+msgid "Build"
+msgstr "Bauen"
+
+#: scripts/Inventory.gd:379
+msgid "%d found"
+msgstr "%d gefunden"
+
+#: scripts/Inventory.gd:382
+msgid "Nothing matches. Try a need (sleep, sit, work, storage) or part of a name."
+msgstr "Keine Treffer. Versuch es mit einem Bedürfnis (Schlafen, Sitzen, Arbeiten, Stauraum) oder einem Teil des Namens."
+
+#: scripts/Inventory.gd:388
+msgid "No piece in this level provides it."
+msgstr "Kein Stück in diesem Level erfüllt das."
+
+#: scripts/Inventory.gd:395
+msgid "The tenant has everything they asked for. Pick a tab to browse."
+msgstr "Der Mieter hat alles, was er wollte. Wähl einen Reiter zum Stöbern."
+
+#: scripts/Inventory.gd:400
+msgid "Nothing in this level provides it."
+msgstr "Nichts in diesem Level erfüllt das."
+
+#: scripts/Inventory.gd:409
+msgid "Nothing in this category for this level."
+msgstr "Nichts in dieser Kategorie für dieses Level."
+
+#: scripts/Inventory.gd:459
+msgid "TOOLS  (drag on the floor plan to build)"
+msgstr "WERKZEUGE  (zum Bauen auf dem Grundriss ziehen)"
+
+#: scripts/Inventory.gd:469
+msgid "Select"
+msgstr "Auswählen"
+
+#: scripts/Inventory.gd:469
+msgid "Wall"
+msgstr "Wand"
+
+#: scripts/Inventory.gd:469
+msgid "Glass Wall"
+msgstr "Glaswand"
+
+#: scripts/Inventory.gd:469
+msgid "Column"
+msgstr "Säule"
+
+#: scripts/Inventory.gd:469
+msgid "Erase"
+msgstr "Löschen"
+
+#: scripts/Inventory.gd:470
+msgid "Balcony"
+msgstr "Balkon"
+
+#: scripts/Inventory.gd:470
+msgid "Window"
+msgstr "Fenster"
+
+#: scripts/Inventory.gd:470
+msgid "Door"
+msgstr "Tür"
+
+#: scripts/Inventory.gd:471
+msgid "Rail"
+msgstr "Schiene"
+
+#: scripts/Inventory.gd:471
+msgid "Reveal Zone"
+msgstr "Enthüllungszone"
+
+#: scripts/Inventory.gd:472
+msgid "Pipe: Water"
+msgstr "Leitung: Wasser"
+
+#: scripts/Inventory.gd:472
+msgid "Pipe: Power"
+msgstr "Leitung: Strom"
+
+#: scripts/Inventory.gd:677
+msgid "%d×%d cm"
+msgstr "%d×%d cm"
+
+#: scripts/Inventory.gd:781
+#: scripts/Inventory.gd:1146
+msgid "Costs %d€ — you have %d€"
+msgstr "Kostet %d€ — du hast %d€"
+
+#: scripts/Inventory.gd:855
+msgid "🪶 Light — freely movable"
+msgstr "🪶 Leicht — frei beweglich"
+
+#: scripts/Inventory.gd:858
+msgid "🪶🪶 Medium — uncomfortable to move"
+msgstr "🪶🪶 Mittel — unbequem zu bewegen"
+
+#: scripts/Inventory.gd:861
+msgid "🪶🪶🪶 Heavy — fixed in place"
+msgstr "🪶🪶🪶 Schwer — fest an seinem Platz"
+
+#: scripts/Inventory.gd:869
+msgid "Satisfies: %s"
+msgstr "Erfüllt: %s"
+
+#: scripts/Inventory.gd:878
+msgid "Foldable"
+msgstr "Klappbar"
+
+#: scripts/Inventory.gd:880
+msgid "Slides on a rail"
+msgstr "Gleitet auf einer Schiene"
+
+#: scripts/Inventory.gd:882
+msgid "Needs plumbing"
+msgstr "Braucht Wasseranschluss"
+
+#: scripts/Inventory.gd:884
+msgid "Needs power"
+msgstr "Braucht Strom"
+
+#: scripts/Inventory.gd:886
+msgid "Creates a loft level"
+msgstr "Erzeugt eine Hochebene"
+
+#: scripts/Inventory.gd:901
+msgid "Rent: +%d€ — a tenant pays you for the space"
+msgstr "Miete: +%d€ — ein Mieter zahlt dir für den Platz"
+
+#: scripts/Inventory.gd:901
+msgid "Buy: %d€"
+msgstr "Kaufen: %d€"
+
+#: scripts/Inventory.gd:913
+#: scripts/Main.gd:410
+msgid "Floor Plan"
+msgstr "Grundriss"
+
+#: scripts/Inventory.gd:914
+msgid "Wall View"
+msgstr "Wandansicht"
+
+#: scripts/Inventory.gd:1047
+msgid "Buy"
+msgstr "Kaufen"
+
+#: scripts/Inventory.gd:1083
+msgid "Owned"
+msgstr "Vorhanden"
+
+#: scripts/Inventory.gd:1116
+msgid "Place (free)"
+msgstr "Platzieren (gratis)"
+
+#: scripts/Inventory.gd:1122
+msgid "Sell %d€"
+msgstr "Verkaufen %d€"
+
+#: scripts/Inventory.gd:1134
+msgid "decor"
+msgstr "Deko"
+
+#: scripts/Loc.gd:90
+msgctxt "need"
+msgid "Sleep"
+msgstr "Schlafen"
+
+#: scripts/Loc.gd:91
+msgctxt "need"
+msgid "Hygiene"
+msgstr "Hygiene"
+
+#: scripts/Loc.gd:92
+msgctxt "need"
+msgid "Cook"
+msgstr "Kochen"
+
+#: scripts/Loc.gd:93
+msgctxt "need"
+msgid "Work"
+msgstr "Arbeiten"
+
+#: scripts/Loc.gd:94
+msgctxt "need"
+msgid "Sit"
+msgstr "Sitzen"
+
+#: scripts/Loc.gd:95
+msgctxt "need"
+msgid "Storage"
+msgstr "Stauraum"
+
+#: scripts/Loc.gd:96
+msgctxt "need"
+msgid "Eat"
+msgstr "Essen"
+
+#: scripts/Loc.gd:97
+msgctxt "need"
+msgid "Dine"
+msgstr "Speisen"
+
+#: scripts/Loc.gd:98
+msgctxt "need"
+msgid "Social"
+msgstr "Geselligkeit"
+
+#: scripts/Loc.gd:99
+msgctxt "need"
+msgid "Pet"
+msgstr "Haustier"
+
+#: scripts/Loc.gd:100
+msgctxt "need"
+msgid "Dress"
+msgstr "Anziehen"
+
+#: scripts/Loc.gd:101
+msgctxt "need"
+msgid "Laundry"
+msgstr "Wäsche"
+
+#: scripts/Loc.gd:102
+msgctxt "need"
+msgid "Balcony"
+msgstr "Balkon"
+
+#: scripts/Loc.gd:103
+msgctxt "need"
+msgid "Sport"
+msgstr "Sport"
+
+#: scripts/Loc.gd:104
+msgctxt "need"
+msgid "Loft access"
+msgstr "Zugang zur Hochebene"
+
+#: scripts/Loc.gd:105
+msgctxt "need"
+msgid "Light"
+msgstr "Licht"
+
+#: scripts/Loc.gd:106
+msgctxt "need"
+msgid "Ventilation"
+msgstr "Lüftung"
+
+#: scripts/Loc.gd:113
+msgctxt "floor kind"
+msgid "bathroom"
+msgstr "Bad"
+
+#: scripts/Loc.gd:114
+msgctxt "floor kind"
+msgid "balcony"
+msgstr "Balkon"
+
+#: scripts/Loc.gd:115
+msgctxt "floor kind"
+msgid "normal"
+msgstr "Normal"
+
+#: scripts/Loc.gd:125
+msgid "%s and %s"
+msgstr "%s und %s"
+
+#: scripts/Main.gd:387
+msgid "Test Layout"
+msgstr "Einrichtung testen"
+
+#: scripts/Main.gd:410
+msgid "Blueprint view — place and move furniture from above"
+msgstr "Grundriss-Ansicht — Möbel von oben platzieren und verschieben"
+
+#: scripts/Main.gd:411
+msgid "Walk around and place items in 3D — drag onto a wall to hang them"
+msgstr "Herumgehen und in 3D platzieren — zum Aufhängen auf eine Wand ziehen"
+
+#: scripts/Main.gd:449
+msgid "Menu — settings, back to projects, quit"
+msgstr "Menü — Einstellungen, zurück zu den Projekten, beenden"
+
+#: scripts/Main.gd:473
+msgid "← Back to Editor"
+msgstr "← Zurück zum Editor"
+
+#: scripts/Main.gd:474
+msgid "Return to the Level Editor, resuming the level you were testing"
+msgstr "Zurück zum Level-Editor, mit dem Level, das du getestet hast"
+
+#: scripts/Main.gd:491
+#: scripts/Main.gd:2615
+#: scenes/Furniture.tscn:18
+msgid "Furniture"
+msgstr "Möbel"
+
+#: scripts/Main.gd:492
+msgid "Open or close the furniture catalogue (F)"
+msgstr "Möbelkatalog öffnen oder schließen (F)"
+
+#: scripts/Main.gd:522
+msgid "Undo last action (Ctrl+%s)"
+msgstr "Letzte Aktion rückgängig (Strg+%s)"
+
+#: scripts/Main.gd:532
+msgid "Redo (Ctrl+Shift+%s)"
+msgstr "Wiederherstellen (Strg+Umschalt+%s)"
+
+#: scripts/Main.gd:923
+#: scripts/Main.gd:3633
+msgid "Budget: %d€"
+msgstr "Budget: %d€"
+
+#: scripts/Main.gd:1069
+msgid "NEW MECHANIC"
+msgstr "NEUE MECHANIK"
+
+#: scripts/Main.gd:1097
+msgid "Got it — let's go!"
+msgstr "Verstanden — los geht's!"
+
+#: scripts/Main.gd:2056
+msgid "%s (Loft)"
+msgstr "%s (Hochebene)"
+
+#: scripts/Main.gd:2413
+#: scripts/Main.gd:2991
+msgid "Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"
+msgstr "Möbel ziehen zum Verschieben · R dreht ein Stück · In 3D wechseln, um Dinge an Wände zu hängen"
+
+#: scripts/Main.gd:2422
+msgid "Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"
+msgstr "Gegenstände auf den Boden oder eine Wand ziehen · R dreht ein Stück · Q/E drehen die Ansicht · WASD verschiebt sie"
+
+#: scripts/Main.gd:2773
+msgid "Map"
+msgstr "Karte"
+
+#: scripts/Main.gd:2775
+msgid "See every apartment in this project and jump to any of them"
+msgstr "Alle Wohnungen dieses Projekts ansehen und zu jeder springen"
+
+#: scripts/Main.gd:2779
+msgid "Back"
+msgstr "Zurück"
+
+#: scripts/Main.gd:2781
+msgid "Step back out to the apartment this box sits in"
+msgstr "Zurück hinaus in die Wohnung, in der diese Kiste steht"
+
+#: scripts/Main.gd:2797
+msgid "←  Back to %s"
+msgstr "←  Zurück nach %s"
+
+#: scripts/Main.gd:2819
+msgid "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
+msgstr "Doppelklick auf eine Kiste zum Betreten · ein Stück auf eine Kiste ziehen, um es hineinzulegen · R dreht ein Stück"
+
+#: scripts/Main.gd:2823
+msgid "Drop a piece on “Back” to send it out · R rotates a piece"
+msgstr "Ein Stück auf „Zurück“ ziehen, um es hinauszuschicken · R dreht ein Stück"
+
+#: scripts/Main.gd:2977
+msgid "No wall inspected on this floor yet"
+msgstr "Auf diesem Stockwerk wurde noch keine Wand angesehen"
+
+#: scripts/Main.gd:3092
+msgid "%s needs daylight: stand it where the window's light reaches."
+msgstr "%s braucht Tageslicht: Stell es dorthin, wo das Fensterlicht hinkommt."
+
+#: scripts/Main.gd:3123
+msgid "Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there."
+msgstr "%s gekauft  →  %s.   Es wartet dort im Katalog unter „Vorhanden“."
+
+#: scripts/Main.gd:3124
+msgid "Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there."
+msgstr "%s geschickt  →  %s.   Es wartet dort im Katalog unter „Vorhanden“."
+
+#: scripts/Main.gd:3184
+msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned”."
+msgstr "%s ist mitgekommen. Klick, um es abzustellen  ·  Esc legt es unter „Vorhanden“ ab."
+
+#: scripts/Main.gd:3202
+msgid "♥ %s is a keepsake: it stays in this flat"
+msgstr "♥ %s ist ein Erbstück: Es bleibt in dieser Wohnung"
+
+#: scripts/Main.gd:3204
+msgid "A box can't go inside another apartment"
+msgstr "Eine Kiste kann nicht in eine andere Wohnung"
+
+#: scripts/Main.gd:3206
+msgid "Stairs can't move to another apartment"
+msgstr "Treppen können nicht in eine andere Wohnung umziehen"
+
+#: scripts/Main.gd:3251
+msgid "%s  Buy it for %s  ·  %d€ from this budget"
+msgstr "%s  Für %s kaufen  ·  %d€ aus diesem Budget"
+
+#: scripts/Main.gd:3253
+msgid "←  Take out to %s"
+msgstr "←  Hinaus nach %s"
+
+#: scripts/Main.gd:3253
+msgid "→  Take into %s"
+msgstr "→  Hinein nach %s"
+
+#: scripts/Main.gd:3254
+msgid "Shift: send it without going"
+msgstr "Umschalt: schicken, ohne mitzugehen"
+
+#: scripts/Main.gd:3282
+msgid "←  Click here to buy it for %s"
+msgstr "←  Hier klicken, um es für %s zu kaufen"
+
+#: scripts/Main.gd:3282
+msgid "←  Drop here to send to %s"
+msgstr "←  Hier ablegen, um es nach %s zu schicken"
+
+#: scripts/Main.gd:3435
+msgid "%s is already renting here — pick a different box."
+msgstr "%s wohnt hier schon zur Miete — wähl eine andere Kiste."
+
+#: scripts/Main.gd:3534
+msgid "♥ %s is a keepsake: it can be moved, not sold."
+msgstr "♥ %s ist ein Erbstück: Es lässt sich bewegen, aber nicht verkaufen."
+
+#: scripts/Main.gd:3539
+msgid "Removing %s means repaying its %d€ rent — you only have %d€."
+msgstr "%s zu entfernen heißt, seine %d€ Miete zurückzuzahlen — du hast nur %d€."
+
+#: scripts/Main.gd:3692
+msgid ""
+"The tenant isn't comfortable with this arrangement.\n"
+"Too much furniture has been rearranged — try keeping heavier pieces closer to where they started."
+msgstr ""
+"Der Mieter fühlt sich mit dieser Einrichtung nicht wohl.\n"
+"Zu viele Möbel wurden umgestellt — lass schwerere Stücke näher an ihrem Ausgangsplatz."
+
+#: scripts/Main.gd:3699
+msgid ""
+"Not all tenant requirements are met.\n"
+"Try again."
+msgstr ""
+"Nicht alle Wünsche des Mieters sind erfüllt.\n"
+"Versuch es noch einmal."
+
+#: scripts/Main.gd:3701
+msgid "Not yet:"
+msgstr "Noch nicht:"
+
+#: scripts/Main.gd:3711
+msgid ""
+"The tenant can't walk to: %s.\n"
+"Leave a path at least 40 cm wide from the door to the side each piece is used from."
+msgstr ""
+"Der Mieter kommt nicht heran an: %s.\n"
+"Lass einen mindestens 40 cm breiten Weg von der Tür zu der Seite, von der aus jedes Stück benutzt wird."
+
+#: scripts/Main.gd:3713
+msgid ""
+"Some furniture is completely blocked.\n"
+"Leave at least 1 tile of walking space around it."
+msgstr ""
+"Manche Möbel sind komplett zugestellt.\n"
+"Lass mindestens ein Feld Platz zum Gehen um sie herum."
+
+#: scripts/Main.gd:3962
+msgid "✕ Back to Results"
+msgstr "✕ Zurück zum Ergebnis"
+
+#: scripts/Main.gd:4081
+msgid "CUSTOM BUILD"
+msgstr "EIGENBAU"
+
+#: scripts/Main.gd:4093
+msgid "LMB paint · RMB erase"
+msgstr "LMT malen · RMT löschen"
+
+#: scripts/Main.gd:4105
+msgid "Move"
+msgstr "Bewegen"
+
+#: scripts/Main.gd:4129
+msgid "%s  %d€/tile"
+msgstr "%s  %d€/Feld"
+
+#: scripts/Main.gd:4757
+msgid "Paint tiles on the floor"
+msgstr "Felder auf den Boden malen"
+
+#: scripts/Main.gd:3391
+msgid "%d piece is waiting for you here: open Furniture, it is first under “Owned”."
+msgid_plural "%d pieces are waiting for you here: open Furniture, they are first under “Owned”."
+msgstr[0] "%d Stück wartet hier auf dich: Öffne Möbel, es steht ganz oben unter „Vorhanden“."
+msgstr[1] "%d Stücke warten hier auf dich: Öffne Möbel, sie stehen ganz oben unter „Vorhanden“."
+
+#: scripts/MainMenu.gd:72
+msgid "MAKE IT FIT"
+msgstr "MAKE IT FIT"
+
+#: scripts/MainMenu.gd:73
+msgid "Furnish. Satisfy. Retire."
+msgstr "Einrichten. Zufriedenstellen. Ruhestand."
+
+#: scripts/MainMenu.gd:80
+msgid "35 apartments across 10 Berlin districts"
+msgstr "35 Wohnungen in 10 Berliner Bezirken"
+
+#: scripts/MainMenu.gd:83
+msgid "Build your property portfolio. Reach 10 000€/month. Retire."
+msgstr "Bau dein Immobilienportfolio auf. Erreiche 10 000€/Monat. Geh in Rente."
+
+#: scripts/MainMenu.gd:88
+msgid "Start Game"
+msgstr "Spiel starten"
+
+#: scripts/MainMenu.gd:106
+msgid "Continue"
+msgstr "Weiter"
+
+#: scripts/MainMenu.gd:114
+msgid "Options"
+msgstr "Optionen"
+
+#: scripts/MainMenu.gd:122
+msgid "Quit"
+msgstr "Beenden"
+
+#: scripts/Minimap.gd:68
+#: scripts/Minimap.gd:137
+msgid "%s (locked)"
+msgstr "%s (gesperrt)"
+
+#: scripts/NestedMap.gd:82
+msgid "APARTMENT MAP"
+msgstr "WOHNUNGSKARTE"
+
+#: scripts/NestedMap.gd:94
+msgid "Every apartment in this project. Click one to go there."
+msgstr "Alle Wohnungen dieses Projekts. Klick eine an, um dorthin zu gehen."
+
+#: scripts/NestedMap.gd:175
+#: scripts/NestedMap.gd:221
+msgid "You are here"
+msgstr "Du bist hier"
+
+#: scripts/NestedMap.gd:177
+msgid "Too small inside to step into"
+msgstr "Innen zu klein zum Betreten"
+
+#: scripts/NestedMap.gd:179
+msgid "Go to %s"
+msgstr "Gehe zu %s"
+
+#: scripts/NestedMap.gd:225
+msgid "Same room as another box"
+msgstr "Gleicher Raum wie eine andere Kiste"
+
+#: scripts/NestedMap.gd:228
+msgid "Too small to enter"
+msgstr "Zu klein zum Betreten"
+
+#: scripts/PaintedFurniture.gd:68
+msgid "Paint tiles on the floor  (LMB add · RMB erase)"
+msgstr "Felder auf den Boden malen  (LMT hinzufügen · RMT löschen)"
+
+#: scripts/PaintedFurniture.gd:70
+msgid "%d more tiles needed  (min %d)"
+msgstr "%d Felder fehlen noch  (min. %d)"
+
+#: scripts/PaintedFurniture.gd:72
+msgid "Shape must be one connected region"
+msgstr "Die Form muss eine zusammenhängende Fläche sein"
+
+#: scripts/PaintedFurniture.gd:77
+msgid "Too narrow — needs ≥ %d tiles on short side"
+msgstr "Zu schmal — braucht ≥ %d Felder an der kurzen Seite"
+
+#: scripts/PaintedFurniture.gd:79
+msgid "Too elongated — max ratio %.0f:1"
+msgstr "Zu langgezogen — max. Verhältnis %.0f:1"
+
+#: scripts/PaintedFurniture.gd:80
+msgid "✓  Valid — costs %d€"
+msgstr "✓  Gültig — kostet %d€"
+
+#: scripts/ResultScreen.gd:79
+msgid "↺ Restart Level"
+msgstr "↺ Level neu starten"
+
+#: scripts/ResultScreen.gd:85
+msgid "🔍 View Apartment"
+msgstr "🔍 Wohnung ansehen"
+
+#: scripts/ResultScreen.gd:93
+msgid "Next Level →"
+msgstr "Nächstes Level →"
+
+#: scripts/ResultScreen.gd:108
+msgid "APPROVED"
+msgstr "GENEHMIGT"
+
+#: scripts/ResultScreen.gd:167
+msgid "RETIREMENT ACHIEVED"
+msgstr "RUHESTAND ERREICHT"
+
+#: scripts/ResultScreen.gd:168
+msgid ""
+"You retire.\n"
+"Gen Z pays for it. As always."
+msgstr ""
+"Du gehst in Rente.\n"
+"Die Gen Z zahlt dafür. Wie immer."
+
+#: scripts/ResultScreen.gd:169
+msgid "Retire"
+msgstr "In Rente gehen"
+
+#: scripts/ResultScreen.gd:172
+#: scenes/Main.tscn:176
+msgid "RENTED OUT"
+msgstr "VERMIETET"
+
+#: scripts/ResultScreen.gd:174
+msgid ""
+"Congratulations. You have successfully reduced\n"
+"%s's quality of life by 40%%."
+msgstr ""
+"Glückwunsch. Du hast die Lebensqualität von\n"
+"%s erfolgreich um 40%% gesenkt."
+
+#: scripts/ResultScreen.gd:176
+msgid "Back to Projects"
+msgstr "Zurück zu den Projekten"
+
+#: scripts/ResultScreen.gd:182
+msgid "+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo"
+msgstr "+%d€ Studiokapital   |   Portfolio: %d€/Mon. → %d€/Mon."
+
+#: scripts/ResultScreen.gd:211
+msgid "NOT RENTED"
+msgstr "NICHT VERMIETET"
+
+#: scripts/Room3DView.gd:57
+msgid "Walls: Up"
+msgstr "Wände: Oben"
+
+#: scripts/Room3DView.gd:57
+msgid "Walls: Cutaway"
+msgstr "Wände: Schnitt"
+
+#: scripts/Room3DView.gd:57
+msgid "Walls: Down"
+msgstr "Wände: Unten"
+
+#: scripts/Room3DView.gd:186
+msgid ""
+"How walls are shown (Home / End)\n"
+"Up: all at full height\n"
+"Cutaway: only those in the way are lowered\n"
+"Down: all lowered"
+msgstr ""
+"So werden Wände gezeigt (Pos1 / Ende)\n"
+"Oben: alle in voller Höhe\n"
+"Schnitt: nur die störenden sind abgesenkt\n"
+"Unten: alle abgesenkt"
+
+#: scripts/Room3DView.gd:1165
+#: scripts/Wall.gd:1023
+msgid "Outside the room"
+msgstr "Außerhalb des Raums"
+
+#: scripts/Room3DView.gd:1184
+msgid "Can't place here"
+msgstr "Kann hier nicht platziert werden"
+
+#: scripts/Room3DView.gd:1285
+msgid "♥ %s is a keepsake: it can be moved, not sold"
+msgstr "♥ %s ist ein Erbstück: Es lässt sich bewegen, aber nicht verkaufen"
+
+#: scripts/Room3DView.gd:1288
+msgid "Removing %s means repaying its %d€ rent"
+msgstr "%s zu entfernen heißt, seine %d€ Miete zurückzuzahlen"
+
+#: scripts/Room3DView.gd:1618
+msgid "Too close to a window or door"
+msgstr "Zu nah an einem Fenster oder einer Tür"
+
+#: scripts/Room3DView.gd:1623
+#: scripts/Wall.gd:1126
+msgid "Ceiling too low here"
+msgstr "Decke hier zu niedrig"
+
+#: scripts/Room3DView.gd:1626
+msgid "Blocked by furniture on the floor"
+msgstr "Von Möbeln auf dem Boden blockiert"
+
+#: scripts/Room3DView.gd:1630
+msgid "Doesn't fit on this wall"
+msgstr "Passt nicht an diese Wand"
+
+#: scripts/Room3DView.gd:1648
+#: scripts/Wall.gd:1100
+msgid "Overlaps %s"
+msgstr "Überschneidet sich mit %s"
+
+#: scripts/Room3DView.gd:1648
+msgid "another item"
+msgstr "einem anderen Gegenstand"
+
+#: scripts/Room3DView.gd:3498
+msgid "Double-click to step inside"
+msgstr "Doppelklick zum Hineingehen"
+
+#: scripts/Room3DView.gd:3993
+msgid "Ceiling / Ducts"
+msgstr "Decke / Lüftungskanäle"
+
+#: scripts/Room3DView.gd:3994
+msgid "Building Subfloor"
+msgstr "Gebäude-Unterboden"
+
+#: scripts/Room3DView.gd:3995
+msgid "Floor Subfloor / Pipes"
+msgstr "Unterboden / Leitungen"
+
+#: scripts/Room3DView.gd:3996
+#: data/levels.json:three_freezers
+#: data/levels.json:day_and_night
+#: data/levels.json:the_inheritance
+#: data/levels.json:sneeze_girl
+#: data/levels.json:the_tower
+msgid "Roof"
+msgstr "Dach"
+
+#: scripts/Room3DView.gd:3999
+msgid "(view in 2D for detail)"
+msgstr "(Details in der 2D-Ansicht)"
+
+#: scripts/SettingsMenu.gd:71
+msgid "SETTINGS"
+msgstr "EINSTELLUNGEN"
+
+#: scripts/SettingsMenu.gd:77
+msgid "❓ How to Play"
+msgstr "❓ Spielanleitung"
+
+#: scripts/SettingsMenu.gd:83
+msgid "🖋 Credits"
+msgstr "🖋 Mitwirkende"
+
+#: scripts/SettingsMenu.gd:94
+msgid "LANGUAGE"
+msgstr "SPRACHE"
+
+#: scripts/SettingsMenu.gd:98
+msgid "AUDIO"
+msgstr "AUDIO"
+
+#: scripts/SettingsMenu.gd:100
+msgid "Master Volume"
+msgstr "Gesamtlautstärke"
+
+#: scripts/SettingsMenu.gd:107
+msgid "SFX Volume"
+msgstr "Effektlautstärke"
+
+#: scripts/SettingsMenu.gd:120
+msgid "Music Volume"
+msgstr "Musiklautstärke"
+
+#: scripts/SettingsMenu.gd:128
+msgid "Mute all sound"
+msgstr "Ton komplett aus"
+
+#: scripts/SettingsMenu.gd:138
+msgid "GRAPHICS"
+msgstr "GRAFIK"
+
+#: scripts/SettingsMenu.gd:144
+msgid "ACCESSIBILITY"
+msgstr "BARRIEREFREIHEIT"
+
+#: scripts/SettingsMenu.gd:149
+msgid "UI Scale"
+msgstr "UI-Größe"
+
+#: scripts/SettingsMenu.gd:157
+msgid "Reduce motion (skip pop/pulse animations)"
+msgstr "Weniger Bewegung (Plopp-/Puls-Animationen überspringen)"
+
+#: scripts/SettingsMenu.gd:167
+msgid "Undo key"
+msgstr "Rückgängig-Taste"
+
+#: scripts/SettingsMenu.gd:173
+#: scripts/SettingsMenu.gd:529
+msgid "Ctrl+%s  (Shift+ = Redo)"
+msgstr "Strg+%s  (Umschalt+ = Wiederherstellen)"
+
+#: scripts/SettingsMenu.gd:189
+msgid "NAVIGATION"
+msgstr "NAVIGATION"
+
+#: scripts/SettingsMenu.gd:196
+msgid "← Projects"
+msgstr "← Projekte"
+
+#: scripts/SettingsMenu.gd:213
+msgid "↻ Restart Level"
+msgstr "↻ Level neu starten"
+
+#: scripts/SettingsMenu.gd:223
+msgid "Discard this layout and start over?"
+msgstr "Diese Einrichtung verwerfen und von vorn beginnen?"
+
+#: scripts/SettingsMenu.gd:230
+msgid "Yes, restart"
+msgstr "Ja, neu starten"
+
+#: scripts/SettingsMenu.gd:239
+#: scripts/SettingsMenu.gd:283
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: scripts/SettingsMenu.gd:259
+msgid "Quit to Desktop"
+msgstr "Zum Desktop beenden"
+
+#: scripts/SettingsMenu.gd:269
+msgid "Quit for real?"
+msgstr "Wirklich beenden?"
+
+#: scripts/SettingsMenu.gd:276
+msgid "Yes, quit"
+msgstr "Ja, beenden"
+
+#: scripts/SettingsMenu.gd:330
+msgid "Device language"
+msgstr "Gerätesprache"
+
+#: scripts/SettingsMenu.gd:345
+msgid "The rest of the level changes language when you leave it."
+msgstr "Der Rest des Levels wechselt die Sprache, wenn du es verlässt."
+
+#: scripts/SettingsMenu.gd:367
+msgid "3D Quality"
+msgstr "3D-Qualität"
+
+#: scripts/SettingsMenu.gd:397
+msgid "EXPERIMENTAL"
+msgstr "EXPERIMENTELL"
+
+#: scripts/SettingsMenu.gd:399
+msgid "Walking paths"
+msgstr "Laufwege"
+
+#: scripts/SettingsMenu.gd:409
+msgid "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
+msgstr "Der Mieter muss von der Tür aus jedes Möbelstück erreichen können, durch Lücken von mindestens 40 cm."
+
+#: scripts/SettingsMenu.gd:415
+msgid "Fastest. Flat lighting and shadows only."
+msgstr "Am schnellsten. Nur flache Beleuchtung und Schatten."
+
+#: scripts/SettingsMenu.gd:416
+msgid "Adds glow on lamps and windows, and a soft vignette."
+msgstr "Fügt Leuchten an Lampen und Fenstern und eine sanfte Vignette hinzu."
+
+#: scripts/SettingsMenu.gd:417
+msgid "Adds contact shading in corners. Needs a dedicated GPU."
+msgstr "Fügt Kontaktschatten in Ecken hinzu. Braucht eine eigene Grafikkarte."
+
+#: scripts/SettingsMenu.gd:512
+msgid "Press any key…"
+msgstr "Drück eine beliebige Taste…"
+
+#: scripts/TenantCard.gd:180
+msgid "%s NEEDS"
+msgstr "%s BRAUCHT"
+
+#: scripts/TenantCard.gd:180
+msgid "NEEDS"
+msgstr "BRAUCHT"
+
+#: scripts/TenantCard.gd:185
+msgid "Furnish the apartment so every need here is ticked"
+msgstr "Richte die Wohnung so ein, dass jedes Bedürfnis hier abgehakt ist"
+
+#: scripts/TenantCard.gd:324
+msgid "%s — click to see the furniture that provides it"
+msgstr "%s — klicken, um die Möbel zu sehen, die das erfüllen"
+
+#: scripts/TenantCard.gd:488
+msgid "The numbered line on the plan shows it."
+msgstr "Die nummerierte Linie im Grundriss zeigt sie."
+
+#: scripts/TenantCard.gd:489
+msgid "Tall storage splits a room into zones."
+msgstr "Hoher Stauraum teilt einen Raum in Zonen."
+
+#: scripts/Wall.gd:197
+msgid "needs %s flooring"
+msgstr "braucht %s-Boden"
+
+#: scripts/Wall.gd:1030
+msgid "Needs %s flooring"
+msgstr "Braucht %s-Boden"
+
+#: scripts/Wall.gd:1033
+msgid "Blocked by a wall"
+msgstr "Von einer Wand blockiert"
+
+#: scripts/Wall.gd:1045
+msgid "Must be placed against a wall"
+msgstr "Muss an einer Wand stehen"
+
+#: scripts/Wall.gd:1068
+msgid "Too heavy for this loft (%.0f / %.0f)"
+msgstr "Zu schwer für diese Hochebene (%.0f / %.0f)"
+
+#: scripts/Wall.gd:1073
+msgid "Needs a table or shelf underneath"
+msgstr "Braucht einen Tisch oder ein Regal darunter"
+
+#: scripts/Wall.gd:1078
+msgid "Too heavy for %s — it would break (%.0f / %.0f)"
+msgstr "Zu schwer für %s — es würde brechen (%.0f / %.0f)"
+
+#: scripts/Wall.gd:1143
+msgid "Needs clearance around %s"
+msgstr "Braucht Platz um %s herum"
+
+#: scripts/Wall.gd:1169
+msgid "Would overlap %s during \"%s\""
+msgstr "Würde sich bei %s während „%s“ überschneiden"
+
+#: scripts/WallInspector.gd:110
+#: scenes/Main.tscn:89
+msgid "Wall Inspector"
+msgstr "Wandansicht"
+
+#: scripts/WallInspector.gd:149
+msgid "Wall: %s  (scroll to zoom, middle-drag to pan)"
+msgstr "Wand: %s  (Mausrad zoomt, Ziehen mit mittlerer Taste verschiebt)"
+
+#: scripts/WallInspector.gd:752
+#: scripts/WallInspector.gd:759
+msgid "MEZZ"
+msgstr "HOCH"
+
+#: scripts/WallInspector.gd:1101
+msgid "North (windows)"
+msgstr "Norden (Fenster)"
+
+#: scripts/WallInspector.gd:1101
+msgid "North"
+msgstr "Norden"
+
+#: scripts/WallInspector.gd:1102
+msgid "South (entrance)"
+msgstr "Süden (Eingang)"
+
+#: scripts/WallInspector.gd:1102
+msgid "South"
+msgstr "Süden"
+
+#: scripts/WallInspector.gd:1103
+msgid "East"
+msgstr "Osten"
+
+#: scripts/WallInspector.gd:1104
+msgid "West"
+msgstr "Westen"
+
+#: style/style_quality.gd:18
+msgid "Low"
+msgstr "Niedrig"
+
+#: style/style_quality.gd:18
+msgid "Medium"
+msgstr "Mittel"
+
+#: style/style_quality.gd:18
+msgid "High"
+msgstr "Hoch"
+
+#: scenes/Main.tscn:38
+msgid "Budget: 3000€"
+msgstr "Budget: 3000€"
+
+#: scenes/Main.tscn:54
+msgid "3D View"
+msgstr "3D-Ansicht"
+
+#: scenes/Main.tscn:59
+msgid "RENT OUT"
+msgstr "VERMIETEN"
+
+#: scenes/Main.tscn:98
+#: scenes/WallInspector.tscn:27
+msgid "Click a highlighted wall edge to inspect it."
+msgstr "Klick eine hervorgehobene Wandkante an, um sie anzusehen."
+
+#: scenes/Main.tscn:143
+msgid "Tenant"
+msgstr "Mieter"
+
+#: scenes/Main.tscn:153
+msgid "0€/month"
+msgstr "0€/Monat"
+
+#: scenes/Main.tscn:186
+msgid "Retirement: 0€ / 3000€"
+msgstr "Ruhestand: 0€ / 3000€"
+
+#: scenes/Main.tscn:190
+msgid "Next Apartment"
+msgstr "Nächste Wohnung"
+
+#: scenes/Main.tscn:194
+msgid "Try Again"
+msgstr "Nochmal versuchen"
+
+#: scenes/Room3DView.tscn:61
+msgid "Close 3D"
+msgstr "3D schließen"
+
+#: scenes/WallInspector.tscn:18
+msgid "Wand"
+msgstr "Wand"
+
+#: data/levels.json:blocks/0/name
+msgid "Königsberg"
+msgstr "Königsberg"
+
+#: data/levels.json:blocks/0/subtitle
+msgid "Seven bridges, eight homes"
+msgstr "Sieben Brücken, acht Wohnungen"
+
+#: data/levels.json:blocks/0/intro
+msgid "Königsberg, on the river Pregel: two islands, four neighbourhoods, seven bridges. Eight homes need a designer."
+msgstr "Königsberg am Pregel: zwei Inseln, vier Viertel, sieben Brücken. Acht Wohnungen brauchen einen Designer."
+
+#: data/levels.json:beach_house
+msgid "The Beach House"
+msgstr "Das Strandhaus"
+
+#: data/levels.json:beach_house
+msgid "Marisol"
+msgstr "Marisol"
+
+#: data/levels.json:beach_house
+msgid "A 64 m² beach apartment for the whole family. The kitchen and bathroom are in. Nobody has anywhere to sleep or sit yet."
+msgstr "Eine 64-m²-Strandwohnung für die ganze Familie. Küche und Bad sind schon da. Schlafen oder sitzen kann noch niemand."
+
+#: data/levels.json:beach_house
+msgid "Welcome to Make It Fit"
+msgstr "Willkommen bei Make It Fit"
+
+#: data/levels.json:beach_house
+msgid ""
+"Every apartment has a tenant, and every tenant has needs. They are listed in the bar at the bottom: a tick means the apartment already provides it, a cross means it doesn't.\n"
+"\n"
+"Marisol's family can cook, wash and store things here, but there is nowhere to sleep and nowhere to sit.\n"
+"\n"
+"Open Furniture (top left, or press F). The catalogue opens on what the tenant still needs: buy a bed and something to sit on. Click the floor to put each one down. Press R to rotate while placing.\n"
+"\n"
+"When every need is ticked, the apartment is ready to rent."
+msgstr ""
+"Jede Wohnung hat einen Mieter, und jeder Mieter hat Bedürfnisse. Sie stehen in der Leiste unten: Ein Haken heißt, die Wohnung bietet es schon, ein Kreuz heißt, sie bietet es nicht.\n"
+"\n"
+"Marisols Familie kann hier kochen, sich waschen und Dinge verstauen, aber es gibt nirgends einen Platz zum Schlafen oder Sitzen.\n"
+"\n"
+"Öffne Möbel (oben links, oder drück F). Der Katalog öffnet sich bei dem, was der Mieter noch braucht: Kauf ein Bett und etwas zum Sitzen. Klick auf den Boden, um jedes Stück abzustellen. Drück R, um es beim Platzieren zu drehen.\n"
+"\n"
+"Sobald jedes Bedürfnis abgehakt ist, ist die Wohnung bereit zur Vermietung."
+
+#: data/levels.json:beach_house
+#: data/levels.json:three_freezers
+#: data/levels.json:day_and_night
+#: data/levels.json:the_inheritance
+#: data/levels.json:sneeze_girl
+#: data/levels.json:the_tower
+msgid "Ground Floor"
+msgstr "Erdgeschoss"
+
+#: data/levels.json:beach_house
+msgid "Ground Floor Ceiling"
+msgstr "Decke Erdgeschoss"
+
+#: data/levels.json:beach_house
+msgid "Roof / Techo"
+msgstr "Dach"
+
+#: data/levels.json:three_freezers
+msgid "Three Freezers"
+msgstr "Drei Gefriertruhen"
+
+#: data/levels.json:three_freezers
+msgid "Dani"
+msgstr "Dani"
+
+#: data/levels.json:three_freezers
+msgid "Streams twelve hours a day and buys frozen pizza by the pallet. The three freezers are not negotiable."
+msgstr "Streamt zwölf Stunden am Tag und kauft Tiefkühlpizza palettenweise. Über die drei Gefriertruhen wird nicht verhandelt."
+
+#: data/levels.json:three_freezers
+msgid "Keepsakes, and going up"
+msgstr "Erbstücke, und ab nach oben"
+
+#: data/levels.json:three_freezers
+msgid ""
+"A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three freezers are staying.\n"
+"\n"
+"That leaves very little floor for a desk and a bed. So the bed goes up: a Loft Bed sleeps above head height and leaves the floor beneath it free.\n"
+"\n"
+"Move the freezers out of the way first if you need the room."
+msgstr ""
+"Ein Stück mit einem Herz hinter dem Namen ist ein Erbstück. Du kannst es bewegen, aber der Mieter lässt es dich nie verkaufen. Danis drei Gefriertruhen bleiben.\n"
+"\n"
+"Da bleibt sehr wenig Boden für einen Schreibtisch und ein Bett. Also kommt das Bett nach oben: Ein Hochbett schläft über Kopfhöhe und lässt den Boden darunter frei.\n"
+"\n"
+"Schieb zuerst die Gefriertruhen aus dem Weg, wenn du den Platz brauchst."
+
+#: data/levels.json:three_freezers
+#: data/levels.json:day_and_night
+#: data/levels.json:the_inheritance
+#: data/levels.json:sneeze_girl
+#: data/levels.json:the_tower
+#: data/levels.json:overprotective
+msgid "Ceiling"
+msgstr "Decke"
+
+#: data/levels.json:day_and_night
+msgid "Day and Night"
+msgstr "Tag und Nacht"
+
+#: data/levels.json:day_and_night
+msgid "Noor"
+msgstr "Noor"
+
+#: data/levels.json:day_and_night
+msgid "Works from the sofa all day and needs the same four walls to be a bedroom at night."
+msgstr "Arbeitet den ganzen Tag vom Sofa aus und braucht dieselben vier Wände nachts als Schlafzimmer."
+
+#: data/levels.json:day_and_night
+msgid "Moments"
+msgstr "Momente"
+
+#: data/levels.json:day_and_night
+msgid ""
+"Some tenants need the apartment to be two different places. The tabs at the bottom are Moments: here, Day and Night. Each has its own list of needs, and every Moment has to be satisfied.\n"
+"\n"
+"Convertible furniture is how one room does both jobs. A sofa bed or a futon is a seat when folded and a bed when unfolded. Click one to fold or unfold it, and each Moment remembers its own state.\n"
+"\n"
+"The budget won't stretch to a sofa and a bed. Buy one piece that is both, switch to Night, and unfold it."
+msgstr ""
+"Manche Mieter brauchen die Wohnung als zwei verschiedene Orte. Die Reiter unten sind Momente: hier Tag und Nacht. Jeder hat seine eigene Liste von Bedürfnissen, und jeder Moment muss erfüllt sein.\n"
+"\n"
+"Verwandelbare Möbel sind der Weg, wie ein Raum beide Aufgaben erfüllt. Ein Schlafsofa oder ein Futon ist zusammengeklappt ein Sitz und ausgeklappt ein Bett. Klick eins an, um es zu- oder aufzuklappen, und jeder Moment merkt sich seinen eigenen Zustand.\n"
+"\n"
+"Das Budget reicht nicht für ein Sofa und ein Bett. Kauf ein Stück, das beides ist, wechsle zu Nacht und klapp es aus."
+
+#: data/levels.json:day_and_night
+msgid "Day"
+msgstr "Tag"
+
+#: data/levels.json:day_and_night
+msgid "Night"
+msgstr "Nacht"
+
+#: data/levels.json:the_inheritance
+msgid "The Inheritance"
+msgstr "Das Erbe"
+
+#: data/levels.json:the_inheritance
+msgid "Irene"
+msgstr "Irene"
+
+#: data/levels.json:the_inheritance
+msgid "Moved into her grandmother's flat with all of her grandmother's furniture. None of it is leaving. She still needs somewhere to work."
+msgstr "Ist mit allen Möbeln ihrer Großmutter in deren Wohnung gezogen. Nichts davon geht. Einen Arbeitsplatz braucht sie trotzdem."
+
+#: data/levels.json:the_inheritance
+msgid "Furniture that cannot leave"
+msgstr "Möbel, die nicht gehen können"
+
+#: data/levels.json:the_inheritance
+msgid ""
+"Everything with a heart belonged to Irene's grandmother. It stays in the flat. It does not have to stay where it is.\n"
+"\n"
+"Irene needs a desk and a chair, and there is no clear spot for them. Rearrange the inheritance until there is."
+msgstr ""
+"Alles mit einem Herz gehörte Irenes Großmutter. Es bleibt in der Wohnung. Es muss nicht bleiben, wo es steht.\n"
+"\n"
+"Irene braucht einen Schreibtisch und einen Stuhl, und es gibt keinen freien Platz dafür. Stell das Erbe um, bis einer da ist."
+
+#: data/levels.json:sneeze_girl
+msgid "Sneeze Girl"
+msgstr "Das Nies-Mädchen"
+
+#: data/levels.json:sneeze_girl
+msgid "Achís"
+msgstr "Achís"
+
+#: data/levels.json:sneeze_girl
+msgid "Every time she sneezes she becomes someone else: a bookworm, a host, a sleepyhead. All three live in the same room."
+msgstr "Jedes Mal, wenn sie niest, wird sie jemand anderes: eine Leseratte, eine Gastgeberin, eine Schlafmütze. Alle drei leben im selben Zimmer."
+
+#: data/levels.json:sneeze_girl
+msgid "Three people, one room"
+msgstr "Drei Menschen, ein Zimmer"
+
+#: data/levels.json:sneeze_girl
+msgid ""
+"Achís changes personality whenever she sneezes, and each personality is a Moment with its own needs.\n"
+"\n"
+"Nothing is bought three times over. Find the pieces that serve more than one of her, and check every Moment before you call it done."
+msgstr ""
+"Achís wechselt die Persönlichkeit, sobald sie niest, und jede Persönlichkeit ist ein Moment mit eigenen Bedürfnissen.\n"
+"\n"
+"Nichts wird dreimal gekauft. Finde die Stücke, die mehr als einer von ihnen dienen, und prüf jeden Moment, bevor du fertig bist."
+
+#: data/levels.json:sneeze_girl
+msgid "Bookworm"
+msgstr "Leseratte"
+
+#: data/levels.json:sneeze_girl
+msgid "Host"
+msgstr "Gastgeberin"
+
+#: data/levels.json:sneeze_girl
+msgid "Sleepyhead"
+msgstr "Schlafmütze"
+
+#: data/levels.json:the_tower
+msgid "The Tower"
+msgstr "Der Turm"
+
+#: data/levels.json:the_tower
+msgid "Sir Guillem"
+msgstr "Sir Guillem"
+
+#: data/levels.json:the_tower
+msgid "Bought a medieval watchtower: four floors, each two metres across. He wants a whole home in it."
+msgstr "Hat einen mittelalterlichen Wachturm gekauft: vier Stockwerke, jedes zwei Meter breit. Er will darin ein ganzes Zuhause."
+
+#: data/levels.json:the_tower
+msgid "Many floors, all of them narrow"
+msgstr "Viele Stockwerke, alle schmal"
+
+#: data/levels.json:the_tower
+msgid ""
+"The tower has four floors and each one is barely two metres across. The staircase eats a third of every one of them.\n"
+"\n"
+"No floor can hold a whole home, so spread it out: one or two needs per floor. Use the floor tabs at the bottom right, or the Up and Down arrow keys, to move between them."
+msgstr ""
+"Der Turm hat vier Stockwerke, und jedes ist kaum zwei Meter breit. Die Treppe frisst ein Drittel von jedem.\n"
+"\n"
+"Kein Stockwerk fasst ein ganzes Zuhause, also verteil es: ein oder zwei Bedürfnisse pro Stockwerk. Wechsle mit den Stockwerk-Reitern unten rechts oder den Pfeiltasten Hoch und Runter."
+
+#: data/levels.json:the_tower
+msgid "First Floor"
+msgstr "Erster Stock"
+
+#: data/levels.json:the_tower
+msgid "Second Floor"
+msgstr "Zweiter Stock"
+
+#: data/levels.json:the_tower
+msgid "Top Floor"
+msgstr "Oberstes Stockwerk"
+
+#: data/levels.json:overprotective
+msgid "Overprotective"
+msgstr "Überbehütet"
+
+#: data/levels.json:overprotective
+msgid "The Ferrers"
+msgstr "Die Ferrers"
+
+#: data/levels.json:overprotective
+msgid "They want to see the front door from the sofa and their daughter's doorway from the computer. Their daughter wants the window where they can't see it."
+msgstr "Sie wollen vom Sofa aus die Wohnungstür sehen und vom Computer aus die Zimmertür ihrer Tochter. Die Tochter will das Fenster dort, wo sie es nicht sehen."
+
+#: data/levels.json:overprotective
+msgid "See the front door from the sofa corner"
+msgstr "Die Wohnungstür von der Sofaecke aus sehen"
+
+#: data/levels.json:overprotective
+msgid "Sofa sees the front door"
+msgstr "Sofa sieht die Wohnungstür"
+
+#: data/levels.json:overprotective
+msgid "See the daughter's doorway from the computer corner"
+msgstr "Die Zimmertür der Tochter von der Computerecke aus sehen"
+
+#: data/levels.json:overprotective
+msgid "Computer sees her doorway"
+msgstr "Computer sieht ihre Tür"
+
+#: data/levels.json:overprotective
+msgid "The window can't be seen from her doorway"
+msgstr "Das Fenster darf von ihrer Tür aus nicht zu sehen sein"
+
+#: data/levels.json:overprotective
+msgid "Her window is hidden"
+msgstr "Ihr Fenster ist verborgen"
+
+#: data/levels.json:overprotective
+msgid "Lines of sight"
+msgstr "Sichtlinien"
+
+#: data/levels.json:overprotective
+msgid ""
+"Some needs are not furniture: they are whether one spot can see another. Tall furniture blocks a line of sight, low furniture doesn't.\n"
+"\n"
+"The parents want two lines kept clear. Their daughter wants one line blocked: nobody should see her window from her doorway. The three lines are numbered and drawn in both views: green when the rule is met, red when it is not. A solid line has to stay clear; a dashed line has to be blocked.\n"
+"\n"
+"A wardrobe in the wrong place breaks a line. A wardrobe in the right place is exactly what she needs."
+msgstr ""
+"Manche Bedürfnisse sind keine Möbel: Es geht darum, ob ein Punkt einen anderen sehen kann. Hohe Möbel blockieren eine Sichtlinie, niedrige nicht.\n"
+"\n"
+"Die Eltern wollen zwei Linien frei haben. Die Tochter will eine Linie blockiert: Niemand soll ihr Fenster von ihrer Tür aus sehen. Die drei Linien sind nummeriert und in beiden Ansichten eingezeichnet: grün, wenn die Regel erfüllt ist, rot, wenn nicht. Eine durchgezogene Linie muss frei bleiben, eine gestrichelte muss blockiert sein.\n"
+"\n"
+"Ein Kleiderschrank am falschen Platz unterbricht eine Linie. Ein Kleiderschrank am richtigen Platz ist genau das, was sie braucht."
+
+#: data/levels.json:border_house
+msgid "The Border House"
+msgstr "Das Grenzhaus"
+
+#: data/levels.json:border_house
+msgid "Bruna"
+msgstr "Bruna"
+
+#: data/levels.json:border_house
+msgid "The town line runs through her living room. One council's by-law: nobody sleeps in the same room as a kitchen. The other council owns the kitchen."
+msgstr "Die Gemeindegrenze verläuft durch ihr Wohnzimmer. Die Satzung der einen Gemeinde: Niemand schläft im selben Raum wie eine Küche. Die Küche gehört der anderen Gemeinde."
+
+#: data/levels.json:border_house
+msgid "Zones"
+msgstr "Zonen"
+
+#: data/levels.json:border_house
+msgid ""
+"A zone is a stretch of floor you can walk across without passing through anything tall. An open doorway joins two rooms into one zone.\n"
+"\n"
+"The by-law says sleeping and cooking must be in different zones. The two halves of this house are joined by an opening in the border wall, so right now they are one.\n"
+"\n"
+"Tall storage (a bookshelf, a wardrobe) works as a divider. Close the opening with one, and the house becomes two zones."
+msgstr ""
+"Eine Zone ist eine Bodenfläche, über die man gehen kann, ohne an etwas Hohem vorbeizumüssen. Eine offene Türöffnung verbindet zwei Räume zu einer Zone.\n"
+"\n"
+"Die Satzung sagt: Schlafen und Kochen müssen in verschiedenen Zonen liegen. Die beiden Hälften dieses Hauses sind durch eine Öffnung in der Grenzwand verbunden, also sind sie gerade eine.\n"
+"\n"
+"Hoher Stauraum (ein Bücherregal, ein Kleiderschrank) dient als Trenner. Verschließ die Öffnung damit, und das Haus wird zu zwei Zonen."
+
+#: data/levels.json:rental:capsule
+#: data/furniture.json:rental_capsule
+msgid "Capsule Pod"
+msgstr "Schlafkapsel"
+
+#: data/levels.json:rental:capsule
+msgid "Kenji"
+msgstr "Kenji"
+
+#: data/levels.json:rental:capsule
+msgid "A bed, a lamp, a door that locks. He is only here to sleep."
+msgstr "Ein Bett, eine Lampe, eine Tür, die abschließt. Er ist nur zum Schlafen hier."
+
+#: data/levels.json:rental:student
+#: data/furniture.json:rental_student
+msgid "Student Shoebox"
+msgstr "Studenten-Schuhkarton"
+
+#: data/levels.json:rental:student
+msgid "Imke"
+msgstr "Imke"
+
+#: data/levels.json:rental:student
+msgid "First room of her own. The desk matters more than the bed."
+msgstr "Ihr erstes eigenes Zimmer. Der Schreibtisch ist wichtiger als das Bett."
+
+#: data/levels.json:rental:bunk
+#: data/furniture.json:rental_bunk
+msgid "Backpacker Bunk"
+msgstr "Backpacker-Etagenbett"
+
+#: data/levels.json:rental:bunk
+msgid "Three backpackers"
+msgstr "Drei Backpacker"
+
+#: data/levels.json:rental:bunk
+msgid "They split the rent three ways and are gone by Friday."
+msgstr "Sie teilen die Miete durch drei und sind am Freitag wieder weg."
+
+#: data/levels.json:rental:garret
+#: data/furniture.json:rental_garret
+msgid "Artist's Garret"
+msgstr "Künstlerdachkammer"
+
+#: data/levels.json:rental:garret
+msgid "Odile"
+msgstr "Odile"
+
+#: data/levels.json:rental:garret
+msgid "Paints at night, sleeps at noon, pays on time."
+msgstr "Malt nachts, schläft mittags, zahlt pünktlich."
+
+#: data/levels.json:rental:nook
+#: data/furniture.json:rental_nook
+msgid "Night-Shift Nook"
+msgstr "Nachtschicht-Nische"
+
+#: data/levels.json:rental:nook
+msgid "Tomasz"
+msgstr "Tomasz"
+
+#: data/levels.json:rental:nook
+msgid "Works nights at the harbour. Needs it dark and quiet by day."
+msgstr "Arbeitet nachts im Hafen. Braucht es tagsüber dunkel und ruhig."
+
+#: data/levels.json:rental:couple
+#: data/furniture.json:rental_couple
+msgid "Couple's Crate"
+msgstr "Pärchen-Kiste"
+
+#: data/levels.json:rental:couple
+msgid "Lena and Aron"
+msgstr "Lena und Aron"
+
+#: data/levels.json:rental:couple
+msgid "Saving for a place of their own. This will do until then."
+msgstr "Sie sparen auf eine eigene Wohnung. Bis dahin reicht das hier."
+
+#: data/levels.json:rental:family
+#: data/furniture.json:rental_family
+msgid "Family Carton"
+msgstr "Familienkarton"
+
+#: data/levels.json:rental:family
+msgid "The Baumanns"
+msgstr "Die Baumanns"
+
+#: data/levels.json:rental:family
+msgid "Two parents, two children, one room. They have done the sums."
+msgstr "Zwei Eltern, zwei Kinder, ein Zimmer. Sie haben nachgerechnet."
+
+#: data/levels.json:rental:penthouse
+#: data/furniture.json:rental_penthouse
+msgid "Penthouse-in-a-Box"
+msgstr "Penthouse im Karton"
+
+#: data/levels.json:rental:penthouse
+msgid "Frau von Hagen"
+msgstr "Frau von Hagen"
+
+#: data/levels.json:rental:penthouse
+msgid "Insists it is a penthouse. Pays as if it were one."
+msgstr "Besteht darauf, dass es ein Penthouse ist. Zahlt auch so."
+
+#: data/furniture.json:shoebox_apartment
+msgid "Nested Apartment (Shoebox)"
+msgstr "Verschachtelte Wohnung (Schuhkarton)"
+
+#: data/furniture.json:normal_bed
+msgid "Bed"
+msgstr "Bett"
+
+#: data/furniture.json:storage_bed
+msgid "Storage Bed"
+msgstr "Bett mit Stauraum"
+
+#: data/furniture.json:high_bed
+msgid "Loft Bed"
+msgstr "Hochbett"
+
+#: data/furniture.json:bunk_bed
+msgid "Bunk Bed"
+msgstr "Etagenbett"
+
+#: data/furniture.json:murphy_bed
+msgid "Murphy Bed"
+msgstr "Schrankbett"
+
+#: data/furniture.json:balcony_window
+msgid "Balcony Window"
+msgstr "Balkonfenster"
+
+#: data/furniture.json:futon
+msgid "Futon"
+msgstr "Futon"
+
+#: data/furniture.json:sofa
+msgid "Sofa"
+msgstr "Sofa"
+
+#: data/furniture.json:sofa_bed
+msgid "Sofa Bed"
+msgstr "Schlafsofa"
+
+#: data/furniture.json:lounge_chair
+msgid "Lounge Chair"
+msgstr "Loungesessel"
+
+#: data/furniture.json:puff
+msgid "Puff"
+msgstr "Sitzsack"
+
+#: data/furniture.json:ottoman
+msgid "Ottoman"
+msgstr "Hocker-Pouf"
+
+#: data/furniture.json:stool
+msgid "Stool"
+msgstr "Hocker"
+
+#: data/furniture.json:desk
+msgid "Desk"
+msgstr "Schreibtisch"
+
+#: data/furniture.json:small_desk
+msgid "Small Desk"
+msgstr "Kleiner Schreibtisch"
+
+#: data/furniture.json:murphy_desk
+msgid "Fold-Down Desk"
+msgstr "Klappschreibtisch"
+
+#: data/furniture.json:dining_table
+msgid "Dining Table"
+msgstr "Esstisch"
+
+#: data/furniture.json:coffee_table
+msgid "Coffee Table"
+msgstr "Couchtisch"
+
+#: data/furniture.json:kitchen
+msgid "Kitchen Unit"
+msgstr "Küchenzeile"
+
+#: data/furniture.json:kitchen_small
+msgid "Compact Kitchen"
+msgstr "Kompaktküche"
+
+#: data/furniture.json:bathtub
+msgid "Bathtub"
+msgstr "Badewanne"
+
+#: data/furniture.json:toilet
+msgid "Toilet"
+msgstr "Toilette"
+
+#: data/furniture.json:sink
+msgid "Sink"
+msgstr "Waschbecken"
+
+#: data/furniture.json:shower
+msgid "Shower"
+msgstr "Dusche"
+
+#: data/furniture.json:towel_rack
+msgid "Towel Rack"
+msgstr "Handtuchhalter"
+
+#: data/furniture.json:wardrobe
+msgid "Wardrobe"
+msgstr "Kleiderschrank"
+
+#: data/furniture.json:bookshelf
+msgid "Bookshelf"
+msgstr "Bücherregal"
+
+#: data/furniture.json:pantry
+msgid "Pantry"
+msgstr "Vorratsschrank"
+
+#: data/furniture.json:wall_shelf
+msgid "Shelf"
+msgstr "Regal"
+
+#: data/furniture.json:wall_cabinet
+msgid "Cabinet"
+msgstr "Schrank"
+
+#: data/furniture.json:wall_hanger
+msgid "Wall Hanger"
+msgstr "Wandgarderobe"
+
+#: data/furniture.json:tv
+msgid "TV"
+msgstr "Fernseher"
+
+#: data/furniture.json:mirror
+msgid "Mirror"
+msgstr "Spiegel"
+
+#: data/furniture.json:painting
+msgid "Painting"
+msgstr "Gemälde"
+
+#: data/furniture.json:plant
+msgid "Plant"
+msgstr "Pflanze"
+
+#: data/furniture.json:wall_plant
+msgid "Wall Plant"
+msgstr "Wandpflanze"
+
+#: data/furniture.json:stair_n
+msgid "Staircase (North)"
+msgstr "Treppe (Nord)"
+
+#: data/furniture.json:stair_s
+msgid "Staircase (South)"
+msgstr "Treppe (Süd)"
+
+#: data/furniture.json:stair_e
+msgid "Staircase (East)"
+msgstr "Treppe (Ost)"
+
+#: data/furniture.json:stair_w
+msgid "Staircase (West)"
+msgstr "Treppe (West)"
+
+#: data/furniture.json:fold_stair_e
+msgid "Fold-Flat Staircase (East)"
+msgstr "Klapptreppe (Ost)"
+
+#: data/furniture.json:fold_stair_w
+msgid "Fold-Flat Staircase (West)"
+msgstr "Klapptreppe (West)"
+
+#: data/furniture.json:laundry_basket
+msgid "Laundry Basket"
+msgstr "Wäschekorb"
+
+#: data/furniture.json:bathroom_cabinet
+msgid "Bathroom Cabinet"
+msgstr "Badezimmerschrank"
+
+#: data/furniture.json:towel_set
+msgid "Towel Set"
+msgstr "Handtuchset"
+
+#: data/furniture.json:floor_lamp
+msgid "Floor Lamp"
+msgstr "Stehlampe"
+
+#: data/furniture.json:side_table
+msgid "Side Table"
+msgstr "Beistelltisch"
+
+#: data/furniture.json:tv_stand
+msgid "TV Stand"
+msgstr "TV-Möbel"
+
+#: data/furniture.json:office_chair
+msgid "Office Chair"
+msgstr "Bürostuhl"
+
+#: data/furniture.json:filing_cabinet
+msgid "Filing Cabinet"
+msgstr "Aktenschrank"
+
+#: data/furniture.json:whiteboard
+msgid "Whiteboard"
+msgstr "Whiteboard"
+
+#: data/furniture.json:desk_lamp
+msgid "Desk Lamp"
+msgstr "Schreibtischlampe"
+
+#: data/furniture.json:fridge
+msgid "Fridge"
+msgstr "Kühlschrank"
+
+#: data/furniture.json:kitchen_island
+msgid "Kitchen Island"
+msgstr "Kücheninsel"
+
+#: data/furniture.json:kitchen_rack
+msgid "Kitchen Rack"
+msgstr "Küchenregal"
+
+#: data/furniture.json:outdoor_table
+msgid "Outdoor Table"
+msgstr "Gartentisch"
+
+#: data/furniture.json:planter_box
+msgid "Planter Box"
+msgstr "Pflanzkasten"
+
+#: data/furniture.json:sun_lounger
+msgid "Sun Lounger"
+msgstr "Sonnenliege"
+
+#: data/furniture.json:nightstand
+msgid "Nightstand"
+msgstr "Nachttisch"
+
+#: data/furniture.json:dresser
+msgid "Dresser"
+msgstr "Kommode"
+
+#: data/furniture.json:floor_mirror
+msgid "Floor Mirror"
+msgstr "Standspiegel"
+
+#: data/furniture.json:clothes_rack
+msgid "Clothes Rack"
+msgstr "Kleiderständer"
+
+#: data/furniture.json:sink_square
+msgid "Square Sink"
+msgstr "Eckiges Waschbecken"
+
+#: data/furniture.json:double_bed
+msgid "Double Bed"
+msgstr "Doppelbett"
+
+#: data/furniture.json:bench
+msgid "Bench"
+msgstr "Bank"
+
+#: data/furniture.json:cushioned_bench
+msgid "Cushioned Bench"
+msgstr "Gepolsterte Bank"
+
+#: data/furniture.json:low_bench
+msgid "Low Bench"
+msgstr "Niedrige Bank"
+
+#: data/furniture.json:closed_bookcase
+msgid "Closed Bookcase"
+msgstr "Geschlossenes Bücherregal"
+
+#: data/furniture.json:wide_bookcase
+msgid "Wide Bookcase"
+msgstr "Breites Bücherregal"
+
+#: data/furniture.json:moving_box
+msgid "Moving Box"
+msgstr "Umzugskarton"
+
+#: data/furniture.json:dining_chair
+msgid "Dining Chair"
+msgstr "Esszimmerstuhl"
+
+#: data/furniture.json:keyboard
+msgid "Keyboard"
+msgstr "Tastatur"
+
+#: data/furniture.json:computer_mouse
+msgid "Computer Mouse"
+msgstr "Computermaus"
+
+#: data/furniture.json:monitor
+msgid "Monitor"
+msgstr "Monitor"
+
+#: data/furniture.json:kitchen_corner_cabinet_inner
+msgid "Kitchen Corner Cabinet"
+msgstr "Küchen-Eckschrank"
+
+#: data/furniture.json:kitchen_corner_cabinet_round
+msgid "Rounded Corner Cabinet"
+msgstr "Abgerundeter Eckschrank"
+
+#: data/furniture.json:fridge_large
+msgid "Large Fridge"
+msgstr "Großer Kühlschrank"
+
+#: data/furniture.json:mini_fridge
+msgid "Mini Fridge"
+msgstr "Minikühlschrank"
+
+#: data/furniture.json:kitchen_sink
+msgid "Kitchen Sink"
+msgstr "Spüle"
+
+#: data/furniture.json:stove
+msgid "Stove"
+msgstr "Herd"
+
+#: data/furniture.json:design_sofa
+msgid "Design Sofa"
+msgstr "Design-Sofa"
+
+#: data/furniture.json:trash_can
+msgid "Trash Can"
+msgstr "Mülleimer"
+
+#: data/furniture.json:washer
+msgid "Washer"
+msgstr "Waschmaschine"
+
+#: data/furniture.json:washer_dryer_stack
+msgid "Stacked Washer/Dryer"
+msgstr "Waschturm (Waschmaschine/Trockner)"
+
+#: data/furniture.json:murphy_bed_double
+msgid "Double Murphy Bed"
+msgstr "Doppel-Schrankbett"
+
+#: data/furniture.json:murphy_bed_sofa
+msgid "Murphy Bed + Sofa"
+msgstr "Schrankbett + Sofa"
+
+#: data/furniture.json:armchair_bed
+msgid "Armchair Bed"
+msgstr "Sesselbett"
+
+#: data/furniture.json:ottoman_bed
+msgid "Ottoman Bed"
+msgstr "Hockerbett"
+
+#: data/furniture.json:design_sofa_bed
+msgid "Design Sofa Bed"
+msgstr "Design-Schlafsofa"
+
+#: data/furniture.json:corner_sofa_bed
+msgid "Corner Sofa Bed"
+msgstr "Eck-Schlafsofa"
+
+#: data/furniture.json:trundle_bed
+msgid "Trundle Bed"
+msgstr "Ausziehbett"
+
+#: data/furniture.json:cabinet_guest_bed
+msgid "Cabinet Guest Bed"
+msgstr "Gästebett im Schrank"
+
+#: data/furniture.json:bench_bed
+msgid "Bench Bed"
+msgstr "Bankbett"
+
+#: data/furniture.json:desk_bed_combo
+msgid "Desk Bed Combo"
+msgstr "Schreibtisch-Bett-Kombi"
+
+#: data/furniture.json:drop_leaf_table
+msgid "Drop-Leaf Table"
+msgstr "Klapptisch"
+
+#: data/furniture.json:extending_table
+msgid "Extending Table"
+msgstr "Ausziehtisch"
+
+#: data/furniture.json:lift_coffee_table
+msgid "Lift-Top Coffee Table"
+msgstr "Couchtisch mit Hebeplatte"
+
+#: data/furniture.json:wall_dining_table
+msgid "Wall Dining Table"
+msgstr "Wand-Esstisch"
+
+#: data/furniture.json:nesting_tables
+msgid "Nesting Tables"
+msgstr "Satztische"
+
+#: data/furniture.json:console_dining_table
+msgid "Console Dining Table"
+msgstr "Konsolen-Esstisch"
+
+#: data/furniture.json:folding_glass_table
+msgid "Folding Glass Table"
+msgstr "Klappbarer Glastisch"
+
+#: data/furniture.json:murphy_table
+msgid "Murphy Table"
+msgstr "Schranktisch"
+
+#: data/furniture.json:extending_bar_table
+msgid "Extending Bar Table"
+msgstr "Ausziehbarer Bartisch"
+
+#: data/furniture.json:secretary_desk
+msgid "Secretary Desk"
+msgstr "Sekretär"
+
+#: data/furniture.json:corner_fold_desk
+msgid "Corner Fold-Out Desk"
+msgstr "Ausklappbarer Eckschreibtisch"
+
+#: data/furniture.json:wall_laptop_desk
+msgid "Wall Laptop Desk"
+msgstr "Wand-Laptoptisch"
+
+#: data/furniture.json:standing_desk
+msgid "Standing Desk"
+msgstr "Stehschreibtisch"
+
+#: data/furniture.json:rolling_desk
+msgid "Rolling Desk"
+msgstr "Rollschreibtisch"
+
+#: data/furniture.json:vanity_desk
+msgid "Convertible Vanity"
+msgstr "Verwandelbarer Schminktisch"
+
+#: data/furniture.json:bookcase_desk
+msgid "Bookcase Desk"
+msgstr "Bücherregal-Schreibtisch"
+
+#: data/furniture.json:sliding_wardrobe_tall
+msgid "Sliding Wardrobe (Vertical)"
+msgstr "Schiebeschrank (vertikal)"
+
+#: data/furniture.json:sliding_bookcase
+msgid "Sliding Bookcase (Vertical)"
+msgstr "Schiebe-Bücherregal (vertikal)"
+
+#: data/furniture.json:rolling_shelf_wide
+msgid "Rolling Wide Shelf"
+msgstr "Breites Rollregal"
+
+#: data/furniture.json:rolling_tv_unit
+msgid "Rolling TV Unit"
+msgstr "Rollbares TV-Möbel"
+
+#: data/furniture.json:rolling_island
+msgid "Rolling Island"
+msgstr "Rollbare Kücheninsel"
+
+#: data/furniture.json:rolling_clothes_rack
+msgid "Rolling Clothes Rack"
+msgstr "Rollbarer Kleiderständer"
+
+#: data/furniture.json:folding_storage_bench
+msgid "Folding Storage Bench"
+msgstr "Klappbare Truhenbank"
+
+#: data/furniture.json:expanding_shelf
+msgid "Expanding Shelf"
+msgstr "Ausziehregal"
+
+#: data/furniture.json:pocket_pantry
+msgid "Pocket Pantry"
+msgstr "Schmaler Apothekerschrank"
+
+#: data/furniture.json:pull_out_hamper
+msgid "Pull-Out Hamper"
+msgstr "Ausziehbarer Wäschesammler"
+
+#: data/furniture.json:hidden_kitchenette
+msgid "Hidden Kitchenette"
+msgstr "Versteckte Kochnische"
+
+#: data/furniture.json:fold_down_breakfast_bar
+msgid "Fold-Down Breakfast Bar"
+msgstr "Klappbare Frühstückstheke"
+
+#: data/furniture.json:rolling_kitchen_cart
+msgid "Rolling Kitchen Cart"
+msgstr "Rollbarer Küchenwagen"
+
+#: data/furniture.json:kitchen_tower
+msgid "Kitchen Tower"
+msgstr "Küchen-Hochschrank"
+
+#: data/furniture.json:fold_out_counter
+msgid "Fold-Out Counter"
+msgstr "Ausklappbare Arbeitsplatte"
+
+#: data/furniture.json:folding_shower
+msgid "Folding Shower"
+msgstr "Faltdusche"
+
+#: data/furniture.json:mirror_cabinet
+msgid "Mirror Cabinet"
+msgstr "Spiegelschrank"
+
+#: data/furniture.json:sliding_bathroom_cabinet
+msgid "Sliding Bathroom Cabinet"
+msgstr "Schiebe-Badezimmerschrank"
+
+#: data/furniture.json:folding_chair
+msgid "Folding Chair"
+msgstr "Klappstuhl"
+
+#: data/furniture.json:stacking_stools
+msgid "Stacking Stools"
+msgstr "Stapelhocker"
+
+#: data/furniture.json:wall_folding_seat
+msgid "Wall Folding Seat"
+msgstr "Wandklappsitz"
+
+#: data/furniture.json:picnic_bench_table
+msgid "Convertible Picnic Bench"
+msgstr "Verwandelbare Picknickbank"
+
+#: data/furniture.json:under_counter_table
+msgid "Pull-Out Table"
+msgstr "Ausziehtisch (unterschiebbar)"
+
+#: data/furniture.json:banquette_bench
+msgid "Banquette Bench"
+msgstr "Sitzbank"
+
+#: data/furniture.json:ceiling_lift_storage
+msgid "Ceiling Lift Storage"
+msgstr "Deckenlift-Stauraum"
+
+#: data/furniture.json:floor_hatch_storage
+msgid "Floor Hatch Storage"
+msgstr "Bodenluken-Stauraum"
+
+#: data/furniture.json:movable_island_wall
+msgid "Movable Island Wall"
+msgstr "Verschiebbare Inselwand"
+
+#: data/furniture.json:platform_bed_podium
+msgid "Platform Bed Podium"
+msgstr "Podestbett"
+
+#: data/furniture.json:sliding_pocket_bed
+msgid "Sliding Pocket Bed"
+msgstr "Einschiebbares Bett"
+
+#: data/furniture.json:fluted_glass_panel
+msgid "Reeded Glass Screen"
+msgstr "Riffelglas-Trennwand"
+
+#: data/furniture.json:curtain
+msgid "Curtain"
+msgstr "Vorhang"
+
+#: data/furniture.json:bird_cage
+msgid "Bird Cage"
+msgstr "Vogelkäfig"
+
+#: data/furniture.json:painted_bed
+msgid "Custom Bed"
+msgstr "Maßbett"
+
+#: data/furniture.json:painted_kitchen
+msgid "Custom Kitchen"
+msgstr "Maßküche"
+
+#: data/furniture.json:painted_workspace
+msgid "Custom Desk"
+msgstr "Maßschreibtisch"
+
+#: data/furniture.json:painted_sofa
+msgid "Custom Sofa"
+msgstr "Maßsofa"
+
+#: data/furniture.json:painted_dining
+msgid "Custom Dining Area"
+msgstr "Maß-Essbereich"
+
+#: data/furniture.json:painted_storage
+msgid "Custom Storage"
+msgstr "Maß-Stauraum"
+
+#: data/furniture.json:painted_bathroom
+msgid "Custom Bathroom"
+msgstr "Maßbad"

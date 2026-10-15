@@ -76,13 +76,13 @@ func _ready() -> void:
 	# Same button/signal for both outcomes — "restart from scratch" reads the
 	# same whether the previous attempt failed or you just want another go at
 	# a better score, so there's no need for two separately-worded buttons.
-	retry_btn.text = "↺ Restart Level"
+	retry_btn.text = tr("↺ Restart Level")
 
 	# Inserted right above NextButton, in this order: View Apartment, then
 	# Next Level, then the existing Back to Projects/Retry — "keep looking"
 	# and "move on" read as options offered before the exit action, not after.
 	watch_btn = Button.new()
-	watch_btn.text = "🔍 View Apartment"
+	watch_btn.text = tr("🔍 View Apartment")
 	watch_btn.custom_minimum_size = Vector2(220, 44)
 	watch_btn.add_theme_font_size_override("font_size", 13)
 	watch_btn.pressed.connect(func(): watch_again_requested.emit())
@@ -90,7 +90,7 @@ func _ready() -> void:
 	$Panel/VBox.move_child(watch_btn, next_btn.get_index())
 
 	advance_btn = Button.new()
-	advance_btn.text = "Next Level →"
+	advance_btn.text = tr("Next Level →")
 	advance_btn.custom_minimum_size = Vector2(220, 44)
 	advance_btn.add_theme_font_size_override("font_size", 13)
 	advance_btn.pressed.connect(func():
@@ -105,7 +105,7 @@ func _ready() -> void:
 	# "APPROVED" rubber stamp — slams down tilted over the panel's top-right
 	# corner on success, like a permit office signing off on the drawing.
 	_stamp = Label.new()
-	_stamp.text = "APPROVED"
+	_stamp.text = tr("APPROVED")
 	var hand := GameTheme.handwriting()
 	if hand:
 		_stamp.add_theme_font_override("font", hand)
@@ -164,22 +164,22 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 	advance_btn.visible = has_next_level
 
 	if GameState.is_retired():
-		title_label.text = "RETIREMENT ACHIEVED"
-		body_label.text  = "You retire.\nGen Z pays for it. As always."
-		next_btn.text    = "Retire"
+		title_label.text = tr("RETIREMENT ACHIEVED")
+		body_label.text  = tr("You retire.\nGen Z pays for it. As always.")
+		next_btn.text    = tr("Retire")
 		advance_btn.visible = false
 	else:
-		title_label.text = "RENTED OUT"
+		title_label.text = tr("RENTED OUT")
 		body_label.text  = (
-			"Congratulations. You have successfully reduced\n%s's quality of life by 40%%." % tenant_name
+			tr("Congratulations. You have successfully reduced\n%s's quality of life by 40%%.") % tenant_name
 		)
-		next_btn.text = "Back to Projects"
+		next_btn.text = tr("Back to Projects")
 
 	_animate_stars(stars)
 	call_deferred("_slam_stamp")
 
 	rent_bar.text = (
-		"+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo" % [
+		tr("+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo") % [
 			funds_earned, portfolio_rent, GameState.RETIRE_GOAL
 		]
 	)
@@ -208,7 +208,7 @@ func show_failure(reason: String) -> void:
 	visible = true
 	if _stamp:
 		_stamp.visible = false
-	title_label.text   = "NOT RENTED"
+	title_label.text   = tr("NOT RENTED")
 	body_label.text    = reason
 	if _stars_label:
 		_stars_label.text  = ""

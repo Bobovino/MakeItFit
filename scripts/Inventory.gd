@@ -114,7 +114,7 @@ func _ensure_filter_box() -> void:
 	for spec in VIEWS:
 		var id: String = spec[0]
 		var b := Button.new()
-		b.text = "%s %s" % [spec[1], spec[2]]
+		b.text = "%s %s" % [spec[1], _view_label(id)]
 		b.toggle_mode = true
 		b.button_group = group
 		b.custom_minimum_size = Vector2(0, 28)
@@ -138,7 +138,7 @@ func _ensure_filter_box() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(spacer)
 	_search = LineEdit.new()
-	_search.placeholder_text = "Search…"
+	_search.placeholder_text = tr("Search…")
 	_search.clear_button_enabled = true
 	_search.custom_minimum_size = Vector2(200, 28)
 	_search.add_theme_font_size_override("font_size", 12)
@@ -241,7 +241,7 @@ func _sync_filter_buttons() -> void:
 		var b := _sub_filter_buttons[id] as Button
 		b.button_pressed = (id == view) and not searching
 		if id == VIEW_NEEDED:
-			b.text = "⭐ Needed" + ((" (%d)" % needed) if needed > 0 else "")
+			b.text = "⭐ %s" % _view_label(id) + ((" (%d)" % needed) if needed > 0 else "")
 
 
 # What the tenant still lacks: every need the level asks for (in any moment)
@@ -290,6 +290,22 @@ func _set_builder_tool(tool_id: String) -> void:
 
 func _is_builder(f: Dictionary) -> bool:
 	return f.get("is_stair", false) as bool
+
+
+# The tab name shown for a VIEWS id (the ids themselves are internal).
+func _view_label(id: String) -> String:
+	match id:
+		"Needed":        return tr("Needed")
+		"All":           return tr("All")
+		"Bedroom":       return tr("Bedroom")
+		"Bathroom":      return tr("Bathroom")
+		"Kitchen":       return tr("Kitchen")
+		"Living":        return tr("Living")
+		"Storage":       return tr("Storage")
+		"Transformable": return tr("Folding")
+		"Rentals":       return tr("Rentals")
+		"Builder":       return tr("Build")
+	return id
 
 
 # Which of SUB_CATEGORIES an item belongs to, for the icon-grid filter tabs.
@@ -352,34 +368,36 @@ func _render() -> void:
 
 	if query != "":
 		var hits := furniture.filter(func(f):
-			var hay := (f.get("name", "") as String).to_lower() + " " + " ".join(Inventory.provides(f)) \
-				+ " " + _sub_category_of(f).to_lower()
+			var provides := Inventory.provides(f)
+			var hay := (f.get("name", "") as String).to_lower() + " " + " ".join(provides) \
+				+ " " + " ".join(provides.map(func(fn): return Loc.need_name(str(fn)).to_lower())) \
+				+ " " + _sub_category_of(f).to_lower() + " " + _view_label(_sub_category_of(f)).to_lower()
 			for word in query.split(" ", false):
 				if not hay.contains(word):
 					return false
 			return true)
-		_add_heading("🔎", "%d found" % hits.size())
+		_add_heading("🔎", tr("%d found") % hits.size())
 		_add_cards(hits)
 		if hits.is_empty():
-			_add_note("Nothing matches. Try a need (sleep, sit, work, storage) or part of a name.")
+			_add_note(tr("Nothing matches. Try a need (sleep, sit, work, storage) or part of a name."))
 	elif _need_filter != "":
 		var options := furniture.filter(func(f): return _need_filter in Inventory.provides(f))
-		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "❔") as String, _need_filter.capitalize())
+		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "❔") as String, Loc.need_name(_need_filter))
 		_add_cards(options)
 		if options.is_empty():
-			_add_note("No piece in this level provides it.")
+			_add_note(tr("No piece in this level provides it."))
 	elif _category == Category.BUILDER:
 		_row.add_child(_build_builder_tool_row())
 		for f in _full_list.filter(func(f): return _is_builder(f)):
 			_row.add_child(_build_shop_row(f))
 	elif _sub_category == VIEW_NEEDED:
 		if _last_unmet.is_empty():
-			_add_note("The tenant has everything they asked for. Pick a tab to browse.")
+			_add_note(tr("The tenant has everything they asked for. Pick a tab to browse."))
 		for need in _last_unmet:
 			var options := furniture.filter(func(f): return need in Inventory.provides(f))
-			_add_heading(TenantCard.NEED_GLYPH.get(need, "❔") as String, (need as String).capitalize())
+			_add_heading(TenantCard.NEED_GLYPH.get(need, "❔") as String, Loc.need_name(need as String))
 			if options.is_empty():
-				_add_note("Nothing in this level provides it.")
+				_add_note(tr("Nothing in this level provides it."))
 			else:
 				_add_cards(options)
 	else:
@@ -388,7 +406,7 @@ func _render() -> void:
 			shown = furniture.filter(func(f): return _sub_category_of(f) == _sub_category)
 		_add_cards(shown)
 		if shown.is_empty():
-			_add_note("Nothing in this category for this level.")
+			_add_note(tr("Nothing in this category for this level."))
 
 	scroll.scroll_horizontal = 0
 
@@ -438,7 +456,7 @@ func _build_builder_tool_row() -> VBoxContainer:
 
 	var hdr_row := HBoxContainer.new()
 	var hdr := Label.new()
-	hdr.text = "TOOLS  (drag on the floor plan to build)"
+	hdr.text = tr("TOOLS  (drag on the floor plan to build)")
 	hdr.add_theme_font_size_override("font_size", 9)
 	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -448,10 +466,10 @@ func _build_builder_tool_row() -> VBoxContainer:
 	var group := ButtonGroup.new()
 	_builder_tool_buttons = []
 	var rows := [
-		[["", "Select"], ["wall", "Wall"], ["glass_wall", "Glass Wall"], ["column", "Column"], ["erase", "Erase"]],
-		[["balcony", "Balcony"], ["bathroom", "Bathroom"], ["window", "Window"], ["door", "Door"]],
-		[["rail", "Rail"], ["reveal", "Reveal Zone"]],
-		[["pipe_water", "Pipe: Water"], ["pipe_power", "Pipe: Power"]],
+		[["", tr("Select")], ["wall", tr("Wall")], ["glass_wall", tr("Glass Wall")], ["column", tr("Column")], ["erase", tr("Erase")]],
+		[["balcony", tr("Balcony")], ["bathroom", tr("Bathroom")], ["window", tr("Window")], ["door", tr("Door")]],
+		[["rail", tr("Rail")], ["reveal", tr("Reveal Zone")]],
+		[["pipe_water", tr("Pipe: Water")], ["pipe_power", tr("Pipe: Power")]],
 	]
 	for row_specs: Array in rows:
 		var row := HBoxContainer.new()
@@ -656,7 +674,7 @@ class ItemCell extends PanelContainer:
 				marks.append(TenantCard.NEED_GLYPH[fn] as String)
 		# ...and what it costs in floor: the footprint, in centimetres.
 		var fp := fdata.get("size", {}) as Dictionary
-		var size_text := "%d×%d cm" % [(fp.get("w", 0) as int) * 10, (fp.get("h", 0) as int) * 10]
+		var size_text := tr("%d×%d cm") % [(fp.get("w", 0) as int) * 10, (fp.get("h", 0) as int) * 10]
 		gives.text = (" ".join(marks) + "  " + size_text) if not marks.is_empty() else size_text
 		gives.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		gives.custom_minimum_size.y = 15
@@ -760,7 +778,7 @@ func _mark_affordability(cell: Control, budget: int) -> void:
 	var can_afford := budget >= price
 	cell.modulate = Color(1, 1, 1, 1.0) if can_afford else Color(1, 1, 1, 0.5)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64) if can_afford else Color(0.95, 0.45, 0.38))
-	cell.tooltip_text = "" if can_afford else "Costs %d€ — you have %d€" % [price, budget]
+	cell.tooltip_text = "" if can_afford else tr("Costs %d€ — you have %d€") % [price, budget]
 
 
 func _on_cell_clicked(f: Dictionary) -> void:
@@ -834,13 +852,13 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	var tier_lbl := Label.new()
 	match tier:
 		"green":
-			tier_lbl.text = "🪶 Light — freely movable"
+			tier_lbl.text = tr("🪶 Light — freely movable")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_GOOD)
 		"yellow":
-			tier_lbl.text = "🪶🪶 Medium — uncomfortable to move"
+			tier_lbl.text = tr("🪶🪶 Medium — uncomfortable to move")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
 		_:
-			tier_lbl.text = "🪶🪶🪶 Heavy — fixed in place"
+			tier_lbl.text = tr("🪶🪶🪶 Heavy — fixed in place")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_BAD)
 	tier_lbl.add_theme_font_size_override("font_size", 10)
 	vb.add_child(tier_lbl)
@@ -848,7 +866,7 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	var funcs := f.get("functions", []) as Array
 	if not funcs.is_empty():
 		var func_lbl := Label.new()
-		func_lbl.text = "Satisfies: " + ", ".join(funcs)
+		func_lbl.text = tr("Satisfies: %s") % ", ".join(funcs.map(Loc.need_name))
 		func_lbl.add_theme_font_size_override("font_size", 10)
 		func_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 		func_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -857,15 +875,15 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 
 	var tags: Array = []
 	if (f.get("foldable", false) as bool):
-		tags.append("Foldable")
+		tags.append(tr("Foldable"))
 	if (f.get("rail_axis", "") as String) != "":
-		tags.append("Slides on a rail")
+		tags.append(tr("Slides on a rail"))
 	if (f.get("needs_water", false) as bool):
-		tags.append("Needs plumbing")
+		tags.append(tr("Needs plumbing"))
 	if (f.get("needs_power", false) as bool):
-		tags.append("Needs power")
+		tags.append(tr("Needs power"))
 	if (f.get("creates_loft", false) as bool):
-		tags.append("Creates a loft level")
+		tags.append(tr("Creates a loft level"))
 	if not tags.is_empty():
 		var tag_lbl := Label.new()
 		tag_lbl.text = " · ".join(tags)
@@ -880,7 +898,7 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 
 	var price_lbl := Label.new()
 	var hover_price := f.get("buy_price", 0) as int
-	price_lbl.text = ("Rent: +%d€ — a tenant pays you for the space" % -hover_price) if hover_price < 0 else ("Buy: %d€" % hover_price)
+	price_lbl.text = (tr("Rent: +%d€ — a tenant pays you for the space") % -hover_price) if hover_price < 0 else (tr("Buy: %d€") % hover_price)
 	price_lbl.add_theme_font_size_override("font_size", 11)
 	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
 	vb.add_child(price_lbl)
@@ -892,8 +910,8 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	var views_row := HBoxContainer.new()
 	views_row.add_theme_constant_override("separation", 12)
 	vb.add_child(views_row)
-	views_row.add_child(_make_view_chip("Floor Plan", OrthoIconChip.new(f, "top")))
-	views_row.add_child(_make_view_chip("Wall View", OrthoIconChip.new(f, "front")))
+	views_row.add_child(_make_view_chip(tr("Floor Plan"), OrthoIconChip.new(f, "top")))
+	views_row.add_child(_make_view_chip(tr("Wall View"), OrthoIconChip.new(f, "front")))
 
 	# The 3D preview lands here once the hover delay fires (see
 	# _embed_tooltip_preview) — starts empty so plain text tooltips stay cheap
@@ -1026,7 +1044,7 @@ func _build_shop_row(f: Dictionary) -> PanelContainer:
 	bottom_row.add_child(price_lbl)
 
 	var buy_btn := Button.new()
-	buy_btn.text = "Buy"
+	buy_btn.text = tr("Buy")
 	buy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buy_btn.add_theme_font_size_override("font_size", 10)
 	buy_btn.set_meta("price", f["buy_price"] as int)
@@ -1062,7 +1080,7 @@ func _render_owned_section() -> void:
 			continue
 		if not any:
 			any = true
-			_add_heading("🎁", "Owned")
+			_add_heading("🎁", tr("Owned"))
 		for _i in range(count):
 			var card := PanelContainer.new()
 			card.custom_minimum_size = Vector2(116, 132)
@@ -1095,13 +1113,13 @@ func _render_owned_section() -> void:
 			name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 			vb.add_child(name_lbl)
 			var place_btn := Button.new()
-			place_btn.text = "Place (free)"
+			place_btn.text = tr("Place (free)")
 			place_btn.add_theme_font_size_override("font_size", 11)
 			place_btn.pressed.connect(func(): place_owned_requested.emit(fid))
 			vb.add_child(place_btn)
 			var sell_price := fdata.get("sell_price", fdata.get("buy_price", 0)) as int
 			var sell_btn := Button.new()
-			sell_btn.text = "Sell %d€" % sell_price
+			sell_btn.text = tr("Sell %d€") % sell_price
 			sell_btn.add_theme_font_size_override("font_size", 10)
 			sell_btn.add_theme_color_override("font_color", Color(0.86, 0.62, 0.38))
 			sell_btn.pressed.connect(func():
@@ -1113,8 +1131,8 @@ func _render_owned_section() -> void:
 
 func _fmt_funcs(funcs: Array) -> String:
 	if funcs.is_empty():
-		return "decor"
-	return ", ".join(funcs)
+		return tr("decor")
+	return ", ".join(funcs.map(Loc.need_name))
 
 
 func _refresh_affordability(new_budget: int) -> void:
@@ -1125,7 +1143,7 @@ func _refresh_affordability(new_budget: int) -> void:
 		if (ctrl as Button).has_meta("price"):
 			var price := (ctrl as Button).get_meta("price") as int
 			(ctrl as Button).disabled = new_budget < price
-			(ctrl as Button).tooltip_text = ("Costs %d€ — you have %d€" % [price, new_budget]) if new_budget < price else ""
+			(ctrl as Button).tooltip_text = (tr("Costs %d€ — you have %d€") % [price, new_budget]) if new_budget < price else ""
 	for cell in item_list.find_children("PriceLabel", "Label", true, false):
 		var owner_cell := (cell as Label).get_parent().get_parent() as Control   # label -> VBox -> ItemCell
 		if owner_cell != null:

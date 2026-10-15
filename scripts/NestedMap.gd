@@ -79,19 +79,19 @@ func _build(tree: Dictionary) -> void:
 	var title_row := HBoxContainer.new()
 	vb.add_child(title_row)
 	var title := Label.new()
-	title.text = "APARTMENT MAP"
+	title.text = tr("APARTMENT MAP")
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
 	var close_btn := Button.new()
-	close_btn.text = "Close"
+	close_btn.text = tr("Close")
 	close_btn.add_theme_font_size_override("font_size", 12)
 	close_btn.pressed.connect(_close)
 	title_row.add_child(close_btn)
 
 	var hint := Label.new()
-	hint.text = "Every apartment in this project. Click one to go there."
+	hint.text = tr("Every apartment in this project. Click one to go there.")
 	hint.add_theme_font_size_override("font_size", 12)
 	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	vb.add_child(hint)
@@ -172,11 +172,11 @@ func _make_node(node: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("pressed", hover)
 	btn.add_theme_stylebox_override("disabled", here if is_current else normal)
 	if is_current:
-		btn.tooltip_text = "You are here"
+		btn.tooltip_text = tr("You are here")
 	elif not enterable:
-		btn.tooltip_text = "Too small inside to step into"
+		btn.tooltip_text = tr("Too small inside to step into")
 	else:
-		btn.tooltip_text = "Go to %s" % (node.get("name", "") as String)
+		btn.tooltip_text = tr("Go to %s") % (node.get("name", "") as String)
 	btn.pressed.connect(func():
 		node_chosen.emit(node.get("path", []) as Array, node.get("hops", []) as Array)
 		_close())
@@ -218,14 +218,14 @@ func _make_node(node: Dictionary) -> Control:
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_current:
-		tag.text = "You are here"
+		tag.text = tr("You are here")
 		tag.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	elif node.get("shared", false):
 		# Two boxes can point at one interior; it is the same room both times.
-		tag.text = "Same room as another box"
+		tag.text = tr("Same room as another box")
 		tag.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	elif not enterable:
-		tag.text = "Too small to enter"
+		tag.text = tr("Too small to enter")
 		tag.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	vb.add_child(tag)
 	return btn

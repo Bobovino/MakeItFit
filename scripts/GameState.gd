@@ -41,6 +41,9 @@ var pathing_rule: bool = false
 # UI size control, since font sizes are set ad-hoc per-Label throughout the
 # codebase rather than through one themed size that could be scaled centrally.
 var ui_scale: float = 1.0
+# "" until the player picks one in Settings: follow the device's language.
+signal language_changed(lang: String)
+var language: String = ""
 const UI_SCALE_MIN := 0.85
 const UI_SCALE_MAX := 1.35
 # The only player-facing keyboard shortcut outside mouse interaction — Redo
@@ -106,6 +109,7 @@ func _ready() -> void:
 	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	_apply_global_font()
 	load_game()
+	Loc.apply(language)
 	_apply_ui_scale()
 	for _lid in DEFAULT_OWNED:
 		own_level(_lid)
@@ -118,6 +122,13 @@ func _apply_ui_scale() -> void:
 func set_ui_scale(v: float) -> void:
 	ui_scale = clampf(v, UI_SCALE_MIN, UI_SCALE_MAX)
 	_apply_ui_scale()
+	save_game()
+
+
+func set_language(lang: String) -> void:
+	language = lang
+	Loc.apply(lang)
+	language_changed.emit(Loc.current())
 	save_game()
 
 
@@ -171,6 +182,7 @@ func save_game() -> void:
 		"level_layouts":   level_layouts,
 		"reduce_motion":   reduce_motion,
 		"ui_scale":        ui_scale,
+		"language":        language,
 		"undo_keycode":    undo_keycode,
 		"graphics_quality": graphics_quality,
 		"pathing_rule":    pathing_rule,
@@ -205,6 +217,7 @@ func load_game() -> void:
 	level_layouts   = data.get("level_layouts", level_layouts) as Dictionary
 	reduce_motion   = data.get("reduce_motion", reduce_motion) as bool
 	ui_scale        = data.get("ui_scale", ui_scale) as float
+	language        = data.get("language", language) as String
 	undo_keycode    = data.get("undo_keycode", undo_keycode) as int
 	graphics_quality = clampi(data.get("graphics_quality", graphics_quality) as int, 0, 2)
 	pathing_rule = data.get("pathing_rule", pathing_rule) as bool

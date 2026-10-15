@@ -69,23 +69,23 @@ func _ready() -> void:
 	title_stack.add_theme_constant_override("separation", 2)
 	header.add_child(title_stack)
 
-	_title_lbl = _add_label(title_stack, "MAKE IT FIT", 44, GameTheme.C_AMBER.darkened(0.15))
-	_add_label(title_stack, "Furnish. Satisfy. Retire.", 13, GameTheme.C_MUTED)
+	_title_lbl = _add_label(title_stack, tr("MAKE IT FIT"), 44, GameTheme.C_AMBER.darkened(0.15))
+	_add_label(title_stack, tr("Furnish. Satisfy. Retire."), 13, GameTheme.C_MUTED)
 
 	var rule := HSeparator.new()
 	rule.add_theme_color_override("color", GameTheme.C_BORDER)
 	vbox.add_child(rule)
 
 	var hand := GameTheme.handwriting()
-	var note1 := _add_label(vbox, "35 apartments across 10 Berlin districts", 14, GameTheme.C_MUTED)
+	var note1 := _add_label(vbox, tr("35 apartments across 10 Berlin districts"), 14, GameTheme.C_MUTED)
 	if hand:
 		note1.add_theme_font_override("font", hand)
-	_add_label(vbox, "Build your property portfolio. Reach 10 000€/month. Retire.", 12, GameTheme.C_MUTED)
+	_add_label(vbox, tr("Build your property portfolio. Reach 10 000€/month. Retire."), 12, GameTheme.C_MUTED)
 
 	_spacer(vbox, 8)
 
 	var start_btn := Button.new()
-	start_btn.text = "Start Game"
+	start_btn.text = tr("Start Game")
 	start_btn.custom_minimum_size = Vector2(280, 52)
 	start_btn.add_theme_font_size_override("font_size", 16)
 	var rs := GameTheme.make_rent_btn_style()
@@ -103,7 +103,7 @@ func _ready() -> void:
 	# still owns (own_level/buy never removes entries, so no un-owning check
 	# needed beyond is_owned itself matching CityMap's normal gating).
 	if GameState.last_active_level_id != "" and GameState.is_owned(GameState.last_active_level_id):
-		var continue_btn := _make_tag_button("Continue")
+		var continue_btn := _make_tag_button(tr("Continue"))
 		continue_btn.pressed.connect(_on_continue)
 		vbox.add_child(continue_btn)
 		_add_hover_lift(continue_btn)
@@ -111,7 +111,7 @@ func _ready() -> void:
 	# Level Editor is intentionally not exposed here — it's reached only via
 	# the existing dev-only Ctrl+Shift+Alt+E shortcut in CityMap.gd, same as
 	# debug mode; players shouldn't see a menu path to it.
-	var options_btn := _make_tag_button("Options")
+	var options_btn := _make_tag_button(tr("Options"))
 	options_btn.pressed.connect(func(): SettingsMenu.open(self))
 	vbox.add_child(options_btn)
 	_add_hover_lift(options_btn)
@@ -119,7 +119,7 @@ func _ready() -> void:
 	_spacer(vbox, 10)
 
 	var quit_btn := Button.new()
-	quit_btn.text = "Quit"
+	quit_btn.text = tr("Quit")
 	quit_btn.custom_minimum_size = Vector2(0, 30)
 	quit_btn.add_theme_font_size_override("font_size", 12)
 	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)

@@ -55,33 +55,33 @@ func _build() -> void:
 	card.add_child(vb)
 
 	var title := Label.new()
-	title.text = "CREDITS"
+	title.text = tr("CREDITS")
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	vb.add_child(title)
 
-	vb.add_child(_entry("Fonts",
+	vb.add_child(_entry(tr("Fonts"),
 		"Caveat — Copyright 2014 The Caveat Project Authors\n" +
 		"Space Grotesk — Copyright 2020 The Space Grotesk Project Authors\n" +
-		"Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)"))
+		tr("Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)")))
 
 	vb.add_child(HSeparator.new())
 
-	vb.add_child(_entry("Art & Sound",
-		"Interface sounds and casino/UI audio by Kenney (kenney.nl)\n" +
-		"Released under Creative Commons Zero (CC0)"))
+	vb.add_child(_entry(tr("Art & Sound"),
+		tr("Interface sounds and casino/UI audio by Kenney (kenney.nl)") + "\n" +
+		tr("Released under Creative Commons Zero (CC0)")))
 
 	vb.add_child(HSeparator.new())
 
-	vb.add_child(_entry("Ambient Rain",
-		"Original work created for this project — no attribution required."))
+	vb.add_child(_entry(tr("Ambient Rain"),
+		tr("Original work created for this project — no attribution required.")))
 
 	var push := Control.new()
 	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(push)
 
 	var close_btn := Button.new()
-	close_btn.text = "Close"
+	close_btn.text = tr("Close")
 	close_btn.add_theme_font_size_override("font_size", 13)
 	var rs := GameTheme.make_rent_btn_style()
 	close_btn.add_theme_stylebox_override("normal",  rs[0])

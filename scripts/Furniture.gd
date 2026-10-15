@@ -587,7 +587,7 @@ func _draw() -> void:
 				Color(ink.r, ink.g, ink.b, 0.50), 1.0, 4.0)
 			# Double-click hint
 			draw_string(ThemeDB.fallback_font, Vector2(3, base_y + 8),
-				"▲ FOLD", HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
+				tr("▲ FOLD"), HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
 				Color(ink.r, ink.g, ink.b, 0.55))
 		else:
 			# Dashed preview of extended zone (not currently extended) — shown
@@ -601,7 +601,7 @@ func _draw() -> void:
 			draw_dashed_line(Vector2(w, h),         Vector2(w, h + ext_h), ec_bd, 1.0, 4.0)
 			draw_dashed_line(Vector2(0, h + ext_h), Vector2(w, h + ext_h), ec_bd, 1.5, 5.0)
 			draw_string(ThemeDB.fallback_font, Vector2(3, h + 9),
-				"▼ CLICK TO UNFOLD", HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
+				tr("▼ CLICK TO UNFOLD"), HORIZONTAL_ALIGNMENT_LEFT, w - 6, 6,
 				Color(ec_bd.r, ec_bd.g, ec_bd.b, 0.70))
 
 	# Rail attach/detach flash — a brief expanding, fading ring at the moment
@@ -1695,7 +1695,7 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 			moment_positions[Furniture.active_moment_id] = grid_pos
 		elif mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
 				and Furniture.all_moment_ids.size() > 1:
-			_notice_reason = "Moved for every moment"
+			_notice_reason = tr("Moved for every moment")
 			_notice_flash_t = NOTICE_FLASH_DURATION
 		_play("place")
 		_pop_on_place()

@@ -65,7 +65,7 @@ func setup(floors: Array, hidden_ids: Array = []) -> void:
 		# Floors with an unlock condition start locked
 		if fd.get("unlocked_by", "") != "":
 			btn.disabled = true
-			btn.text = btn.text + " (locked)"
+			btn.text = tr("%s (locked)") % btn.text
 
 	# Hide the whole switcher when there's only one visible floor
 	visible = _buttons.size() > 1
@@ -134,7 +134,7 @@ func set_floor_locked(floor_id: String, locked: bool) -> void:
 	var btn: Button  = _buttons[floor_id] as Button
 	var lbl: String  = _labels.get(floor_id, floor_id) as String
 	btn.disabled = locked
-	btn.text     = lbl + (" (locked)" if locked else "")
+	btn.text     = (tr("%s (locked)") % lbl) if locked else lbl
 
 
 func _on_floor_pressed(floor_id: String) -> void:

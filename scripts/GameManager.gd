@@ -68,8 +68,8 @@ var starting_furniture:  Array = []  # [{id, x, y}] items pre-placed in the apar
 
 func _ready() -> void:
 	add_to_group("game_manager")
-	furniture_data = _load_json("res://data/furniture.json")
-	levels_data = _load_json("res://data/levels.json")
+	furniture_data = Loc.localize_furniture(_load_json("res://data/furniture.json"))
+	levels_data = Loc.localize_levels(_load_json("res://data/levels.json"))
 
 
 func _load_json(path: String) -> Dictionary:
@@ -408,10 +408,10 @@ func rule_status() -> Array:
 		out.append({"kind": "sight", "number": i + 1, "label": s["label"], "short": s["short"], "ok": s["ok"],
 			"must_be_clear": s["must_be_clear"]})
 	for sep in zone_separations:
-		var a := ", ".join(((sep[0] as Array).map(func(f): return str(f).capitalize())))
-		var b := ", ".join(((sep[1] as Array).map(func(f): return str(f).capitalize())))
-		out.append({"kind": "zones", "label": "%s and %s must be in different zones" % [a, b],
-			"short": "%s apart from %s" % [a, b], "ok": _separation_ok(sep as Array)})
+		var a := Loc.join_list((sep[0] as Array).map(func(f): return Loc.need_name(str(f))))
+		var b := Loc.join_list((sep[1] as Array).map(func(f): return Loc.need_name(str(f))))
+		out.append({"kind": "zones", "label": tr("%s and %s must be in different zones") % [a, b],
+			"short": tr("%s apart from %s") % [a, b], "ok": _separation_ok(sep as Array)})
 	return out
 
 
@@ -438,12 +438,12 @@ func zone_status() -> Array:
 			var has_b := (sep[1] as Array).any(func(fn): return fn in fns)
 			if has_a and has_b:
 				conflict = true
-		var names := " + ".join(here.map(func(fn): return str(fn).capitalize()))
+		var names := " + ".join(here.map(func(fn): return Loc.need_name(str(fn))))
 		var label := ""
 		if conflict:
-			label = "%s share this zone" % names
+			label = tr("%s share this zone") % names
 		elif names != "":
-			label = "%s zone" % names
+			label = tr("%s zone") % names
 		out.append({"conflict": conflict, "label": label})
 	return out
 

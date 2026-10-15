@@ -50,7 +50,7 @@ func _build() -> void:
 	card.add_child(outer)
 
 	var title := Label.new()
-	title.text = "HOW TO PLAY"
+	title.text = tr("HOW TO PLAY")
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	outer.add_child(title)
@@ -64,37 +64,37 @@ func _build() -> void:
 	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(vb)
 
-	vb.add_child(_section("Controls", [
-		"Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you.",
-		"In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter.",
-		"The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking.",
-		"Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them.",
-		"Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip.",
-		"Click a foldable piece (like a sofa bed) to fold or unfold it.",
-		"The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom.",
-		"The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing.",
-		"The bar at the bottom is the goal: every need listed there has to be ticked.",
-		"A piece with a heart after its name is a keepsake: it can be moved but never sold.",
-		"Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are.",
-		"Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark.",
-		"Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back).",
-		"A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep.",
-		"You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch.",
-		"Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside.",
-		"Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it." % [
+	vb.add_child(_section(tr("Controls"), [
+		tr("Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."),
+		tr("In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."),
+		tr("The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."),
+		tr("Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them."),
+		tr("Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip."),
+		tr("Click a foldable piece (like a sofa bed) to fold or unfold it."),
+		tr("The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom."),
+		tr("The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing."),
+		tr("The bar at the bottom is the goal: every need listed there has to be ticked."),
+		tr("A piece with a heart after its name is a keepsake: it can be moved but never sold."),
+		tr("Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are."),
+		tr("Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark."),
+		tr("Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back)."),
+		tr("A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep."),
+		tr("You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch."),
+		tr("Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside."),
+		tr("Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it.") % [
 			OS.get_keycode_string(GameState.undo_keycode),
 			OS.get_keycode_string(GameState.undo_keycode),
 		],
-		"Press T to switch between the Floor Plan and 3D view.",
-		"Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab.",
-		"Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same.",
+		tr("Press T to switch between the Floor Plan and 3D view."),
+		tr("Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."),
+		tr("Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."),
 	]))
 
 	vb.add_child(_needs_legend())
 	vb.add_child(_mechanic_cards())
 
 	var close_btn := Button.new()
-	close_btn.text = "Close"
+	close_btn.text = tr("Close")
 	close_btn.add_theme_font_size_override("font_size", 13)
 	var rs := GameTheme.make_rent_btn_style()
 	close_btn.add_theme_stylebox_override("normal",  rs[0])
@@ -133,7 +133,7 @@ func _section(header: String, lines: Array) -> VBoxContainer:
 func _needs_legend() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
-	box.add_child(_section_header("Needs"))
+	box.add_child(_section_header(tr("Needs")))
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 14)
 	row.add_theme_constant_override("v_separation", 8)
@@ -146,7 +146,7 @@ func _needs_legend() -> VBoxContainer:
 		glyph.add_theme_font_size_override("font_size", 15)
 		chip.add_child(glyph)
 		var name_lbl := Label.new()
-		name_lbl.text = (need as String).capitalize()
+		name_lbl.text = Loc.need_name(need as String)
 		name_lbl.add_theme_font_size_override("font_size", 12)
 		name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 		chip.add_child(name_lbl)
@@ -160,13 +160,14 @@ func _needs_legend() -> VBoxContainer:
 func _mechanic_cards() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
-	box.add_child(_section_header("Mechanics"))
+	box.add_child(_section_header(tr("Mechanics")))
 
 	var seen_titles: Dictionary = {}
 	var f := FileAccess.open("res://data/levels.json", FileAccess.READ)
 	if f:
 		var parsed = JSON.parse_string(f.get_as_text())
 		if typeof(parsed) == TYPE_DICTIONARY:
+			Loc.localize_levels(parsed as Dictionary)
 			for lvl in (parsed as Dictionary).get("levels", []) as Array:
 				var intro := (lvl as Dictionary).get("mechanic_intro", {}) as Dictionary
 				if intro.is_empty():
