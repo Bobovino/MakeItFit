@@ -557,6 +557,7 @@ func _glass_color() -> Color:
 func _process(delta: float) -> void:
 	if not _reveal_playing and _camera_keys_active():
 		_key_pan(delta)
+	_check_long_press()
 	if _auto_spin and not _dragging:
 		_yaw += delta * 18.0
 		_update_camera()
@@ -567,7 +568,6 @@ func _process(delta: float) -> void:
 			_tenant_stop_t = 0.0
 			var prev_moment: String = (_tenant_stops[_tenant_stop_idx] as Dictionary).get("moment_id", "")
 			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
-	_check_long_press()
 			var stop: Dictionary = _tenant_stops[_tenant_stop_idx]
 			var moment_id: String = stop.get("moment_id", "")
 			if moment_id != prev_moment:
@@ -612,29 +612,29 @@ func _on_container_input(event: InputEvent) -> void:
 						return
 			if mb.pressed:
 				_press_pos = mb.position
+				_press_ms = Time.get_ticks_msec()
+				_press_moved = false
 				if read_only:
 					# Post-win "View Apartment" mode — nothing to pick up, hang, or
 					# buy, so a left-press over empty floor only ever pans.
 					_panning = true
 				elif _buying_furniture:
-					_confirm_buy(_to_vp(mb.position))
-					return
-				else:
-					var vp_pos := _to_vp(mb.position)
-					var wall_hit := _pick_wall_item(vp_pos)
-				_press_ms = Time.get_ticks_msec()
-				_press_moved = false
-					if not wall_hit.is_empty():
-						_begin_wall_item_drag(wall_hit, vp_pos)
-					else:
-						var hit := _pick_furniture(vp_pos)
-						if not hit.is_empty():
 					if TouchControls.active:
 						# No hover with a finger: touching moves the piece there; the
 						# Place button puts it down (confirm_buy_touch()).
 						_buy_touch_vp = _to_vp(mb.position)
 						_update_buy_ghost(_buy_touch_vp)
 						return
+					_confirm_buy(_to_vp(mb.position))
+					return
+				else:
+					var vp_pos := _to_vp(mb.position)
+					var wall_hit := _pick_wall_item(vp_pos)
+					if not wall_hit.is_empty():
+						_begin_wall_item_drag(wall_hit, vp_pos)
+					else:
+						var hit := _pick_furniture(vp_pos)
+						if not hit.is_empty():
 							_begin_furniture_drag(hit, vp_pos)
 						else:
 							_panning = true
@@ -687,6 +687,8 @@ func _on_container_input(event: InputEvent) -> void:
 					_recenter_camera()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
+		if mm.position.distance_to(_press_pos) >= CLICK_MOVE_THRESHOLD:
+			_press_moved = true
 		_last_local_mouse = mm.position
 		if _buying_furniture:
 			# Skip while the cursor is over some other UI panel (e.g. the shop
@@ -697,8 +699,6 @@ func _on_container_input(event: InputEvent) -> void:
 			# to do with a deliberate cursor position over the room.
 			if _mouse_over_own_view():
 				_hide_hover_highlight()
-		if mm.position.distance_to(_press_pos) >= CLICK_MOVE_THRESHOLD:
-			_press_moved = true
 				_update_buy_ghost(_to_vp(mm.position))
 		elif _dragging_furniture:
 			_hide_hover_highlight()
@@ -1044,6 +1044,7 @@ func _rotate_dragged_furniture() -> void:
 # mouse position. The ghost can land on the floor or on a wall — whichever
 # the cursor ray is actually pointing at each frame (see _scene_hit).
 func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
+	_buy_touch_vp = Vector2.INF
 	# Pressing Buy again before confirming/cancelling the previous ghost used
 	# to just overwrite _buying_mesh, leaking the old ghost (and its pending
 	# Furniture node) on screen forever. Cancel it first — this also emits
@@ -1054,7 +1055,6 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	_buying_furniture = furniture
 	_buying_fdata     = fdata
 	_buying_on_wall   = false
-	_buy_touch_vp = Vector2.INF
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var col := Color("#" + (fdata.get("color", "888888") as String))
 	col.a = 0.55
@@ -1209,6 +1209,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		_buying_mesh      = null
 		_set_grid_overlay_visible(false)
 		_set_wall_grid_overlays_visible(false)
+		Audio.play("place")
 		buy_confirmed_wall.emit(fid, edge, origin)
 		return
 
@@ -1219,7 +1220,6 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(_buying_furniture,
 			get_viewport().get_mouse_position(), cursor_tile):
 		return
-		Audio.play("place")
 	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
@@ -1248,6 +1248,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
+	Audio.play("place")
 	buy_confirmed.emit(f)
 
 
@@ -1258,7 +1259,6 @@ func _cancel_buy() -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
-	Audio.play("place")
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1748,6 +1748,7 @@ func _finish_furniture_drag() -> void:
 			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 				h.position.x = mesh.position.x - item_size.x * 0.5
 				h.position.z = mesh.position.z - item_size.z * 0.5
+		Audio.play("place")
 		furniture_moved.emit(f)
 		_hide_reason()
 	else:
@@ -1758,7 +1759,6 @@ func _finish_furniture_drag() -> void:
 	# when picked up — cut a fresh one at wherever it actually landed
 	# (its new spot on success, or back at its original spot if the drop
 	# was rejected and it snapped back).
-		Audio.play("place")
 	var fdata := _find_furniture_data(_catalog, f.furniture_id)
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
@@ -4380,3 +4380,102 @@ func _add_wall_item_box(edge: String, origin: Vector2i, fid: String, catalog: Ar
 	_apply_item_model(mi, _active_model_path(fdata, false), xf["size"], fdata.get("hide_nodes", []) as Array)
 	_style_if_bare(mi)
 	_wall_item_entries.append({"edge": edge, "origin": origin, "fid": fid, "mesh": mi, "size": xf["size"]})
+
+
+# ── Touch (see TouchControls) ────────────────────────────────────────────────
+
+# A finger held still on a piece asks for its actions instead of moving it.
+func _check_long_press() -> void:
+	if not TouchControls.active or not (_dragging_furniture or _dragging_wall_item):
+		return
+	if _press_moved or Time.get_ticks_msec() - _press_ms < TouchControls.LONG_PRESS_MS:
+		return
+	if _dragging_furniture:
+		var f: Furniture = _drag_target["furniture"]
+		touch_cancel_drag()
+		piece_long_pressed.emit(f)
+	else:
+		var hit := _drag_wall_target.duplicate()
+		touch_cancel_drag()
+		wall_item_long_pressed.emit(hit)
+
+
+# Pinch (zoom > 1 means fingers apart), two-finger drag and twist.
+func touch_camera(zoom: float, pan_px: Vector2, twist_deg: float) -> void:
+	if zoom > 0.0:
+		# The same far limit as the mouse wheel's (a closer one inside a box,
+		# where that limit exists).
+		var far: float = call("_max_dist") if has_method("_max_dist") else 30.0
+		_dist = clampf(_dist / zoom, 1.5, far)
+	_yaw -= twist_deg
+	var pan_scale := _dist * 0.0022
+	_center -= cam.global_transform.basis.x * pan_px.x * pan_scale
+	_center += cam.global_transform.basis.y * pan_px.y * pan_scale
+	_center = _clamp_pan_center(_center)
+	_update_camera()
+
+
+# Lets go of whatever a finger had started, leaving everything as it was.
+func touch_cancel_drag() -> void:
+	_panning = false
+	if _dragging_furniture and not _drag_target.is_empty():
+		var f: Furniture = _drag_target["furniture"]
+		var mesh: MeshInstance3D = _drag_target["mesh"]
+		_dragging_furniture = false
+		mesh.position = _drag_orig_pos
+		var fdata := _find_furniture_data(_catalog, f.furniture_id)
+		if fdata.get("animated_fold", false):
+			_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
+		_drag_target = {}
+		_hide_drag_highlight()
+		_hide_reason()
+		_set_grid_overlay_visible(false)
+		_set_hitbox_highlights_visible(false)
+	elif _dragging_wall_item:
+		_drag_wall_target["preview_origin"] = _drag_wall_target["origin"]
+		_finish_wall_item_drag()
+
+
+func is_buying() -> bool:
+	return _buying_furniture != null
+
+
+func confirm_buy_touch() -> void:
+	if _buying_furniture:
+		_confirm_buy(_buy_touch_vp if _buy_touch_vp != Vector2.INF else _to_vp(_last_local_mouse))
+
+
+func rotate_buying() -> void:
+	if _buying_furniture and not _buying_on_wall:
+		_buying_furniture._rotate()
+		_update_buy_ghost(_buy_touch_vp if _buy_touch_vp != Vector2.INF else _to_vp(_last_local_mouse))
+
+
+func cancel_buying() -> void:
+	if _buying_furniture:
+		_cancel_buy()
+	_buy_touch_vp = Vector2.INF
+
+
+func _entry_for(f: Furniture) -> Dictionary:
+	for entry in _furniture_entries:
+		if (entry as Dictionary).get("furniture") == f:
+			return entry
+	return {}
+
+
+func touch_fold(f: Furniture) -> void:
+	var entry := _entry_for(f)
+	if not entry.is_empty() and f.toggle_fold():
+		_resize_furniture_entry(entry)
+
+
+func touch_sell(f: Furniture) -> void:
+	var entry := _entry_for(f)
+	if not entry.is_empty():
+		_sell_furniture(entry)
+
+
+func touch_sell_wall_item(hit: Dictionary) -> void:
+	if not hit.is_empty():
+		_sell_wall_item(hit)
