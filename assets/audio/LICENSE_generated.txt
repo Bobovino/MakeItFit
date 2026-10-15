@@ -1,0 +1,4 @@
+fold.wav, whoosh.wav, fax.wav, grumble.wav, happy.wav, huh.wav
+
+Original sounds synthesized for Make It Fit by tools/gen_sounds.py.
+Released under Creative Commons Zero (CC0): no attribution required.

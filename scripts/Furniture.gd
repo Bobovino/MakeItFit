@@ -389,6 +389,7 @@ func toggle_fold() -> bool:
 	if not _apply_fold_state(want_extended):
 		return false
 	moment_fold_state[active_moment_id] = want_extended
+	_play("fold")
 	fold_toggled.emit()
 	return true
 
@@ -1425,6 +1426,8 @@ func _input(event: InputEvent) -> void:
 			_wall_ref.place_furniture(self, snap_pos)
 			_wall_ref.grid_draw.show_grid = false
 			_wall_ref.grid_draw.queue_redraw()
+			_play("place")
+			_pop_on_place()
 			placement_confirmed.emit()
 			queue_redraw()
 			get_viewport().set_input_as_handled()
@@ -1733,6 +1736,7 @@ func cancel_placement() -> void:
 		return
 	_placement_mode = false
 	_dragging = false
+	_play("click")
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()

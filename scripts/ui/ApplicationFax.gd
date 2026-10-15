@@ -244,7 +244,7 @@ func _print_sheet() -> void:
 		(r["icon"] as Control).modulate.a = 0.0
 	_footer.visible = false
 	await get_tree().process_frame
-	Audio.play("ui_click")
+	Audio.play("fax")
 	await _feed()
 
 	for r in _rows:

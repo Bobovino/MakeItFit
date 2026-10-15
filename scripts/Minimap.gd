@@ -138,5 +138,6 @@ func set_floor_locked(floor_id: String, locked: bool) -> void:
 
 
 func _on_floor_pressed(floor_id: String) -> void:
+	Audio.play("click")
 	highlight(floor_id)
 	wall_selected.emit(floor_id)

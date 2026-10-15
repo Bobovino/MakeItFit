@@ -1202,6 +1202,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	if Furniture.on_purchase_dropped.is_valid() and Furniture.on_purchase_dropped.call(_buying_furniture,
 			get_viewport().get_mouse_position(), cursor_tile):
 		return
+		Audio.play("place")
 	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
 	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
 	if not _apt_floor.can_place(_buying_furniture, snap_pos):
@@ -1240,6 +1241,7 @@ func _cancel_buy() -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	Audio.play("place")
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1739,6 +1741,7 @@ func _finish_furniture_drag() -> void:
 	# when picked up — cut a fresh one at wherever it actually landed
 	# (its new spot on success, or back at its original spot if the drop
 	# was rejected and it snapped back).
+		Audio.play("place")
 	var fdata := _find_furniture_data(_catalog, f.furniture_id)
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)

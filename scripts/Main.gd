@@ -442,7 +442,9 @@ func _apply_ui_theme() -> void:
 			btn.add_theme_stylebox_override("pressed", seg_p)
 			btn.add_theme_stylebox_override("focus",   StyleBoxEmpty.new())
 			btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
-			btn.pressed.connect(_set_view_mode.bind(mode))
+			btn.pressed.connect(func():
+				Audio.play("click")
+				_set_view_mode(mode))
 			box.add_child(btn)
 			_mode_buttons[mode] = btn
 		_view_mode_box = box
@@ -924,7 +926,7 @@ func _load_level(level_id: String) -> void:
 	tenant_card.set_application(_application != null, hidden_reqs)
 	if not gm.moments.is_empty():
 		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
-		_on_moment_selected(_first_mid)
+		_on_moment_selected(_first_mid, false)
 	inventory.setup(gm)
 	inventory.hidden_needs = hidden_reqs.filter(func(r): return (r as String).begins_with("need:")) \
 		.map(func(r): return (r as String).trim_prefix("need:"))
@@ -1669,6 +1671,7 @@ func _hand_over_camera(leaving_id: String, arriving_id: String) -> void:
 # on their own: the level is swapped right after, and a move still running
 # would carry on steering the new level's camera.
 func _travel_depart(box: Furniture, entering: bool) -> void:
+	Audio.play("whoosh")
 	var view := _styled_3d_view()
 	_camera_before_travel = view.get_camera_state() if view != null else {}
 	if GameState.reduce_motion:
@@ -2696,6 +2699,8 @@ func _open_furniture_menu(_at_cursor: bool = false) -> void:
 		return
 	if not inventory.close_requested.is_connected(_close_furniture_menu):
 		inventory.close_requested.connect(_close_furniture_menu)
+	if not inventory.visible:
+		Audio.play("click")
 	inventory.open_catalog()
 	_catalog_wanted = true
 	_relayout_for_catalog()
@@ -2794,6 +2799,7 @@ func _close_furniture_menu() -> void:
 		_furniture_menu_backdrop.visible = false
 	inventory.visible = false
 	if was_open:
+		Audio.play("click")
 		_relayout_for_catalog()
 
 
@@ -2914,6 +2920,7 @@ func _set_mode_hint(text: String) -> void:
 # Right-click removal of a wall-mounted item dropped directly in the 3D view —
 # mirrors WallInspector._remove_wall_at (no refund, matching that 2D behavior).
 func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> void:
+	Audio.play("sell")
 	apt_floor.remove_wall_item(edge, origin)
 	_refresh_functions()
 
@@ -3020,6 +3027,7 @@ func _step_floor(direction: int) -> void:
 	var next_idx := idx + direction
 	if next_idx < 0 or next_idx >= order.size():
 		return
+	Audio.play("click")
 	_switch_floor(order[next_idx] as String)
 
 
@@ -3845,7 +3853,10 @@ func _start_tenant_showcase() -> void:
 
 
 
-func _on_moment_selected(moment_id: String) -> void:
+# `sound` is off only for the moment a level opens on.
+func _on_moment_selected(moment_id: String, sound: bool = true) -> void:
+	if sound and moment_id != _active_moment_id:
+		Audio.play("click")
 	_active_moment_id = moment_id
 	tenant_card.highlight_moment(moment_id)
 	# Selecting a moment enables the same fold/unfold interaction Test Layout

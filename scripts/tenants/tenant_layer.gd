@@ -368,6 +368,7 @@ func _center(f: Furniture) -> Vector2:
 
 func _react(req: String, cause: Furniture) -> void:
 	_reacting = true
+	Audio.play("grumble")
 	var rid := _who_minds(req, cause)
 	var token := _tokens.get(rid) as TenantToken2D
 	if token:
@@ -496,6 +497,7 @@ func _run_errand(pick: Array = []) -> void:
 			return
 		_tiles[rid] = token.tile
 	var act: Tween
+	Audio.play("happy" if plan["success"] else "huh")
 	if plan["success"]:
 		act = token.perform(plan["kind"], req)
 		if pawn:

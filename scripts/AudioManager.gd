@@ -18,6 +18,13 @@ const SOUNDS := {
 	# distinct, consistent sound identity.
 	"rail_attach":  "res://assets/audio/place_furniture.wav",
 	"rail_detach":  "res://assets/audio/ui_click.wav",
+	# The game's own (tools/gen_sounds.py), for what the packs had nothing for.
+	"fold":         "res://assets/audio/fold.wav",      # folding or unfolding a piece
+	"whoosh":       "res://assets/audio/whoosh.wav",    # stepping into or out of a box
+	"fax":          "res://assets/audio/fax.wav",       # the rental application coming in
+	"grumble":      "res://assets/audio/grumble.wav",   # a tenant annoyed by a placement
+	"happy":        "res://assets/audio/happy.wav",     # a tenant enjoying a need that's met
+	"huh":          "res://assets/audio/huh.wav",       # a tenant finding a need unmet
 }
 const AMBIENT_PATH := "res://assets/audio/ambient_rain.wav"
 
