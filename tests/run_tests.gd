@@ -24,6 +24,7 @@ func _ready() -> void:
 	TranslationServer.set_locale("en")
 	_run_all()
 	await _t_tenants_are_cosmetic()
+	await _t_progress_round_trip()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -295,3 +296,123 @@ func _puzzle_state(main: Node, fl: Floor) -> String:
 	var gm: GameManager = main.gm
 	return "%s | reach %d | %s | win %s | fns %s" % [pieces, fl.get_reachable_floor().size(),
 		Requirements.status(gm), gm.check_win(), gm.fulfilled_functions]
+
+
+# ── Saving a level in progress ───────────────────────────────────────────────
+# Change a level in every way the autosave has to keep (move, turn, fold per
+# moment, buy, hang on a wall, build, spend, own), save it, open it again the
+# way the map's CONTINUE does, and expect exactly the same apartment and the
+# same verdict from the checker. Runs against its own save file.
+func _t_progress_round_trip() -> void:
+	var real_path := GameState.save_path
+	var real_progress := GameState.progress.duplicate(true)
+	var test_path := "user://test_progress_save.json"
+	GameState.save_path = test_path
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
+
+	GameState.pending_level_id = "day_and_night"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var gm: GameManager = main.gm
+	# A sofa bed, bought and put down where it fits, turned, and unfolded for
+	# the night only.
+	var sofa: Furniture = main._spawn_furniture("sofa_bed", fl, 0, 0)
+	sofa.set_rot_steps(1)
+	var unfolded := false
+	var bounds := fl.get_room_bounds()
+	for y in range(bounds.position.y, bounds.end.y, 2):
+		for x in range(bounds.position.x, bounds.end.x, 2):
+			if unfolded or not fl.can_place(sofa, Vector2(x, y)):
+				continue
+			fl.place_furniture(sofa, Vector2(x, y))
+			main._on_moment_selected("night", false)
+			unfolded = sofa.toggle_fold()
+			main._on_moment_selected("day", false)
+	# The toilet moved half a tile along, where it still fits.
+	var toilet: Furniture = null
+	for entry in fl.get_all_furniture():
+		if (entry as Furniture).furniture_id == "toilet":
+			toilet = entry
+	for dx in [0.5, -0.5, 1.5, -1.5]:
+		var at := toilet.grid_pos + Vector2(dx, 0)
+		if fl.can_place(toilet, at):
+			fl.place_furniture(toilet, at)
+			break
+	# Something on a wall, a column built, money spent, a piece owned.
+	var edge: String = fl.wall_definitions[0].get("edge", "north") if not fl.wall_definitions.is_empty() else "north"
+	fl.place_wall_item(edge, Vector2i(3, 4), "wall_shelf")
+	var col := Vector2i(fl.get_room_bounds().get_center())
+	if fl.can_place_column(col.x, col.y):
+		fl.toggle_column(col.x, col.y)
+	gm.spend(123)
+	gm.starting_inventory.append({"id": "stool", "count": 2})
+	main._refresh_functions()
+	var before := _level_state_string(main)
+	_current = "progress: the test layout really has a night-only unfold to keep"
+	_ok(unfolded and sofa.moment_fold_state.get("night", false) and not sofa.moment_fold_state.get("day", false),
+		"unfolded %s, %s" % [unfolded, sofa.moment_fold_state])
+
+	main._autosave_dirty = true
+	main._autosave_now()
+	main._autosave_dirty = true
+	main._autosave_now()   # a second write leaves the first as .bak
+	_current = "progress: the project is saved, with a backup of the save before"
+	_ok(GameState.has_progress("day_and_night") and FileAccess.file_exists(test_path) and FileAccess.file_exists(test_path + ".bak"))
+	main.queue_free()
+	await get_tree().process_frame
+
+	# Opened again from the map's CONTINUE.
+	GameState.load_game()
+	GameState.pending_level_id = "day_and_night"
+	GameState.pending_resume = true
+	main = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var after := _level_state_string(main)
+	_current = "progress: CONTINUE restores the apartment exactly, and the checker agrees"
+	_ok(after == before, "\n  before %s\n  after  %s" % [before, after])
+	_current = "progress: the application isn't printed again on CONTINUE"
+	_ok(not is_instance_valid(main._application_fax))
+	main.queue_free()
+	await get_tree().process_frame
+
+	# A save cut short (the phone killed the game mid-write) falls back to .bak.
+	var f := FileAccess.open(test_path, FileAccess.WRITE)
+	f.store_string("{\"company_funds\": 12")
+	f.close()
+	GameState.progress = {}
+	GameState.load_game()
+	_current = "progress: an unreadable save falls back to its backup"
+	_ok(GameState.has_progress("day_and_night"))
+
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
+	GameState.save_path = real_path
+	GameState.progress = real_progress
+
+
+# Everything about a level the save has to keep, and what the checker makes
+# of it, as one comparable string.
+func _level_state_string(main: Node) -> String:
+	var gm: GameManager = main.gm
+	var out: Array = []
+	for fid in main._floors:
+		var fl: Floor = main._floors[fid]
+		var pieces: Array = []
+		for entry in fl.get_all_furniture():
+			var f := entry as Furniture
+			pieces.append("%s@%s r%d e%s h%s mp%s mf%s" % [f.furniture_id, f.grid_pos, f.rot_steps, f.is_extended,
+				f._home_grid_pos, f.moment_positions, f.moment_fold_state])
+		pieces.sort()
+		out.append("%s: %s walls %s cols %s" % [fid, pieces, fl.wall_items, fl.columns])
+	var owned: Array = gm.starting_inventory.map(func(e): return "%s x%d" % [e["id"], int(e["count"])])
+	out.append("budget %d owned %s moment %s" % [gm.budget, owned, main._active_moment_id])
+	out.append("status %s verified %s win %s comfort %s" % [Requirements.status(gm), gm.moment_verified,
+		gm.check_win(), gm.comfort_pct])
+	return " | ".join(out)

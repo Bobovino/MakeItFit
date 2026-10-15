@@ -125,6 +125,13 @@ var _current_nested_external_override: Dictionary = {}
 # docs/design_nested_levels.md's "two placement systems" note) aren't
 # captured by this snapshot; only real Furniture-backed floor items are.
 var _level_state_cache: Dictionary = {}
+# The same levels captured in full (LevelProgress: wall items, moments, built
+# walls... which the cache above leaves out), restored in preference to it.
+# Together they are what the autosave keeps of a project.
+var _full_level_states: Dictionary = {}
+var _resuming := false          # this load opens a saved project where it was left
+var _autosave_dirty := false    # something changed since the last autosave
+var _autosave_timer: Timer
 # Every is_nested_box Furniture spawned in the CURRENTLY loaded level — lets
 # _refresh_nested_links() list an "enter this box" link for each of them (not
 # just the first one found), rebuilt fresh on every _load_level().
@@ -318,6 +325,13 @@ func _ready() -> void:
 	add_child(touch_controls)
 	Furniture.on_long_press = func(f: Furniture): touch_controls.show_piece(f)
 	Furniture.on_drag_dropped = _on_furniture_dropped
+	_autosave_timer = Timer.new()
+	_autosave_timer.one_shot = true
+	_autosave_timer.timeout.connect(_autosave_now)
+	add_child(_autosave_timer)
+	if GameState.pending_resume and GameState.has_progress(GameState.pending_level_id):
+		_prepare_resume(GameState.get_progress(GameState.pending_level_id))
+	GameState.pending_resume = false
 	Furniture.on_drag_moved = _on_furniture_drag_moved
 	Furniture.on_purchase_dropped = _on_purchase_dropped
 	if not inventory.place_owned_requested.is_connected(_on_place_owned_requested):
@@ -694,6 +708,7 @@ func _go_back() -> void:
 	# game mid-test would — "← Back to Editor" is the only path that resumes
 	# it (see GameState.testing_from_editor).
 	GameState.testing_from_editor = false
+	_autosave_now()
 	Transition.change_scene("res://scenes/CityMap.tscn")
 
 
@@ -703,6 +718,13 @@ func _go_back() -> void:
 # has already won at least once), so this is just _load_level() again, same
 # as leaving to Projects and re-entering would already do, minus the detour.
 func _restart_level() -> void:
+	# Starting the apartment over forgets the saved one too (the boxes inside
+	# keep what was left in them, as before).
+	if _nested_stack.is_empty():
+		GameState.clear_progress(_current_level_id)
+		_full_level_states.erase(_current_level_id)
+		_level_state_cache.erase(_current_level_id)
+	_autosave_dirty = false
 	_load_level(_current_level_id)
 
 
@@ -1005,6 +1027,10 @@ func _load_level(level_id: String) -> void:
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
 
+	if _resuming:
+		_resuming = false
+		_applications_shown[level_id] = true   # it was already read: no need to print it again
+		_restore_level_state(level_id)
 	_start_tenants()
 	_show_application_if_needed()
 	_refresh_undo_redo_buttons()
@@ -1050,6 +1076,85 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 
 
 var _intros_shown: Dictionary = {}   # level id -> true, for this session in the play screen
+
+# ── Autosave ─────────────────────────────────────────────────────────────────
+# The project on screen (the apartment opened from the map, and the boxes
+# inside it) is saved as the player goes, so closing the game, or a phone
+# dropping it in the background, loses nothing. GameState.progress keeps one
+# entry per project; the map offers to continue it.
+
+# The level opened from the map, whichever box the player is inside now.
+func _root_level_id() -> String:
+	if not _nested_stack.is_empty():
+		return (_nested_stack[0] as Dictionary)["parent_level_id"] as String
+	return _current_level_id
+
+
+func _can_autosave() -> bool:
+	return not _post_win_view and not GameState.testing_from_editor and _current_level_id != "" \
+		and _current_level_id != "_custom" and not _restoring_furniture
+
+
+# Something changed: save in a moment (one write for a burst of changes).
+func _autosave_soon() -> void:
+	if not _can_autosave() or _autosave_timer == null:
+		return
+	_autosave_dirty = true
+	_autosave_timer.start(1.0)
+
+
+func _autosave_now() -> void:
+	if not _autosave_dirty or not _can_autosave():
+		return
+	_autosave_dirty = false
+	if _autosave_timer:
+		_autosave_timer.stop()
+	_remember_level_state()
+	GameState.set_progress(_root_level_id(), {
+		"at": int(Time.get_unix_time_from_system()),
+		"level": _current_level_id,
+		"levels": var_to_str(_full_level_states),
+		"cache": var_to_str(_level_state_cache),
+		"pending": var_to_str(_pending_arrivals),
+	})
+
+
+# Loads a saved project's levels before the first _load_level(), which then
+# restores the one it opens (see _resuming); the boxes inside are restored
+# as the player steps into them.
+func _prepare_resume(entry: Dictionary) -> void:
+	var levels = str_to_var(entry.get("levels", "{}") as String)
+	var cache = str_to_var(entry.get("cache", "{}") as String)
+	var pending = str_to_var(entry.get("pending", "{}") as String)
+	if levels is Dictionary:
+		_full_level_states = levels
+	if cache is Dictionary:
+		_level_state_cache = cache
+	if pending is Dictionary:
+		_pending_arrivals = pending
+	_resuming = true
+
+
+# Remembers the level on screen before leaving it (or saving).
+func _remember_level_state() -> void:
+	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	_full_level_states[_current_level_id] = LevelProgress.capture(self)
+
+
+# Puts back what the player left in `level_id`, if anything.
+func _restore_level_state(level_id: String) -> void:
+	if _full_level_states.has(level_id):
+		LevelProgress.apply(self, _full_level_states[level_id] as Dictionary)
+	elif _level_state_cache.has(level_id):
+		_apply_level_state_snapshot(_level_state_cache[level_id])
+
+
+func _notification(what: int) -> void:
+	# The phone sends the game to the background, or the window is closing.
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT \
+			or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_autosave_now()
+
 
 # The tenant's rental application prints the first time a level is opened in
 # a visit (not again on restarting it or coming back out of a box, and not on
@@ -1245,7 +1350,7 @@ func _on_box_entered(box: Furniture) -> void:
 	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
 	var wall_side := _closest_wall_side(box._wall_ref, box)
 	var wall_override: Dictionary = (gm.external_restrictions.get("by_wall", {}) as Dictionary).get(wall_side, {}) as Dictionary
-	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	_remember_level_state()
 	# Remembers whether the level being left was in post-win "Watch Again"
 	# (tenant showcase looping in read-only 3D) so stepping back out of the
 	# box can resume it — _load_level() unconditionally resets
@@ -1271,8 +1376,8 @@ func _on_box_entered(box: Furniture) -> void:
 	_current_nested_external_override = wall_override
 	_hand_over_camera(_current_level_id, box.child_level_id)
 	_load_level(box.child_level_id)
-	if _level_state_cache.has(box.child_level_id):
-		_apply_level_state_snapshot(_level_state_cache[box.child_level_id])
+	_restore_level_state(box.child_level_id)
+	_autosave_soon()
 	# The box's own interior gets its own tenant too — if you were watching
 	# the parent's tenant use its furniture, stepping into a box shouldn't
 	# just make tenants vanish. Only if the child level is itself actually
@@ -1778,14 +1883,14 @@ func _exit_nested_level_to(index: int) -> void:
 	var target_id := ctx["parent_level_id"] as String
 	var resume_post_win := ctx.get("was_post_win_view", false) as bool
 	_nested_stack.resize(index)
-	_level_state_cache[_current_level_id] = _snapshot_level_state()
+	_remember_level_state()
 	_current_nested_daylight_factor = 1.0
 	_current_nested_noisy_from_outside = false
 	_current_nested_external_override = {}
 	_hand_over_camera(_current_level_id, target_id)
 	_load_level(target_id)
-	if _level_state_cache.has(target_id):
-		_apply_level_state_snapshot(_level_state_cache[target_id])
+	_restore_level_state(target_id)
+	_autosave_soon()
 	# _load_level() always resets _post_win_view to false — if the level
 	# we're landing back on was in "Watch Again" (tenant showcase looping in
 	# read-only 3D) before we stepped into the box, resume that exactly the
@@ -3057,6 +3162,7 @@ func _set_mode_hint(text: String) -> void:
 # mirrors WallInspector._remove_wall_at (no refund, matching that 2D behavior).
 func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> void:
 	Audio.play("sell")
+	_autosave_soon()
 	apt_floor.remove_wall_item(edge, origin)
 	_refresh_functions()
 
@@ -3208,6 +3314,7 @@ func _on_inspector_visibility_changed() -> void:
 
 func _on_wall_item_placed(furniture_id: String) -> void:
 	gm.buy_furniture(furniture_id)
+	_autosave_soon()
 	# The wall placement won — cancel the parallel floor-placement ghost so it
 	# doesn't linger following the mouse (and can't be placed a second time for free).
 	if is_instance_valid(_pending_floor_ghost):
@@ -3937,6 +4044,10 @@ func _on_rent_pressed() -> void:
 
 	GameState.complete_level(_current_level_id, stars, funds, level_rent)
 	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+	# Rented out: nothing left half-done here.
+	if _nested_stack.is_empty():
+		GameState.clear_progress(_current_level_id)
+		_autosave_dirty = false
 	tenant_card.set_rented(true)
 
 	var completed_level_id := _current_level_id
@@ -3993,6 +4104,7 @@ func _start_tenant_showcase() -> void:
 func _on_moment_selected(moment_id: String, sound: bool = true) -> void:
 	if sound and moment_id != _active_moment_id:
 		Audio.play("click")
+		_autosave_soon()
 	_active_moment_id = moment_id
 	tenant_card.highlight_moment(moment_id)
 	# Selecting a moment enables the same fold/unfold interaction Test Layout
@@ -4417,6 +4529,7 @@ func _apply_paint(tile: Vector2i, on: bool) -> void:
 	var fl := _floors.get(_current_floor_id) as Floor
 	if not fl:
 		return
+	_autosave_soon()
 	if on and _tile_has_column(fl, tile.x, tile.y):
 		return
 	var piece := _get_or_create_paint_piece(_active_paint_type, fl)
@@ -4597,6 +4710,7 @@ func _handle_builder_input(event: InputEvent) -> void:
 # ever touches these six Floor fields, so capturing all six before a mutation
 # and restoring them wholesale on undo covers every tool with one mechanism.
 func _push_builder_undo(fl: Floor) -> void:
+	_autosave_soon()   # the build happens right after this; the save, a moment later
 	_builder_undo_stack.append(_capture_builder_entry(fl))
 	if _builder_undo_stack.size() > BUILDER_UNDO_MAX:
 		_builder_undo_stack.pop_front()
@@ -4704,6 +4818,7 @@ func _on_furniture_action_changed() -> void:
 		_redo_stack.clear()
 		_refresh_undo_redo_buttons()
 	_last_furniture_state = _snapshot_all_furniture()
+	_autosave_soon()
 	# Once the checker has caught up with this change (it runs from other
 	# handlers of the same signals), the tenants react to it.
 	if tenant_layer:

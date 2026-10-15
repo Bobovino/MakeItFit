@@ -398,6 +398,9 @@ def check():
 
 
 if __name__ == "__main__":
+    # Strings hold arrows and accents; a Windows console's default code page
+    # can't print them.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "extract":
         extract()

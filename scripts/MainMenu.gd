@@ -196,8 +196,9 @@ func _on_start() -> void:
 func _on_continue() -> void:
 	var lid := GameState.last_active_level_id
 	GameState.pending_level_id = lid
-	GameState.pending_use_saved_layout = \
-		GameState.get_stars(lid) > 0 and GameState.has_level_layout(lid)
+	GameState.pending_resume = GameState.has_progress(lid)
+	GameState.pending_use_saved_layout = not GameState.pending_resume \
+		and GameState.get_stars(lid) > 0 and GameState.has_level_layout(lid)
 	Transition.change_scene("res://scenes/Main.tscn")
 
 
