@@ -25,6 +25,7 @@ class_name TenantLayer
 
 const REACTION_TIME := 2.8
 const PATCH := Floor.WALK_WIDTH            # a resident stands on a PATCH x PATCH patch of floor
+const SPACING := 7                          # tiles kept between residents (a Mii is wider than its patch)
 const HOP_TIME := 0.5                       # the hop to a new spot, before anyone reacts
 const IDLE_TIME := 6.0                      # seconds without input before someone runs an errand
 const STEP_TILES := 3                       # tiles per hop when walking (30 cm)
@@ -198,7 +199,7 @@ func _scatter(animate: bool) -> void:
 		var spot := Vector2(-1, -1)
 		for s in spots:
 			var v := s as Vector2
-			if taken.all(func(o): return absf((o as Vector2).x - v.x) >= PATCH or absf((o as Vector2).y - v.y) >= PATCH):
+			if taken.all(func(o): return absf((o as Vector2).x - v.x) >= SPACING or absf((o as Vector2).y - v.y) >= SPACING):
 				spot = v
 				break
 		if spot.x < 0:
@@ -499,9 +500,11 @@ func _run_errand(pick: Array = []) -> void:
 	var act: Tween
 	Audio.play("happy" if plan["success"] else "huh")
 	if plan["success"]:
-		act = token.perform(plan["kind"], req)
+		var piece := plan.get("furniture") as Furniture
+		var on := _center(piece) * Floor.TILE_SIZE if piece else Vector2.INF
+		act = token.perform(plan["kind"], req, on)
 		if pawn:
-			pawn.perform(plan["kind"], req)
+			pawn.perform(plan["kind"], req, _use_in_3d(piece, plan["kind"]))
 	else:
 		act = token.shrug(req)
 		if pawn:
@@ -588,7 +591,7 @@ func _errand_plan(req: String, from: Vector2) -> Dictionary:
 			if target == null:
 				return {"path": [], "success": false, "kind": kind}   # nothing in the flat for it
 			var walk := _walk_to(from, _approach_tiles(target))
-			return {"path": walk["path"], "success": met and walk["arrived"], "kind": kind}
+			return {"path": walk["path"], "success": met and walk["arrived"], "kind": kind, "furniture": target}
 		"sight":
 			var i := int(parts[1]) - 1
 			if i >= gm.sightline_status.size():
@@ -598,6 +601,17 @@ func _errand_plan(req: String, from: Vector2) -> Dictionary:
 			var walk := _walk_to(from, [at.round()])
 			return {"path": walk["path"], "success": met and walk["arrived"], "kind": "spin"}
 	return none   # zones: nothing to walk to, a bubble where they stand
+
+
+# Where the Mii should be to use `piece` in 3D (the showcase's own spot for a
+# bed or a seat), or {} when there is no such spot.
+func _use_in_3d(piece: Furniture, kind: String) -> Dictionary:
+	if piece == null or not is_instance_valid(_view3d) or kind not in ["lie", "sit"]:
+		return {}
+	for entry in _view3d._furniture_entries:
+		if (entry as Dictionary).get("furniture") == piece:
+			return _view3d._tenant_anchor_for(entry, kind)
+	return {}
 
 
 # The piece nearest `from` that provides `fn`: doing so right now

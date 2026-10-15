@@ -202,6 +202,23 @@ func _goto_pose(pose: int, instant: bool) -> void:
 			_anim.queue(clip_name)
 
 
+# A specific body: "adult", "teen" or "child", feminine or masculine (the
+# households of the rental applications pick their own; see TenantResident).
+func set_body(body: String, feminine: bool) -> void:
+	var age := body if body in ["adult", "teen", "child"] else "adult"
+	_load_model("res://assets/models/tenants/tenant_%s_%s.glb" % [age, "fem" if feminine else "masc"])
+
+
+# Walking somewhere: the Walk clip while on the move, back to the pose's own
+# loop on arrival.
+func set_walking(on: bool) -> void:
+	if not _anim:
+		return
+	var clip: String = "Walk" if on else LOOP_CLIP[_pose]
+	if _anim.has_animation(clip) and _anim.current_animation != clip:
+		_anim.play(clip, 0.15)
+
+
 # Picks which body variant to load — a male figure or a female one, each
 # with its own baked palette/face/animations (see the MODEL_PATH_* comment
 # above) — deterministically from the color's hue, so a given tenant is

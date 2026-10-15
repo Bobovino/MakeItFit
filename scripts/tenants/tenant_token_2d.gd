@@ -128,12 +128,25 @@ func walk(points: Array, step_time: float) -> Tween:
 
 
 # A need met: a happy bubble, and the need acted out (lying down for sleep,
-# sitting for a seat, a little spin for anything else).
-func perform(kind: String, req_id: String) -> Tween:
+# sitting for a seat, a little spin for anything else). With `on` (a point on
+# the plan, the piece's centre) they hop onto the bed or seat for it and back.
+func perform(kind: String, req_id: String, on := Vector2.INF) -> Tween:
 	_show_bubble(req_id, TenantBubble.Mood.HAPPY)
 	_mood_tween = create_tween()
 	if GameState.reduce_motion:
 		_mood_tween.tween_interval(1.2)
+		return _mood_tween
+	if on != Vector2.INF and kind in ["lie", "sit"]:
+		var home := position
+		_mood_tween.tween_method(func(k: float):
+			position = home.lerp(on, k)
+			_body.position = Vector2(0, -sin(k * PI) * TILE * 2.0), 0.0, 1.0, 0.3)
+		_mood_tween.tween_property(_body, "scale", Vector2(1.3, 0.55) if kind == "lie" else Vector2(1.12, 0.8), 0.18)
+		_mood_tween.tween_interval(1.9)
+		_mood_tween.tween_property(_body, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK)
+		_mood_tween.tween_method(func(k: float):
+			position = on.lerp(home, k)
+			_body.position = Vector2(0, -sin(k * PI) * TILE * 2.0), 0.0, 1.0, 0.3)
 		return _mood_tween
 	match kind:
 		"lie":

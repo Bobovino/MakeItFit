@@ -349,6 +349,13 @@ func _on_row_input(event: InputEvent, index: int) -> void:
 		_draw_link(r["icon"] as Control, anchor)
 
 
+# Freed early (the level restarted while it printed): no chip may stay
+# waiting for a stamp that will never come.
+func _exit_tree() -> void:
+	if _printing and is_instance_valid(_card):
+		_card.finish_stamping()
+
+
 func _close() -> void:
 	closed.emit()
 	queue_free()

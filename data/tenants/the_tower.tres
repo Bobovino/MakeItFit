@@ -9,6 +9,7 @@ script = ExtResource("2_res")
 id = &"guillem"
 display_name = "Sir Guillem"
 body = "adult"
+look = "masc"
 
 [sub_resource type="Resource" id="line_1"]
 script = ExtResource("3_line")

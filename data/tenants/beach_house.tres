@@ -9,18 +9,21 @@ script = ExtResource("2_res")
 id = &"marisol"
 display_name = "Marisol"
 body = "adult"
+look = "fem"
 
 [sub_resource type="Resource" id="res_lucia"]
 script = ExtResource("2_res")
 id = &"lucia"
 display_name = "Lucía"
 body = "teen"
+look = "fem"
 
 [sub_resource type="Resource" id="res_tito"]
 script = ExtResource("2_res")
 id = &"tito"
 display_name = "Tito"
 body = "child"
+look = "masc"
 
 [sub_resource type="Resource" id="line_1"]
 script = ExtResource("3_line")

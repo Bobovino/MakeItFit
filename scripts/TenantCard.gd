@@ -159,6 +159,7 @@ func setup(tenant: Dictionary) -> void:
 	flavor_label.text = tenant["flavor"]
 	rent_label.text = tr("%d€ / month") % tenant["monthly_rent"]
 	_moments = []
+	_stamping = false
 	_setup_ticks = Time.get_ticks_msec()
 	_build_checklist(tenant["required_functions"])
 
