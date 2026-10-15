@@ -1782,12 +1782,20 @@ func _select_level(ld: Dictionary) -> void:
 	elif is_owned:
 		var reward := ld.get("funds_base_reward", 0) as int
 		_info_cost.text    = tr("Reward: ~%d€ Studio Funds") % reward
-		if stars > 0 and GameState.has_level_layout(lid):
+		if GameState.has_progress(lid):
+			# Left half-done: carry on where it was left, or start it over.
+			_action_btn.text   = tr("CONTINUE  →")
+			_action_btn.disabled = false
+			_redesign_btn.text = tr("Start Over")
+			_redesign_btn.visible = true
+			_redesign_btn.disabled = false
+		elif stars > 0 and GameState.has_level_layout(lid):
 			# Already won at least once — default to reopening it exactly as
 			# left, with "start over" as an explicit secondary choice rather
 			# than the only option.
 			_action_btn.text   = tr("Review Current Plan")
 			_action_btn.disabled = false
+			_redesign_btn.text = tr("Redesign from Scratch")
 			_redesign_btn.visible = true
 			_redesign_btn.disabled = false
 		else:
@@ -1833,8 +1841,9 @@ func _on_action_pressed() -> void:
 		# _action_btn doubles as "Revisar Plano Actual" once the level has a
 		# saved layout (see _select_level) — reopen it as-is in that case,
 		# otherwise this is a first-time "ENTER" and there's nothing to reopen.
-		GameState.pending_use_saved_layout = \
-			GameState.get_stars(lid) > 0 and GameState.has_level_layout(lid)
+		GameState.pending_resume = GameState.has_progress(lid)
+		GameState.pending_use_saved_layout = not GameState.pending_resume \
+			and GameState.get_stars(lid) > 0 and GameState.has_level_layout(lid)
 		GameState.set_last_active_level(lid)
 		Transition.change_scene("res://scenes/Main.tscn")
 	else:
@@ -1858,8 +1867,10 @@ func _on_redesign_pressed() -> void:
 	if not GameState.is_owned(lid):
 		return
 	Audio.play("click")
+	GameState.clear_progress(lid)   # "Start Over" on a project left half-done
 	GameState.pending_level_id = lid
 	GameState.pending_use_saved_layout = false
+	GameState.pending_resume = false
 	GameState.set_last_active_level(lid)
 	Transition.change_scene("res://scenes/Main.tscn")
 

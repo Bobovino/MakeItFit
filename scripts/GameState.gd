@@ -4,6 +4,12 @@ signal company_funds_changed(amount: int)
 
 const RETIRE_GOAL := 10000   # total portfolio rent to retire
 const SAVE_PATH   := "user://save.json"
+# Bumped when the shape of the save changes, so an older file can be read
+# and brought up to date instead of misread.
+const SAVE_VERSION := 2
+# Where the save lives; tests point it elsewhere so they never touch the
+# player's own.
+var save_path := SAVE_PATH
 
 var company_funds: int = 0
 var portfolio_rent: int = 0
@@ -24,6 +30,13 @@ var level_layouts: Dictionary = {}
 # and cleared by Main._load_level(), never persisted (it only makes sense for
 # the level about to load).
 var pending_use_saved_layout: bool = false
+# Projects left half-done, saved automatically as the player goes: top-level
+# level id -> {at, levels, cache, pending} (see Main._autosave_now()). One
+# entry per project, cleared when its apartment is rented out or started over.
+var progress: Dictionary = {}
+# One-shot, like pending_use_saved_layout: open pending_level_id where the
+# player left it, from `progress`.
+var pending_resume: bool = false
 var dev_bonus_stars: int = 0
 
 # ── Accessibility ────────────────────────────────────────────────────────────
@@ -187,6 +200,8 @@ func save_game() -> void:
 		"graphics_quality": graphics_quality,
 		"pathing_rule":    pathing_rule,
 		"last_active_level_id": last_active_level_id,
+		"progress":        progress,
+		"save_version":    SAVE_VERSION,
 	}
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -194,21 +209,44 @@ func save_game() -> void:
 		data["music_volume"] = audio.music_volume
 		data["master_volume"] = audio.master_volume
 		data["audio_muted"]   = audio.muted
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(data))
+	_write_safely(save_path, JSON.stringify(data))
+
+
+# Writes to a temporary file first and only then swaps it in, keeping the
+# previous save as .bak: a phone killing the game halfway through a write
+# leaves the old save (or its backup) intact rather than a truncated file.
+func _write_safely(path: String, text: String) -> void:
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(text)
+	f.close()
+	var real := ProjectSettings.globalize_path(path)
+	if FileAccess.file_exists(path):
+		DirAccess.copy_absolute(real, real + ".bak")
+		DirAccess.remove_absolute(real)
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), real)
+
+
+# The save, or its backup when the save itself is missing or unreadable.
+func _read_save() -> Dictionary:
+	for path in [save_path, save_path + ".bak"]:
+		if not FileAccess.file_exists(path):
+			continue
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f == null:
+			continue
+		var parsed = JSON.parse_string(f.get_as_text())
+		if typeof(parsed) == TYPE_DICTIONARY:
+			return parsed as Dictionary
+	return {}
 
 
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	var data := _read_save()
+	if data.is_empty():
 		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not f:
-		return
-	var parsed = JSON.parse_string(f.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return
-	var data := parsed as Dictionary
 	company_funds   = data.get("company_funds", company_funds) as int
 	portfolio_rent  = data.get("portfolio_rent", portfolio_rent) as int
 	completed       = data.get("completed", completed) as Dictionary
@@ -223,6 +261,8 @@ func load_game() -> void:
 	pathing_rule = data.get("pathing_rule", pathing_rule) as bool
 	Floor.pathing_enabled = pathing_rule
 	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
+	# Version 1 saves had no progress; nothing else changed shape.
+	progress = (data.get("progress", {}) as Dictionary).duplicate(true)
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
 		if data.has("sfx_volume"):
@@ -233,6 +273,26 @@ func load_game() -> void:
 			audio.set_master_volume(data["master_volume"] as float)
 		if data.has("audio_muted"):
 			audio.set_muted(data["audio_muted"] as bool)
+
+
+# ── Projects in progress ──────────────────────────────────────────────────────
+
+func has_progress(level_id: String) -> bool:
+	return progress.has(level_id)
+
+
+func get_progress(level_id: String) -> Dictionary:
+	return progress.get(level_id, {}) as Dictionary
+
+
+func set_progress(level_id: String, entry: Dictionary) -> void:
+	progress[level_id] = entry
+	save_game()
+
+
+func clear_progress(level_id: String) -> void:
+	if progress.erase(level_id):
+		save_game()
 
 
 func set_last_active_level(level_id: String) -> void:
