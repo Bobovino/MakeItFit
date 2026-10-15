@@ -14,6 +14,9 @@ const DIR := "res://data/tenants/"
 @export var level_id: String = ""
 @export var residents: Array[TenantResident] = []
 @export var lines: Array[ApplicationLine] = []
+# Where the household stands when no free floor can be found for them (a
+# room packed wall to wall). (-1, -1): the middle of the room.
+@export var anchor_tile: Vector2i = Vector2i(-1, -1)
 
 
 static func path_for(level: String) -> String:
@@ -58,3 +61,18 @@ func speaker_name(line: ApplicationLine) -> String:
 # "Marisol" / "Lena and Aron" / "Jonas, Petra, Mia and Ben".
 func signatories() -> String:
 	return Loc.join_list(residents.map(func(r): return tr((r as TenantResident).display_name)))
+
+
+# The line that voices `req_id`, or null. A moment's need is voiced by the
+# line for that need ("moment:night:sleep" -> "need:sleep").
+func line_for(req_id: String) -> ApplicationLine:
+	var parts := req_id.split(":")
+	var need_id := ("need:" + parts[2]) if parts[0] == "moment" and parts.size() > 2 else ""
+	for line in lines:
+		if line.requirement == req_id:
+			return line
+	for line in lines:
+		if need_id != "" and line.requirement == need_id:
+			return line
+	return null
+

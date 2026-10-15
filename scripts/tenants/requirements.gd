@@ -84,3 +84,29 @@ static func make_icon(id: String, px: int) -> Control:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return lbl
+
+
+# Whether each requirement is met right now, by id, read from what the
+# checker last computed (GameManager, after Main._refresh_functions()).
+# Moments: a moment's need is read from that moment's own results; "need:x"
+# is met only when every moment asking for x has it.
+static func status(gm: GameManager) -> Dictionary:
+	var out := {}
+	var level := gm.current_level
+	if gm.moments.is_empty():
+		for fn in (level.get("tenant", {}) as Dictionary).get("required_functions", []) as Array:
+			out["need:" + str(fn)] = fn in gm.fulfilled_functions
+	else:
+		for m in gm.moments:
+			var mid := (m as Dictionary)["id"] as String
+			var got := ((gm.moment_results.get(mid, {}) as Dictionary).get("fulfilled", []) as Array)
+			for fn in (m as Dictionary).get("needs", []) as Array:
+				var ok: bool = fn in got
+				out["moment:%s:%s" % [mid, fn]] = ok
+				out["need:" + str(fn)] = ok and out.get("need:" + str(fn), true)
+	for i in gm.sightline_status.size():
+		out["sight:%d" % (i + 1)] = (gm.sightline_status[i] as Dictionary).get("ok", true)
+	for i in gm.zone_separations.size():
+		out["zones:%d" % (i + 1)] = gm._separation_ok(gm.zone_separations[i] as Array)
+	return out
+

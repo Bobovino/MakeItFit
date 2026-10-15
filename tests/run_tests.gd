@@ -23,6 +23,7 @@ func _ready() -> void:
 	# they must not follow the machine's language.
 	TranslationServer.set_locale("en")
 	_run_all()
+	await _t_tenants_are_cosmetic()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -228,3 +229,64 @@ func _t_rotation_cycle() -> void:
 	_eq(f.rot_steps, 0, "a full turn must wrap back to 0")
 	_eq(Vector2i(f.grid_w, f.grid_h), Vector2i(2, 1))
 	f.queue_free()
+
+
+# ── Tenants are cosmetic ─────────────────────────────────────────────────────
+# The household living in the apartment (TenantLayer) must never change the
+# puzzle: the same layout has to give the same placement grid, walkable
+# floor, requirement results and solved state with the tenants on, reacting,
+# hopping about, or switched off -- and their randomness must leave the
+# global random sequence alone.
+func _t_tenants_are_cosmetic() -> void:
+	GameState.pending_level_id = "overprotective"
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	main.tenant_layer.stop()
+	main._refresh_functions()
+	var without := _puzzle_state(main, fl)
+
+	seed(1234)
+	var expected_rand := randf()
+	seed(1234)
+	main._start_tenants()
+	for i in 3:
+		main.tenant_layer.request_commit()
+		await get_tree().process_frame
+		main.tenant_layer.resync()
+	main.tenant_layer._react("sight:1", fl.get_all_furniture()[0])
+	await get_tree().create_timer(0.7).timeout
+	var actual_rand := randf()
+	main._refresh_functions()
+	var with := _puzzle_state(main, fl)
+
+	_current = "tenants: someone lives in the apartment"
+	_ok(main.tenant_layer._tokens.size() == 3, "%d tokens" % main.tenant_layer._tokens.size())
+	_current = "tenants: placement grid, walkable floor and results are unchanged"
+	_ok(with == without, "%s\n  vs\n  %s" % [with, without])
+	_current = "tenants: they are not furniture"
+	_ok(not fl.get_all_furniture().any(func(f): return not (f is Furniture)))
+	_current = "tenants: the global random sequence is untouched"
+	_ok(is_equal_approx(expected_rand, actual_rand))
+	_current = "tenants: everyone stands on floor they could walk to"
+	var reached := fl.get_reachable_floor()
+	var on_floor := true
+	for rid in main.tenant_layer._tiles:
+		if not reached.is_empty() and not reached.has(Vector2i(main.tenant_layer._tiles[rid] as Vector2)):
+			on_floor = false
+	_ok(on_floor, str(main.tenant_layer._tiles))
+	main.queue_free()
+	await get_tree().process_frame
+
+
+func _puzzle_state(main: Node, fl: Floor) -> String:
+	var pieces: Array = []
+	for entry in fl.get_all_furniture():
+		var f := entry as Furniture
+		pieces.append("%s@%s/%s" % [f.furniture_id, f.grid_pos, f.is_extended])
+	pieces.sort()
+	var gm: GameManager = main.gm
+	return "%s | reach %d | %s | win %s | fns %s" % [pieces, fl.get_reachable_floor().size(),
+		Requirements.status(gm), gm.check_win(), gm.fulfilled_functions]

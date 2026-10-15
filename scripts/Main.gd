@@ -72,6 +72,7 @@ var _intro_modal_open: bool = false   # "NEW MECHANIC" card is up — blocks zoo
 var _application: TenantApplication = null   # the level's rental application, if it has one
 var _application_fax: ApplicationFax = null  # the fax printing/showing it, while it is up
 var _applications_shown: Dictionary = {}     # level id -> true: printed once per visit, like the intro card
+var tenant_layer: TenantLayer = null          # the household living in the apartment on screen (cosmetic)
 
 # ── Floor plan zoom/pan (layered on top of the auto-fit baseline) ─────────
 const MIN_MANUAL_ZOOM := 0.4
@@ -260,6 +261,11 @@ func _ready() -> void:
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
 	tenant_card.application_requested.connect(_reopen_application)
+	tenant_layer = TenantLayer.new()
+	tenant_layer.main = self
+	tenant_layer.gm = gm
+	tenant_layer.card = tenant_card
+	add_child(tenant_layer)
 	# The bar grows upward when its chips wrap (rule chips arrive after the
 	# needs): everything that sits on it or under it follows.
 	tenant_card.height_changed.connect(func(): _relayout_bottom_bar.call_deferred())
@@ -704,6 +710,8 @@ func _load_level(level_id: String) -> void:
 	if is_instance_valid(_application_fax):
 		_application_fax.queue_free()
 	_application_fax = null
+	if tenant_layer:
+		tenant_layer.stop()
 	if is_instance_valid(_editor_back_btn):
 		# Stays visible through the WHOLE test session, not just while on the
 		# root ("_custom") level — GameState.testing_from_editor is set once
@@ -987,6 +995,7 @@ func _load_level(level_id: String) -> void:
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
 
+	_start_tenants()
 	_show_application_if_needed()
 	_refresh_undo_redo_buttons()
 	# Establish the correct disabled/available baseline from however the level
@@ -2183,6 +2192,32 @@ func _switch_floor(floor_id: String) -> void:
 	# it for the newly-selected floor.
 	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
+	_start_tenants()
+
+
+# The tenants move in on the floor on screen; nobody lives there during the
+# post-win showcase, which has its own figure.
+func _start_tenants() -> void:
+	if tenant_layer == null:
+		return
+	tenant_layer.start(null if _post_win_view else _application, _floors.get(_current_floor_id) as Floor,
+		_mode3d_view if is_instance_valid(_mode3d_view) else null)
+
+
+# Whether a piece is in the player's hand: being dragged or bought, in either
+# view. The tenants keep out of the way meanwhile.
+func is_placing_furniture() -> bool:
+	if is_instance_valid(_pending_floor_ghost) or _xfer_dragging:
+		return true
+	if is_instance_valid(_mode3d_view) and (_mode3d_view._dragging_furniture or _mode3d_view._dragging_wall_item \
+			or _mode3d_view._buying_furniture != null):
+		return true
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl:
+		for c in fl.get_children():
+			if c is Furniture and ((c as Furniture)._dragging or (c as Furniture)._placement_mode):
+				return true
+	return false
 
 
 # Recomputes the "fit to view" baseline (scale/position) for the given floor.
@@ -2541,6 +2576,8 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view._rule_zones = fl.zones
 	_mode3d_view._rule_zone_status = fl.zone_status
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
+	if tenant_layer:
+		tenant_layer.attach_3d(_mode3d_view)
 	# _teardown_mode3d_view() (see the comment above) frees the whole node,
 	# tenant and all, whenever the player steps out to the Floor Plan -- so
 	# during "Watch Again" (_post_win_view), tabbing over and back silently
@@ -2570,6 +2607,8 @@ func _ensure_mode3d_view() -> void:
 
 
 func _teardown_mode3d_view() -> void:
+	if tenant_layer:
+		tenant_layer.attach_3d(null)
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.queue_free()
 	_mode3d_view = null
@@ -3837,6 +3876,8 @@ func _on_moment_selected(moment_id: String) -> void:
 	if _view_mode == ViewMode.VIEW3D:
 		_ensure_mode3d_view()
 	_refresh_functions()
+	if tenant_layer:
+		tenant_layer.resync()
 
 
 func _on_test_toggled(pressed: bool) -> void:
@@ -3976,6 +4017,8 @@ func _on_retry() -> void:
 func _on_watch_again_reveal() -> void:
 	result_screen.visible = false
 	_post_win_view = true
+	if tenant_layer:
+		tenant_layer.stop()
 	Furniture.read_only     = true
 	WallInspector.read_only = true
 	_set_view_mode(ViewMode.VIEW3D)
@@ -4037,6 +4080,7 @@ func _close_watch_again() -> void:
 		_watch_done_btn.queue_free()
 		_watch_done_btn = null
 	_post_win_view = false
+	_start_tenants()
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
 		_mode3d_view.stop_tenant_showcase()
@@ -4511,6 +4555,10 @@ func _on_furniture_action_changed() -> void:
 		_redo_stack.clear()
 		_refresh_undo_redo_buttons()
 	_last_furniture_state = _snapshot_all_furniture()
+	# Once the checker has caught up with this change (it runs from other
+	# handlers of the same signals), the tenants react to it.
+	if tenant_layer:
+		tenant_layer.request_commit()
 
 
 func _snapshot_all_furniture() -> Dictionary:
@@ -4590,6 +4638,8 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	_restoring_furniture = false
 	_last_furniture_state = _snapshot_all_furniture()
 	_refresh_functions()
+	if tenant_layer:
+		tenant_layer.resync()
 	if _view_mode == ViewMode.VIEW3D and touched_current:
 		_ensure_mode3d_view()
 	Audio.play("click")
