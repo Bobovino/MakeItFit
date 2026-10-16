@@ -209,42 +209,43 @@ msgstr ""
 msgid "Comfort %d%%"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:58
+#: scripts/CreditsMenu.gd:27
 msgid "CREDITS"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:63
+#: scripts/CreditsMenu.gd:30
 msgid "Fonts"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:66
+#: scripts/CreditsMenu.gd:35
 msgid "Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:70
+#: scripts/CreditsMenu.gd:37
 msgid "Art & Sound"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:71
+#: scripts/CreditsMenu.gd:38
 msgid "Interface sounds and casino/UI audio by Kenney (kenney.nl)"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:72
+#: scripts/CreditsMenu.gd:40
 msgid "Released under Creative Commons Zero (CC0)"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:76
+#: scripts/CreditsMenu.gd:42
 msgid "Ambient Rain"
 msgstr ""
 
-#: scripts/CreditsMenu.gd:77
+#: scripts/CreditsMenu.gd:43
 msgid "Original work created for this project — no attribution required."
 msgstr ""
 
-#: scripts/CreditsMenu.gd:84
-#: scripts/HowToPlay.gd:97
+#: scripts/CreditsMenu.gd:48
+#: scripts/HowToPlay.gd:38
 #: scripts/NestedMap.gd:88
-#: scripts/SettingsMenu.gd:300
+#: scripts/SettingsMenu.gd:158
+#: scripts/ui/menu_kit.gd:79
 msgid "Close"
 msgstr ""
 
@@ -280,100 +281,100 @@ msgstr ""
 msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr ""
 
-#: scripts/HowToPlay.gd:53
+#: scripts/HowToPlay.gd:25
 msgid "HOW TO PLAY"
 msgstr ""
 
-#: scripts/HowToPlay.gd:67
+#: scripts/HowToPlay.gd:29
 msgid "Controls"
 msgstr ""
 
-#: scripts/HowToPlay.gd:68
-msgid "Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."
-msgstr ""
-
-#: scripts/HowToPlay.gd:69
-msgid "In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."
-msgstr ""
-
-#: scripts/HowToPlay.gd:70
-msgid "The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."
-msgstr ""
-
-#: scripts/HowToPlay.gd:71
-msgid "Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them."
-msgstr ""
-
-#: scripts/HowToPlay.gd:72
-msgid "Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip."
-msgstr ""
-
-#: scripts/HowToPlay.gd:73
-msgid "Click a foldable piece (like a sofa bed) to fold or unfold it."
-msgstr ""
-
-#: scripts/HowToPlay.gd:74
-msgid "The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom."
-msgstr ""
-
-#: scripts/HowToPlay.gd:75
-msgid "The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing."
-msgstr ""
-
-#: scripts/HowToPlay.gd:76
-msgid "The bar at the bottom is the goal: every need listed there has to be ticked."
-msgstr ""
-
-#: scripts/HowToPlay.gd:77
-msgid "A piece with a heart after its name is a keepsake: it can be moved but never sold."
-msgstr ""
-
-#: scripts/HowToPlay.gd:78
-msgid "Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are."
-msgstr ""
-
-#: scripts/HowToPlay.gd:79
-msgid "Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark."
-msgstr ""
-
-#: scripts/HowToPlay.gd:80
-msgid "Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back)."
-msgstr ""
-
-#: scripts/HowToPlay.gd:81
-msgid "A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep."
-msgstr ""
-
-#: scripts/HowToPlay.gd:82
-msgid "You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch."
-msgstr ""
-
-#: scripts/HowToPlay.gd:83
-msgid "Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside."
-msgstr ""
-
-#: scripts/HowToPlay.gd:84
-msgid "Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it."
-msgstr ""
-
-#: scripts/HowToPlay.gd:88
-msgid "Press T to switch between the Floor Plan and 3D view."
-msgstr ""
-
-#: scripts/HowToPlay.gd:89
-msgid "Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."
-msgstr ""
-
-#: scripts/HowToPlay.gd:90
-msgid "Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."
-msgstr ""
-
-#: scripts/HowToPlay.gd:136
+#: scripts/HowToPlay.gd:29
 msgid "Needs"
 msgstr ""
 
-#: scripts/HowToPlay.gd:163
+#: scripts/HowToPlay.gd:29
 msgid "Mechanics"
+msgstr ""
+
+#: scripts/HowToPlay.gd:54
+msgid "Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."
+msgstr ""
+
+#: scripts/HowToPlay.gd:55
+msgid "In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."
+msgstr ""
+
+#: scripts/HowToPlay.gd:56
+msgid "The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."
+msgstr ""
+
+#: scripts/HowToPlay.gd:57
+msgid "Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them."
+msgstr ""
+
+#: scripts/HowToPlay.gd:58
+msgid "Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip."
+msgstr ""
+
+#: scripts/HowToPlay.gd:59
+msgid "Click a foldable piece (like a sofa bed) to fold or unfold it."
+msgstr ""
+
+#: scripts/HowToPlay.gd:60
+msgid "The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom."
+msgstr ""
+
+#: scripts/HowToPlay.gd:61
+msgid "The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing."
+msgstr ""
+
+#: scripts/HowToPlay.gd:62
+msgid "The bar at the bottom is the goal: every need listed there has to be ticked."
+msgstr ""
+
+#: scripts/HowToPlay.gd:63
+msgid "A piece with a heart after its name is a keepsake: it can be moved but never sold."
+msgstr ""
+
+#: scripts/HowToPlay.gd:64
+msgid "Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are."
+msgstr ""
+
+#: scripts/HowToPlay.gd:65
+msgid "Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark."
+msgstr ""
+
+#: scripts/HowToPlay.gd:66
+msgid "Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back)."
+msgstr ""
+
+#: scripts/HowToPlay.gd:67
+msgid "A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep."
+msgstr ""
+
+#: scripts/HowToPlay.gd:68
+msgid "You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch."
+msgstr ""
+
+#: scripts/HowToPlay.gd:69
+msgid "Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside."
+msgstr ""
+
+#: scripts/HowToPlay.gd:70
+msgid "Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it."
+msgstr ""
+
+#: scripts/HowToPlay.gd:74
+msgid "Press T to switch between the Floor Plan and 3D view."
+msgstr ""
+
+#: scripts/HowToPlay.gd:75
+msgid "Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."
+msgstr ""
+
+#: scripts/HowToPlay.gd:76
+msgid "Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."
 msgstr ""
 
 #: scripts/Inventory.gd:144
@@ -551,7 +552,7 @@ msgid "Buy: %d€"
 msgstr ""
 
 #: scripts/Inventory.gd:916
-#: scripts/Main.gd:448
+#: scripts/Main.gd:453
 msgid "Floor Plan"
 msgstr ""
 
@@ -683,234 +684,234 @@ msgstr ""
 msgid "%s and %s"
 msgstr ""
 
-#: scripts/Main.gd:425
+#: scripts/Main.gd:430
 msgid "Test Layout"
 msgstr ""
 
-#: scripts/Main.gd:448
+#: scripts/Main.gd:453
 msgid "Blueprint view — place and move furniture from above"
 msgstr ""
 
-#: scripts/Main.gd:449
+#: scripts/Main.gd:454
 msgid "Walk around and place items in 3D — drag onto a wall to hang them"
 msgstr ""
 
-#: scripts/Main.gd:489
+#: scripts/Main.gd:494
 msgid "Menu — settings, back to projects, quit"
 msgstr ""
 
-#: scripts/Main.gd:513
+#: scripts/Main.gd:518
 msgid "← Back to Editor"
 msgstr ""
 
-#: scripts/Main.gd:514
+#: scripts/Main.gd:519
 msgid "Return to the Level Editor, resuming the level you were testing"
 msgstr ""
 
-#: scripts/Main.gd:531
-#: scripts/Main.gd:3076
+#: scripts/Main.gd:536
+#: scripts/Main.gd:3102
 #: scenes/Furniture.tscn:18
 msgid "Furniture"
 msgstr ""
 
-#: scripts/Main.gd:532
+#: scripts/Main.gd:537
 msgid "Open or close the furniture catalogue (F)"
 msgstr ""
 
-#: scripts/Main.gd:562
+#: scripts/Main.gd:567
 msgid "Undo last action (Ctrl+%s)"
 msgstr ""
 
-#: scripts/Main.gd:572
+#: scripts/Main.gd:577
 msgid "Redo (Ctrl+Shift+%s)"
 msgstr ""
 
-#: scripts/Main.gd:983
-#: scripts/Main.gd:4102
+#: scripts/Main.gd:990
+#: scripts/Main.gd:4133
 msgid "Budget: %d€"
 msgstr ""
 
-#: scripts/Main.gd:1370
+#: scripts/Main.gd:1380
 msgid "NEW MECHANIC"
 msgstr ""
 
-#: scripts/Main.gd:1398
+#: scripts/Main.gd:1408
 msgid "Got it — let's go!"
 msgstr ""
 
-#: scripts/Main.gd:2359
+#: scripts/Main.gd:2384
 msgid "%s (Loft)"
 msgstr ""
 
-#: scripts/Main.gd:2475
+#: scripts/Main.gd:2500
 msgid "Drag furniture to move it · hold a piece to rotate, fold or sell it · pinch to zoom"
 msgstr ""
 
-#: scripts/Main.gd:2476
+#: scripts/Main.gd:2501
 msgid "Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"
 msgstr ""
 
-#: scripts/Main.gd:2481
+#: scripts/Main.gd:2506
 msgid "Drag items onto the floor or a wall · hold a piece for its options · pinch to zoom, twist to turn"
 msgstr ""
 
-#: scripts/Main.gd:2482
+#: scripts/Main.gd:2507
 msgid "Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"
 msgstr ""
 
-#: scripts/Main.gd:3237
+#: scripts/Main.gd:3264
 msgid "Map"
 msgstr ""
 
-#: scripts/Main.gd:3239
+#: scripts/Main.gd:3266
 msgid "See every apartment in this project and jump to any of them"
 msgstr ""
 
-#: scripts/Main.gd:3243
+#: scripts/Main.gd:3270
 msgid "Back"
 msgstr ""
 
-#: scripts/Main.gd:3245
+#: scripts/Main.gd:3272
 msgid "Step back out to the apartment this box sits in"
 msgstr ""
 
-#: scripts/Main.gd:3261
+#: scripts/Main.gd:3288
 msgid "←  Back to %s"
 msgstr ""
 
-#: scripts/Main.gd:3283
+#: scripts/Main.gd:3310
 msgid "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
 msgstr ""
 
-#: scripts/Main.gd:3287
+#: scripts/Main.gd:3314
 msgid "Drop a piece on “Back” to send it out · R rotates a piece"
 msgstr ""
 
-#: scripts/Main.gd:3445
+#: scripts/Main.gd:3472
 msgid "No wall inspected on this floor yet"
 msgstr ""
 
-#: scripts/Main.gd:3561
+#: scripts/Main.gd:3588
 msgid "%s needs daylight: stand it where the window's light reaches."
 msgstr ""
 
-#: scripts/Main.gd:3592
+#: scripts/Main.gd:3619
 msgid "Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr ""
 
-#: scripts/Main.gd:3593
+#: scripts/Main.gd:3620
 msgid "Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr ""
 
-#: scripts/Main.gd:3653
+#: scripts/Main.gd:3680
 msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned”."
 msgstr ""
 
-#: scripts/Main.gd:3671
+#: scripts/Main.gd:3698
 msgid "♥ %s is a keepsake: it stays in this flat"
 msgstr ""
 
-#: scripts/Main.gd:3673
+#: scripts/Main.gd:3700
 msgid "A box can't go inside another apartment"
 msgstr ""
 
-#: scripts/Main.gd:3675
+#: scripts/Main.gd:3702
 msgid "Stairs can't move to another apartment"
 msgstr ""
 
-#: scripts/Main.gd:3720
+#: scripts/Main.gd:3747
 msgid "%s  Buy it for %s  ·  %d€ from this budget"
 msgstr ""
 
-#: scripts/Main.gd:3722
+#: scripts/Main.gd:3749
 msgid "←  Take out to %s"
 msgstr ""
 
-#: scripts/Main.gd:3722
+#: scripts/Main.gd:3749
 msgid "→  Take into %s"
 msgstr ""
 
-#: scripts/Main.gd:3723
+#: scripts/Main.gd:3750
 msgid "Shift: send it without going"
 msgstr ""
 
-#: scripts/Main.gd:3751
+#: scripts/Main.gd:3778
 msgid "←  Click here to buy it for %s"
 msgstr ""
 
-#: scripts/Main.gd:3751
+#: scripts/Main.gd:3778
 msgid "←  Drop here to send to %s"
 msgstr ""
 
-#: scripts/Main.gd:3904
+#: scripts/Main.gd:3931
 msgid "%s is already renting here — pick a different box."
 msgstr ""
 
-#: scripts/Main.gd:4003
+#: scripts/Main.gd:4030
 msgid "♥ %s is a keepsake: it can be moved, not sold."
 msgstr ""
 
-#: scripts/Main.gd:4008
+#: scripts/Main.gd:4035
 msgid "Removing %s means repaying its %d€ rent — you only have %d€."
 msgstr ""
 
-#: scripts/Main.gd:4140
+#: scripts/Main.gd:4171
 msgid "This apartment is ready. Still to furnish: %s"
 msgstr ""
 
-#: scripts/Main.gd:4171
+#: scripts/Main.gd:4202
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too much furniture has been rearranged — try keeping heavier pieces closer to where they started."
 msgstr ""
 
-#: scripts/Main.gd:4178
+#: scripts/Main.gd:4209
 msgid ""
 "Not all tenant requirements are met.\n"
 "Try again."
 msgstr ""
 
-#: scripts/Main.gd:4180
+#: scripts/Main.gd:4211
 msgid "Not yet:"
 msgstr ""
 
-#: scripts/Main.gd:4190
+#: scripts/Main.gd:4221
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
 msgstr ""
 
-#: scripts/Main.gd:4192
+#: scripts/Main.gd:4223
 msgid ""
 "Some furniture is completely blocked.\n"
 "Leave at least 1 tile of walking space around it."
 msgstr ""
 
-#: scripts/Main.gd:4459
+#: scripts/Main.gd:4490
 msgid "✕ Back to Results"
 msgstr ""
 
-#: scripts/Main.gd:4579
+#: scripts/Main.gd:4620
 msgid "CUSTOM BUILD"
 msgstr ""
 
-#: scripts/Main.gd:4591
+#: scripts/Main.gd:4632
 msgid "LMB paint · RMB erase"
 msgstr ""
 
-#: scripts/Main.gd:4603
+#: scripts/Main.gd:4644
 msgid "Move"
 msgstr ""
 
-#: scripts/Main.gd:4627
+#: scripts/Main.gd:4668
 msgid "%s  %d€/tile"
 msgstr ""
 
-#: scripts/Main.gd:5264
+#: scripts/Main.gd:5309
 msgid "Paint tiles on the floor"
 msgstr ""
 
-#: scripts/Main.gd:3860
+#: scripts/Main.gd:3887
 msgid "%d piece is waiting for you here: open Furniture, it is first under “Owned”."
 msgid_plural "%d pieces are waiting for you here: open Furniture, they are first under “Owned”."
 msgstr[0] ""
@@ -944,7 +945,7 @@ msgstr ""
 msgid "Options"
 msgstr ""
 
-#: scripts/MainMenu.gd:123
+#: scripts/MainMenu.gd:124
 msgid "Quit"
 msgstr ""
 
@@ -1030,44 +1031,44 @@ msgstr ""
 msgid "Next Level →"
 msgstr ""
 
-#: scripts/ResultScreen.gd:108
+#: scripts/ResultScreen.gd:117
 msgid "APPROVED"
 msgstr ""
 
-#: scripts/ResultScreen.gd:167
+#: scripts/ResultScreen.gd:176
 msgid "RETIREMENT ACHIEVED"
 msgstr ""
 
-#: scripts/ResultScreen.gd:168
+#: scripts/ResultScreen.gd:177
 msgid ""
 "You retire.\n"
 "Gen Z pays for it. As always."
 msgstr ""
 
-#: scripts/ResultScreen.gd:169
+#: scripts/ResultScreen.gd:178
 msgid "Retire"
 msgstr ""
 
-#: scripts/ResultScreen.gd:172
+#: scripts/ResultScreen.gd:181
 #: scenes/Main.tscn:176
 msgid "RENTED OUT"
 msgstr ""
 
-#: scripts/ResultScreen.gd:174
+#: scripts/ResultScreen.gd:183
 msgid ""
 "Congratulations. You have successfully reduced\n"
 "%s's quality of life by 40%%."
 msgstr ""
 
-#: scripts/ResultScreen.gd:176
+#: scripts/ResultScreen.gd:185
 msgid "Back to Projects"
 msgstr ""
 
-#: scripts/ResultScreen.gd:182
+#: scripts/ResultScreen.gd:192
 msgid "+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo"
 msgstr ""
 
-#: scripts/ResultScreen.gd:211
+#: scripts/ResultScreen.gd:221
 msgid "NOT RENTED"
 msgstr ""
 
@@ -1091,66 +1092,66 @@ msgid ""
 "Down: all lowered"
 msgstr ""
 
-#: scripts/Room3DView.gd:1182
+#: scripts/Room3DView.gd:1191
 #: scripts/Wall.gd:1023
 msgid "Outside the room"
 msgstr ""
 
-#: scripts/Room3DView.gd:1201
+#: scripts/Room3DView.gd:1210
 msgid "Can't place here"
 msgstr ""
 
-#: scripts/Room3DView.gd:1304
+#: scripts/Room3DView.gd:1313
 msgid "♥ %s is a keepsake: it can be moved, not sold"
 msgstr ""
 
-#: scripts/Room3DView.gd:1307
+#: scripts/Room3DView.gd:1316
 msgid "Removing %s means repaying its %d€ rent"
 msgstr ""
 
-#: scripts/Room3DView.gd:1637
+#: scripts/Room3DView.gd:1646
 msgid "Too close to a window or door"
 msgstr ""
 
-#: scripts/Room3DView.gd:1642
+#: scripts/Room3DView.gd:1651
 #: scripts/Wall.gd:1126
 msgid "Ceiling too low here"
 msgstr ""
 
-#: scripts/Room3DView.gd:1645
+#: scripts/Room3DView.gd:1654
 msgid "Blocked by furniture on the floor"
 msgstr ""
 
-#: scripts/Room3DView.gd:1649
+#: scripts/Room3DView.gd:1658
 msgid "Doesn't fit on this wall"
 msgstr ""
 
-#: scripts/Room3DView.gd:1667
+#: scripts/Room3DView.gd:1676
 #: scripts/Wall.gd:1100
 msgid "Overlaps %s"
 msgstr ""
 
-#: scripts/Room3DView.gd:1667
+#: scripts/Room3DView.gd:1676
 msgid "another item"
 msgstr ""
 
-#: scripts/Room3DView.gd:3518
+#: scripts/Room3DView.gd:3834
 msgid "Double-click to step inside"
 msgstr ""
 
-#: scripts/Room3DView.gd:4013
+#: scripts/Room3DView.gd:4329
 msgid "Ceiling / Ducts"
 msgstr ""
 
-#: scripts/Room3DView.gd:4014
+#: scripts/Room3DView.gd:4330
 msgid "Building Subfloor"
 msgstr ""
 
-#: scripts/Room3DView.gd:4015
+#: scripts/Room3DView.gd:4331
 msgid "Floor Subfloor / Pipes"
 msgstr ""
 
-#: scripts/Room3DView.gd:4016
+#: scripts/Room3DView.gd:4332
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1159,146 +1160,143 @@ msgstr ""
 msgid "Roof"
 msgstr ""
 
-#: scripts/Room3DView.gd:4019
+#: scripts/Room3DView.gd:4335
 msgid "(view in 2D for detail)"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:71
+#: scripts/SettingsMenu.gd:34
 msgid "SETTINGS"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:77
-msgid "❓ How to Play"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:83
-msgid "🖋 Credits"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:94
-msgid "LANGUAGE"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:98
-msgid "AUDIO"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:100
-msgid "Master Volume"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:107
-msgid "SFX Volume"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:120
-msgid "Music Volume"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:128
-msgid "Mute all sound"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:138
-msgid "GRAPHICS"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:144
-msgid "ACCESSIBILITY"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:149
-msgid "UI Scale"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:157
-msgid "Reduce motion (skip pop/pulse animations)"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:167
-msgid "Undo key"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:173
-#: scripts/SettingsMenu.gd:529
-msgid "Ctrl+%s  (Shift+ = Redo)"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:189
+#: scripts/SettingsMenu.gd:48
 msgid "NAVIGATION"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:196
+#: scripts/SettingsMenu.gd:53
 msgid "← Projects"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:213
+#: scripts/SettingsMenu.gd:61
 msgid "↻ Restart Level"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:223
+#: scripts/SettingsMenu.gd:64
 msgid "Discard this layout and start over?"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:230
+#: scripts/SettingsMenu.gd:64
 msgid "Yes, restart"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:239
-#: scripts/SettingsMenu.gd:283
-#: scripts/ui/touch_controls.gd:132
-msgid "Cancel"
+#: scripts/SettingsMenu.gd:69
+msgid "LANGUAGE"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:259
-msgid "Quit to Desktop"
+#: scripts/SettingsMenu.gd:73
+msgid "AUDIO"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:269
-msgid "Quit for real?"
+#: scripts/SettingsMenu.gd:76
+msgid "Master Volume"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:276
-msgid "Yes, quit"
+#: scripts/SettingsMenu.gd:81
+msgid "SFX Volume"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:330
-msgid "Device language"
+#: scripts/SettingsMenu.gd:92
+msgid "Music Volume"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:345
-msgid "The rest of the level changes language when you leave it."
+#: scripts/SettingsMenu.gd:102
+msgid "Mute all sound"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:367
-msgid "3D Quality"
+#: scripts/SettingsMenu.gd:109
+msgid "GRAPHICS"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:397
+#: scripts/SettingsMenu.gd:112
+msgid "ACCESSIBILITY"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:121
+msgid "UI Scale"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:129
+msgid "Reduce motion (skip pop/pulse animations)"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:133
+msgid "Undo key"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:135
 msgid "EXPERIMENTAL"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:399
+#: scripts/SettingsMenu.gd:136
 msgid "Walking paths"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:409
+#: scripts/SettingsMenu.gd:138
 msgid "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:415
+#: scripts/SettingsMenu.gd:144
+msgid "Quit to Desktop"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:146
+msgid "Quit for real?"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:146
+msgid "Yes, quit"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:149
+msgid "❓ How to Play"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:152
+msgid "🖋 Credits"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:169
+msgid "Device language"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:173
+msgid "Language"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:176
+msgid "The rest of the level changes language when you leave it."
+msgstr ""
+
+#: scripts/SettingsMenu.gd:203
+msgid "3D Quality"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:213
 msgid "Fastest. Flat lighting and shadows only."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:416
+#: scripts/SettingsMenu.gd:214
 msgid "Adds glow on lamps and windows, and a soft vignette."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:417
+#: scripts/SettingsMenu.gd:215
 msgid "Adds contact shading in corners. Needs a dedicated GPU."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:512
+#: scripts/SettingsMenu.gd:219
+msgid "Ctrl+%s  (Shift+ = Redo)"
+msgstr ""
+
+#: scripts/SettingsMenu.gd:225
 msgid "Press any key…"
 msgstr ""
 
@@ -1438,6 +1436,11 @@ msgid "Applicant: %s"
 msgid_plural "Applicants: %s"
 msgstr[0] ""
 msgstr[1] ""
+
+#: scripts/ui/menu_kit.gd:351
+#: scripts/ui/touch_controls.gd:132
+msgid "Cancel"
+msgstr ""
 
 #: scripts/ui/touch_controls.gd:130
 #: scripts/ui/touch_controls.gd:134

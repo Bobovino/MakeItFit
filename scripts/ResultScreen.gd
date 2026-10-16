@@ -99,8 +99,17 @@ func _ready() -> void:
 	$Panel/VBox.add_child(advance_btn)
 	$Panel/VBox.move_child(advance_btn, next_btn.get_index())
 	# Restart Level slots in right before the final Back to Projects/Retire
-	# exit action, same reasoning as watch_btn/advance_btn above.
-	$Panel/VBox.move_child(retry_btn, next_btn.get_index())
+	# exit action, same reasoning as watch_btn/advance_btn above. It shares a
+	# line with View Apartment: both stay with this apartment, and four
+	# full-width buttons of the same weight left no obvious next step.
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 8)
+	$Panel/VBox.add_child(pair)
+	$Panel/VBox.move_child(pair, next_btn.get_index())
+	for b in [watch_btn, retry_btn]:
+		(b as Button).reparent(pair)
+		(b as Button).custom_minimum_size = Vector2(0, 44)
+		(b as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	# "APPROVED" rubber stamp — slams down tilted over the panel's top-right
 	# corner on success, like a permit office signing off on the drawing.
@@ -135,8 +144,21 @@ func _ready() -> void:
 	add_child(_stamp)
 
 
+# The panel as tall as what it shows, centred: its size in Main.tscn left
+# half of it empty under the buttons.
+func _fit_panel() -> void:
+	var panel := $Panel as Control
+	await get_tree().process_frame
+	panel.size = Vector2(panel.size.x, 0.0)   # no shorter than its content: that is the height it takes
+	var h := panel.get_combined_minimum_size().y
+	panel.set_meta("design_pos", Vector2((panel.get_meta("design_pos", panel.position) as Vector2).x,
+		maxf(8.0, (ScreenFit.DESIGN.y - h) * 0.5)))
+	panel.position = (panel.get_meta("design_pos") as Vector2) + (ScreenFit.size_of(panel) - ScreenFit.DESIGN) * 0.5
+
+
 func _slam_stamp() -> void:
 	var panel := $Panel as Control
+	await _fit_panel()
 	_stamp.visible = true
 	# The label reports size 0 until it has been laid out once — force it to
 	# shrink-wrap its text NOW so pivot/position math uses the real box.
@@ -175,6 +197,7 @@ func show_success(stars: int, funds_earned: int, portfolio_rent: int,
 		)
 		next_btn.text = tr("Back to Projects")
 
+	_set_primary(advance_btn if advance_btn.visible else next_btn)
 	_animate_stars(stars)
 	call_deferred("_slam_stamp")
 
@@ -217,6 +240,25 @@ func show_failure(reason: String) -> void:
 	retry_btn.visible   = true
 	watch_btn.visible   = false
 	advance_btn.visible = false
+	_set_primary(retry_btn)
+	_fit_panel()
+
+
+# The one button that is the obvious next step gets the amber look; the
+# others are plain.
+func _set_primary(primary: Button) -> void:
+	var rs := GameTheme.make_rent_btn_style()
+	for b in [watch_btn, advance_btn, retry_btn, next_btn]:
+		var btn := b as Button
+		for st in ["normal", "hover", "pressed", "focus"]:
+			btn.remove_theme_stylebox_override(st)
+		btn.remove_theme_color_override("font_color")
+		if btn == primary:
+			btn.add_theme_stylebox_override("normal", rs[0])
+			btn.add_theme_stylebox_override("hover", rs[1])
+			btn.add_theme_stylebox_override("pressed", rs[1])
+			btn.add_theme_stylebox_override("focus", rs[1])
+			btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
 
 
 func _on_next_pressed() -> void:

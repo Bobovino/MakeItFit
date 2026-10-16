@@ -119,11 +119,15 @@ func _ready() -> void:
 
 	_spacer(vbox, 10)
 
+	# Quit as a quiet line of ink on the paper, not a third button.
 	var quit_btn := Button.new()
 	quit_btn.text = tr("Quit")
-	quit_btn.custom_minimum_size = Vector2(0, 30)
-	quit_btn.add_theme_font_size_override("font_size", 12)
+	quit_btn.flat = true
+	quit_btn.custom_minimum_size = Vector2(0, 32)
+	quit_btn.add_theme_font_size_override("font_size", 13)
 	quit_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	quit_btn.add_theme_color_override("font_hover_color", GameTheme.C_BAD.darkened(0.2))
+	quit_btn.add_theme_color_override("font_pressed_color", GameTheme.C_BAD.darkened(0.2))
 	quit_btn.pressed.connect(_on_quit)
 	vbox.add_child(quit_btn)
 
@@ -137,12 +141,14 @@ func _make_tag_button(text: String) -> Button:
 	btn.text = text
 	btn.custom_minimum_size = Vector2(0, 40)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	btn.add_theme_font_size_override("font_size", 14)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		btn.add_theme_color_override(c, GameTheme.TAG_INK)
 	var ts := GameTheme.make_tag_btn_style()
 	btn.add_theme_stylebox_override("normal",  ts[0])
 	btn.add_theme_stylebox_override("hover",   ts[1])
 	btn.add_theme_stylebox_override("pressed", ts[2])
+	btn.add_theme_stylebox_override("focus",   ts[1])
 	return btn
 
 

@@ -6,8 +6,8 @@ class_name HowToPlay
 # player reaches that level, and there's no way to look them back up later.
 # This pulls the same title/body pairs straight out of levels.json (so it
 # can never drift out of sync with what the intro cards actually say),
-# plus a static controls cheat-sheet and the needs glyph legend, all in one
-# scrollable panel reachable from the Menu at any time.
+# plus a static controls cheat-sheet and the needs glyph legend, on three
+# tabs of one window reachable from the Menu at any time.
 
 static func open(host: Node) -> HowToPlay:
 	var m := HowToPlay.new()
@@ -19,52 +19,38 @@ static func open(host: Node) -> HowToPlay:
 func _build() -> void:
 	layer = 26  # above SettingsMenu (25), since it's opened from there
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.05, 0.09, 0.92)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(bg)
-	ScreenFit.cover(bg)
-	bg.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
-				and (e as InputEventMouseButton).button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-			_close())
+	# Three pages instead of one long scroll: the controls, what the needs
+	# icons mean, and the mechanics met so far. The window keeps its height
+	# from page to page.
+	var w := MenuKit.modal(self, tr("HOW TO PLAY"), 760.0, _close, true)
+	var body: VBoxContainer = w["body"]
+	var scroll: ScrollContainer = w["scroll"]
+	var pages := [_controls_page, _needs_legend, _mechanic_cards]
+	MenuKit.tabs(w["top"], [tr("Controls"), tr("Needs"), tr("Mechanics")], func(i: int):
+		for c in body.get_children():
+			c.queue_free()
+		(pages[i] as Callable).call(body)
+		scroll.scroll_vertical = 0)
 
-	var card := PanelContainer.new()
-	var cs := StyleBoxFlat.new()
-	cs.bg_color     = Color(0.115, 0.100, 0.085)
-	cs.border_color = GameTheme.C_BORDER
-	cs.set_border_width_all(2)
-	cs.set_corner_radius_all(10)
-	cs.anti_aliasing = true
-	cs.set_content_margin_all(24)
-	cs.shadow_color = Color(0, 0, 0, 0.4)
-	cs.shadow_size  = 10
-	card.add_theme_stylebox_override("panel", cs)
-	card.position            = Vector2(290, 60)
-	card.custom_minimum_size = Vector2(700, 600)
-	add_child(card)
-	ScreenFit.keep_centered(card)
+	var push := Control.new()
+	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	(w["footer"] as Control).add_child(push)
+	var close_btn := MenuKit.button(tr("Close"), "primary")
+	close_btn.custom_minimum_size.x = 120
+	close_btn.pressed.connect(_close)
+	(w["footer"] as Control).add_child(close_btn)
 
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 12)
-	card.add_child(outer)
 
-	var title := Label.new()
-	title.text = tr("HOW TO PLAY")
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	outer.add_child(title)
+func _controls_page(body: VBoxContainer) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	body.add_child(box)
+	for line in _controls():
+		MenuKit.bullet(box, line as String)
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.add_child(scroll)
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 16)
-	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(vb)
-
-	vb.add_child(_section(tr("Controls"), [
+func _controls() -> Array:
+	return [
 		tr("Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."),
 		tr("In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."),
 		tr("The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."),
@@ -88,79 +74,43 @@ func _build() -> void:
 		tr("Press T to switch between the Floor Plan and 3D view."),
 		tr("Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."),
 		tr("Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."),
-	]))
-
-	vb.add_child(_needs_legend())
-	vb.add_child(_mechanic_cards())
-
-	var close_btn := Button.new()
-	close_btn.text = tr("Close")
-	close_btn.add_theme_font_size_override("font_size", 13)
-	var rs := GameTheme.make_rent_btn_style()
-	close_btn.add_theme_stylebox_override("normal",  rs[0])
-	close_btn.add_theme_stylebox_override("hover",   rs[1])
-	close_btn.add_theme_stylebox_override("pressed", rs[1])
-	close_btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	close_btn.pressed.connect(_close)
-	outer.add_child(close_btn)
-
-
-func _section_header(text: String) -> Label:
-	var lbl := Label.new()
-	lbl.text = text.to_upper()
-	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	return lbl
-
-
-func _section(header: String, lines: Array) -> VBoxContainer:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	box.add_child(_section_header(header))
-	for line in lines:
-		var lbl := Label.new()
-		lbl.text = "•  " + (line as String)
-		lbl.add_theme_font_size_override("font_size", 13)
-		lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(lbl)
-	return box
+	]
 
 
 # Reuses TenantCard's own glyph set instead of a second hand-maintained copy
 # — the quest-tracker chips and this legend can never disagree about what a
 # given icon means.
-func _needs_legend() -> VBoxContainer:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	box.add_child(_section_header(tr("Needs")))
+func _needs_legend(body: VBoxContainer) -> void:
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 14)
-	row.add_theme_constant_override("v_separation", 8)
-	box.add_child(row)
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 10)
+	body.add_child(row)
 	for need in TenantCard.NEED_GLYPH:
+		var tile := PanelContainer.new()
+		tile.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(Color(0.145, 0.127, 0.105), Color(0.250, 0.215, 0.170), 8))
+		tile.custom_minimum_size = Vector2(160, 0)
+		row.add_child(tile)
 		var chip := HBoxContainer.new()
-		chip.add_theme_constant_override("separation", 6)
+		chip.add_theme_constant_override("separation", 8)
+		tile.add_child(chip)
 		var glyph := Label.new()
 		glyph.text = TenantCard.NEED_GLYPH[need] as String
-		glyph.add_theme_font_size_override("font_size", 15)
+		glyph.add_theme_font_size_override("font_size", 18)
 		chip.add_child(glyph)
 		var name_lbl := Label.new()
 		name_lbl.text = Loc.need_name(need as String)
-		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.add_theme_font_size_override("font_size", 14)
 		name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
 		chip.add_child(name_lbl)
-		row.add_child(chip)
-	return box
 
 
 # Pulled straight from levels.json's own "mechanic_intro" fields (the same
 # data Main.gd's one-time "NEW MECHANIC" card reads) so this can never say
 # something different from what a first-time player actually saw.
-func _mechanic_cards() -> VBoxContainer:
+func _mechanic_cards(body: VBoxContainer) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
-	box.add_child(_section_header(tr("Mechanics")))
+	body.add_child(box)
 
 	var seen_titles: Dictionary = {}
 	var f := FileAccess.open("res://data/levels.json", FileAccess.READ)
@@ -176,38 +126,17 @@ func _mechanic_cards() -> VBoxContainer:
 				if t == "" or seen_titles.has(t):
 					continue
 				seen_titles[t] = true
-				box.add_child(_mechanic_card(t, intro.get("body", "") as String))
-	return box
+				_mechanic_card(box, t, intro.get("body", "") as String)
 
 
-func _mechanic_card(mech_title: String, body: String) -> PanelContainer:
-	var chip := PanelContainer.new()
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(0.06, 0.06, 0.05, 0.6)
-	s.border_color = Color(0.30, 0.80, 0.60, 0.55)
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(6)
-	s.set_content_margin_all(12)
-	chip.add_theme_stylebox_override("panel", s)
-
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
-	chip.add_child(vb)
-
+func _mechanic_card(parent: Control, mech_title: String, body: String) -> void:
+	var vb := MenuKit.boxed(parent)
 	var t := Label.new()
 	t.text = mech_title
-	t.add_theme_font_size_override("font_size", 14)
-	t.add_theme_color_override("font_color", Color(0.55, 0.90, 0.72))
+	t.add_theme_font_size_override("font_size", 15)
+	t.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	vb.add_child(t)
-
-	var b := Label.new()
-	b.text = body
-	b.add_theme_font_size_override("font_size", 12)
-	b.add_theme_color_override("font_color", GameTheme.C_TEXT)
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(b)
-
-	return chip
+	MenuKit.text(vb, body, 13)
 
 
 func _close() -> void:
@@ -216,6 +145,6 @@ func _close() -> void:
 
 # Esc closes this window.
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo 			and (event as InputEventKey).keycode == KEY_ESCAPE:
+	if MenuKit.is_escape(event):
 		_close()
 		get_viewport().set_input_as_handled()

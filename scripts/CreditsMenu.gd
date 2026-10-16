@@ -24,91 +24,42 @@ static func open(host: Node) -> CanvasLayer:
 func _build() -> void:
 	layer = 26  # above SettingsMenu (25), since it's opened from there
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.05, 0.09, 0.92)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(bg)
-	ScreenFit.cover(bg)
-	bg.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
-				and (e as InputEventMouseButton).button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-			_close())
+	var w := MenuKit.modal(self, tr("CREDITS"), 520.0, _close)
+	var body: VBoxContainer = w["body"]
 
-	var card := PanelContainer.new()
-	var cs := StyleBoxFlat.new()
-	cs.bg_color     = Color(0.115, 0.100, 0.085)
-	cs.border_color = GameTheme.C_BORDER
-	cs.set_border_width_all(2)
-	cs.set_corner_radius_all(10)
-	cs.anti_aliasing = true
-	cs.set_content_margin_all(24)
-	cs.shadow_color = Color(0, 0, 0, 0.4)
-	cs.shadow_size  = 10
-	card.add_theme_stylebox_override("panel", cs)
-	card.position            = Vector2(390, 110)
-	card.custom_minimum_size = Vector2(500, 480)
-	add_child(card)
-	ScreenFit.keep_centered(card)
-
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
-	card.add_child(vb)
-
-	var title := Label.new()
-	title.text = tr("CREDITS")
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	vb.add_child(title)
-
-	vb.add_child(_entry(tr("Fonts"),
-		"Caveat — Copyright 2014 The Caveat Project Authors\n" +
-		"Space Grotesk — Copyright 2020 The Space Grotesk Project Authors\n" +
+	body.add_child(_entry(tr("Fonts"),
+		"Caveat — Copyright 2014 The Caveat Project Authors
+" +
+		"Space Grotesk — Copyright 2020 The Space Grotesk Project Authors
+" +
 		tr("Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)")))
 
-	vb.add_child(HSeparator.new())
-
-	vb.add_child(_entry(tr("Art & Sound"),
-		tr("Interface sounds and casino/UI audio by Kenney (kenney.nl)") + "\n" +
+	body.add_child(_entry(tr("Art & Sound"),
+		tr("Interface sounds and casino/UI audio by Kenney (kenney.nl)") + "
+" +
 		tr("Released under Creative Commons Zero (CC0)")))
 
-	vb.add_child(HSeparator.new())
-
-	vb.add_child(_entry(tr("Ambient Rain"),
+	body.add_child(_entry(tr("Ambient Rain"),
 		tr("Original work created for this project — no attribution required.")))
 
 	var push := Control.new()
-	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vb.add_child(push)
-
-	var close_btn := Button.new()
-	close_btn.text = tr("Close")
-	close_btn.add_theme_font_size_override("font_size", 13)
-	var rs := GameTheme.make_rent_btn_style()
-	close_btn.add_theme_stylebox_override("normal",  rs[0])
-	close_btn.add_theme_stylebox_override("hover",   rs[1])
-	close_btn.add_theme_stylebox_override("pressed", rs[1])
-	close_btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	(w["footer"] as Control).add_child(push)
+	var close_btn := MenuKit.button(tr("Close"), "primary")
+	close_btn.custom_minimum_size.x = 120
 	close_btn.pressed.connect(_close)
-	vb.add_child(close_btn)
+	(w["footer"] as Control).add_child(close_btn)
 
 
 func _entry(header: String, body: String) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
-
 	var hdr := Label.new()
 	hdr.text = header.to_upper()
-	hdr.add_theme_font_size_override("font_size", 12)
-	hdr.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hdr.add_theme_font_size_override("font_size", MenuKit.FONT_SECTION)
+	hdr.add_theme_color_override("font_color", GameTheme.C_AMBER.darkened(0.3))
 	box.add_child(hdr)
-
-	var b := Label.new()
-	b.text = body
-	b.add_theme_font_size_override("font_size", 13)
-	b.add_theme_color_override("font_color", GameTheme.C_TEXT)
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(b)
-
+	MenuKit.text(box, body)
 	return box
 
 
@@ -118,6 +69,6 @@ func _close() -> void:
 
 # Esc closes this window.
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo 			and (event as InputEventKey).keycode == KEY_ESCAPE:
+	if MenuKit.is_escape(event):
 		_close()
 		get_viewport().set_input_as_handled()
