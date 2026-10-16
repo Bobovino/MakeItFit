@@ -1188,9 +1188,7 @@ func place_furniture(furniture: Furniture, at: Vector2) -> void:
 	# Stair furniture: register block in stairs_data + populate stair_mask
 	if furniture.is_stair:
 		_register_stair(furniture, Vector2i(floori(at.x), floori(at.y)))
-	_compute_light_map()
-	_recalculate_zones()
-	furniture_changed.emit()
+	_layout_changed()
 
 
 func remove_furniture(furniture: Furniture) -> void:
@@ -1198,6 +1196,33 @@ func remove_furniture(furniture: Furniture) -> void:
 	if _floor_drag_ghost.get("furniture") == furniture:
 		clear_floor_drag_ghost()
 	furniture.queue_free()
+	_layout_changed()
+
+
+# Light and zones are recomputed from scratch whenever a piece is put down or
+# taken away, about a tenth of a second each time on a full floor. A level
+# being put together piece by piece (loaded, restored after a box trip or an
+# undo) wraps that in begin_batch()/end_batch() so it happens once, for the
+# finished layout, with the same result.
+var _batch_depth := 0
+var _batch_dirty := false
+
+
+func begin_batch() -> void:
+	_batch_depth += 1
+
+
+func end_batch() -> void:
+	_batch_depth = maxi(0, _batch_depth - 1)
+	if _batch_depth == 0 and _batch_dirty:
+		_batch_dirty = false
+		_layout_changed()
+
+
+func _layout_changed() -> void:
+	if _batch_depth > 0:
+		_batch_dirty = true
+		return
 	_compute_light_map()
 	_recalculate_zones()
 	furniture_changed.emit()

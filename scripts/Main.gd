@@ -139,6 +139,11 @@ var _autosave_timer: Timer
 var _level_ok: Dictionary = {}      # level id -> {"ok": bool, "cond": Dictionary}
 var _box_cond: Dictionary = {}      # child level id -> the conditions its box has now, as last seen around it
 var _completing_project := false    # stepping out of the boxes to rent the whole project out
+# Set while a level is being put together piece by piece (loading it,
+# restoring it after a box trip or an undo): every piece put down would
+# otherwise run the whole needs check again, which made stepping out of a
+# box take seconds. The check runs once when the level is complete.
+var _batch_refresh := false
 # Every is_nested_box Furniture spawned in the CURRENTLY loaded level — lets
 # _refresh_nested_links() list an "enter this box" link for each of them (not
 # just the first one found), rebuilt fresh on every _load_level().
@@ -885,6 +890,8 @@ func _load_level(level_id: String) -> void:
 		if fd["id"] in _floor_below_id:
 			apt_floor.below_floor = _floors.get(_floor_below_id[fd["id"]] as String) as Floor
 
+		_batch_refresh = true
+		apt_floor.begin_batch()
 		for sf in fd.get("starting_furniture", []):
 			_spawn_furniture(sf["id"], apt_floor, sf["x"], sf["y"], sf as Dictionary)
 
@@ -988,6 +995,9 @@ func _load_level(level_id: String) -> void:
 	for _fd in floors_data:
 		if not ((_fd as Dictionary)["id"] as String in hidden_floors):
 			first_visible_id = (_fd as Dictionary)["id"] as String; break
+	for _bfid in _floors:
+		(_floors[_bfid] as Floor).end_batch()
+	_batch_refresh = false
 	_switch_floor(first_visible_id)
 	_update_floor_locks()
 	_refresh_functions()
@@ -2112,9 +2122,11 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 	# does for its own initial spawn, and only re-evaluate once at the end.
 	var _was_armed := _rent_auto_armed
 	_rent_auto_armed = false
+	_batch_refresh = true
 	var floors_snap := snapshot.get("floors", {}) as Dictionary
 	for fid in _floors:
 		var fl := _floors[fid] as Floor
+		fl.begin_batch()
 		for entry in fl.get_all_furniture().duplicate():
 			var fur := entry as Furniture
 			fl.remove_furniture(fur)
@@ -2134,6 +2146,9 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 				f.set_rot_steps(rs)
 			if d.get("is_extended", false) as bool and f.foldable:
 				f.toggle_fold()
+	for fid in _floors:
+		(_floors[fid] as Floor).end_batch()
+	_batch_refresh = false
 	_refresh_functions()
 	_rent_auto_armed = _was_armed
 	_update_rent_btn()
@@ -3131,6 +3146,7 @@ func _relayout_bottom_bar() -> void:
 		return
 	_bar_relayout_busy = true
 	_position_minimap()
+	_position_watch_done_btn()
 	if _is_furniture_menu_open():
 		_position_furniture_catalog_modal()
 		if is_instance_valid(_mode3d_view):
@@ -4023,6 +4039,8 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 
 
 func _on_furniture_changed() -> void:
+	if _batch_refresh:
+		return
 	_refresh_functions()
 	_update_floor_locks()
 	_update_accessibility()
@@ -4036,6 +4054,8 @@ func _on_furniture_changed() -> void:
 
 
 func _refresh_functions() -> void:
+	if _batch_refresh:
+		return
 	# Keeps every box's weight/tier/noise effects current before anything
 	# below reads functions or weight — covers level load, entering/exiting a
 	# box, AND every ordinary furniture move, since this already runs on all
@@ -4463,17 +4483,27 @@ func _show_watch_done_button() -> void:
 	# Centered on the play area (not the whole window) and sat below the
 	# diorama's resting position, rather than tucked in the top-left corner
 	# where it competed with the Builder tool panel.
-	var center_x := (LEFT_X + RIGHT_X) * 0.5
-	_watch_done_btn.offset_left   = center_x - 100.0
-	_watch_done_btn.offset_right  = center_x + 100.0
-	_watch_done_btn.offset_top    = BOT_Y - 90.0
-	_watch_done_btn.offset_bottom = BOT_Y - 50.0
+	_position_watch_done_btn()
 	# Same reasoning as Inventory in _ensure_mode3d_view: the 3D view is a
 	# later sibling in this same CanvasLayer, so a freshly added Control has
 	# to be moved after it explicitly or the 3D view's opaque background
 	# paints over it and swallows its clicks.
 	ui_layer.move_child(_watch_done_btn, ui_layer.get_child_count() - 1)
 	_watch_done_btn.pressed.connect(_close_watch_again)
+
+
+# Centred on the play area, just above the needs bar: the bar grows a row
+# when its chips wrap (the apartments chip, rules), and a fixed height left
+# the button sitting on top of it.
+func _position_watch_done_btn() -> void:
+	if not is_instance_valid(_watch_done_btn):
+		return
+	var center_x := (LEFT_X + RIGHT_X) * 0.5
+	var bar_top := tenant_card.get_global_rect().position.y if is_instance_valid(tenant_card) else BOT_Y
+	_watch_done_btn.offset_left   = center_x - 100.0
+	_watch_done_btn.offset_right  = center_x + 100.0
+	_watch_done_btn.offset_bottom = bar_top - 14.0
+	_watch_done_btn.offset_top    = bar_top - 54.0
 
 
 # Once this level's been rented out, the gear icon's job stops being "open
@@ -5021,6 +5051,7 @@ func _snapshot_all_furniture() -> Dictionary:
 
 func _restore_furniture_snapshot(snap: Dictionary) -> void:
 	_restoring_furniture = true
+	_batch_refresh = true
 	gm.budget = snap["funds"] as int
 	gm.budget_changed.emit(gm.budget)
 	var floors_data := snap["floors"] as Dictionary
@@ -5040,6 +5071,7 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 			continue
 		if fid == _current_floor_id:
 			touched_current = true
+		fl.begin_batch()
 		for item in fl.get_all_furniture().duplicate():
 			# remove_furniture() (not a raw queue_free) so the Floor's own grid
 			# bookkeeping is cleaned up too — otherwise later code that iterates
@@ -5058,7 +5090,9 @@ func _restore_furniture_snapshot(snap: Dictionary) -> void:
 			var items := wall_items[edge] as Dictionary
 			for origin in items:
 				fl.place_wall_item(edge, origin as Vector2i, items[origin] as String)
+		fl.end_batch()
 	_restoring_furniture = false
+	_batch_refresh = false
 	_last_furniture_state = _snapshot_all_furniture()
 	_refresh_functions()
 	if tenant_layer:
