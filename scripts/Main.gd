@@ -132,6 +132,13 @@ var _full_level_states: Dictionary = {}
 var _resuming := false          # this load opens a saved project where it was left
 var _autosave_dirty := false    # something changed since the last autosave
 var _autosave_timer: Timer
+# A project (the apartment from the map and every box inside it) is rented
+# out only when all of its apartments with tenants are done. Each one's
+# result is remembered as last seen on screen, with the conditions its box
+# gave it (light, noise, rules from outside); see _project_status().
+var _level_ok: Dictionary = {}      # level id -> {"ok": bool, "cond": Dictionary}
+var _box_cond: Dictionary = {}      # child level id -> the conditions its box has now, as last seen around it
+var _completing_project := false    # stepping out of the boxes to rent the whole project out
 # Every is_nested_box Furniture spawned in the CURRENTLY loaded level — lets
 # _refresh_nested_links() list an "enter this box" link for each of them (not
 # just the first one found), rebuilt fresh on every _load_level().
@@ -270,6 +277,7 @@ func _ready() -> void:
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
 	tenant_card.application_requested.connect(_reopen_application)
+	tenant_card.project_map_requested.connect(_open_nested_map)
 	tenant_layer = TenantLayer.new()
 	tenant_layer.main = self
 	tenant_layer.gm = gm
@@ -1077,6 +1085,139 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 
 var _intros_shown: Dictionary = {}   # level id -> true, for this session in the play screen
 
+# ── Completing a project ─────────────────────────────────────────────────────
+
+# The light, noise and outside rules a box passes to the apartment inside
+# it, as _on_box_entered() applies them; compared to tell whether a box
+# finished earlier still counts after the apartment around it changed.
+func _cond_for_box(box: Furniture) -> Dictionary:
+	var side := _closest_wall_side(box._wall_ref, box)
+	return {
+		"light": snappedf(_compute_box_occlusion(box), 0.01),
+		"noisy": _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box),
+		"rules": (gm.external_restrictions.get("by_wall", {}) as Dictionary).get(side, {}),
+	}
+
+
+func _current_cond() -> Dictionary:
+	return {
+		"light": snappedf(_current_nested_daylight_factor, 0.01),
+		"noisy": _current_nested_noisy_from_outside,
+		"rules": _current_nested_external_override,
+	}
+
+
+# Notes how the apartment on screen stands, and what each of its boxes
+# passes on to the apartment inside.
+func _record_level_status() -> void:
+	if _current_level_id == "" or _post_win_view:
+		return
+	var ok := (not _level_has_goal()) or (gm.check_win() and _all_furniture_accessible())
+	_level_ok[_current_level_id] = {"ok": ok, "cond": _current_cond()}
+	for box in _collect_nested_boxes():
+		_box_cond[box.child_level_id] = _cond_for_box(box)
+
+
+func _level_wants_tenant(level_id: String) -> bool:
+	var ld := _lookup_level_dict(level_id)
+	var tenant := ld.get("tenant", {}) as Dictionary
+	return not (tenant.get("required_functions", []) as Array).is_empty() or not (ld.get("moments", []) as Array).is_empty()
+
+
+# Every apartment of the project that has tenants to satisfy: the one from
+# the map, and the boxes inside it, however deep.
+func _project_levels() -> Array:
+	var root := _root_level_id()
+	var out: Array = []
+	var queue: Array = [root]
+	var seen := {root: true}
+	while not queue.is_empty():
+		var lid: String = queue.pop_front()
+		if _level_wants_tenant(lid) or lid == root:
+			out.append(lid)
+		for child in _nested_children_of(lid):
+			var cid := (child as Dictionary)["child_level_id"] as String
+			if not seen.has(cid):
+				seen[cid] = true
+				queue.append(cid)
+	return out
+
+
+# Whether an apartment counts as done: as last seen on screen, and (for a box
+# seen before something around it changed) under the same conditions.
+func _level_done(level_id: String) -> bool:
+	var st := _level_ok.get(level_id, {}) as Dictionary
+	if not (st.get("ok", false) as bool):
+		return false   # not ready, or never opened yet
+	if level_id == _root_level_id() or level_id == _current_level_id or not _box_cond.has(level_id):
+		return true
+	return not _cond_change_matters(level_id, st.get("cond", {}) as Dictionary, _box_cond[level_id] as Dictionary)
+
+
+# Whether what changed around a box since its apartment was finished can
+# change that apartment's result: light only matters to something that needs
+# daylight or space by a window, noise only to something that needs quiet,
+# and outside rules always. Anything else (a bed put down beside the box)
+# leaves it ready.
+func _cond_change_matters(level_id: String, was: Dictionary, now: Dictionary) -> bool:
+	if was.get("rules", {}) != now.get("rules", {}):
+		return true
+	var light_changed := not is_equal_approx(float(was.get("light", 1.0)), float(now.get("light", 1.0)))
+	var noise_changed := bool(was.get("noisy", false)) != bool(now.get("noisy", false))
+	if not light_changed and not noise_changed:
+		return false
+	var needs_light := false
+	var needs_quiet := false
+	for it in _child_furniture_items(level_id):
+		var fdata := gm.get_furniture_by_id(str((it as Dictionary).get("id", "")))
+		needs_light = needs_light or (fdata.get("needs_daylight", false) as bool)
+		needs_quiet = needs_quiet or (fdata.get("needs_quiet", false) as bool)
+	for m in _lookup_level_dict(level_id).get("moments", []) as Array:
+		for need in ((m as Dictionary).get("space_needs", {}) as Dictionary).values():
+			if need is Dictionary and (need as Dictionary).get("near_window", false):
+				needs_light = true
+	return (light_changed and needs_light) or (noise_changed and needs_quiet)
+
+
+# For the box map: "none" (no tenants to satisfy), "ready", "todo", or
+# "recheck" (it was ready, but something around its box has changed since).
+func _level_state_label(level_id: String, is_root: bool) -> String:
+	if not is_root and not _level_wants_tenant(level_id):
+		return "none"
+	if _level_done(level_id):
+		return "ready"
+	if ((_level_ok.get(level_id, {}) as Dictionary).get("ok", false) as bool):
+		return "recheck"
+	return "todo"
+
+
+# {complete, done, total, pending_names}: how many of the project's
+# apartments are ready, and the names of those that aren't.
+func _project_status() -> Dictionary:
+	var levels := _project_levels()
+	var done := 0
+	var pending: Array = []
+	for lid in levels:
+		if _level_done(lid):
+			done += 1
+		else:
+			pending.append(_level_display_name(lid))
+	var root := _root_level_id()
+	var has_goal := _level_wants_tenant(root) or levels.size() > 1
+	return {"complete": has_goal and done == levels.size(), "done": done, "total": levels.size(), "pending_names": pending}
+
+
+# Everything is done: rent the project out from its own apartment, stepping
+# out of the boxes first if the last thing finished was inside one.
+func _complete_project() -> void:
+	_completing_project = true
+	if not _nested_stack.is_empty():
+		_exit_nested_level_to(0)
+		await get_tree().process_frame
+	_completing_project = false
+	_on_rent_pressed()
+
+
 # ── Autosave ─────────────────────────────────────────────────────────────────
 # The project on screen (the apartment opened from the map, and the boxes
 # inside it) is saved as the player goes, so closing the game, or a phone
@@ -1116,6 +1257,7 @@ func _autosave_now() -> void:
 		"levels": var_to_str(_full_level_states),
 		"cache": var_to_str(_level_state_cache),
 		"pending": var_to_str(_pending_arrivals),
+		"status": var_to_str({"ok": _level_ok, "box": _box_cond}),
 	})
 
 
@@ -1132,6 +1274,10 @@ func _prepare_resume(entry: Dictionary) -> void:
 		_level_state_cache = cache
 	if pending is Dictionary:
 		_pending_arrivals = pending
+	var status = str_to_var(entry.get("status", "{}") as String)
+	if status is Dictionary:
+		_level_ok = (status as Dictionary).get("ok", {})
+		_box_cond = (status as Dictionary).get("box", {})
 	_resuming = true
 
 
@@ -1603,6 +1749,7 @@ func _nested_tree_node(level_id: String, path: Array, hops: Array, current_path:
 		"bounds": plan["bounds"],
 		"furniture": _furniture_preview_rects_for(level_id, ld),
 		"children": [],
+		"state": _level_state_label(level_id, path.size() == 1),
 	}
 	if path.size() < 8:   # far deeper than any real project; stops runaway data
 		for c in _nested_children_of(level_id):
@@ -3979,16 +4126,26 @@ func _level_has_goal() -> bool:
 
 func _update_rent_btn() -> void:
 	var was_disabled := rent_btn.disabled
-	rent_btn.disabled = not _level_has_goal() or not gm.check_win() or not _all_furniture_accessible()
+	var was_ok_here := (_level_ok.get(_current_level_id, {}) as Dictionary).get("ok", false) as bool
+	_record_level_status()
+	var status := _project_status()
+	rent_btn.disabled = not status["complete"]
 	tenant_card.set_rent_available(not rent_btn.disabled)
+	tenant_card.set_project_status(status["done"], status["total"], status["pending_names"])
+	var ok_here := (_level_ok.get(_current_level_id, {}) as Dictionary).get("ok", false) as bool
+	if _rent_auto_armed and not _post_win_view and ok_here and not was_ok_here and not status["complete"] \
+			and _level_has_goal():
+		# This apartment is done, but the project isn't: say what's left.
+		Audio.play("success")
+		_toast(tr("This apartment is ready. Still to furnish: %s") % Loc.join_list(status["pending_names"]))
 	# _rent_auto_armed stays false until _load_level() has finished spawning
 	# the level's starting furniture and synced this same baseline — otherwise
 	# resuming an already-satisfied saved layout ("Revisar Plano Actual")
 	# would trip this edge the instant it loads, replaying the completion
 	# screen before the player has done anything. _post_win_view means we're
 	# in the read-only "Watch Again" replay of an already-completed level.
-	if _rent_auto_armed and was_disabled and not rent_btn.disabled and not _post_win_view:
-		_on_rent_pressed()
+	if _rent_auto_armed and was_disabled and not rent_btn.disabled and not _post_win_view and not _completing_project:
+		_complete_project()
 
 
 func _update_accessibility() -> void:
@@ -4044,6 +4201,8 @@ func _on_rent_pressed() -> void:
 
 	GameState.complete_level(_current_level_id, stars, funds, level_rent)
 	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+	_level_ok.clear()
+	_box_cond.clear()
 	# Rented out: nothing left half-done here.
 	if _nested_stack.is_empty():
 		GameState.clear_progress(_current_level_id)

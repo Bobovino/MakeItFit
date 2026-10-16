@@ -25,6 +25,7 @@ func _ready() -> void:
 	_run_all()
 	await _t_tenants_are_cosmetic()
 	await _t_progress_round_trip()
+	await _t_project_needs_every_apartment()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -416,3 +417,116 @@ func _level_state_string(main: Node) -> String:
 	out.append("status %s verified %s win %s comfort %s" % [Requirements.status(gm), gm.moment_verified,
 		gm.check_win(), gm.comfort_pct])
 	return " | ".join(out)
+
+
+# ── A project is rented out only when every apartment in it is ready ─────────
+# Marisol's flat with a rental box in it: furnishing the box alone, or the
+# flat alone, must not rent the project out; both together must. A box that
+# was ready counts again only under the same conditions it was finished in.
+func _t_project_needs_every_apartment() -> void:
+	var real_path := GameState.save_path
+	var real_completed := GameState.completed.duplicate(true)
+	var real_progress := GameState.progress.duplicate(true)
+	var real_motion := GameState.reduce_motion
+	GameState.save_path = "user://test_project_save.json"
+	GameState.reduce_motion = true
+	GameState.completed.erase("beach_house")
+
+	GameState.pending_level_id = "beach_house"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var root_floor: Floor = main._floors[main._current_floor_id]
+	var box := _place_somewhere(main, root_floor, "rental_capsule")
+	main._refresh_functions()
+	var st: Dictionary = main._project_status()
+	_current = "project: a rental box adds an apartment to furnish"
+	_ok(box != null and st["total"] == 2 and not st["complete"], str(st))
+
+	# Furnish the box completely; the flat still has nowhere to sleep or sit.
+	main._on_box_entered(box)
+	for i in 5:
+		await get_tree().process_frame
+	var inner: String = main._current_level_id
+	var inner_floor: Floor = main._floors[main._current_floor_id]
+	for id in ["normal_bed", "stool", "closed_bookcase"]:
+		_place_somewhere(main, inner_floor, id)
+	main._refresh_functions()
+	_current = "project: a finished box alone doesn't rent the project out"
+	_ok(main._level_done(inner) and not main._project_status()["complete"] and main._current_level_id == inner,
+		"%s, now in %s" % [main._project_status(), main._current_level_id])
+	_current = "project: the box isn't rented out as a level of its own"
+	_ok(not GameState.completed.has(inner))
+	main._exit_nested_level_to(0)
+	for i in 5:
+		await get_tree().process_frame
+	root_floor = main._floors[main._current_floor_id]
+	box = main._collect_nested_boxes()[0]
+
+	# A tall shelf beside the box dims it, which nothing inside cares about;
+	# a washing machine beside it is noise, and there is a bed inside.
+	_current = "project: a change around a box that can't affect it leaves it ready"
+	_ok(_put_beside(main, root_floor, box, "bookshelf", func(): return main._compute_box_occlusion(box) < 0.99)
+		and main._level_state_label(inner, false) == "ready", main._level_state_label(inner, false))
+	var washer := _put_beside(main, root_floor, box, "washer",
+		func(): return main._has_noisy_neighbor(root_floor, box.grid_pos, box.grid_w, box.grid_h, box))
+	_current = "project: noise next to a box with a bed inside means checking it again"
+	_ok(washer != null and main._level_state_label(inner, false) == "recheck", main._level_state_label(inner, false))
+	if washer:
+		root_floor.remove_furniture(washer)
+		washer.queue_free()
+	main._refresh_functions()
+	_current = "project: back as it was, the box counts as ready again"
+	_ok(main._level_state_label(inner, false) == "ready", main._level_state_label(inner, false))
+
+	# Now the flat too: the project is rented out.
+	for id in ["normal_bed", "stool"]:
+		_place_somewhere(main, root_floor, id)
+	main._refresh_functions()
+	for i in 5:
+		await get_tree().process_frame
+	_current = "project: with every apartment ready, the project is rented out"
+	_ok(GameState.completed.has("beach_house"), str(main._project_status()))
+	main.queue_free()
+	await get_tree().process_frame
+
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+	GameState.completed = real_completed
+	GameState.progress = real_progress
+	GameState.reduce_motion = real_motion
+
+
+# Puts a piece somewhere around `box` where `wanted` becomes true, refreshing
+# the checker; returns it, or null if no such spot was found.
+func _put_beside(main: Node, fl: Floor, box: Furniture, id: String, wanted: Callable) -> Furniture:
+	var f: Furniture = main._spawn_furniture(id, fl, 0, 0)
+	for dy in range(-10, box.grid_h + 10):
+		for dx in range(-14, box.grid_w + 14):
+			var at := box.grid_pos + Vector2(dx, dy)
+			if fl.can_place(f, at):
+				fl.place_furniture(f, at)
+				if wanted.call():
+					main._refresh_functions()
+					return f
+	fl.remove_furniture(f)
+	f.queue_free()
+	main._refresh_functions()
+	return null
+
+
+# Spawns a piece and puts it down wherever on the floor it is allowed to go.
+func _place_somewhere(main: Node, fl: Floor, id: String) -> Furniture:
+	var f: Furniture = main._spawn_furniture(id, fl, 0, 0)
+	if f == null:
+		return null
+	var b := fl.get_room_bounds()
+	for y in range(b.position.y, b.end.y):
+		for x in range(b.position.x, b.end.x):
+			if fl.can_place(f, Vector2(x, y)):
+				fl.place_furniture(f, Vector2(x, y))
+				return f
+	return f

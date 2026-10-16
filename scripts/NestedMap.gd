@@ -199,6 +199,26 @@ func _make_node(node: Dictionary) -> Control:
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(name_lbl)
 
+	# Whether this apartment's tenants are satisfied: the project is rented
+	# out only when every one of them is.
+	var state := node.get("state", "none") as String
+	if state != "none":
+		var st := Label.new()
+		st.add_theme_font_size_override("font_size", 10)
+		st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		match state:
+			"ready":
+				st.text = "✓ " + tr("Ready")
+				st.add_theme_color_override("font_color", Color(0.56, 0.85, 0.50))
+			"recheck":
+				st.text = "⟳ " + tr("Check again")
+				st.add_theme_color_override("font_color", GameTheme.C_AMBER)
+			_:
+				st.text = "✗ " + tr("To furnish")
+				st.add_theme_color_override("font_color", Color(0.90, 0.48, 0.42))
+		vb.add_child(st)
+
 	# Blueprint thumbnail, letterboxed into a fixed box so every node is the
 	# same size and the tree stays a regular grid.
 	var holder := CenterContainer.new()

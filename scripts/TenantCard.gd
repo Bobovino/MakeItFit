@@ -5,6 +5,7 @@ signal moment_selected(moment_id: String)
 signal need_clicked(need: String)   # a need chip was clicked: show what provides it
 signal height_changed               # the chips wrapped onto more or fewer rows
 signal application_requested        # the fax button: show the tenant's rental application again
+signal project_map_requested        # the apartments chip: show every apartment of the project
 
 @onready var tenant_name_label: Label = $VBox/TenantName
 @onready var flavor_label: Label = $VBox/Flavor
@@ -44,6 +45,7 @@ var _has_application := false             # show the fax button in front of the 
 # While the application prints, chips wait invisible (keeping their place,
 # so the line drawn to them lands right) until their line stamps them in.
 var _stamping := false
+var _project_chip: PanelContainer = null   # "Apartments 1/3": shown when the project has boxes with tenants
 
 
 # Blueprint drafting-table palette — matches GridDraw.gd's corner title block
@@ -184,6 +186,7 @@ func _clear_checklist() -> void:
 	_moment_group = ButtonGroup.new()
 	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
 	_chips_by_req.clear()
+	_project_chip = null   # freed with the rest of the bar
 
 
 # The bar is the level's goal, so it says so: "ALEX NEEDS" in front of the
@@ -666,3 +669,27 @@ func _stamp_chip(chip: Control) -> void:
 	tw.tween_property(chip, "modulate:a", 1.0, 0.07)
 	tw.tween_property(chip, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(chip, "rotation_degrees", 0.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+# How many of the project's apartments are ready: the one from the map and
+# the boxes with tenants inside it. The project is rented out only when all
+# are; until then this chip says so and names the ones left (tooltip).
+func set_project_status(done: int, total: int, pending: Array) -> void:
+	if total <= 1:
+		if is_instance_valid(_project_chip):
+			_project_chip.queue_free()
+		_project_chip = null
+		return
+	if not is_instance_valid(_project_chip):
+		_project_chip = _make_need_chip("rule", false, "apartments")
+		_project_chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_project_chip.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+					and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+				project_map_requested.emit())
+		checklist_container.add_child(_project_chip)
+	(_project_chip.get_child(0).get_child(1) as Label).text = tr("Apartments %d/%d") % [done, total]
+	_project_chip.tooltip_text = (tr("Still to furnish: %s") % Loc.join_list(pending)) if not pending.is_empty() \
+		else tr("Every apartment is ready")
+	_set_need_chip(_project_chip, done == total)
+
