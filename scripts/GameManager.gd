@@ -534,14 +534,18 @@ func check_win() -> bool:
 	return true
 
 
+# Stars come from the share of the starting budget left over.
+const STAR3_SHARE := 0.40
+const STAR2_SHARE := 0.15
+
 func calculate_stars() -> int:
 	var starting := current_level.get("starting_budget", 1) as int
 	if starting <= 0:
 		return 1
 	var pct := float(budget) / float(starting)
-	if pct >= 0.40:
+	if pct >= STAR3_SHARE:
 		return 3
-	elif pct >= 0.15:
+	elif pct >= STAR2_SHARE:
 		return 2
 	else:
 		return 1

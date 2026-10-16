@@ -1084,13 +1084,23 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 	if load_gen != _level_load_id:
 		return
 	_level_completed = true
-	result_screen.show_success(
-		GameState.get_stars(level_id),
-		0,
-		GameState.portfolio_rent,
-		gm.current_level["tenant"]["name"],
-		gm.current_level["tenant"]["monthly_rent"] as int,
-		not gm.get_next_owned_level_id(level_id).is_empty())
+	result_screen.show_success(_result_info(GameState.get_stars(level_id), 0,
+		not gm.get_next_owned_level_id(level_id).is_empty()))
+
+
+# What the results screen reports about the level just rented out.
+func _result_info(stars: int, funds: int, has_next: bool) -> Dictionary:
+	return {
+		"level_name": gm.current_level.get("name", "") as String,
+		"tenant": gm.current_level["tenant"]["name"],
+		"rent": gm.current_level["tenant"]["monthly_rent"] as int,
+		"stars": stars,
+		"funds": funds,
+		"portfolio": GameState.portfolio_rent,
+		"has_next": has_next,
+		"budget_left": gm.budget,
+		"budget_start": gm.current_level.get("starting_budget", 0) as int,
+	}
 
 
 var _intros_shown: Dictionary = {}   # level id -> true, for this session in the play screen
@@ -4206,9 +4216,9 @@ func _on_rent_pressed() -> void:
 				if not ((rule as Dictionary)["ok"] as bool):
 					unmet.append((rule as Dictionary)["label"] as String)
 			if unmet.is_empty():
-				result_screen.show_failure(tr("Not all tenant requirements are met.\nTry again."))
+				result_screen.show_failure(tr("Not every need on the bar is ticked yet."))
 			else:
-				result_screen.show_failure(tr("Not yet:") + "\n" + "\n".join(unmet))
+				result_screen.show_failure(tr("Still missing:"), Array(unmet))
 		_refresh_undo_redo_buttons()
 		return
 	if not _all_furniture_accessible():
@@ -4250,14 +4260,8 @@ func _on_rent_pressed() -> void:
 		return
 
 	_level_completed = true
-	result_screen.show_success(
-		stars,
-		funds,
-		GameState.portfolio_rent,
-		gm.current_level["tenant"]["name"],
-		level_rent,
-		not gm.get_next_owned_level_id(completed_level_id).is_empty()
-	)
+	result_screen.show_success(_result_info(stars, funds,
+		not gm.get_next_owned_level_id(completed_level_id).is_empty()))
 	_refresh_undo_redo_buttons()
 
 
