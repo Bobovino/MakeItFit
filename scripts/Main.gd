@@ -1662,10 +1662,20 @@ func _scenery_for(index: int) -> Dictionary:
 			continue
 		items.append({"fdata": fdata, "x": d.get("x", 0), "y": d.get("y", 0),
 			"rot_steps": d.get("rot_steps", 0), "is_extended": d.get("is_extended", false)})
-	var out := {"segments": segments, "items": items, "box_rect": ctx["box_rect"]}
+	var out := {"segments": segments, "items": items, "box_rect": ctx["box_rect"], "level_id": parent_id}
 	if index > 0:
 		out["outer"] = _scenery_for(index - 1)
 	return out
+
+
+# Who lives in an apartment other than the one on screen, for the 3D view's
+# extras (Room3DView.household_of): a box's household seen from the
+# apartment around it, and that apartment's seen from inside the box.
+func _household_of(level_id: String) -> Dictionary:
+	var app := TenantApplication.for_level(level_id)
+	if app == null:
+		return {}
+	return {"residents": app.residents, "area_m2": _level_floor_area_m2(level_id)}
 
 
 # Own CanvasLayer, above ui_layer's, rather than living in ui_layer and
@@ -2976,6 +2986,7 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
+	_mode3d_view.household_of = _household_of
 	# Hand the rule overlays over before the build, so a view created (or
 	# rebuilt) after the last refresh still shows them.
 	_mode3d_view._rule_sight = gm.sightline_status

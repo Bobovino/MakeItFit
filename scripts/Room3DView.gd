@@ -321,6 +321,7 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		return Vector3((tx - box_center.x) * TILE_M * s + x0 + w * 0.5, 0.0, (ty - box_center.y) * TILE_M * s + z0 + d * 0.5)
 	if first:
 		_style.scenery_scale = s
+	var pieces: Array = []   # for the household, see _add_parent_household
 
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
@@ -348,6 +349,7 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 
 	var wall_h := WALL_H_M * s
 	var wall_t := WALL_THICK * s
+	var wall_lines: Array = []   # for the household, see _add_parent_household
 	for sd in segments:
 		var seg := sd as Dictionary
 		if seg.get("demolished", false):
@@ -359,6 +361,7 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		if length < 0.01:
 			continue
 		var mid := (a + b) * 0.5
+		wall_lines.append([Vector2(a.x, a.z), Vector2(b.x, b.z)])
 		var wall := _box(Vector3(length, wall_h, wall_t) if along_x else Vector3(wall_t, wall_h, length),
 			Vector3(mid.x, floor_y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
 		_no_shadows(wall)
@@ -385,6 +388,11 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		_style_if_bare(mi)
 		_no_shadows(mi)
 		_scenery_nodes.append({"node": mi, "center": c})
+		pieces.append({"pos": Vector3(c.x, floor_y + height * 0.5, c.z), "mesh": mi, "rot_steps": rot, "floor_y": floor_y,
+			"size": Vector3(foot.x * TILE_M * s, height, foot.y * TILE_M * s), "functions": fdata.get("functions", [])})
+	if first:
+		_add_parent_household(data.get("level_id", "") as String, s, pieces, wall_lines,
+			Rect2(f0.x, f0.z, f1.x - f0.x, f1.z - f0.z), Rect2(x0, z0, w, d), floor_y)
 
 
 # Scenery on the camera's side of the room would sit between the camera and
@@ -562,6 +570,7 @@ func _process(delta: float) -> void:
 		_yaw += delta * 18.0
 		_update_camera()
 	_update_wall_fade(delta)
+	_update_extras(delta)
 	if is_instance_valid(_tenant) and _tenant_stops.size() > 1:
 		_tenant_stop_t += delta
 		if _tenant_stop_t >= TENANT_STOP_SECONDS:
@@ -2281,11 +2290,26 @@ const LIE_ROOT_TO_MID := Vector3(0.0, 0.0, -0.873)
 # along whichever of X or Z it mostly is (Vector3.ZERO: no pillow). With two
 # pillows (a trundle bed's), the upper one: the tenant lies on top.
 func _pillow_dir(entry: Dictionary) -> Vector3:
-	var root := entry.get("mesh") as Node3D
-	if not is_instance_valid(root):
-		return Vector3.ZERO
 	var best_y := -INF
 	var best_c := Vector3.ZERO
+	for box in _material_boxes(entry.get("mesh") as Node3D, "pillow"):
+		if (box as AABB).end.y > best_y:
+			best_y = (box as AABB).end.y
+			best_c = (box as AABB).get_center()
+	if best_y == -INF:
+		return Vector3.ZERO
+	var d: Vector3 = best_c - (entry["pos"] as Vector3)
+	if absf(d.x) >= absf(d.z):
+		return Vector3(signf(d.x), 0.0, 0.0) if absf(d.x) > 0.01 else Vector3.ZERO
+	return Vector3(0.0, 0.0, signf(d.z))
+
+
+# The bounds of every surface under `root` whose material is named with
+# `needle`, in the space of root's parent (where entry["pos"] is).
+func _material_boxes(root: Node3D, needle: String) -> Array:
+	var out: Array = []
+	if not is_instance_valid(root):
+		return out
 	var stack: Array = [root]
 	while not stack.is_empty():
 		var n := stack.pop_back() as Node
@@ -2296,7 +2320,7 @@ func _pillow_dir(entry: Dictionary) -> Vector3:
 		var surfaces: Array = []
 		for i in mi.mesh.get_surface_count():
 			var mat := mi.mesh.surface_get_material(i)
-			if mat and "pillow" in mat.resource_name.to_lower():
+			if mat and needle in mat.resource_name.to_lower():
 				surfaces.append(i)
 		if surfaces.is_empty():
 			continue
@@ -2313,16 +2337,8 @@ func _pillow_dir(entry: Dictionary) -> Vector3:
 			var box := AABB(verts[0], Vector3.ZERO)
 			for v in verts:
 				box = box.expand(v)
-			box = xf * box
-			if box.end.y > best_y:
-				best_y = box.end.y
-				best_c = box.get_center()
-	if best_y == -INF:
-		return Vector3.ZERO
-	var d: Vector3 = best_c - (entry["pos"] as Vector3)
-	if absf(d.x) >= absf(d.z):
-		return Vector3(signf(d.x), 0.0, 0.0) if absf(d.x) > 0.01 else Vector3.ZERO
-	return Vector3(0.0, 0.0, signf(d.z))
+			out.append(xf * box)
+	return out
 
 var _tenant: Node3D = null
 var _tenant_stops: Array = []   # [{pos, rot_y, pose}], one per moment (or one per furniture piece, if no moments)
@@ -2374,11 +2390,16 @@ func _pose_for_functions(fns: Array) -> String:
 # _add_furniture_box). entry["pos"] alone is the item's own CENTER at
 # half its height, which is why a bare position-only stop floats a standing
 # pose through a sink's volume and never turns to face anything.
-func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
-	var f: Furniture = entry["furniture"]
+# A piece of the parent apartment's scenery has no Furniture: its entry
+# carries "rot_steps" and "floor_y" instead, and `scale` is the scenery's,
+# for a tenant drawn that much bigger.
+func _tenant_anchor_for(entry: Dictionary, pose: String, scale: float = 1.0) -> Dictionary:
+	var f: Furniture = entry.get("furniture")
 	var center: Vector3 = entry["pos"]
 	var size: Vector3 = entry["size"]
-	var rot_y: float = deg_to_rad(f.rot_steps * 90.0) if is_instance_valid(f) else 0.0
+	var steps: int = f.rot_steps if is_instance_valid(f) else entry.get("rot_steps", 0) as int
+	var rot_y := deg_to_rad(steps * 90.0)
+	var floor_y: float = entry.get("floor_y", 0.0)
 
 	if pose == "lie":
 		# The Lie clip's body extends along its own Z, head towards -Z
@@ -2400,20 +2421,20 @@ func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
 		# left the head hanging almost 0.9m past the pillow end. Shifting the
 		# anchor by that same offset, rotated the same way the body is,
 		# brings the body's actual MIDPOINT to the bed's center instead.
-		var mid_offset := LIE_ROOT_TO_MID.rotated(Vector3.UP, lie_rot)
+		var mid_offset := LIE_ROOT_TO_MID.rotated(Vector3.UP, lie_rot) * scale
 
 		# Rests on the mattress top (entry["size"].y, the item's real modeled
 		# height), not the literal floor -- unlike Sit, whose baked hip-drop
 		# already accounts for a normal seat height while keeping the root at
 		# floor level, Lie assumes it's starting flat at y=0, so a bed's real
 		# elevation above the floor has to be added back in here.
-		var lie_pos := Vector3(center.x, size.y, center.z) - mid_offset
+		var lie_pos := Vector3(center.x, floor_y + size.y, center.z) - mid_offset
 		return {"pos": lie_pos, "rot_y": lie_rot, "pose": pose}
 
 	if pose == "sit":
 		# Facing the same way the chair itself faces, rather than always the
 		# world's default -Z regardless of how it was placed.
-		return {"pos": Vector3(center.x, 0.0, center.z), "rot_y": rot_y, "pose": pose}
+		return {"pos": Vector3(center.x, floor_y, center.z), "rot_y": rot_y, "pose": pose}
 
 	# Standing-in-front poses: step out from the footprint edge facing the
 	# item's front, then turn around to face back at it. The item's front is
@@ -2427,8 +2448,8 @@ func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
 	# along Z) without needing to special-case each of the 4 facings by hand.
 	var front := Vector3.BACK.rotated(Vector3.UP, rot_y)
 	var half_extent := absf(front.x) * size.x * 0.5 + absf(front.z) * size.z * 0.5
-	var stand_pos := center + front * (half_extent + USE_STANDOFF_M)
-	return {"pos": Vector3(stand_pos.x, 0.0, stand_pos.z), "rot_y": rot_y + PI, "pose": pose}
+	var stand_pos := center + front * (half_extent + USE_STANDOFF_M * scale)
+	return {"pos": Vector3(stand_pos.x, floor_y, stand_pos.z), "rot_y": rot_y + PI, "pose": pose}
 
 
 # One stop per NEED (not per moment) — whichever placed furniture piece
@@ -2498,6 +2519,247 @@ func _find_stop_for_need(moment_id: String, need: String) -> Variant:
 		if need in fns:
 			return _tenant_anchor_for(entry, _pose_for_functions(fns))
 	return null
+
+
+# ── The other households ────────────────────────────────────────────────────
+# Only the level on screen is lived in for real (TenantLayer). The households
+# next to it in the nesting are drawn as extras: the same Miis, at their own
+# apartment's scale, just being there. Inside a box, the household of the
+# apartment around it uses that apartment's giant furniture; in an apartment
+# with boxes in it, each box's household stands at its door in miniature
+# (a box is a closed little house, with no inside to see). Extras never
+# path-find, speak or check anything, and take no random numbers: every few
+# seconds they all move on to their next stop in a fixed order, or stay put
+# with Reduce motion. Their animation stops while they are off screen. Animals
+# have no Mii and are left out.
+const EXTRAS_MAX := 6                # Miis besides the real household, for phones
+const EXTRA_STOP_SECONDS := 6.0
+const EXTRA_DOOR_GAP_M := 0.5        # between two Miis at a box's door, at their own scale
+const EXTRA_CLEARANCE_M := 0.35      # a standing Mii's half-depth, at its own scale
+const EXTRA_NEAR_M := 2.5            # furniture further from the box (in its apartment's metres) is out of sight
+# level id -> {"residents": Array[TenantResident], "area_m2": float}, or {}
+# when nobody lives there. Set by Main; without it there are no extras.
+var household_of: Callable
+var _extras_root: Node3D = null
+var _extras: Array = []              # [{mii, scale, stops, idx, vis?, group?}]
+var _box_extras: Dictionary = {}     # box mesh instance id -> {mesh, group}
+var _extras_t := 0.0
+var _box_scan_t := 0.0
+
+
+func _clear_extras() -> void:
+	if is_instance_valid(_extras_root):
+		_extras_root.queue_free()
+	_extras_root = null
+	_extras.clear()
+	_box_extras.clear()
+	_extras_t = 0.0
+	_box_scan_t = 0.0
+
+
+# Beside build_root rather than in it, like TenantLayer's figures, so the
+# style controller never restyles the Miis as furniture.
+func _extras_parent() -> Node3D:
+	if not is_instance_valid(_extras_root):
+		_extras_root = Node3D.new()
+		_extras_root.name = "TenantExtras"
+		build_root.get_parent().add_child(_extras_root)
+	return _extras_root
+
+
+func _household(level_id: String) -> Dictionary:
+	if level_id.is_empty() or not household_of.is_valid():
+		return {}
+	return household_of.call(level_id) as Dictionary
+
+
+func _miis_of(household: Dictionary) -> Array:
+	return (household.get("residents", []) as Array).filter(func(r): return (r as TenantResident).body != "animal")
+
+
+# One Mii of another household, `scale` times life size, under `parent`,
+# taking `stops` ({pos, rot_y, pose} in parent's space) in turn from `first`.
+func _add_extra(r: TenantResident, scale: float, parent: Node3D, stops: Array, first: int) -> Dictionary:
+	if _extras.size() >= EXTRAS_MAX or stops.is_empty():
+		return {}
+	var mii := TenantMiiScript.new() as TenantMii
+	parent.add_child(mii)
+	mii.set_body(r.body, r.is_feminine())
+	mii.scale = Vector3.ONE * scale
+	mii.set_animating(false)
+	# Standing, sitting or lying (the body then reaches back along -Z), in
+	# the Mii's own units.
+	var notifier := VisibleOnScreenNotifier3D.new()
+	notifier.aabb = AABB(Vector3(-0.5, 0.0, -2.0), Vector3(1.0, 1.8, 2.6))
+	mii.add_child(notifier)
+	notifier.screen_entered.connect(mii.set_animating.bind(true))
+	notifier.screen_exited.connect(mii.set_animating.bind(false))
+	var x := {"mii": mii, "scale": scale, "stops": stops, "idx": first % stops.size()}
+	_extras.append(x)
+	_pose_extra(x, false)
+	return x
+
+
+func _pose_extra(x: Dictionary, animate: bool) -> void:
+	var mii: TenantMii = x["mii"]
+	var stop: Dictionary = (x["stops"] as Array)[x["idx"]]
+	var put := func() -> void:
+		mii.position = stop["pos"]
+		mii.rotation.y = stop["rot_y"]
+		mii.set_pose(stop["pose"])
+		if x.has("vis"):
+			(x["vis"] as Dictionary)["center"] = stop["pos"]
+	if not animate or GameState.reduce_motion:
+		put.call()
+		return
+	var full := Vector3.ONE * (x["scale"] as float)
+	var tw := mii.create_tween()
+	tw.tween_property(mii, "scale", full * 0.05, 0.15).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(put)
+	tw.tween_property(mii, "scale", full, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _update_extras(delta: float) -> void:
+	_box_scan_t -= delta
+	if _box_scan_t <= 0.0:
+		_box_scan_t = 0.5
+		_sync_box_extras()
+	for rec in _box_extras.values():
+		var mi := (rec as Dictionary)["mesh"] as Node3D
+		var group := (rec as Dictionary)["group"] as Node3D
+		if is_instance_valid(mi) and is_instance_valid(group):
+			group.transform = mi.transform   # a box being dragged takes its household along
+	if _extras.is_empty() or GameState.reduce_motion:
+		return
+	_extras_t += delta
+	if _extras_t < EXTRA_STOP_SECONDS:
+		return
+	_extras_t = 0.0
+	for x in _extras:
+		if (x["stops"] as Array).size() > 1 and is_instance_valid(x["mii"]):
+			x["idx"] = ((x["idx"] as int) + 1) % (x["stops"] as Array).size()
+			_pose_extra(x, true)
+
+
+# Keeps one household at the door of every box placed in the room, as boxes
+# are bought, moved and sold.
+func _sync_box_extras() -> void:
+	if not household_of.is_valid():
+		return
+	var seen := {}
+	for entry in _furniture_entries:
+		var f := entry.get("furniture") as Furniture
+		var mi := entry.get("mesh") as MeshInstance3D
+		if not is_instance_valid(f) or not is_instance_valid(mi) or not f.is_nested_box or f.child_level_id.is_empty():
+			continue
+		var key := mi.get_instance_id()
+		seen[key] = true
+		if not _box_extras.has(key):
+			_box_extras[key] = _add_box_household(f, mi)
+	for key in _box_extras.keys():
+		if seen.has(key):
+			continue
+		var group := (_box_extras[key] as Dictionary)["group"] as Node3D
+		_extras = _extras.filter(func(x): return x.get("group") != group)
+		if is_instance_valid(group):
+			group.queue_free()
+		_box_extras.erase(key)
+
+
+# The box's household in a row in front of its door (the model's walnut
+# surface; the box's front if it has none), facing out, at the scale that
+# makes the apartment inside as big as the box.
+func _add_box_household(f: Furniture, mi: MeshInstance3D) -> Dictionary:
+	var group := Node3D.new()
+	_extras_parent().add_child(group)
+	group.transform = mi.transform
+	var rec := {"mesh": mi, "group": group}
+	var household := _household(f.child_level_id)
+	var miis := _miis_of(household)
+	var area: float = household.get("area_m2", 0.0)
+	var box_mesh := mi.mesh as BoxMesh
+	if miis.is_empty() or area <= 0.0 or box_mesh == null:
+		return rec
+	var canon := box_mesh.size
+	var scale := clampf(sqrt(canon.x * canon.z / area), 0.02, 0.5)
+	var out := Vector3.BACK
+	var door := Vector3.ZERO
+	var doors := _material_boxes(mi, "walnut")
+	if not doors.is_empty():
+		door = mi.transform.affine_inverse() * (doors[0] as AABB).get_center()
+		out = Vector3(signf(door.x), 0.0, 0.0) if absf(door.x) / canon.x >= absf(door.z) / canon.z else Vector3(0.0, 0.0, signf(door.z))
+	var side := out.rotated(Vector3.UP, PI * 0.5)
+	var front := absf(out.x) * canon.x * 0.5 + absf(out.z) * canon.z * 0.5 + EXTRA_CLEARANCE_M * scale
+	var stops: Array = []
+	for i in miis.size():
+		var along := door.dot(side) + (i - (miis.size() - 1) * 0.5) * EXTRA_DOOR_GAP_M * scale
+		stops.append({"pos": out * front + side * along + Vector3(0.0, -canon.y * 0.5, 0.0),
+			"rot_y": atan2(out.x, out.z), "pose": "stand"})
+	for i in miis.size():
+		var x := _add_extra(miis[i] as TenantResident, scale, group, stops, i)
+		if not x.is_empty():
+			x["group"] = group
+	return rec
+
+
+# The parent apartment's household, drawn as giant as the rest of it: at
+# whatever of its furniture near the box they would use (in bed, on a seat,
+# at the stove), and standing about the box looking in, so someone is always
+# in sight from inside it. `pieces` are the scenery items as
+# _tenant_anchor_for entries, `walls` its wall lines and `floor_rect` its
+# floor, all in view metres; `room` is the box's footprint.
+func _add_parent_household(level_id: String, s: float, pieces: Array, walls: Array, floor_rect: Rect2, room: Rect2, floor_y: float) -> void:
+	var miis := _miis_of(_household(level_id))
+	if miis.is_empty():
+		return
+	var clear := EXTRA_CLEARANCE_M * s
+	var keep_out := room.grow(clear)
+	var mid := Vector3(room.get_center().x, floor_y, room.get_center().y)
+	var stops: Array = []
+	for e in pieces:
+		var fns := (e as Dictionary).get("functions", []) as Array
+		if fns.is_empty():
+			continue
+		var stop := _tenant_anchor_for(e as Dictionary, _pose_for_functions(fns), s)
+		var at: Vector3 = stop["pos"]
+		if keep_out.has_point(Vector2(at.x, at.z)) or at.distance_to(mid) > EXTRA_NEAR_M * s + room.size.length() * 0.5:
+			continue
+		if not stops.any(func(o): return (o["pos"] as Vector3).is_equal_approx(at)):
+			stops.append(stop)
+	stops.sort_custom(func(a, b): return (a["pos"] as Vector3).distance_to(mid) < (b["pos"] as Vector3).distance_to(mid))
+	# Around the box, on open floor: not in a piece, a wall or off the floor.
+	var ring: Array = []
+	for dir in [Vector3(0, 0, -1), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0)]:
+		var at: Vector3 = mid + dir * (absf(dir.x) * room.size.x * 0.5 + absf(dir.z) * room.size.y * 0.5 + clear * 2.0)
+		var spot := Vector2(at.x, at.z)
+		if not floor_rect.grow(-clear).has_point(spot):
+			continue
+		if pieces.any(func(e): return Rect2(Vector2((e["pos"] as Vector3).x, (e["pos"] as Vector3).z) - Vector2((e["size"] as Vector3).x, (e["size"] as Vector3).z) * 0.5,
+				Vector2((e["size"] as Vector3).x, (e["size"] as Vector3).z)).grow(clear).has_point(spot)):
+			continue
+		if walls.any(func(wl): return Geometry2D.get_closest_point_to_segment(spot, wl[0], wl[1]).distance_to(spot) < clear):
+			continue
+		ring.append({"pos": at, "rot_y": atan2(-dir.x, -dir.z), "pose": "stand"})
+	# Looking in first, then off to the nearest furniture and back.
+	var all: Array = []
+	for i in maxi(ring.size(), stops.size()):
+		if i < ring.size():
+			all.append(ring[i])
+		if i < stops.size():
+			all.append(stops[i])
+	if all.is_empty():
+		return
+	var root := _extras_parent()
+	for i in miis.size():
+		if i >= all.size():
+			break   # never two on one spot
+		var first := i if all.size() < miis.size() else floori(float(i * all.size()) / miis.size())
+		var x := _add_extra(miis[i] as TenantResident, s, root, all, first)
+		if x.is_empty():
+			continue
+		var vis := {"node": x["mii"], "center": (x["mii"] as Node3D).position}
+		x["vis"] = vis
+		_scenery_nodes.append(vis)   # hidden on the camera's side, like the rest of the scenery
 
 
 # Switches every placed piece (fold state, rail position -- Furniture.
@@ -2857,6 +3119,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		c.queue_free()
 	_wall_data.clear()
 	_scenery_nodes.clear()
+	_clear_extras()
 	_wall_grid_overlays.clear()
 	_hitbox_highlights.clear()
 	_drag_highlight = null
@@ -3084,6 +3347,7 @@ func build_single_item(fdata: Dictionary) -> void:
 		c.queue_free()
 	_wall_data.clear()
 	_scenery_nodes.clear()
+	_clear_extras()
 	if _style != null:
 		var item_dims := fdata.get("size", {}) as Dictionary
 		_style.scene_center = Vector3.ZERO
