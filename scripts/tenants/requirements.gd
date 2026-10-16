@@ -63,6 +63,7 @@ static func glyph(id: String) -> String:
 	match key:
 		"sight": return "👁"
 		"zones": return "🚧"
+		"apartments": return "🏠"
 	return TenantCard.NEED_GLYPH.get(key, "❔") as String
 
 

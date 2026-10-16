@@ -70,6 +70,7 @@ static func apply(main: Node, data: Dictionary) -> void:
 		return
 	var gm: GameManager = main.gm
 	main._restoring_furniture = true
+	main._batch_refresh = true   # one needs check at the end, not one per piece
 	var was_armed: bool = main._rent_auto_armed
 	main._rent_auto_armed = false
 
@@ -88,6 +89,7 @@ static func apply(main: Node, data: Dictionary) -> void:
 		if fl == null:
 			continue
 		var fd: Dictionary = floors[fid]
+		fl.begin_batch()
 		main._apply_builder_entry({"floor_id": fid, "data": fd.get("builder", {})})
 		for entry in fl.get_all_furniture().duplicate():
 			fl.remove_furniture(entry as Furniture)
@@ -100,11 +102,13 @@ static func apply(main: Node, data: Dictionary) -> void:
 			for origin in walls[edge]:
 				fl.place_wall_item(edge, origin as Vector2i, walls[edge][origin] as String)
 		_restore_paint(main, fid, fl, fd.get("paint", {}))
+		fl.end_batch()
 
 	gm.moment_verified = (data.get("verified", {}) as Dictionary).duplicate()
 	gm.moment_zone_ok = (data.get("zone_ok", {}) as Dictionary).duplicate()
 	gm.moment_sightline_ok = (data.get("sight_ok", {}) as Dictionary).duplicate()
 	main._restoring_furniture = false
+	main._batch_refresh = false
 	var moment := data.get("moment", "") as String
 	if moment != "" and not gm.moments.is_empty():
 		main._on_moment_selected(moment, false)

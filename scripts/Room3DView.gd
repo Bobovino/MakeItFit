@@ -2276,6 +2276,54 @@ const USE_STANDOFF_M := 0.34   # clearance in front of the footprint edge
 # "lie" branch of _tenant_anchor_for for why this is needed at all.
 const LIE_ROOT_TO_MID := Vector3(0.0, 0.0, -0.873)
 
+
+# Which way the bed's pillow lies from the bed's centre, in the room's space,
+# along whichever of X or Z it mostly is (Vector3.ZERO: no pillow). With two
+# pillows (a trundle bed's), the upper one: the tenant lies on top.
+func _pillow_dir(entry: Dictionary) -> Vector3:
+	var root := entry.get("mesh") as Node3D
+	if not is_instance_valid(root):
+		return Vector3.ZERO
+	var best_y := -INF
+	var best_c := Vector3.ZERO
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n := stack.pop_back() as Node
+		stack.append_array(n.get_children())
+		var mi := n as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var surfaces: Array = []
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.mesh.surface_get_material(i)
+			if mat and "pillow" in mat.resource_name.to_lower():
+				surfaces.append(i)
+		if surfaces.is_empty():
+			continue
+		# Mesh space -> the space entry["pos"] is in (the root's parent's).
+		var xf := Transform3D.IDENTITY
+		var walk: Node = mi
+		while walk != root.get_parent() and walk is Node3D:
+			xf = (walk as Node3D).transform * xf
+			walk = walk.get_parent()
+		for i in surfaces:
+			var verts: PackedVector3Array = mi.mesh.surface_get_arrays(i)[Mesh.ARRAY_VERTEX]
+			if verts.is_empty():
+				continue
+			var box := AABB(verts[0], Vector3.ZERO)
+			for v in verts:
+				box = box.expand(v)
+			box = xf * box
+			if box.end.y > best_y:
+				best_y = box.end.y
+				best_c = box.get_center()
+	if best_y == -INF:
+		return Vector3.ZERO
+	var d: Vector3 = best_c - (entry["pos"] as Vector3)
+	if absf(d.x) >= absf(d.z):
+		return Vector3(signf(d.x), 0.0, 0.0) if absf(d.x) > 0.01 else Vector3.ZERO
+	return Vector3(0.0, 0.0, signf(d.z))
+
 var _tenant: Node3D = null
 var _tenant_stops: Array = []   # [{pos, rot_y, pose}], one per moment (or one per furniture piece, if no moments)
 var _tenant_stop_idx: int = 0
@@ -2333,14 +2381,18 @@ func _tenant_anchor_for(entry: Dictionary, pose: String) -> Dictionary:
 	var rot_y: float = deg_to_rad(f.rot_steps * 90.0) if is_instance_valid(f) else 0.0
 
 	if pose == "lie":
-		# The Lie clip's body extends along world Z by default (measured via
-		# bone positions: head/foot are ~1.35m apart in Z, ~0m in X), but an
-		# unrotated item's long axis in this game is X (fw = grid_w*TILE_M
-		# along world X, see _add_furniture_box) -- both then get the SAME
-		# rot_steps*90 applied on top, so at every rotation the body ends up
-		# 90 deg crossed against the bed instead of lying along it. A fixed
-		# quarter turn reconciles the two conventions before rot_y is applied.
-		var lie_rot := rot_y + PI * 0.5
+		# The Lie clip's body extends along its own Z, head towards -Z
+		# (measured via bone positions: head/foot are ~1.35m apart in Z, ~0m
+		# in X). The head goes to the bed's pillow: the bed models don't all
+		# put it at the same end (+X on most single and double beds, -Z on the
+		# storage and trundle beds, the wall end on Murphy beds), and a fixed
+		# quarter turn on top of rot_y laid tenants the wrong way round on
+		# half of them. A bed without a pillow (sofa beds, the ottoman) gets
+		# its +X end, the pillow end of the plain beds.
+		var head_dir := _pillow_dir(entry)
+		if head_dir == Vector3.ZERO:
+			head_dir = Vector3.RIGHT.rotated(Vector3.UP, rot_y)
+		var lie_rot := atan2(-head_dir.x, -head_dir.z)
 
 		# The root bone is NOT at the body's own center-of-length -- it sits
 		# ~0.87m toward the feet from the head/foot midpoint (measured via
