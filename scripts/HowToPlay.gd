@@ -7,7 +7,7 @@ class_name HowToPlay
 # This pulls the same title/body pairs straight out of levels.json (so it
 # can never drift out of sync with what the intro cards actually say),
 # plus a static controls cheat-sheet and the needs glyph legend, on three
-# tabs of one window reachable from the Menu at any time.
+# pages of one window reachable from the menu at any time.
 
 static func open(host: Node) -> HowToPlay:
 	var m := HowToPlay.new()
@@ -16,29 +16,25 @@ static func open(host: Node) -> HowToPlay:
 	return m
 
 
+var _step_page: Callable
+
+
 func _build() -> void:
-	layer = 26  # above SettingsMenu (25), since it's opened from there
+	layer = 26  # over the pause menu (24) and the settings screen
 
 	# Three pages instead of one long scroll: the controls, what the needs
-	# icons mean, and the mechanics met so far. The window keeps its height
-	# from page to page.
-	var w := MenuKit.modal(self, tr("HOW TO PLAY"), 760.0, _close, true)
-	var body: VBoxContainer = w["body"]
+	# icons mean, and the mechanics met so far, picked on the left like the
+	# settings' categories.
+	var w := MenuKit.screen(self, tr("How to Play"), _close, true, false)
+	var page: VBoxContainer = w["page"]
 	var scroll: ScrollContainer = w["scroll"]
 	var pages := [_controls_page, _needs_legend, _mechanic_cards]
-	MenuKit.tabs(w["top"], [tr("Controls"), tr("Needs"), tr("Mechanics")], func(i: int):
-		for c in body.get_children():
+	_step_page = MenuKit.categories(w["nav"], [tr("Controls"), tr("Needs"), tr("Mechanics")], func(i: int):
+		for c in page.get_children():
+			page.remove_child(c)
 			c.queue_free()
-		(pages[i] as Callable).call(body)
+		(pages[i] as Callable).call(page)
 		scroll.scroll_vertical = 0)
-
-	var push := Control.new()
-	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	(w["footer"] as Control).add_child(push)
-	var close_btn := MenuKit.button(tr("Close"), "primary")
-	close_btn.custom_minimum_size.x = 120
-	close_btn.pressed.connect(_close)
-	(w["footer"] as Control).add_child(close_btn)
 
 
 func _controls_page(body: VBoxContainer) -> void:
@@ -143,8 +139,30 @@ func _close() -> void:
 	queue_free()
 
 
-# Esc closes this window.
+# Esc closes this window; Q and E (or Page Up/Down) turn the page; ↑ ↓
+# scroll it.
 func _input(event: InputEvent) -> void:
-	if MenuKit.is_escape(event):
-		_close()
-		get_viewport().set_input_as_handled()
+	var key := event as InputEventKey
+	if key == null or not key.pressed:
+		return
+	var scroll := find_children("*", "ScrollContainer", true, false)[0] as ScrollContainer
+	match key.keycode:
+		KEY_ESCAPE:
+			if key.echo:
+				return
+			_close()
+		KEY_Q, KEY_PAGEUP:
+			if key.echo:
+				return
+			_step_page.call(-1)
+		KEY_E, KEY_PAGEDOWN:
+			if key.echo:
+				return
+			_step_page.call(1)
+		KEY_UP:
+			scroll.scroll_vertical -= 60
+		KEY_DOWN:
+			scroll.scroll_vertical += 60
+		_:
+			return
+	get_viewport().set_input_as_handled()

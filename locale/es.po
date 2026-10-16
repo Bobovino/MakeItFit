@@ -212,44 +212,38 @@ msgid "Comfort %d%%"
 msgstr "Comodidad %d%%"
 
 #: scripts/CreditsMenu.gd:27
-msgid "CREDITS"
-msgstr "CRÉDITOS"
+#: scripts/MainMenu.gd:121
+#: scripts/PauseMenu.gd:70
+msgid "Credits"
+msgstr "Créditos"
 
-#: scripts/CreditsMenu.gd:30
+#: scripts/CreditsMenu.gd:31
 msgid "Fonts"
 msgstr "Tipografías"
 
-#: scripts/CreditsMenu.gd:35
+#: scripts/CreditsMenu.gd:36
 msgid "Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)"
 msgstr "Con licencia SIL Open Font License 1.1 (scripts.sil.org/OFL)"
 
-#: scripts/CreditsMenu.gd:37
+#: scripts/CreditsMenu.gd:38
 msgid "Art & Sound"
 msgstr "Arte y sonido"
 
-#: scripts/CreditsMenu.gd:38
+#: scripts/CreditsMenu.gd:39
 msgid "Interface sounds and casino/UI audio by Kenney (kenney.nl)"
 msgstr "Sonidos de interfaz y audio de casino/UI de Kenney (kenney.nl)"
 
-#: scripts/CreditsMenu.gd:40
+#: scripts/CreditsMenu.gd:41
 msgid "Released under Creative Commons Zero (CC0)"
 msgstr "Publicado bajo Creative Commons Zero (CC0)"
 
-#: scripts/CreditsMenu.gd:42
+#: scripts/CreditsMenu.gd:43
 msgid "Ambient Rain"
 msgstr "Lluvia ambiental"
 
-#: scripts/CreditsMenu.gd:43
+#: scripts/CreditsMenu.gd:44
 msgid "Original work created for this project — no attribution required."
 msgstr "Obra original creada para este proyecto; no requiere atribución."
-
-#: scripts/CreditsMenu.gd:48
-#: scripts/HowToPlay.gd:38
-#: scripts/NestedMap.gd:88
-#: scripts/SettingsMenu.gd:158
-#: scripts/ui/menu_kit.gd:79
-msgid "Close"
-msgstr "Cerrar"
 
 #: scripts/Furniture.gd:603
 msgid "▲ FOLD"
@@ -283,99 +277,100 @@ msgstr "Zona de %s"
 msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr "%.1f° de pendiente  |  %.2f m → %.2f m en %.1f m  (casillas %d–%d)"
 
-#: scripts/HowToPlay.gd:25
-msgid "HOW TO PLAY"
-msgstr "CÓMO SE JUEGA"
+#: scripts/HowToPlay.gd:28
+#: scripts/PauseMenu.gd:68
+msgid "How to Play"
+msgstr "Cómo se juega"
 
-#: scripts/HowToPlay.gd:29
+#: scripts/HowToPlay.gd:32
 msgid "Controls"
 msgstr "Controles"
 
-#: scripts/HowToPlay.gd:29
+#: scripts/HowToPlay.gd:32
 msgid "Needs"
 msgstr "Necesidades"
 
-#: scripts/HowToPlay.gd:29
+#: scripts/HowToPlay.gd:32
 msgid "Mechanics"
 msgstr "Mecánicas"
 
-#: scripts/HowToPlay.gd:54
+#: scripts/HowToPlay.gd:50
 msgid "Things are hung on walls in the 3D view: drag an item onto a wall. Buying a wall-only item from the floor plan switches to 3D for you."
 msgstr "Las cosas se cuelgan en las paredes en la vista 3D: arrastra un objeto hasta una pared. Si compras un objeto solo de pared desde el plano, se cambia a 3D por ti."
 
-#: scripts/HowToPlay.gd:55
+#: scripts/HowToPlay.gd:51
 msgid "In the 3D view, Q and E turn the view a quarter at a time and W/A/S/D move it. Scroll to zoom, left-drag empty floor to pan, middle-drag to orbit freely, middle-click to recenter."
 msgstr "En la vista 3D, Q y E giran la vista un cuarto de vuelta y W/A/S/D la desplazan. La rueda hace zoom, arrastrar con el izquierdo sobre suelo vacío desplaza, arrastrar con el central gira libremente y un clic central recentra."
 
-#: scripts/HowToPlay.gd:56
+#: scripts/HowToPlay.gd:52
 msgid "The Walls button (or Home/End) switches between walls Up, Cutaway and Down. Cutaway lowers only the walls in front of where you are looking."
 msgstr "El botón Paredes (o Inicio/Fin) alterna las paredes entre Arriba, Corte y Abajo. Corte baja solo las paredes que tapan lo que estás mirando."
 
-#: scripts/HowToPlay.gd:57
+#: scripts/HowToPlay.gd:53
 msgid "Double-click a box that has an apartment inside to step into it. Back takes you out one level; Map shows every apartment and jumps to any of them."
 msgstr "Haz doble clic en una caja con un piso dentro para entrar. Volver te saca un nivel; Mapa muestra todos los pisos y te lleva a cualquiera de ellos."
 
-#: scripts/HowToPlay.gd:58
+#: scripts/HowToPlay.gd:54
 msgid "Press R to rotate a piece — it cycles through all 4 facings, including a true 180° flip."
 msgstr "Pulsa R para girar una pieza: pasa por las 4 orientaciones, incluido un giro real de 180°."
 
-#: scripts/HowToPlay.gd:59
+#: scripts/HowToPlay.gd:55
 msgid "Click a foldable piece (like a sofa bed) to fold or unfold it."
 msgstr "Haz clic en una pieza plegable (como un sofá cama) para plegarla o desplegarla."
 
-#: scripts/HowToPlay.gd:60
+#: scripts/HowToPlay.gd:56
 msgid "The Builder tab (next to Furniture) adds walls, columns, windows, doors, and paints floor kinds like balcony or bathroom."
 msgstr "La pestaña Construir (junto a Muebles) añade paredes, columnas, ventanas y puertas, y pinta tipos de suelo como balcón o baño."
 
-#: scripts/HowToPlay.gd:61
+#: scripts/HowToPlay.gd:57
 msgid "The dot in a piece's corner shows how easily it moves: green moves freely, yellow can move but makes the tenant less comfortable, red keeps one position all day unless it is on a rail. On larger pieces, one to three feathers beside the dot say the same thing."
 msgstr "El punto en la esquina de una pieza indica lo fácil que es moverla: verde se mueve libremente, amarillo se puede mover pero incomoda al inquilino, rojo se queda en un sitio todo el día salvo que vaya sobre un riel. En las piezas grandes, de una a tres plumas junto al punto dicen lo mismo."
 
-#: scripts/HowToPlay.gd:62
+#: scripts/HowToPlay.gd:58
 msgid "The bar at the bottom is the goal: every need listed there has to be ticked."
 msgstr "La barra de abajo es el objetivo: hay que marcar todas las necesidades que aparecen."
 
-#: scripts/HowToPlay.gd:63
+#: scripts/HowToPlay.gd:59
 msgid "A piece with a heart after its name is a keepsake: it can be moved but never sold."
 msgstr "Una pieza con un corazón tras su nombre es un recuerdo: se puede mover, pero nunca vender."
 
-#: scripts/HowToPlay.gd:64
+#: scripts/HowToPlay.gd:60
 msgid "Furniture can move between an apartment and the boxes in it: drag a piece onto a box, or, from inside a box, onto the Back button. You go with it, and it is on your pointer ready to put down. Hold Shift as you let go to send it without going: it waits under Owned in that apartment's catalogue, free to place. Keepsakes stay where they are."
 msgstr "Los muebles pueden pasar entre un piso y las cajas que hay dentro: arrastra una pieza sobre una caja o, desde dentro de una caja, sobre el botón Volver. Tú vas con ella, y queda en tu puntero lista para colocarla. Mantén Mayús al soltar para enviarla sin ir: esperará en Tuyos en el catálogo de ese piso, gratis para colocar. Los recuerdos se quedan donde están."
 
-#: scripts/HowToPlay.gd:65
+#: scripts/HowToPlay.gd:61
 msgid "Build has a Glass Wall beside the ordinary Wall: a real wall you can't put things or look through, but daylight passes it. Good for a guest room that would otherwise be dark."
 msgstr "Construir tiene una Pared de cristal junto a la pared normal: una pared de verdad, sin poder apoyar cosas ni ver a través, pero que deja pasar la luz del día. Ideal para un cuarto de invitados que, si no, quedaría a oscuras."
 
-#: scripts/HowToPlay.gd:66
+#: scripts/HowToPlay.gd:62
 msgid "Reeded glass and curtains hide what is behind them without darkening the room: they stop a line of sight and split a room into zones, but daylight passes. A curtain only does so while it is drawn (click it to draw it or pull it back)."
 msgstr "El cristal acanalado y las cortinas ocultan lo que hay detrás sin oscurecer la habitación: cortan una línea de visión y dividen la habitación en zonas, pero dejan pasar la luz. Una cortina solo lo hace mientras está corrida (haz clic para correrla o descorrerla)."
 
-#: scripts/HowToPlay.gd:67
+#: scripts/HowToPlay.gd:63
 msgid "A caged bird needs daylight, and it sings: a bed within half a metre of it is no place to sleep."
 msgstr "Un pájaro enjaulado necesita luz natural, y canta: una cama a menos de medio metro no es sitio para dormir."
 
-#: scripts/HowToPlay.gd:68
+#: scripts/HowToPlay.gd:64
 msgid "You can also buy for another apartment: pick a piece in the catalogue and click it down on a box (or on Back). It is paid for from the budget of the apartment you are in and delivered to the other one, for a lodger whose own budget won't stretch."
 msgstr "También puedes comprar para otro piso: elige una pieza del catálogo y haz clic sobre una caja (o sobre Volver). Se paga con el presupuesto del piso en el que estás y se entrega en el otro, para un realquilado al que no le llega el presupuesto."
 
-#: scripts/HowToPlay.gd:69
+#: scripts/HowToPlay.gd:65
 msgid "Rentals in the furniture catalogue are boxed apartments: placing one pays you its rent, in exchange for the floor it takes up. Removing it means paying the rent back. Double-click a box to look inside."
 msgstr "Los alquileres del catálogo son pisos en caja: colocar uno te paga su alquiler a cambio del suelo que ocupa. Quitarlo significa devolver el alquiler. Haz doble clic en una caja para mirar dentro."
 
-#: scripts/HowToPlay.gd:70
+#: scripts/HowToPlay.gd:66
 msgid "Ctrl+%s undoes your last action; Ctrl+Shift+%s redoes it."
 msgstr "Ctrl+%s deshace tu última acción; Ctrl+Mayús+%s la rehace."
 
-#: scripts/HowToPlay.gd:74
+#: scripts/HowToPlay.gd:70
 msgid "Press T to switch between the Floor Plan and 3D view."
 msgstr "Pulsa T para cambiar entre el plano y la vista 3D."
 
-#: scripts/HowToPlay.gd:75
+#: scripts/HowToPlay.gd:71
 msgid "Press 1-9 to jump straight to a moment (Day, Night, ...) without clicking its tab."
 msgstr "Pulsa 1-9 para saltar directamente a un momento (Día, Noche…) sin hacer clic en su pestaña."
 
-#: scripts/HowToPlay.gd:76
+#: scripts/HowToPlay.gd:72
 msgid "Press Up or Down to step to the floor above or below, Left or Right for the previous or next moment. On the floor plan W/S and A/D do the same."
 msgstr "Arriba o Abajo pasa a la planta de arriba o de abajo; Izquierda o Derecha, al momento anterior o siguiente. En el plano, W/S y A/D hacen lo mismo."
 
@@ -453,6 +448,7 @@ msgid "TOOLS  (drag on the floor plan to build)"
 msgstr "HERRAMIENTAS  (arrastra sobre el plano para construir)"
 
 #: scripts/Inventory.gd:472
+#: scripts/ui/menu_kit.gd:148
 msgid "Select"
 msgstr "Seleccionar"
 
@@ -770,6 +766,7 @@ msgid "See every apartment in this project and jump to any of them"
 msgstr "Ver todos los pisos de este proyecto e ir a cualquiera"
 
 #: scripts/Main.gd:3270
+#: scripts/ui/menu_kit.gd:141
 msgid "Back"
 msgstr "Volver"
 
@@ -947,15 +944,16 @@ msgstr "Construye tu cartera inmobiliaria. Llega a 10 000€/mes. Jubílate."
 msgid "Start Game"
 msgstr "Empezar partida"
 
-#: scripts/MainMenu.gd:107
+#: scripts/MainMenu.gd:108
+#: scripts/PauseMenu.gd:66
 msgid "Continue"
 msgstr "Continuar"
 
-#: scripts/MainMenu.gd:115
+#: scripts/MainMenu.gd:116
 msgid "Options"
 msgstr "Opciones"
 
-#: scripts/MainMenu.gd:124
+#: scripts/MainMenu.gd:130
 msgid "Quit"
 msgstr "Salir"
 
@@ -967,6 +965,11 @@ msgstr "%s (bloqueado)"
 #: scripts/NestedMap.gd:82
 msgid "APARTMENT MAP"
 msgstr "MAPA DE PISOS"
+
+#: scripts/NestedMap.gd:88
+#: scripts/ui/menu_kit.gd:321
+msgid "Close"
+msgstr "Cerrar"
 
 #: scripts/NestedMap.gd:94
 msgid "Every apartment in this project. Click one to go there."
@@ -1029,6 +1032,46 @@ msgstr "Demasiado alargado: proporción máx. %.0f:1"
 msgid "✓  Valid — costs %d€"
 msgstr "✓  Válido — cuesta %d€"
 
+#: scripts/PauseMenu.gd:51
+msgid "Menu"
+msgstr "Menú"
+
+#: scripts/PauseMenu.gd:67
+#: scripts/SettingsMenu.gd:35
+msgid "Settings"
+msgstr "Ajustes"
+
+#: scripts/PauseMenu.gd:73
+#: scripts/PauseMenu.gd:74
+msgid "Restart Level"
+msgstr "Reiniciar nivel"
+
+#: scripts/PauseMenu.gd:74
+msgid "Discard this layout and start over?"
+msgstr "¿Descartar esta distribución y empezar de nuevo?"
+
+#: scripts/PauseMenu.gd:75
+msgid "Yes, restart"
+msgstr "Sí, reiniciar"
+
+#: scripts/PauseMenu.gd:79
+#: scripts/ResultScreen.gd:198
+msgid "Back to Projects"
+msgstr "Volver a los proyectos"
+
+#: scripts/PauseMenu.gd:82
+#: scripts/PauseMenu.gd:83
+msgid "Quit Game"
+msgstr "Salir del juego"
+
+#: scripts/PauseMenu.gd:83
+msgid "Quit for real?"
+msgstr "¿Salir de verdad?"
+
+#: scripts/PauseMenu.gd:83
+msgid "Yes, quit"
+msgstr "Sí, salir"
+
 #: scripts/ResultScreen.gd:79
 msgid "↺ Restart Level"
 msgstr "↺ Reiniciar nivel"
@@ -1045,11 +1088,11 @@ msgstr "Siguiente nivel →"
 msgid "APPROVED"
 msgstr "APROBADO"
 
-#: scripts/ResultScreen.gd:176
+#: scripts/ResultScreen.gd:189
 msgid "RETIREMENT ACHIEVED"
 msgstr "JUBILACIÓN CONSEGUIDA"
 
-#: scripts/ResultScreen.gd:177
+#: scripts/ResultScreen.gd:190
 msgid ""
 "You retire.\n"
 "Gen Z pays for it. As always."
@@ -1057,16 +1100,16 @@ msgstr ""
 "Te jubilas.\n"
 "Lo paga la generación Z. Como siempre."
 
-#: scripts/ResultScreen.gd:178
+#: scripts/ResultScreen.gd:191
 msgid "Retire"
 msgstr "Jubilarse"
 
-#: scripts/ResultScreen.gd:181
+#: scripts/ResultScreen.gd:194
 #: scenes/Main.tscn:176
 msgid "RENTED OUT"
 msgstr "ALQUILADO"
 
-#: scripts/ResultScreen.gd:183
+#: scripts/ResultScreen.gd:196
 msgid ""
 "Congratulations. You have successfully reduced\n"
 "%s's quality of life by 40%%."
@@ -1074,15 +1117,11 @@ msgstr ""
 "Enhorabuena. Has reducido con éxito la calidad\n"
 "de vida de %s en un 40%%."
 
-#: scripts/ResultScreen.gd:185
-msgid "Back to Projects"
-msgstr "Volver a los proyectos"
-
-#: scripts/ResultScreen.gd:192
+#: scripts/ResultScreen.gd:205
 msgid "+%d€ Studio Funds   |   Portfolio: %d€/mo → %d€/mo"
 msgstr "+%d€ de fondos del estudio   |   Cartera: %d€/mes → %d€/mes"
 
-#: scripts/ResultScreen.gd:221
+#: scripts/ResultScreen.gd:234
 msgid "NOT RENTED"
 msgstr "SIN ALQUILAR"
 
@@ -1182,139 +1221,144 @@ msgstr "Tejado"
 msgid "(view in 2D for detail)"
 msgstr "(ver detalles en 2D)"
 
-#: scripts/SettingsMenu.gd:34
-msgid "SETTINGS"
-msgstr "AJUSTES"
+#: scripts/SettingsMenu.gd:36
+#: scripts/SettingsMenu.gd:208
+msgid "Restore defaults"
+msgstr "Restaurar valores"
 
-#: scripts/SettingsMenu.gd:48
-msgid "NAVIGATION"
-msgstr "NAVEGACIÓN"
+#: scripts/SettingsMenu.gd:40
+#: scripts/SettingsMenu.gd:207
+msgid "General"
+msgstr "General"
 
-#: scripts/SettingsMenu.gd:53
-msgid "← Projects"
-msgstr "← Proyectos"
+#: scripts/SettingsMenu.gd:40
+#: scripts/SettingsMenu.gd:207
+msgid "Audio"
+msgstr "Audio"
 
-#: scripts/SettingsMenu.gd:61
-msgid "↻ Restart Level"
-msgstr "↻ Reiniciar nivel"
+#: scripts/SettingsMenu.gd:40
+#: scripts/SettingsMenu.gd:207
+msgid "Graphics"
+msgstr "Gráficos"
 
-#: scripts/SettingsMenu.gd:64
-msgid "Discard this layout and start over?"
-msgstr "¿Descartar esta distribución y empezar de nuevo?"
+#: scripts/SettingsMenu.gd:40
+#: scripts/SettingsMenu.gd:207
+msgid "Accessibility"
+msgstr "Accesibilidad"
 
-#: scripts/SettingsMenu.gd:64
-msgid "Yes, restart"
-msgstr "Sí, reiniciar"
-
-#: scripts/SettingsMenu.gd:69
-msgid "LANGUAGE"
-msgstr "IDIOMA"
-
-#: scripts/SettingsMenu.gd:73
-msgid "AUDIO"
-msgstr "AUDIO"
-
-#: scripts/SettingsMenu.gd:76
-msgid "Master Volume"
-msgstr "Volumen general"
-
-#: scripts/SettingsMenu.gd:81
-msgid "SFX Volume"
-msgstr "Volumen de efectos"
-
-#: scripts/SettingsMenu.gd:92
-msgid "Music Volume"
-msgstr "Volumen de la música"
-
-#: scripts/SettingsMenu.gd:102
-msgid "Mute all sound"
-msgstr "Silenciar todo"
-
-#: scripts/SettingsMenu.gd:109
-msgid "GRAPHICS"
-msgstr "GRÁFICOS"
-
-#: scripts/SettingsMenu.gd:112
-msgid "ACCESSIBILITY"
-msgstr "ACCESIBILIDAD"
-
-#: scripts/SettingsMenu.gd:121
-msgid "UI Scale"
-msgstr "Tamaño de la interfaz"
-
-#: scripts/SettingsMenu.gd:129
-msgid "Reduce motion (skip pop/pulse animations)"
-msgstr "Reducir movimiento (sin animaciones de rebote/pulso)"
-
-#: scripts/SettingsMenu.gd:133
-msgid "Undo key"
-msgstr "Tecla de deshacer"
-
-#: scripts/SettingsMenu.gd:135
-msgid "EXPERIMENTAL"
-msgstr "EXPERIMENTAL"
-
-#: scripts/SettingsMenu.gd:136
-msgid "Walking paths"
-msgstr "Caminos de paso"
-
-#: scripts/SettingsMenu.gd:138
-msgid "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
-msgstr "El inquilino tiene que poder ir desde la puerta hasta cada mueble, por huecos de al menos 40 cm."
-
-#: scripts/SettingsMenu.gd:144
-msgid "Quit to Desktop"
-msgstr "Salir al escritorio"
-
-#: scripts/SettingsMenu.gd:146
-msgid "Quit for real?"
-msgstr "¿Salir de verdad?"
-
-#: scripts/SettingsMenu.gd:146
-msgid "Yes, quit"
-msgstr "Sí, salir"
-
-#: scripts/SettingsMenu.gd:149
-msgid "❓ How to Play"
-msgstr "❓ Cómo se juega"
-
-#: scripts/SettingsMenu.gd:152
-msgid "🖋 Credits"
-msgstr "🖋 Créditos"
-
-#: scripts/SettingsMenu.gd:169
+#: scripts/SettingsMenu.gd:75
 msgid "Device language"
 msgstr "Idioma del dispositivo"
 
-#: scripts/SettingsMenu.gd:173
-msgid "Language"
-msgstr "Idioma"
+#: scripts/SettingsMenu.gd:79
+msgid "The language of all the game's text. Device language follows your phone or computer."
+msgstr "El idioma de todos los textos del juego. Idioma del dispositivo sigue al de tu móvil u ordenador."
 
-#: scripts/SettingsMenu.gd:176
+#: scripts/SettingsMenu.gd:81
 msgid "The rest of the level changes language when you leave it."
 msgstr "El resto del nivel cambiará de idioma cuando salgas de él."
 
-#: scripts/SettingsMenu.gd:203
+#: scripts/SettingsMenu.gd:82
+msgid "Language"
+msgstr "Idioma"
+
+#: scripts/SettingsMenu.gd:83
+msgid "Experimental"
+msgstr "Experimental"
+
+#: scripts/SettingsMenu.gd:84
+msgid "Walking paths"
+msgstr "Caminos de paso"
+
+#: scripts/SettingsMenu.gd:85
+msgid "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
+msgstr "El inquilino tiene que poder ir desde la puerta hasta cada mueble, por huecos de al menos 40 cm."
+
+#: scripts/SettingsMenu.gd:93
+msgid "Master Volume"
+msgstr "Volumen general"
+
+#: scripts/SettingsMenu.gd:93
+msgid "How loud the whole game is."
+msgstr "El volumen de todo el juego."
+
+#: scripts/SettingsMenu.gd:98
+msgid "SFX Volume"
+msgstr "Volumen de efectos"
+
+#: scripts/SettingsMenu.gd:99
+msgid "Clicks, placing, folding, selling and the other sounds of what you do."
+msgstr "Clics, colocar, plegar, vender y el resto de sonidos de lo que haces."
+
+#: scripts/SettingsMenu.gd:109
+msgid "Music Volume"
+msgstr "Volumen de la música"
+
+#: scripts/SettingsMenu.gd:109
+msgid "The background music."
+msgstr "La música de fondo."
+
+#: scripts/SettingsMenu.gd:118
+msgid "Mute all sound"
+msgstr "Silenciar todo"
+
+#: scripts/SettingsMenu.gd:118
+msgid "Silences the game without touching the volumes above."
+msgstr "Silencia el juego sin tocar los volúmenes de arriba."
+
+#: scripts/SettingsMenu.gd:137
 msgid "3D Quality"
 msgstr "Calidad 3D"
 
-#: scripts/SettingsMenu.gd:213
+#: scripts/SettingsMenu.gd:148
+msgid "UI Scale"
+msgstr "Tamaño de la interfaz"
+
+#: scripts/SettingsMenu.gd:148
+msgid "Makes all text and buttons bigger or smaller."
+msgstr "Hace todos los textos y botones más grandes o más pequeños."
+
+#: scripts/SettingsMenu.gd:159
+msgid "Reduce motion"
+msgstr "Reducir movimiento"
+
+#: scripts/SettingsMenu.gd:160
+msgid "Skips the pop, bounce and pulse animations. Everything still happens, just without the movement."
+msgstr "Omite las animaciones de rebote y pulso. Todo sigue ocurriendo, solo que sin el movimiento."
+
+#: scripts/SettingsMenu.gd:162
+msgid "Undo key"
+msgstr "Tecla de deshacer"
+
+#: scripts/SettingsMenu.gd:163
+msgid "Ctrl with this key undoes, Ctrl+Shift with it redoes. Press Enter, then the new key."
+msgstr "Ctrl con esta tecla deshace y Ctrl+Mayús rehace. Pulsa Intro y luego la tecla nueva."
+
+#: scripts/SettingsMenu.gd:169
 msgid "Fastest. Flat lighting and shadows only."
 msgstr "Lo más rápido. Solo iluminación plana y sombras."
 
-#: scripts/SettingsMenu.gd:214
+#: scripts/SettingsMenu.gd:170
 msgid "Adds glow on lamps and windows, and a soft vignette."
 msgstr "Añade resplandor en lámparas y ventanas, y una viñeta suave."
 
-#: scripts/SettingsMenu.gd:215
+#: scripts/SettingsMenu.gd:171
 msgid "Adds contact shading in corners. Needs a dedicated GPU."
 msgstr "Añade sombreado de contacto en las esquinas. Necesita una tarjeta gráfica dedicada."
 
-#: scripts/SettingsMenu.gd:219
+#: scripts/SettingsMenu.gd:209
+msgid "Put every %s setting back the way the game came?"
+msgstr "¿Devolver todos los ajustes de «%s» a como venía el juego?"
+
+#: scripts/SettingsMenu.gd:210
+msgid "Restore"
+msgstr "Restaurar"
+
+#: scripts/SettingsMenu.gd:236
 msgid "Ctrl+%s  (Shift+ = Redo)"
 msgstr "Ctrl+%s  (Mayús+ = Rehacer)"
 
-#: scripts/SettingsMenu.gd:225
+#: scripts/SettingsMenu.gd:241
 msgid "Press any key…"
 msgstr "Pulsa cualquier tecla…"
 
@@ -1455,10 +1499,26 @@ msgid_plural "Applicants: %s"
 msgstr[0] "Solicitante: %s"
 msgstr[1] "Solicitantes: %s"
 
-#: scripts/ui/menu_kit.gd:351
+#: scripts/ui/menu_kit.gd:149
+msgid "Change"
+msgstr "Cambiar"
+
+#: scripts/ui/menu_kit.gd:151
+msgid "Category"
+msgstr "Categoría"
+
+#: scripts/ui/menu_kit.gd:371
 #: scripts/ui/touch_controls.gd:132
 msgid "Cancel"
 msgstr "Cancelar"
+
+#: scripts/ui/setting_row.gd:213
+msgid "On"
+msgstr "Sí"
+
+#: scripts/ui/setting_row.gd:213
+msgid "Off"
+msgstr "No"
 
 #: scripts/ui/touch_controls.gd:130
 #: scripts/ui/touch_controls.gd:134
@@ -2900,3 +2960,48 @@ msgstr "Almacenaje a medida"
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr "Baño a medida"
+
+#~ msgid "CREDITS"
+#~ msgstr "CRÉDITOS"
+
+#~ msgid "HOW TO PLAY"
+#~ msgstr "CÓMO SE JUEGA"
+
+#~ msgid "SETTINGS"
+#~ msgstr "AJUSTES"
+
+#~ msgid "NAVIGATION"
+#~ msgstr "NAVEGACIÓN"
+
+#~ msgid "← Projects"
+#~ msgstr "← Proyectos"
+
+#~ msgid "↻ Restart Level"
+#~ msgstr "↻ Reiniciar nivel"
+
+#~ msgid "LANGUAGE"
+#~ msgstr "IDIOMA"
+
+#~ msgid "AUDIO"
+#~ msgstr "AUDIO"
+
+#~ msgid "GRAPHICS"
+#~ msgstr "GRÁFICOS"
+
+#~ msgid "ACCESSIBILITY"
+#~ msgstr "ACCESIBILIDAD"
+
+#~ msgid "Reduce motion (skip pop/pulse animations)"
+#~ msgstr "Reducir movimiento (sin animaciones de rebote/pulso)"
+
+#~ msgid "EXPERIMENTAL"
+#~ msgstr "EXPERIMENTAL"
+
+#~ msgid "Quit to Desktop"
+#~ msgstr "Salir al escritorio"
+
+#~ msgid "❓ How to Play"
+#~ msgstr "❓ Cómo se juega"
+
+#~ msgid "🖋 Credits"
+#~ msgstr "🖋 Créditos"

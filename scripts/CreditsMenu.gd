@@ -22,43 +22,29 @@ static func open(host: Node) -> CanvasLayer:
 
 
 func _build() -> void:
-	layer = 26  # above SettingsMenu (25), since it's opened from there
+	layer = 26  # over the pause menu (24) and the settings screen
 
-	var w := MenuKit.modal(self, tr("CREDITS"), 520.0, _close)
-	var body: VBoxContainer = w["body"]
+	var w := MenuKit.screen(self, tr("Credits"), _close, false, false, Vector2(720, 520))
+	var page: VBoxContainer = w["page"]
+	page.add_theme_constant_override("separation", 22)
 
-	body.add_child(_entry(tr("Fonts"),
-		"Caveat — Copyright 2014 The Caveat Project Authors
-" +
-		"Space Grotesk — Copyright 2020 The Space Grotesk Project Authors
-" +
+	page.add_child(_entry(tr("Fonts"),
+		"Caveat — Copyright 2014 The Caveat Project Authors\n" +
+		"Space Grotesk — Copyright 2020 The Space Grotesk Project Authors\n" +
 		tr("Licensed under the SIL Open Font License 1.1 (scripts.sil.org/OFL)")))
 
-	body.add_child(_entry(tr("Art & Sound"),
-		tr("Interface sounds and casino/UI audio by Kenney (kenney.nl)") + "
-" +
+	page.add_child(_entry(tr("Art & Sound"),
+		tr("Interface sounds and casino/UI audio by Kenney (kenney.nl)") + "\n" +
 		tr("Released under Creative Commons Zero (CC0)")))
 
-	body.add_child(_entry(tr("Ambient Rain"),
+	page.add_child(_entry(tr("Ambient Rain"),
 		tr("Original work created for this project — no attribution required.")))
-
-	var push := Control.new()
-	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	(w["footer"] as Control).add_child(push)
-	var close_btn := MenuKit.button(tr("Close"), "primary")
-	close_btn.custom_minimum_size.x = 120
-	close_btn.pressed.connect(_close)
-	(w["footer"] as Control).add_child(close_btn)
 
 
 func _entry(header: String, body: String) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
-	var hdr := Label.new()
-	hdr.text = header.to_upper()
-	hdr.add_theme_font_size_override("font_size", MenuKit.FONT_SECTION)
-	hdr.add_theme_color_override("font_color", GameTheme.C_AMBER.darkened(0.3))
-	box.add_child(hdr)
+	MenuKit.heading(box, header)
 	MenuKit.text(box, body)
 	return box
 

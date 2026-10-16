@@ -4531,7 +4531,7 @@ func _on_settings_btn_pressed() -> void:
 		else:
 			result_screen.visible = true
 		return
-	SettingsMenu.open(self)
+	PauseMenu.open(self)
 
 
 # Shared by the floating "Back to Results" button above and the gear menu

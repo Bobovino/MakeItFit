@@ -93,6 +93,7 @@ func _ready() -> void:
 	start_btn.add_theme_stylebox_override("normal",  rs[0])
 	start_btn.add_theme_stylebox_override("hover",   rs[1])
 	start_btn.add_theme_stylebox_override("pressed", rs[1])
+	start_btn.add_theme_stylebox_override("focus",   rs[1])
 	start_btn.add_theme_color_override("font_color",       GameTheme.C_AMBER)
 	start_btn.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72))
 	start_btn.pressed.connect(_on_start)
@@ -117,6 +118,11 @@ func _ready() -> void:
 	vbox.add_child(options_btn)
 	_add_hover_lift(options_btn)
 
+	var credits_btn := _make_tag_button(tr("Credits"))
+	credits_btn.pressed.connect(func(): (load("res://scripts/CreditsMenu.gd") as GDScript).call("open", self))
+	vbox.add_child(credits_btn)
+	_add_hover_lift(credits_btn)
+
 	_spacer(vbox, 10)
 
 	# Quit as a quiet line of ink on the paper, not a third button.
@@ -134,6 +140,8 @@ func _ready() -> void:
 	# Paper-card entrance — the sheet settles onto the desk when the menu
 	# opens, and the title drifts gently in place while it waits.
 	call_deferred("_play_entrance")
+	# Start is selected from the outset, so Enter starts and ↑ ↓ work at once.
+	start_btn.grab_focus.call_deferred()
 
 
 func _make_tag_button(text: String) -> Button:
