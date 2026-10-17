@@ -3092,3 +3092,19 @@ msgstr "Patio tranquilo"
 #: scripts/Main.gd
 msgid "Bins alley"
 msgstr "Callejón de los contenedores"
+
+#: scripts/Main.gd
+msgid "%s is lighter again: easier to move."
+msgstr "%s vuelve a pesar menos: más fácil de mover."
+
+#: scripts/Main.gd
+msgid "%s is getting heavy: moving it away from where it started now costs comfort."
+msgstr "%s empieza a pesar: moverla de su sitio inicial ahora resta comodidad."
+
+#: scripts/Main.gd
+msgid "%s is packed full: it now stays in one place for every moment of the day."
+msgstr "%s está llena a reventar: ahora se queda en el mismo sitio en todos los momentos del día."
+
+#: scripts/Main.gd
+msgid "This box"
+msgstr "Esta caja"

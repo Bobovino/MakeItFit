@@ -371,6 +371,47 @@ func _sync_status_marks() -> void:
 				mi.set_meta("status_mark", mark)
 		if f.is_nested_box:
 			_shade_box_windows(mi, f._shade)
+			_strap_box(entry, f.mobility_tier)
+
+
+# A box as full as its tier: a band of tape round its walls once it is heavy
+# (yellow), and a dark strap over it crosswise once it is packed full (red),
+# the same as on the plan.
+func _strap_box(entry: Dictionary, tier: String) -> void:
+	var mi := entry["mesh"] as MeshInstance3D
+	if mi.get_meta("strap_tier", "") == tier:
+		return
+	mi.set_meta("strap_tier", tier)
+	if mi.has_meta("straps") and is_instance_valid(mi.get_meta("straps")):
+		(mi.get_meta("straps") as Node).queue_free()
+	mi.remove_meta("straps")
+	if tier != "yellow" and tier != "red":
+		return
+	var straps := Node3D.new()
+	straps.name = "Straps"
+	mi.add_child(straps)
+	mi.set_meta("straps", straps)
+	# The box's own frame: mi is turned with the box, so its canonical size.
+	var size: Vector3 = (mi.mesh as BoxMesh).size if mi.mesh is BoxMesh else entry["size"]
+	var walls_h := size.y * 0.55   # the walls, below the roof of the house-shaped models
+	var bottom := -size.y * 0.5
+	var add_band := func(band_size: Vector3, pos: Vector3, col: Color) -> void:
+		var band := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = band_size
+		band.mesh = bm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		mat.roughness = 0.9
+		band.material_override = mat
+		band.position = pos
+		straps.add_child(band)
+	var pad := 0.006
+	add_band.call(Vector3(size.x + pad, walls_h * 0.16, size.z + pad), Vector3(0, bottom + walls_h * 0.55, 0), Furniture.TAPE_COLOR)
+	if tier == "red":
+		var t := maxf(size.x, size.z) * 0.09
+		add_band.call(Vector3(t, walls_h + pad, size.z + pad * 2.0), Vector3(0, bottom + walls_h * 0.5, 0), Furniture.STRAP_COLOR)
+		add_band.call(Vector3(size.x + pad * 2.0, walls_h + pad, t), Vector3(0, bottom + walls_h * 0.5, 0), Furniture.STRAP_COLOR)
 
 
 # A floating mark: "noise" (sound arcs) or "awake" (a struck-through Zz in

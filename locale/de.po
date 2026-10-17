@@ -3092,3 +3092,19 @@ msgstr "Ruhiger Innenhof"
 #: scripts/Main.gd
 msgid "Bins alley"
 msgstr "Mülltonnengasse"
+
+#: scripts/Main.gd
+msgid "%s is lighter again: easier to move."
+msgstr "%s ist wieder leichter: einfacher zu bewegen."
+
+#: scripts/Main.gd
+msgid "%s is getting heavy: moving it away from where it started now costs comfort."
+msgstr "%s wird schwer: sie von ihrem Startplatz wegzurücken kostet jetzt Komfort."
+
+#: scripts/Main.gd
+msgid "%s is packed full: it now stays in one place for every moment of the day."
+msgstr "%s ist randvoll: sie bleibt jetzt zu jeder Tageszeit am selben Platz."
+
+#: scripts/Main.gd
+msgid "This box"
+msgstr "Diese Kiste"

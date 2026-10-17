@@ -759,6 +759,14 @@ func _t_outside_walls() -> void:
 	fl.clear_floor_drag_ghost()
 	_current = "outside walls: carrying the box to the street side moves its link there first"
 	_ok(held_side == "east" and ov.box_links[0]["side"] == "south", "%s, then %s" % [held_side, ov.box_links[0]["side"]])
+	# A box is weighed into tiers as it is furnished, and the change is noted
+	# once, not on loading.
+	_current = "box tiers: light, heavy and packed full follow what is inside"
+	_ok(Furniture.box_tier(10.0, "green") == "green" and Furniture.box_tier(60.0, "green") == "yellow"
+		and Furniture.box_tier(400.0, "green") == "red")
+	var tier_now: String = box.mobility_tier
+	_current = "box tiers: the box's tier is remembered by its apartment from the start"
+	_ok(main._box_tier_seen.get(box.child_level_id, "") == tier_now, "%s vs %s" % [main._box_tier_seen, tier_now])
 	_current = "outside walls: the alley's rule reads as words"
 	_ok(main._wall_rules_text(main.gm.external_restrictions["by_wall"]["south"]) == "Sleep at least 0.8 m from the wall",
 		main._wall_rules_text(main.gm.external_restrictions["by_wall"]["south"]))

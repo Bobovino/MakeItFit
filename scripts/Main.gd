@@ -1551,6 +1551,8 @@ func _on_box_entered(box: Furniture) -> void:
 		"was_post_win_view": was_showcasing,
 		"box_floor_id": box_floor_id,
 		"box_rect": Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)),
+		"box_name": box.furniture_name,
+		"box_base_tier": box._base_mobility_tier,
 		"carry_limit": carry_limit,
 		"carry_support_name": carry_name,
 	})
@@ -2294,6 +2296,37 @@ func _compute_box_occlusion(box: Furniture, carried: Furniture = null, carried_a
 # specific WALLS, not a uniform ring around the whole apartment the way
 # light/noise occlusion are, so this measures against one side at a time
 # rather than reusing the ring-scan shape those two use.
+# A box's mobility tier rises as it is furnished (Furniture.box_tier()). The
+# tape and straps on it show where it stands; the moment it changes is also
+# said once, whether that happens out here (a box's tier read as it is now)
+# or inside it while furnishing (from what is in this apartment right now).
+# Keyed by the box's apartment, which outlives the box nodes (they are made
+# again every time a level loads), so nothing is said on loading.
+var _box_tier_seen: Dictionary = {}   # child level id -> tier last seen
+
+func _note_box_tiers() -> void:
+	for box in _collect_nested_boxes():
+		_note_box_tier(box.child_level_id, box.furniture_name, box.mobility_tier)
+	if not _nested_stack.is_empty():
+		var ctx := _nested_stack[-1] as Dictionary
+		_note_box_tier(_current_level_id, ctx.get("box_name", tr("This box")) as String,
+			Furniture.box_tier(_carried_weight(), ctx.get("box_base_tier", "green") as String), true)
+
+
+func _note_box_tier(level_id: String, box_name: String, tier: String, from_inside: bool = false) -> void:
+	var seen := _box_tier_seen.get(level_id, "") as String
+	_box_tier_seen[level_id] = tier
+	if seen == "" or seen == tier:
+		return
+	var order := ["green", "yellow", "red"]
+	if order.find(tier) < order.find(seen):
+		_toast(tr("%s is lighter again: easier to move.") % box_name)
+	elif tier == "yellow":
+		_toast(tr("%s is getting heavy: moving it away from where it started now costs comfort.") % box_name, from_inside)
+	else:
+		_toast(tr("%s is packed full: it now stays in one place for every moment of the day.") % box_name, from_inside)
+
+
 # What an outside-wall profile (external_zone.by_wall[side]) does to a box
 # standing nearest that wall, in words: "Sleep at least 0.8 m from the wall
 # · No Work". "" when it does nothing.
@@ -2554,6 +2587,7 @@ func _recompute_box_effects() -> void:
 		# working (see _on_box_entered): the piece making it shows it here too.
 		if is_instance_valid(box._wall_ref) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box) 				and _child_has_bed(box.child_level_id) and is_instance_valid(_noisy_piece):
 			_noisy_piece._noise_making = true
+	_note_box_tiers()
 	_show_outside_walls()
 	if _carry_previewing and _carry_preview_args.size() == 2 and is_instance_valid(_carry_preview_args[0]):
 		_apply_carry_preview(_carry_preview_args[0], _carry_preview_args[1])

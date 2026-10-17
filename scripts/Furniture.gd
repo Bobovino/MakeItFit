@@ -199,12 +199,20 @@ func apply_interior_weight(w: float, shrink: float = 1.0) -> void:
 	weight = _base_weight + w * shrink
 	if not is_nested_box:
 		return
-	if w >= BOX_WEIGHT_RED_MIN:
-		mobility_tier = "red"
-	elif w >= BOX_WEIGHT_YELLOW_MIN:
-		mobility_tier = "yellow"
-	else:
-		mobility_tier = _base_mobility_tier
+	var tier := Furniture.box_tier(w, _base_mobility_tier)
+	if tier != mobility_tier:
+		mobility_tier = tier
+		queue_redraw()
+
+
+# The mobility tier of a box holding `interior` worth of furniture (see the
+# thresholds above), starting from `base` when it is nearly empty.
+static func box_tier(interior: float, base: String) -> String:
+	if interior >= BOX_WEIGHT_RED_MIN:
+		return "red"
+	if interior >= BOX_WEIGHT_YELLOW_MIN:
+		return "yellow"
+	return base
 
 # A catalogue piece's weight: its own "weight", else its footprint in tiles
 # (the same default setup() gives `weight`).
@@ -602,6 +610,8 @@ func _draw() -> void:
 		_draw_strain(float(w), float(h))
 	if is_nested_box and _shade < 0.99:
 		_draw_shade(float(w), float(h))
+	if is_nested_box:
+		_draw_packing(float(w), float(h))
 	if _noise_making:
 		_draw_noise(float(w), float(h), Color(0.98, 0.70, 0.22))
 	if needs_quiet and _noise_muted:
@@ -1597,6 +1607,29 @@ func _draw_strain(w: float, h: float) -> void:
 				var b2: float = side * across + (depth + 1.0 + k * 3.0) * dir
 				crack.append(Vector2(a2, b2) if along_x else Vector2(b2, a2))
 			draw_polyline(crack, col, 1.5, true)
+
+
+# How full a box is, on the plan: taped shut once what is inside makes it
+# heavy (yellow tier), strapped crosswise once it is packed full (red), and a
+# thin gauge along its bottom edge filling toward the next of those.
+const TAPE_COLOR := Color(0.80, 0.66, 0.42, 0.95)
+const STRAP_COLOR := Color(0.22, 0.16, 0.12, 0.95)
+
+func _draw_packing(w: float, h: float) -> void:
+	if mobility_tier == "yellow" or mobility_tier == "red":
+		var band := maxf(2.0, h * 0.12)
+		draw_rect(Rect2(0, h * 0.5 - band * 0.5, w, band), TAPE_COLOR)
+	if mobility_tier == "red":
+		var strap := maxf(2.0, w * 0.10)
+		draw_rect(Rect2(w * 0.5 - strap * 0.5, 0, strap, h), STRAP_COLOR)
+		draw_rect(Rect2(0, h * 0.5 - strap * 0.5, w, strap), STRAP_COLOR)
+	var fill := clampf(interior_weight / BOX_WEIGHT_RED_MIN, 0.0, 1.0)
+	var gauge := Rect2(2, h - 4, w - 4, 2.5)
+	draw_rect(gauge, Color(0.04, 0.08, 0.14, 0.7))
+	var col := GameTheme.C_GOOD if mobility_tier == "green" else (GameTheme.C_AMBER if mobility_tier == "yellow" else GameTheme.C_BAD)
+	draw_rect(Rect2(gauge.position, Vector2(gauge.size.x * fill, gauge.size.y)), col)
+	var mark := gauge.position.x + gauge.size.x * (BOX_WEIGHT_YELLOW_MIN / BOX_WEIGHT_RED_MIN)
+	draw_line(Vector2(mark, gauge.position.y - 1), Vector2(mark, gauge.end.y + 1), Color(1, 1, 1, 0.8), 1.0)
 
 
 # A box in another piece's shadow, on the plan: shade over it, darker the
