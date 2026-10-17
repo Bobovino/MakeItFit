@@ -28,6 +28,7 @@ func _ready() -> void:
 	await _t_project_needs_every_apartment()
 	await _t_box_on_a_surface()
 	await _t_outside_walls()
+	await _t_unreachable_shown()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -775,6 +776,41 @@ func _t_outside_walls() -> void:
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path
+	GameState.reduce_motion = real_motion
+
+
+# ── A piece nobody can get to is shown by a resident trying to ─────────────
+# Overprotective's household: once a piece turns unreachable, the resident
+# nearest it walks towards it and a dotted trail goes on to it; the next
+# placement ends that.
+func _t_unreachable_shown() -> void:
+	var real_motion := GameState.reduce_motion
+	GameState.reduce_motion = true
+	GameState.pending_level_id = "overprotective"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var layer: TenantLayer = main.tenant_layer
+	var piece: Furniture = fl.get_all_furniture()[0]
+	layer.resync()
+	piece.set_accessible(false)   # as Main marks one after a placement leaves it cut off
+	layer.commit()
+	await get_tree().create_timer(TenantLayer.HOP_TIME + 0.2).timeout
+	_current = "unreachable: the resident nearest it sets off for it"
+	_ok(layer._reach_rid != &"" and layer._reacting, "rid '%s'" % layer._reach_rid)
+	await get_tree().create_timer(2.5).timeout
+	_current = "unreachable: a dotted trail goes on from where they stopped to the piece"
+	_ok(is_instance_valid(layer._trail2d) or layer._reach_rid == &"", "trail %s" % layer._trail2d)
+	piece.set_accessible(true)
+	layer.commit()
+	await get_tree().process_frame
+	_current = "unreachable: the next placement ends it"
+	_ok(layer._reach_rid == &"" and not is_instance_valid(layer._trail2d))
+	main.queue_free()
+	await get_tree().process_frame
 	GameState.reduce_motion = real_motion
 
 

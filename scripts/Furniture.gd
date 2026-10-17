@@ -745,10 +745,18 @@ func _draw() -> void:
 	# drag look permanently rejected, since it never matched wherever the
 	# ghost currently was; the live ✓/✗ pulse below already covers "can I drop
 	# here" during the drag itself.
+	# The residents now act an unreachable piece out (TenantLayer._try_to_reach),
+	# so this is only the quiet reminder that stays: a dashed red outline and
+	# a small "no way in" sign, which a level without residents relies on.
 	if not _accessible and not _dragging:
-		draw_rect(Rect2(0, 0, w, h), Color(0.88, 0.08, 0.08, 0.32))
-		draw_line(Vector2(3, 3),     Vector2(w - 3, h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
-		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
+		var red := Color(0.88, 0.16, 0.12, 0.9)
+		var pts := [Vector2(1, 1), Vector2(w - 1, 1), Vector2(w - 1, h - 1), Vector2(1, h - 1), Vector2(1, 1)]
+		for i in 4:
+			draw_dashed_line(pts[i], pts[i + 1], red, 2.0, 4.0)
+		var c := Vector2(7, h - 7)
+		draw_circle(c, 4.5, Color(1, 1, 1, 0.9))
+		draw_arc(c, 4.5, 0.0, TAU, 16, red, 1.5, true)
+		draw_line(c + Vector2(-3, 0), c + Vector2(3, 0), red, 1.8)
 
 	# Drag validity tint — soft pulsing sage when the spot is free, terracotta
 	# when blocked, so validity reads before the piece is even dropped. The
