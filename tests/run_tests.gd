@@ -42,6 +42,7 @@ func _run_all() -> void:
 	_test("outside the room is rejected", func(): _t_outside_room())
 	_test("a wall tile is rejected", func(): _t_wall_blocked())
 	_test("snap_to_wall lands flush against the wall", func(): _t_snap_to_wall())
+	_test("a piece that must stand against a wall goes to the nearest one", func(): _t_snap_flush_far())
 	_test("remove_furniture frees the tiles it occupied", func(): _t_remove_furniture())
 	_test("rotation cycles 0/1/2/3 and swaps footprint each step", func(): _t_rotation_cycle())
 	_test("pathing: a piece beside open floor is reachable", func(): _t_path_open())
@@ -288,6 +289,22 @@ func _t_snap_to_wall() -> void:
 	var snapped := fl.snap_to_wall(a, Vector2(1, 2))
 	_ok(fl.can_place(a, snapped), "snap_to_wall must only ever return a placeable spot")
 	_eq(snapped.x, 2.0, "should snap flush to just inside the west wall")
+	fl.queue_free()
+
+
+func _t_snap_flush_far() -> void:
+	var fl := _make_floor()
+	var a := _make_furniture(fl)
+	a.wall_flush_required = true
+	_ok(not fl.can_place(a, Vector2(4, 3)), "away from every wall it can't go")
+	var snapped := fl.snap_to_wall(a, Vector2(4, 3))
+	_ok(snapped != Vector2(4, 3), "it is moved instead of refused")
+	_ok(fl.can_place(a, snapped), "to a spot against a wall where it fits")
+	fl.place_furniture(a, snapped)
+	var b := _make_furniture(fl)
+	b.wall_flush_required = true
+	var second := fl.snap_to_wall(b, Vector2(4, 3))
+	_ok(fl.can_place(b, second), "a second one finds the next free spot against a wall")
 	fl.queue_free()
 
 

@@ -1024,6 +1024,14 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 		snap_pos.y = bounds.position.y + 1.0
 	elif (bounds.position.y + bounds.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP:
 		snap_pos.y = bounds.position.y + bounds.size.y - furniture.grid_h
+	if furniture.wall_flush_required and snap_pos == at:
+		# A piece that has to stand against a wall (a fold-down bed, the
+		# balcony window, a folding stair) and was put down away from every
+		# wall goes to the nearest wall it fits against, instead of being
+		# refused for not touching one.
+		var nearest := _nearest_wall_spot(furniture, at, bounds)
+		if nearest != at:
+			return nearest
 	if snap_pos == at or can_place(furniture, snap_pos):
 		return snap_pos
 	# Full snap blocked (e.g. corner obstruction) — try each axis independently
@@ -1033,6 +1041,33 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 	var y_only := Vector2(at.x, snap_pos.y)
 	if y_only != at and can_place(furniture, y_only):
 		return y_only
+	return at
+
+
+# The spot against a wall closest to `at` where `furniture` can go: each of
+# the four walls is tried, nearest first, sliding along it from `at` if the
+# spot right opposite is taken. `at` itself when none has room.
+func _nearest_wall_spot(furniture: Furniture, at: Vector2, bounds: Rect2) -> Vector2:
+	var west := bounds.position.x + 1.0
+	var north := bounds.position.y + 1.0
+	var east := bounds.position.x + bounds.size.x - furniture.grid_w
+	var south := bounds.position.y + bounds.size.y - furniture.grid_h
+	var walls := [
+		[absf(at.x - west), Vector2(west, at.y), Vector2.DOWN],
+		[absf(east - at.x), Vector2(east, at.y), Vector2.DOWN],
+		[absf(at.y - north), Vector2(at.x, north), Vector2.RIGHT],
+		[absf(south - at.y), Vector2(at.x, south), Vector2.RIGHT],
+	]
+	walls.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var span := int(maxf(bounds.size.x, bounds.size.y))
+	for wall in walls:
+		var base: Vector2 = wall[1]
+		var along: Vector2 = wall[2]
+		for step in span:
+			for dir in ([0] if step == 0 else [step, -step]):
+				var spot: Vector2 = base + along * float(dir)
+				if can_place(furniture, spot):
+					return spot
 	return at
 
 
