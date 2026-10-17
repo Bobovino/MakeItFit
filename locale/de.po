@@ -3159,3 +3159,25 @@ msgstr "Gefriertruhe"
 #: data/furniture.json
 msgid "Upright Freezer"
 msgstr "Gefrierschrank"
+
+#: data/levels.json:three_freezers
+msgid "The basic needs"
+msgstr "Die Grundbedürfnisse"
+
+#: data/levels.json:three_freezers
+msgid ""
+"Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n"
+"\n"
+"Every other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n"
+"\n"
+"Short on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it."
+msgstr ""
+"Danis Wohnung ist leer, bis auf drei Gefriertruhen. Das Herz hinter ihrem Namen heißt, dass sie Erbstücke sind: Du kannst sie verschieben, aber nie verkaufen. Sie zählen schon als Stauraum.\n"
+"\n"
+"Alle anderen Bedürfnisse in der Leiste haben noch ein Kreuz. Jedes wird abgehakt, sobald die Wohnung ein Stück hat, das es erfüllt: ein Bett zum Schlafen, eine Toilette oder ein Waschbecken zum Waschen, einen Herd zum Kochen, einen Schreibtisch zum Arbeiten und einen Stuhl zum Sitzen. Der Katalog öffnet sich bei dem, was noch fehlt, und es gibt Platz und Geld für alles.\n"
+"\n"
+"Trotzdem zu wenig Boden? Ein Hochbett schläft über Kopfhöhe, und die niedrigen Truhen passen darunter."
+
+#: data/tenants/three_freezers.tres
+msgid "And an oven. The pizzas will not bake themselves."
+msgstr "Und einen Ofen. Die Pizzen backen sich nicht von allein."

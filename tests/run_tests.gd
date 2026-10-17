@@ -988,10 +988,11 @@ func _t_carry_hints() -> void:
 	GameState.save_path = real_path
 
 
-# ── Three Freezers: no room for a desk until the freezers move ──────────────
-# As the level starts, a desk fits nowhere. Moving the middle chest freezer
-# into the free corner, putting the desk where it was and the loft bed over
-# the freezers, with a stool, rents it out.
+# ── Three Freezers: the basic needs, with room for everything ─────────────
+# The first level that asks for every basic need. As it starts, every piece
+# the catalogue offers there fits somewhere; buying the cheapest piece for
+# each missing need and putting it down in the first free spot rents it out,
+# within the budget.
 func _t_three_freezers() -> void:
 	var real_path := GameState.save_path
 	GameState.save_path = "user://test_freezers_save.json"
@@ -1002,39 +1003,48 @@ func _t_three_freezers() -> void:
 	for i in 10:
 		await get_tree().process_frame
 	var fl: Floor = main._floors[main._current_floor_id]
+	var gm: GameManager = main.gm
 	var b := fl.get_room_bounds()
-	var desk: Furniture = main._spawn_furniture("desk", fl, 0, 0)
-	fl.forget_furniture(desk)
-	var desk_fits := false
-	for r in 2:
-		for y in range(b.position.y, b.end.y):
-			for x in range(b.position.x, b.end.x):
-				desk_fits = desk_fits or fl.can_place(desk, Vector2(x, y))
-		desk._rotate(true)
-	_current = "three freezers: as it starts, there is no room for a desk"
-	_ok(not desk_fits)
-	var middle: Furniture = null
-	for f in fl.get_all_furniture():
-		if (f as Furniture).furniture_id == "chest_freezer" and (f as Furniture).grid_pos == Vector2(13, 7):
-			middle = f
-	var moved := fl.can_place(middle, Vector2(19, 3))
-	fl.place_furniture(middle, Vector2(19, 3))
-	desk.set_rot_steps(1)
-	var desk_ok := fl.can_place(desk, Vector2(13, 2))
-	fl.place_furniture(desk, Vector2(13, 2))
-	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
-	fl.forget_furniture(stool)
-	var stool_ok := fl.can_place(stool, Vector2(2, 9))
-	fl.place_furniture(stool, Vector2(2, 9))
-	var bed: Furniture = main._spawn_furniture("high_bed", fl, 0, 0)
-	fl.forget_furniture(bed)
-	var bed_ok := fl.can_place(bed, Vector2(3, 3))
-	fl.place_furniture(bed, Vector2(3, 3))
-	main._promote_to_loft(bed, fl)
+	var first_spot := func(f: Furniture) -> Variant:
+		for r in 2:
+			for y in range(b.position.y, b.end.y):
+				for x in range(b.position.x, b.end.x):
+					if fl.can_place(f, Vector2(x, y)):
+						return Vector2(x, y)
+			f._rotate(true)
+		return null
+	var nowhere: Array = []
+	for id in gm.current_level["allowed_furniture"]:
+		var fdata := gm.get_furniture_by_id(id)
+		if fdata.get("placement", "floor") == "wall" or fdata.get("requires_surface", false):
+			continue   # hung in 3D, or stands on a table: not on bare floor
+		var probe: Furniture = main._spawn_furniture(id, fl, 0, 0)
+		fl.forget_furniture(probe)
+		if first_spot.call(probe) == null:
+			nowhere.append(id)
+		probe.queue_free()
+	_current = "three freezers: every piece on offer fits somewhere as the level starts"
+	_ok(nowhere.is_empty(), str(nowhere))
+	var spent := 0
+	for need in ["sleep", "hygiene", "cook", "work", "sit"]:
+		var cheapest := ""
+		for id in gm.current_level["allowed_furniture"]:
+			var fd := gm.get_furniture_by_id(id)
+			if need in (fd.get("functions", []) as Array) and fd.get("placement", "floor") != "wall" 					and (cheapest == "" or (fd["buy_price"] as int) < (gm.get_furniture_by_id(cheapest)["buy_price"] as int)):
+				cheapest = id
+		var f: Furniture = main._spawn_furniture(cheapest, fl, 0, 0)
+		fl.forget_furniture(f)
+		var at = first_spot.call(f)
+		if at != null:
+			fl.place_furniture(f, at)
+			spent += gm.get_furniture_by_id(cheapest)["buy_price"] as int
+			if gm.get_furniture_by_id(cheapest).get("creates_loft", false):
+				main._promote_to_loft(f, fl)
 	main._refresh_functions()
-	_current = "three freezers: a freezer moved, the desk in its place and the bed over the freezers rents it out"
-	_ok(moved and desk_ok and stool_ok and bed_ok and main.gm.check_win() and main._all_furniture_accessible(),
-		"%s %s %s %s win %s reach %s" % [moved, desk_ok, stool_ok, bed_ok, main.gm.check_win(), main._all_furniture_accessible()])
+	_current = "three freezers: one of each, put down anywhere, rents it out within the budget"
+	_ok(gm.check_win() and main._all_furniture_accessible() and spent <= gm.current_level["starting_budget"],
+		"win %s reach %s spent %d of %d status %s" % [gm.check_win(), main._all_furniture_accessible(), spent,
+		gm.current_level["starting_budget"], Requirements.status(gm)])
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:

@@ -303,14 +303,22 @@
 		{
 			"acquisition_cost": 0,
 			"allowed_furniture": [
+				"normal_bed",
 				"high_bed",
+				"toilet",
+				"sink",
+				"shower",
+				"stove",
+				"kitchen_sink",
+				"kitchen_small",
 				"desk",
 				"small_desk",
-				"stool",
-				"office_chair",
 				"monitor",
 				"keyboard",
 				"computer_mouse",
+				"stool",
+				"office_chair",
+				"dining_chair",
 				"bookshelf",
 				"wall_shelf",
 				"floor_lamp",
@@ -331,37 +339,37 @@
 								"demolished": false,
 								"has_window": true,
 								"primary": true,
-								"window_len": 12,
-								"window_pos": 8,
+								"window_len": 14,
+								"window_pos": 12,
 								"x1": 1,
-								"x2": 31,
+								"x2": 51,
 								"y1": 1,
 								"y2": 1
 							},
 							{
 								"demolished": false,
 								"primary": true,
-								"x1": 31,
-								"x2": 31,
+								"x1": 51,
+								"x2": 51,
 								"y1": 1,
-								"y2": 21
+								"y2": 37
 							},
 							{
 								"demolished": false,
-								"door_pos": 16,
+								"door_pos": 30,
 								"has_door": true,
 								"primary": true,
-								"x1": 31,
+								"x1": 51,
 								"x2": 1,
-								"y1": 21,
-								"y2": 21
+								"y1": 37,
+								"y2": 37
 							},
 							{
 								"demolished": false,
 								"primary": true,
 								"x1": 1,
 								"x2": 1,
-								"y1": 21,
+								"y1": 37,
 								"y2": 1
 							}
 						],
@@ -396,8 +404,8 @@
 						"type": "roof"
 					}
 				],
-				"grid_h": 28,
-				"grid_w": 38,
+				"grid_h": 42,
+				"grid_w": 56,
 				"hidden_floors": [
 					"fl_0_ceil",
 					"roof"
@@ -415,14 +423,14 @@
 			],
 			"map_row": 0,
 			"mechanic_intro": {
-				"body": "A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three chest freezers are staying.\n\nThey take up most of the floor, but they are low. A Loft Bed sleeps above head height, and anything low enough fits under it: a chest freezer, a desk, a chair.\n\nThere is no room for a desk yet. Move the freezers around until there is.",
-				"title": "Keepsakes, and going up"
+				"body": "Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n\nEvery other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n\nShort on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it.",
+				"title": "The basic needs"
 			},
 			"min_stars": 0,
 			"moments": [],
 			"name": "Three Freezers",
 			"palette": "slate",
-			"starting_budget": 900,
+			"starting_budget": 1500,
 			"starting_furniture": [
 				{
 					"id": "chest_freezer",
@@ -433,24 +441,14 @@
 				{
 					"id": "chest_freezer",
 					"keepsake": true,
-					"x": 13,
-					"y": 7
+					"x": 2,
+					"y": 10
 				},
 				{
 					"id": "chest_freezer",
 					"keepsake": true,
 					"x": 2,
-					"y": 13
-				},
-				{
-					"id": "toilet",
-					"x": 13,
-					"y": 15
-				},
-				{
-					"id": "sink",
-					"x": 25,
-					"y": 12
+					"y": 18
 				}
 			],
 			"starting_inventory": [],
@@ -460,11 +458,12 @@
 				"monthly_rent": 520,
 				"name": "Dani",
 				"required_functions": [
-					"hygiene",
 					"storage",
+					"sleep",
+					"hygiene",
+					"cook",
 					"work",
-					"sit",
-					"sleep"
+					"sit"
 				]
 			}
 		},

@@ -3159,3 +3159,25 @@ msgstr "Arcón congelador"
 #: data/furniture.json
 msgid "Upright Freezer"
 msgstr "Congelador vertical"
+
+#: data/levels.json:three_freezers
+msgid "The basic needs"
+msgstr "Las necesidades básicas"
+
+#: data/levels.json:three_freezers
+msgid ""
+"Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n"
+"\n"
+"Every other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n"
+"\n"
+"Short on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it."
+msgstr ""
+"El piso de Dani está vacío, salvo por tres arcones congeladores. El corazón tras su nombre significa que son recuerdos: puedes moverlos, pero nunca venderlos. Ya cuentan como almacenaje.\n"
+"\n"
+"Todas las demás necesidades de la barra siguen en cruz. Cada una se marca en cuanto el piso tiene una pieza que la cubre: una cama para dormir, un váter o un lavabo para asearse, una cocina para cocinar, un escritorio para trabajar y una silla para sentarse. El catálogo se abre en lo que aún falta, y hay sitio y dinero para todo.\n"
+"\n"
+"¿Aun así te falta suelo? Una cama alta se duerme por encima de la cabeza, y los arcones, que son bajos, caben debajo."
+
+#: data/tenants/three_freezers.tres
+msgid "And an oven. The pizzas will not bake themselves."
+msgstr "Y un horno. Las pizzas no se hornean solas."
