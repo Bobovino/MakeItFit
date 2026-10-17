@@ -999,7 +999,9 @@ func _glass_color() -> Color:
 
 
 func _process(delta: float) -> void:
-	if not _reveal_playing and _camera_keys_active():
+	if first_person:
+		_fp_process(delta)
+	elif not _reveal_playing and _camera_keys_active():
 		_key_pan(delta)
 	_check_long_press()
 	if _auto_spin and not _dragging:
@@ -1014,7 +1016,8 @@ func _process(delta: float) -> void:
 		_sync_status_marks()
 	if is_instance_valid(_tenant) and _tenant_stops.size() > 1:
 		_tenant_stop_t += delta
-		if _tenant_stop_t >= TENANT_STOP_SECONDS:
+		# Walking, the day/night swaps between stops come slower.
+		if _tenant_stop_t >= TENANT_STOP_SECONDS * (4.0 if first_person else 1.0):
 			_tenant_stop_t = 0.0
 			var prev_moment: String = (_tenant_stops[_tenant_stop_idx] as Dictionary).get("moment_id", "")
 			_tenant_stop_idx = (_tenant_stop_idx + 1) % _tenant_stops.size()
@@ -1043,8 +1046,8 @@ func _process(delta: float) -> void:
 
 
 func _on_container_input(event: InputEvent) -> void:
-	if _reveal_playing:
-		return
+	if _reveal_playing or first_person:
+		return   # the walk takes its input in _input(), see _fp_input()
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -1194,6 +1197,10 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and get_viewport().gui_get_focus_owner() is LineEdit:
 		return
 	if _reveal_playing:
+		return
+	if first_person:
+		if _fp_input(event):
+			get_viewport().set_input_as_handled()
 		return
 	# View keys. Handled here, ahead of Main.gd's own shortcuts (this node is
 	# deeper in the tree, so it sees input first): in the 3D view W/A/S/D move
@@ -2576,6 +2583,9 @@ func _spawn_fold_ghost(old_extended: bool, box_size: Vector3, box_pos: Vector3) 
 
 
 func _update_camera() -> void:
+	if first_person:
+		_fp_update_camera()
+		return
 	var ry := deg_to_rad(_yaw)
 	var rp := deg_to_rad(_pitch)
 	var offset := Vector3(cos(rp) * sin(ry), -sin(rp), cos(rp) * cos(ry)) * _dist
@@ -3752,6 +3762,14 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_apply_moment_lighting()
 	if _style != null:
 		build_root.add_child(RoomLighting.new(self))   # sun through the windows, lamps at night
+	if first_person:
+		# Rebuilt mid-walk: the same flat again, still seen from inside.
+		_fp_ceiling = null
+		_fp_walk = _fp_walkable_tiles()
+		if is_instance_valid(_walls_btn):
+			_walls_btn.visible = false
+		_fp_dress_room()
+		_update_camera()
 
 
 # ── Ghost reference layer (floor directly below a loft) ────────────────────
@@ -5150,6 +5168,10 @@ func _update_doors(delta: float) -> void:
 			continue
 		var center: Vector3 = wall.transform * (door["center_local"] as Vector3)
 		var want := 1.0 if is_same(_hover_door, door) else 0.0
+		if first_person:
+			var eye := _fp_local_eye()
+			if Vector2(eye.x - center.x, eye.z - center.z).length() < FP_DOOR_NEAR_M:
+				want = 1.0
 		if want == 0.0 and tenants != null:
 			for p in tenants.get_children():
 				var at := build_root.to_local((p as Node3D).global_position)
@@ -5816,3 +5838,296 @@ func touch_sell(f: Furniture) -> void:
 func touch_sell_wall_item(hit: Dictionary) -> void:
 	if not hit.is_empty():
 		_sell_wall_item(hit)
+
+
+# ── First-person walk ───────────────────────────────────────────────────────
+# A reward for a finished flat: the camera drops to eye height inside it and
+# the player walks around (W/A/S/D, mouse to look, Esc to leave). Read-only;
+# Main opens it from the results screen. Where you can stand is the floor the
+# tenants can reach (Floor.get_reachable_floor, the same set tenant_layer
+# paths over), so walls, partitions and furniture stop you without any
+# physics bodies. Every wall stands at full height, and a plain ceiling closes
+# the box overhead (only in this mode; real ceilings come later).
+signal first_person_exited
+const FP_EYE_M := 1.6
+const FP_FOV := 70.0
+const FP_NEAR := 0.05
+const FP_WALK_MPS := 1.3
+const FP_RUN_MPS := 2.4         # with Shift held
+const FP_LOOK_DEG_PER_PX := 0.12
+const FP_RADIUS_TILES := 1.5    # 15 cm kept clear between the eye and anything solid
+const FP_DOOR_NEAR_M := 1.0     # a door this close to the walker opens
+const FP_HINT_SECONDS := 6.0
+var first_person := false
+var _fp_pos := Vector2.ZERO     # where the walker stands, in floor tiles (continuous)
+var _fp_yaw := 0.0              # degrees; 0 looks toward -z (north on the plan)
+var _fp_pitch := 0.0
+var _fp_walk: Dictionary = {}   # Vector2i -> true: tiles the walker may stand on
+var _fp_saved: Dictionary = {}
+var _fp_ceiling: MeshInstance3D = null
+var _fp_hint: Label = null
+var _fp_hint_t := 0.0
+
+
+func enter_first_person() -> bool:
+	if first_person or not is_instance_valid(_apt_floor) or _room_w_m <= 0.0:
+		return false
+	_fp_walk = _fp_walkable_tiles()
+	var start := _fp_start_spot()
+	if start.is_empty():
+		return false
+	cancel_camera_travel()
+	_stop_turn()
+	_auto_spin = false
+	_dragging = false
+	_panning = false
+	_hide_hover_highlight()
+	_fp_pos = start["pos"]
+	_fp_yaw = start["yaw"]
+	_fp_pitch = -8.0
+	_fp_saved = {"fov": cam.fov, "near": cam.near, "attributes": cam.attributes}
+	first_person = true
+	cam.fov = FP_FOV
+	cam.near = FP_NEAR
+	if is_instance_valid(_walls_btn):
+		_walls_btn.visible = false
+	_fp_dress_room()
+	_fp_show_hint()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_update_camera()
+	return true
+
+
+func exit_first_person() -> void:
+	if not first_person:
+		return
+	first_person = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	cam.fov = _fp_saved.get("fov", cam.fov)
+	cam.near = _fp_saved.get("near", cam.near)
+	cam.attributes = _fp_saved.get("attributes", null)
+	if is_instance_valid(_fp_ceiling):
+		_fp_ceiling.queue_free()
+	_fp_ceiling = null
+	if is_instance_valid(_fp_hint):
+		_fp_hint.queue_free()
+	_fp_hint = null
+	if is_instance_valid(_rule_root):
+		_rule_root.visible = true
+	if is_instance_valid(_walls_btn):
+		_walls_btn.visible = true
+	if _style != null:
+		_style.apply()   # puts back the fog and depth of field the walk overrode
+	_update_camera()     # the cutaway and scenery follow the orbit camera again
+	first_person_exited.emit()
+
+
+# What the room looks like from inside: all walls up, the whole surroundings
+# shown, a ceiling, and none of the planning overlays. Rebuilt with the room
+# (build_from_floor frees build_root's children).
+func _fp_dress_room() -> void:
+	for wd in _wall_data:
+		if not wd.get("force_hidden", false):
+			wd["target_h"] = 1.0
+	for sc in _scenery_nodes:
+		var node: Node3D = sc["node"]
+		if not is_instance_valid(node):
+			continue
+		node.visible = true
+		if sc.get("wall", false):
+			node.scale.y = 1.0
+			node.position.y = (sc["floor_y"] as float) + (sc["h"] as float) * 0.5
+	if is_instance_valid(_rule_root):
+		_rule_root.visible = false
+	if not is_instance_valid(_fp_ceiling):
+		_fp_ceiling = _box(Vector3(_room_w_m, 0.04, _room_d_m),
+			Vector3(_room_w_m * 0.5, WALL_H_M + 0.02, _room_d_m * 0.5),
+			Color(0.95, 0.94, 0.91), StyleController.ROLE_PARTITION if _style != null else &"")
+		_fp_ceiling.name = "WalkCeiling"
+		_fp_ceiling.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # RoomLighting has its own shadow-only ceiling
+
+
+# Never leave the pointer captured behind a view that went away mid-walk.
+func _exit_tree() -> void:
+	if first_person:
+		first_person = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _fp_show_hint() -> void:
+	if not is_instance_valid(_fp_hint):
+		_fp_hint = Label.new()
+		_fp_hint.name = "WalkHint"
+		_fp_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fp_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_fp_hint.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+		_fp_hint.add_theme_color_override("font_color", Color.WHITE)
+		_fp_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
+		_fp_hint.add_theme_constant_override("outline_size", 6)
+		_fp_hint.anchor_left = 0.0
+		_fp_hint.anchor_right = 1.0
+		_fp_hint.anchor_top = 1.0
+		_fp_hint.anchor_bottom = 1.0
+		_fp_hint.offset_top = -64.0
+		_fp_hint.offset_bottom = -28.0
+		add_child(_fp_hint)
+	_fp_hint.text = tr("W A S D to walk · mouse to look around · Shift to hurry · Esc to leave")
+	_fp_hint.modulate.a = 1.0
+	_fp_hint_t = FP_HINT_SECONDS
+
+
+func _fp_process(delta: float) -> void:
+	if _fp_hint_t > 0.0 and is_instance_valid(_fp_hint):
+		_fp_hint_t -= delta
+		_fp_hint.modulate.a = clampf(_fp_hint_t / 1.0, 0.0, 1.0)
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
+		return
+	var move := Vector2(
+		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+		float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+	if move == Vector2.ZERO:
+		return
+	var ry := deg_to_rad(_fp_yaw)
+	var fwd := Vector2(-sin(ry), -cos(ry))   # in tiles: x east, y south
+	var right := Vector2(cos(ry), -sin(ry))
+	var speed := FP_RUN_MPS if Input.is_key_pressed(KEY_SHIFT) else FP_WALK_MPS
+	var step := (fwd * move.y + right * move.x).normalized() * speed * delta / TILE_M
+	_fp_pos = _fp_slide(_fp_pos, step)
+	_update_camera()
+
+
+# Moves by `step` if the walker fits there; otherwise slides along whichever
+# axis still fits, so brushing a wall or a sofa does not stop you dead.
+func _fp_slide(from: Vector2, step: Vector2) -> Vector2:
+	# Long frames are split so a step never jumps across something thin.
+	var n := maxi(1, ceili(step.length() / 0.5))
+	var p := from
+	var part := step / float(n)
+	for i in n:
+		if _fp_can_stand(p + part):
+			p += part
+		elif _fp_can_stand(p + Vector2(part.x, 0.0)):
+			p.x += part.x
+		elif _fp_can_stand(p + Vector2(0.0, part.y)):
+			p.y += part.y
+	return p
+
+
+func _fp_can_stand(p: Vector2) -> bool:
+	var r := FP_RADIUS_TILES
+	for o in [Vector2.ZERO, Vector2(-r, -r), Vector2(r, -r), Vector2(-r, r), Vector2(r, r)]:
+		var q := p + (o as Vector2)
+		if not _fp_walk.has(Vector2i(floori(q.x), floori(q.y))):
+			return false
+	return true
+
+
+# The tiles a tenant can stand on having walked in from the door; a floor with
+# no door (an upper storey, a box) falls back to every open floor tile.
+func _fp_walkable_tiles() -> Dictionary:
+	var reach := _apt_floor.get_reachable_floor()
+	if not reach.is_empty():
+		return reach
+	var out: Dictionary = {}
+	var walls := _apt_floor._partition_tile_set()
+	walls.merge(_apt_floor._window_tile_set())
+	var b := _apt_floor.get_room_bounds()
+	for y in range(b.position.y, b.end.y):
+		for x in range(b.position.x, b.end.x):
+			var t := Vector2i(x, y)
+			if not _apt_floor.is_floor_tile(t) or walls.has(t):
+				continue
+			var free := true
+			for f in _apt_floor._placed_list(t):
+				if _apt_floor.blocks_walking(f as Furniture):
+					free = false
+					break
+			if free:
+				out[t] = true
+	return out
+
+
+# Just inside the front door, looking into the flat; else the open spot
+# nearest the middle of the room. {pos: Vector2 (tiles), yaw: degrees}.
+func _fp_start_spot() -> Dictionary:
+	var b := _apt_floor.get_room_bounds()
+	var mid := Vector2(b.position) + Vector2(b.size) * 0.5
+	for s in _apt_floor.segments:
+		var sd := s as Dictionary
+		if sd.get("demolished", false) or not (sd.get("has_door", false) as bool):
+			continue
+		var x1 := sd["x1"] as int; var y1 := sd["y1"] as int
+		var x2 := sd["x2"] as int; var y2 := sd["y2"] as int
+		var dp := sd.get("door_pos", 0) as int
+		var door: Vector2
+		var inward: Vector2
+		if x1 == x2:
+			if x1 != b.position.x and x1 != b.end.x:
+				continue
+			door = Vector2(x1 + 0.5, mini(y1, y2) + dp + 5.0)   # 5 = half the door's 10 tiles
+			inward = Vector2(1, 0) if x1 == b.position.x else Vector2(-1, 0)
+		else:
+			if y1 != b.position.y and y1 != b.end.y:
+				continue
+			door = Vector2(mini(x1, x2) + dp + 5.0, y1 + 0.5)
+			inward = Vector2(0, 1) if y1 == b.position.y else Vector2(0, -1)
+		for k in range(3, 25):
+			var p := door + inward * float(k)
+			if _fp_can_stand(p):
+				return {"pos": p, "yaw": rad_to_deg(atan2(-inward.x, -inward.y))}
+	var best := Vector2.INF
+	for t in _fp_walk:
+		var p := Vector2(t as Vector2i) + Vector2(0.5, 0.5)
+		if _fp_can_stand(p) and (best == Vector2.INF or p.distance_squared_to(mid) < best.distance_squared_to(mid)):
+			best = p
+	if best == Vector2.INF:
+		return {}
+	var to_mid := mid - best
+	var yaw := HOME_YAW if to_mid.length() < 0.01 else rad_to_deg(atan2(-to_mid.x, -to_mid.y))
+	return {"pos": best, "yaw": yaw}
+
+
+func _fp_local_eye() -> Vector3:
+	var rb := Vector2(_room_bounds.position)
+	return Vector3((_fp_pos.x - rb.x) * TILE_M, FP_EYE_M, (_fp_pos.y - rb.y) * TILE_M)
+
+
+func _fp_update_camera() -> void:
+	cam.position = build_root.transform * _fp_local_eye()
+	cam.rotation = Vector3(deg_to_rad(_fp_pitch), deg_to_rad(_fp_yaw), 0.0)
+	if _style != null:
+		_style.refresh_view()
+		# The diorama's depth fog and far blur are fitted to a camera outside
+		# the room looking at it; from inside they would haze the far wall.
+		var env := _world_env.environment
+		if env != null:
+			env.fog_depth_begin = maxf(_room_w_m, _room_d_m) * 2.0 + 4.0
+			env.fog_depth_end = env.fog_depth_begin + 30.0
+		if cam.attributes != null:
+			cam.attributes = null
+
+
+func _fp_input(event: InputEvent) -> bool:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var rel := (event as InputEventMouseMotion).relative
+		_fp_yaw = wrapf(_fp_yaw - rel.x * FP_LOOK_DEG_PER_PX, -180.0, 180.0)
+		_fp_pitch = clampf(_fp_pitch - rel.y * FP_LOOK_DEG_PER_PX, -80.0, 80.0)
+		_update_camera()
+		return true
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clicked back in after alt-tabbing away
+		return true
+	if event is InputEventMouseButton:
+		return true   # no picking, panning or zooming while walking
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			if not event.echo:
+				exit_first_person()
+			return true
+		# The view's own keys mean nothing here, and must not reach Main's
+		# shortcuts (floor/moment stepping, wall reopening).
+		if event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E, KEY_HOME, KEY_END, KEY_R, KEY_TAB, KEY_F, KEY_SHIFT]:
+			return true
+	return false

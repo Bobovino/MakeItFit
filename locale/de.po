@@ -3219,3 +3219,16 @@ msgstr "Streamt zwölf Stunden am Tag und kauft Tiefkühlpizza palettenweise. Br
 #: scripts/TenantCard.gd
 msgid "Click to see the pieces that count"
 msgstr "Klicken, um die passenden Stücke zu sehen"
+
+#: scripts/ResultScreen.gd:120
+msgid "Walk Through"
+msgstr "Durchgehen"
+
+#: scripts/ResultScreen.gd:121
+msgid "Walk around the finished flat at eye height"
+msgstr "Geh auf Augenhöhe durch die fertige Wohnung"
+
+#: scripts/Room3DView.gd
+msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
+msgstr "W A S D zum Gehen · Maus zum Umsehen · Umschalt für schneller · Esc zum Verlassen"
+

@@ -3219,3 +3219,16 @@ msgstr "Hace directos doce horas al día y compra pizza congelada por palés. Ne
 #: scripts/TenantCard.gd
 msgid "Click to see the pieces that count"
 msgstr "Haz clic para ver las piezas que cuentan"
+
+#: scripts/ResultScreen.gd:120
+msgid "Walk Through"
+msgstr "Visitar el piso"
+
+#: scripts/ResultScreen.gd:121
+msgid "Walk around the finished flat at eye height"
+msgstr "Recorre el piso terminado a la altura de los ojos"
+
+#: scripts/Room3DView.gd
+msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
+msgstr "W A S D para andar · ratón para mirar · Mayús para ir más rápido · Esc para salir"
+
