@@ -29,6 +29,7 @@ func _ready() -> void:
 	await _t_box_on_a_surface()
 	await _t_outside_walls()
 	await _t_unreachable_shown()
+	await _t_moved_from_home()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -812,6 +813,43 @@ func _t_unreachable_shown() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	GameState.reduce_motion = real_motion
+
+
+# ── A piece that costs comfort shows where it came from ────────────────────
+# Debug: Furniture Stacking's desk is yellow-tier: moved away, its old spot is
+# outlined on the plan with what it costs, and the moment is said; moved
+# back, the mark goes and comfort is restored.
+func _t_moved_from_home() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_home_save.json"
+	GameState.pending_level_id = "debug:_stacking"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var desk: Furniture = null
+	for f in fl.get_all_furniture():
+		if (f as Furniture).furniture_id == "desk":
+			desk = f
+	var home := desk.grid_pos
+	fl.place_furniture(desk, home + Vector2(0, 12))
+	main._refresh_functions()
+	var ov: RuleOverlay = fl._rule_overlay
+	var said: String = (main._toast_panel.get_node("Text") as Label).text if is_instance_valid(main._toast_panel) else ""
+	_current = "comfort: a desk moved off its spot leaves its old spot marked, and says what it costs"
+	_ok(ov != null and ov.home_marks.size() == 1 and ov.home_marks[0]["home"] == home and said.contains("Desk"), said)
+	fl.place_furniture(desk, home)
+	main._refresh_functions()
+	said = (main._toast_panel.get_node("Text") as Label).text if is_instance_valid(main._toast_panel) else ""
+	_current = "comfort: moved back, the mark goes and comfort is restored"
+	_ok(ov.home_marks.is_empty() and said.contains("back"), said)
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
 
 
 # Puts a piece somewhere around `box` where `wanted` becomes true, refreshing

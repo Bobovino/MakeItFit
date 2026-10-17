@@ -281,6 +281,47 @@ func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
 
 
+# Pieces moved away from where they started (Main._show_moved_from_home()):
+# a faint outline on the floor of each one's old spot.
+var _home_marks: Array = []
+var _home_outlines: Array = []
+
+func set_home_marks(marks: Array) -> void:
+	if marks == _home_marks:
+		return
+	_home_marks = marks
+	_build_home_outlines()
+
+
+func _build_home_outlines() -> void:
+	for n in _home_outlines:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_home_outlines.clear()
+	if _room_w_m <= 0.0 or not is_instance_valid(build_root):
+		return
+	for m in _home_marks:
+		var mark := m as Dictionary
+		var size := (mark["size"] as Vector2) * TILE_M
+		var group := _build_outline_group(size, Color(0.98, 0.82, 0.40, 0.8), HITBOX_Y + 0.002)
+		var home := mark["home"] as Vector2
+		group.position.x = (home.x - _room_bounds.position.x) * TILE_M
+		group.position.z = (home.y - _room_bounds.position.y) * TILE_M
+		build_root.add_child(group)
+		_home_outlines.append(group)
+		var cost := Label3D.new()
+		cost.text = mark["cost"] as String
+		cost.font_size = 36
+		cost.pixel_size = 0.003 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		cost.modulate = Color(0.98, 0.82, 0.40)
+		cost.outline_size = 10
+		cost.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		cost.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+		cost.position = Vector3(group.position.x + size.x * 0.5, HITBOX_Y + 0.004, group.position.z + size.y * 0.5)
+		build_root.add_child(cost)
+		_home_outlines.append(cost)
+
+
 # Outside walls whose rules pass into a box nearest them (Main._show_outside_walls):
 # each gets its name and what it does lettered on the ground just outside it,
 # like a street name on the pavement (standing up, it hid the room).
@@ -3542,6 +3583,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
 	_outside_signs.clear()   # freed with the rest of build_root's children
 	_build_outside_signs()
+	_home_outlines.clear()
+	_build_home_outlines()
 	_add_columns(bounds)
 	_add_window_door_overlays(bounds)
 	_add_rails(bounds)

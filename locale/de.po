@@ -3108,3 +3108,19 @@ msgstr "%s ist randvoll: sie bleibt jetzt zu jeder Tageszeit am selben Platz."
 #: scripts/Main.gd
 msgid "This box"
 msgstr "Diese Kiste"
+
+#: scripts/Main.gd
+msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
+msgstr "%s stand gut, wo es war: Es zu verrücken kostet %d%% Komfort. Sein alter Platz ist markiert."
+
+#: scripts/Main.gd
+msgid "The %s is back where it started: comfort restored."
+msgstr "%s ist wieder an seinem Platz: Komfort zurück."
+
+#: scripts/Main.gd
+msgid "−%d%%"
+msgstr "−%d%%"
+
+#: scripts/Main.gd
+msgid "Away from where it started: %s"
+msgstr "Nicht an seinem Startplatz: %s"

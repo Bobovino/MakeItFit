@@ -3033,3 +3033,19 @@ msgstr ""
 #: scripts/Main.gd
 msgid "This box"
 msgstr ""
+
+#: scripts/Main.gd
+msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "The %s is back where it started: comfort restored."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "−%d%%"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Away from where it started: %s"
+msgstr ""

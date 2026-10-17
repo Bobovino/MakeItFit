@@ -50,6 +50,38 @@ func set_lines(status: Array) -> void:
 	queue_redraw()
 
 
+# Pieces moved away from where they started, costing comfort: a faint dashed
+# outline on the old spot, a dashed line from the piece back to it, and what
+# it costs, written on the old spot.
+const HOME_COLOR := Color(0.98, 0.82, 0.40)
+var home_marks: Array = []      # [{home: Vector2 tiles, size: Vector2 tiles, at: Vector2 tiles, cost: String}]
+
+func set_home_marks(marks: Array) -> void:
+	if marks == home_marks:
+		return
+	home_marks = marks
+	queue_redraw()
+
+
+func _draw_home_marks(font: Font) -> void:
+	for m in home_marks:
+		var mark := m as Dictionary
+		var home := Rect2((mark["home"] as Vector2) * TILE, (mark["size"] as Vector2) * TILE)
+		var now := Rect2((mark["at"] as Vector2) * TILE, (mark["size"] as Vector2) * TILE)
+		var faint := Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.75)
+		draw_rect(home, Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.10))
+		var c := [home.position, Vector2(home.end.x, home.position.y), home.end, Vector2(home.position.x, home.end.y), home.position]
+		for i in 4:
+			draw_dashed_line(c[i], c[i + 1], faint, 1.5, 4.0)
+		draw_dashed_line(now.get_center(), home.get_center(), Color(0.04, 0.08, 0.14, 0.6), 4.0, 6.0)
+		draw_dashed_line(now.get_center(), home.get_center(), faint, 1.8, 6.0)
+		var cost := mark["cost"] as String
+		var tw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := home.get_center() + Vector2(-tw * 0.5, 4)
+		draw_string_outline(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HOME_COLOR)
+
+
 # Outside walls with rules for the boxes nearest them: a plate just outside
 # each such wall with its name and what it does, and a dashed line from each
 # box to the wall it takes those rules from.
@@ -117,6 +149,7 @@ func _center(tile: Vector2i) -> Vector2:
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
+	_draw_home_marks(font)
 	_draw_outside(font)
 	# Zone name plates: what each zone holds, and a warning on one that
 	# holds two things that must be apart.

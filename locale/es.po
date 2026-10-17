@@ -3108,3 +3108,19 @@ msgstr "%s está llena a reventar: ahora se queda en el mismo sitio en todos los
 #: scripts/Main.gd
 msgid "This box"
 msgstr "Esta caja"
+
+#: scripts/Main.gd
+msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
+msgstr "%s estaba bien donde estaba: moverlo cuesta un %d%% de comodidad. Su sitio anterior queda marcado."
+
+#: scripts/Main.gd
+msgid "The %s is back where it started: comfort restored."
+msgstr "%s vuelve a su sitio: comodidad recuperada."
+
+#: scripts/Main.gd
+msgid "−%d%%"
+msgstr "−%d%%"
+
+#: scripts/Main.gd
+msgid "Away from where it started: %s"
+msgstr "Fuera de su sitio inicial: %s"

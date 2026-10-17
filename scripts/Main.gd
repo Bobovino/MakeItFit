@@ -667,11 +667,55 @@ func _position_comfort_meter() -> void:
 	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
 
 
+# Every yellow-tier piece that sits away from where it started (and so costs
+# comfort, see GameManager.compute_comfort()) shows where that was: a faint
+# outline of it on its old spot, a line back to it and what it costs, on the
+# plan and in 3D. When a piece starts or stops costing comfort, that is said
+# once (pieces seen for the first time, on loading, are only noted).
+var _moved_names: Array = []           # what is costing comfort right now, for the meter's tooltip
+var _away_seen: Dictionary = {}        # furniture instance id -> whether it was away last time
+var _home_marks: Array = []            # what _show_moved_from_home() last showed, for a 3D view built later
+
+func _show_moved_from_home() -> void:
+	_moved_names = []
+	var all_marks: Array = []
+	var moment := _active_moment_id as String
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var marks: Array = []
+		for entry in fl.get_all_furniture():
+			var f := entry as Furniture
+			if f.mobility_tier != "yellow" or f._home_grid_pos == Vector2(-1, -1):
+				continue
+			var at := f.get_moment_position(moment)
+			var away := at != f._home_grid_pos
+			var id := f.get_instance_id()
+			if _away_seen.has(id) and _away_seen[id] != away and not _restoring_furniture:
+				if away:
+					_toast(tr("The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked.") % [f.furniture_name, roundi(gm.COMFORT_COST_PER_ITEM)])
+				else:
+					_toast(tr("The %s is back where it started: comfort restored.") % f.furniture_name)
+			_away_seen[id] = away
+			if not away:
+				continue
+			_moved_names.append(f.furniture_name)
+			var mark := {"home": f._home_grid_pos, "size": Vector2(f.grid_w, f.grid_h), "at": at,
+				"cost": tr("−%d%%") % roundi(gm.COMFORT_COST_PER_ITEM)}
+			marks.append(mark)
+			if fid == _current_floor_id:
+				all_marks.append(mark)
+		fl.set_home_marks(marks)
+	_home_marks = all_marks
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.set_home_marks(all_marks)
+
+
 # Only worth showing on a level that actually uses the mechanic — a level
 # with no yellow-tier furniture at all would just show a permanent, mute
 # "Comfort 100%" that explains nothing. Called from _refresh_functions()
 # alongside every other post-move recompute.
 func _update_comfort_meter() -> void:
+	_show_moved_from_home()
 	var has_yellow := false
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
@@ -689,6 +733,7 @@ func _update_comfort_meter() -> void:
 	var was_hidden := not _comfort_meter.visible
 	_comfort_meter.visible = true
 	_comfort_meter.set_value(gm.comfort_pct, gm.COMFORT_WARN_THRESHOLD)
+	_comfort_meter.set_moved(_moved_names)
 	if was_hidden:
 		_position_minimap()   # re-lays the bar, which now reserves room for the gauge
 	_position_comfort_meter()
@@ -3303,6 +3348,7 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
 	_mode3d_view.set_daylight(_current_nested_daylight_factor if not _nested_stack.is_empty() else 1.0)
 	_mode3d_view._outside_walls = _outside_walls   # signs built with the room
+	_mode3d_view._home_marks = _home_marks
 	_mode3d_view.household_of = _household_of
 	# Hand the rule overlays over before the build, so a view created (or
 	# rebuilt) after the last refresh still shows them.
