@@ -53,9 +53,9 @@ each copy is worse than its original.
 camera pointed at its own monitor. Everyone has seen that effect, knows it repeats inward, and
 knows each iteration is blurrier. The mechanic and its termination arrive in the same picture.
 
-Fax also fits the register better than a shrink ray would: obsolete administrative technology
-rather than science fiction, which keeps the comedy deadpan and bureaucratic. And it is
-universally recognised, which matters now that the setting is no longer tied to one country.
+Fax also fits better than a shrink ray would: obsolete administrative technology rather than
+science fiction. And it is universally recognised, which matters now that the setting is no
+longer tied to one country.
 
 ## 3. Transfer, not copy — except when it loops
 
