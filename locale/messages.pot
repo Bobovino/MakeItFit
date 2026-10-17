@@ -1459,6 +1459,10 @@ msgstr ""
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr ""
 
+#: scripts/Wall.gd:1076
+msgid "Too heavy: what this box stands on would break (%s)"
+msgstr ""
+
 #: scripts/Wall.gd:1143
 msgid "Needs clearance around %s"
 msgstr ""
@@ -2956,4 +2960,98 @@ msgstr ""
 
 #: scripts/Main.gd
 msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
+
+msgid "Little daylight gets in here: the %s outside stands in front of the box."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s can't be slept in: the %s is too noisy."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "No %s"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s at least %.1f m from the wall"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "North side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "East side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "South side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "West side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "boxes here: %s"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "nothing extra for boxes here"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "This box stands by the %s: %s."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Busy street"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Quiet courtyard"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Bins alley"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s is lighter again: easier to move."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s is getting heavy: moving it away from where it started now costs comfort."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s is packed full: it now stays in one place for every moment of the day."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "This box"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "The %s is back where it started: comfort restored."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "−%d%%"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Away from where it started: %s"
+msgstr ""
+
+#: scripts/RuleOverlay.gd
+msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr ""

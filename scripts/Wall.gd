@@ -1068,6 +1068,14 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Too heavy for this loft (%.0f / %.0f)") % [projected_load, mezzanine_max_load]
 			return false
 
+	# Inside a box that stands on a table: a new piece is weight on that table
+	# too, shrunk (see Main._apply_carry_limit()). Moving what is already in
+	# here weighs nothing more.
+	if Floor.carry_limit >= 0.0 and Floor.carried_weight.is_valid() and not is_registered(furniture):
+		if (Floor.carried_weight.call() as float) + furniture._base_weight > Floor.carry_limit:
+			_block_reason = tr("Too heavy: what this box stands on would break (%s)") % Floor.carry_support_name
+			return false
+
 	var stacked_on := _surface_support_at(target_tiles, furniture)
 	if furniture.requires_surface and stacked_on == null:
 		_block_reason = tr("Needs a table or shelf underneath")
@@ -1083,15 +1091,26 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	# not tile-quantized — two pieces can sit flush at a fractional boundary
 	# without a false collision from tile rounding.
 	var new_rect := Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))
+	# Whatever rests on this piece travels with it (move_with_riders()), so it
+	# is never in its own way; the riders' own landing spots are checked there.
+	var carried := riders_of(furniture) if furniture.is_surface else []
+	# The surface it would stand on, and whatever that one stands on in turn.
+	var under: Array = []
+	var below := stacked_on
+	while below != null and below not in under:
+		under.append(below)
+		below = support_under(below)
 	for entry in _placed_continuous:
 		var f: Furniture = entry["furniture"]
+		if f in carried:
+			continue
 		# stacked_on is deliberately excluded here — a piece legitimately
 		# stacked on top of its support (already weight-checked above) sits at
 		# the SAME tiles as that support with the SAME z_bottom==0 (there's no
 		# real Z offset tracked for a stacked item, see Furniture.gd's z_top/
 		# z_bottom comments), so without this exemption it would always fail
 		# the ordinary overlap check right after passing the weight check.
-		if f == furniture or f == stacked_on:
+		if f == furniture or f in under:
 			continue
 		if furniture.z_top <= f.z_bottom or furniture.z_bottom >= f.z_top:
 			continue   # different Z layers (e.g. loft above, ground below) never collide
@@ -1132,7 +1151,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	# furniture from blocking access to it, not about what sits on its surface.
 	for entry in _placed_continuous:
 		var f: Furniture = entry["furniture"]
-		if f == furniture or f == stacked_on or f.ghost_radius <= 0:
+		if f == furniture or f in under or f.ghost_radius <= 0 or f in carried:
 			continue
 		var fpos: Vector2 = entry["pos"]
 		var ghost := Rect2(
@@ -1223,6 +1242,8 @@ func _layout_changed() -> void:
 	if _batch_depth > 0:
 		_batch_dirty = true
 		return
+	_update_stack_order()
+	_update_strain()
 	_compute_light_map()
 	_recalculate_zones()
 	furniture_changed.emit()
@@ -1356,7 +1377,10 @@ func clear_wall_drag_ghost() -> void:
 
 
 func set_floor_drag_ghost(furniture: Furniture, gx: float, gy: float) -> void:
+	var moved: bool = _floor_drag_ghost.get("furniture") != furniture 		or _floor_drag_ghost.get("gx") != gx or _floor_drag_ghost.get("gy") != gy
 	_floor_drag_ghost = {"furniture": furniture, "gx": gx, "gy": gy}
+	if moved:
+		_update_strain()   # only when it is over another tile: this runs on every mouse move
 	furniture_changed.emit()
 
 
@@ -1364,7 +1388,99 @@ func clear_floor_drag_ghost() -> void:
 	if _floor_drag_ghost.is_empty():
 		return
 	_floor_drag_ghost = {}
+	_update_strain()
 	furniture_changed.emit()
+
+
+# ── Strain: how loaded a surface is ─────────────────────────────────────────
+# Shown on the furniture itself rather than as a number: past STRAIN_FROM of
+# what it holds a surface starts to show it (bowing in 3D, see Room3DView;
+# its long edges pulled in on the plan, see Furniture._draw_strain), and a
+# piece being carried over it counts as already there, so the player sees a
+# table give before putting something too heavy on it.
+const STRAIN_FROM := 0.6
+
+# Set by Main: told about the piece being carried (and its corner), or null
+# when nothing is any more, so boxes can preview their shade and noise.
+static var carry_preview: Callable
+
+# What share of what `support` can hold rests on it. `carried` (being dragged
+# or bought, its corner at `carried_at`) counts on the surface it is over and
+# no longer on the one it was lifted off. Above 1 it would break.
+func strain_of(support: Furniture, carried: Furniture = null, carried_at: Variant = null) -> float:
+	if support.max_support_weight <= 0.0:
+		return 0.0
+	var load := _surface_load(support, carried)
+	if carried != null and carried_at != null and support_under(carried, carried_at) == support:
+		load += carried.weight
+	return load / support.max_support_weight
+
+
+# Where `carried` couldn't go, worked out once when it is picked up, so the
+# plan and the 3D view can show it while it is carried instead of only
+# saying so after a drop (the same rules as can_place()):
+#   clearance:   [Rect2] other pieces' clearance zones, in tiles
+#   bad_floor:   [Vector2i] tiles whose flooring it can't stand on
+#   low_ceiling: [Vector2i] tiles where the sloped ceiling is too low for it
+#   loft:        {} or {tiles: [Vector2i], load, max, weight}: the loft's load
+var _hints_for: Furniture = null
+
+func carry_hints(carried: Furniture) -> Dictionary:
+	var out := {"clearance": [], "bad_floor": [], "low_ceiling": [], "loft": {}}
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		if fur == carried or fur.ghost_radius <= 0:
+			continue
+		out["clearance"].append(Rect2(fur.grid_pos, Vector2(fur.grid_w, fur.grid_h)).grow(float(fur.ghost_radius)))
+	var b := get_room_bounds()
+	var check_floor := not carried.is_nested_box and (carried.floor_category != "any" or has_floor_kind("balcony"))
+	var height_m := carried.z_top / 10.0
+	var sc := sloped_ceiling
+	for x in range(b.position.x, b.end.x):
+		for y in range(b.position.y, b.end.y):
+			var t := Vector2i(x, y)
+			if not is_floor_tile(t):
+				continue
+			if check_floor and not _floor_category_ok(carried.floor_category, get_tile_kind(t)):
+				out["bad_floor"].append(t)
+			if not sc.is_empty():
+				var low_s := sc.get("low_start", 0) as int
+				var high_e := sc.get("high_end", 0) as int
+				var span := float(high_e - low_s)
+				var coord := t.x if (sc.get("axis", "x") as String) == "x" else t.y
+				if span > 0 and coord >= low_s and coord <= high_e:
+					var ceil_h := (sc.get("min_h", 1.8) as float) + (coord - low_s) / span * ((sc.get("max_h", 2.4) as float) - (sc.get("min_h", 1.8) as float))
+					if ceil_h < height_m:
+						out["low_ceiling"].append(t)
+	if not mezzanine_mask.is_empty() and mezzanine_max_load > 0.0:
+		out["loft"] = {"tiles": mezzanine_mask.keys(), "load": _mezzanine_load(carried),
+			"max": mezzanine_max_load, "weight": carried.weight}
+	return out
+
+
+# Hands every surface its current strain, counting the piece being dragged
+# or bought on the plan (the drag ghost) where it is now.
+func _update_strain() -> void:
+	var carried: Furniture = null
+	var at: Variant = null
+	var ghost: Variant = _floor_drag_ghost.get("furniture")
+	if is_instance_valid(ghost) and ((ghost as Furniture)._dragging or (ghost as Furniture)._placement_mode):
+		carried = ghost as Furniture
+		at = Vector2(_floor_drag_ghost["gx"] as float, _floor_drag_ghost["gy"] as float)
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		if fur.is_surface and fur != carried:
+			fur.set_strain(strain_of(fur, carried, at))
+	if Floor.carry_preview.is_valid():
+		Floor.carry_preview.call(carried, at)
+	if carried != _hints_for:
+		_hints_for = carried
+		if _rule_overlay == null and carried != null:
+			_rule_overlay = RuleOverlay.new()
+			_rule_overlay.z_index = 20
+			add_child(_rule_overlay)
+		if _rule_overlay != null:
+			_rule_overlay.set_carry_hints(carry_hints(carried) if carried != null else {})
 
 
 func get_wall_items(edge: String) -> Dictionary:
@@ -1618,6 +1734,30 @@ func set_zone_status(status: Array) -> void:
 		_rule_overlay.set_zones(zones, status)
 
 
+# Yellow-tier pieces away from where they started (Main._show_moved_from_home()):
+# their old spot, a line back to it and what it costs.
+func set_home_marks(marks: Array) -> void:
+	if _rule_overlay == null:
+		if marks.is_empty():
+			return
+		_rule_overlay = RuleOverlay.new()
+		_rule_overlay.z_index = 20
+		add_child(_rule_overlay)
+	_rule_overlay.set_home_marks(marks)
+
+
+# The flat's outside walls that pass rules into boxes, and which wall each box
+# takes them from (see Main._show_outside_walls()).
+func set_outside_walls(walls: Array, links: Array) -> void:
+	if _rule_overlay == null:
+		if walls.is_empty():
+			return
+		_rule_overlay = RuleOverlay.new()
+		_rule_overlay.z_index = 20
+		add_child(_rule_overlay)
+	_rule_overlay.set_outside(walls, links, get_room_bounds())
+
+
 func set_sight_lines(status: Array) -> void:
 	if _rule_overlay == null:
 		if status.is_empty():
@@ -1646,8 +1786,12 @@ func _mezzanine_load(exclude: Furniture = null) -> float:
 
 # Finds a furniture piece flagged is_surface whose footprint fully covers
 # `tiles` (so a stacked item can't half-hang off the edge of its support), or
-# null if none does — null means "bare floor", not "no support needed".
+# null if none does — null means "bare floor", not "no support needed". When
+# surfaces are themselves stacked (a nightstand on a kitchen island), the
+# highest one is the one actually underneath.
 func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
+	var best: Furniture = null
+	var best_top := -1.0
 	for f in get_all_furniture():
 		var fur := f as Furniture
 		if fur == exclude or not fur.is_surface:
@@ -1658,13 +1802,131 @@ func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
 				covers_all = false
 				break
 		if covers_all:
-			return fur
-	return null
+			var top := stack_lift(fur) + fur.body_h
+			if top > best_top:
+				best = fur
+				best_top = top
+	return best
+
+
+# The surface `f` rests on (at `at`, or where it is now), or null on bare floor.
+func support_under(f: Furniture, at: Variant = null) -> Furniture:
+	var pos: Vector2 = f.grid_pos if at == null else at as Vector2
+	return _surface_support_at(_rect_tiles(pos, f.grid_w, f.grid_h), f)
+
+
+# How high above the floor `f` stands, in tiles (the same units as the
+# catalogue's wall_h): the top of whatever it is stacked on, 0 on the floor.
+func stack_lift(f: Furniture, at: Variant = null, _depth: int = 0) -> float:
+	if _depth > 6:
+		return 0.0   # a support loop can't happen physically; never recurse forever on bad data
+	var sup := support_under(f, at)
+	if sup == null:
+		return 0.0
+	return stack_lift(sup, null, _depth + 1) + sup.body_h
+
+
+# Whether `f` rests on `support`, directly or on something that does.
+func rests_on(f: Furniture, support: Furniture) -> bool:
+	var cur := f
+	for i in 6:
+		cur = support_under(cur)
+		if cur == null:
+			return false
+		if cur == support:
+			return true
+	return false
+
+
+# Everything resting on `support`, directly or higher up the stack, lowest
+# first (the order they have to be put back down in when it moves).
+func riders_of(support: Furniture) -> Array:
+	var out: Array = []
+	if not support.is_surface or not is_registered(support):
+		return out
+	var seen: Dictionary = {}
+	for tile in _rect_tiles(support.grid_pos, support.grid_w, support.grid_h):
+		for f in _placed_list(tile):
+			var fur := f as Furniture
+			if fur == support or seen.has(fur):
+				continue
+			seen[fur] = true
+			if rests_on(fur, support):
+				out.append(fur)
+	out.sort_custom(func(a, b): return stack_lift(a) < stack_lift(b))
+	return out
+
+
+# Moves `support` to `at` and carries everything on it along, keeping each
+# piece where it was on the surface. All or nothing: if any rider can't go
+# where it would land, everything stays where it was and false comes back
+# (with that rider's block reason). A piece with nothing on it just moves.
+func move_with_riders(support: Furniture, at: Vector2) -> bool:
+	var riders := riders_of(support)
+	if riders.is_empty():
+		place_furniture(support, at)
+		return true
+	var delta := at - support.grid_pos
+	var old_support_pos := support.grid_pos
+	var old_pos: Dictionary = {}
+	begin_batch()
+	for r in riders:
+		old_pos[r] = (r as Furniture).grid_pos
+		_remove_from_grid(r as Furniture)
+	place_furniture(support, at)
+	var ok := true
+	var reason := ""
+	for r in riders:
+		var rf := r as Furniture
+		var dest: Vector2 = old_pos[rf] + delta
+		if not can_place(rf, dest):
+			ok = false
+			reason = "%s: %s" % [rf.furniture_name, _block_reason]
+			break
+		place_furniture(rf, dest)
+	if not ok:
+		for r in riders:
+			_remove_from_grid(r as Furniture)
+		place_furniture(support, old_support_pos)
+		for r in riders:
+			place_furniture(r as Furniture, old_pos[r])
+		_block_reason = reason
+	elif Furniture.test_mode_active:
+		for r in riders:
+			if (r as Furniture).has_own_moment_position():
+				(r as Furniture).moment_positions[Furniture.active_moment_id] = (r as Furniture).grid_pos
+	end_batch()
+	return ok
+
+
+# After `support` was turned a quarter (Furniture._rotate(): one rot_step,
+# counter-clockwise on the plan) from `old_pos`, `old_w` tiles wide: turns
+# `riders` (riders_of() taken before the turn) with it, each keeping its spot
+# on the surface as the surface turns under it. Everything stays inside the
+# turned footprint, so nothing is left hanging off the edge.
+func turn_riders(support: Furniture, riders: Array, old_pos: Vector2, old_w: int) -> void:
+	if riders.is_empty():
+		return
+	begin_batch()
+	var offsets: Dictionary = {}
+	for r in riders:
+		offsets[r] = (r as Furniture).grid_pos - old_pos
+		_remove_from_grid(r as Furniture)
+	for r in riders:
+		var rf := r as Furniture
+		var off: Vector2 = offsets[rf]
+		var rw := rf.grid_w
+		rf.set_rot_steps(rf.rot_steps + 1)   # not registered right now, so this only turns it
+		place_furniture(rf, support.grid_pos + Vector2(off.y, old_w - off.x - rw))
+		if rf.has_own_moment_position() and Furniture.test_mode_active:
+			rf.moment_positions[Furniture.active_moment_id] = rf.grid_pos
+	end_batch()
 
 
 # Combined weight of everything already resting on `support` (any piece
 # stacked there, not just requires_surface-flagged ones — see can_place()'s
-# generalized stacking check), excluding `exclude`.
+# generalized stacking check, and whatever rests on those in turn), excluding
+# `exclude`. What `support` itself stands on is not load on it.
 func _surface_load(support: Furniture, exclude: Furniture = null) -> float:
 	var counted: Dictionary = {}
 	var total := 0.0
@@ -1674,8 +1936,26 @@ func _surface_load(support: Furniture, exclude: Furniture = null) -> float:
 			if fur == support or fur == exclude or counted.has(fur):
 				continue
 			counted[fur] = true
-			total += fur.weight
+			if rests_on(fur, support):
+				total += fur.weight
 	return total
+
+
+# Draw order in the plan: a piece on a table is drawn over it (and over
+# whatever that table stands on), whatever order they were put down in.
+func _update_stack_order() -> void:
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		var depth := 0
+		var cur := fur
+		while depth < 6:
+			cur = support_under(cur)
+			if cur == null:
+				break
+			depth += 1
+		fur.stack_z = depth
+		if not fur._dragging:
+			fur.z_index = depth
 
 
 # Open floor tiles for a given moment — total walkable tiles minus whatever
@@ -1762,9 +2042,22 @@ func get_inaccessible_furniture() -> Array:
 		return get_unreachable_furniture()
 	var result: Array = []
 	for f in get_all_furniture():
-		if not _has_adjacent_free(f):
+		if not _has_adjacent_free(_ground_piece(f)):
 			result.append(f)
 	return result
+
+
+# What a piece is reached through: the furniture at the bottom of its stack
+# (a lamp or a box on a table is as reachable as the table), itself if it
+# stands on the floor.
+func _ground_piece(f: Furniture) -> Furniture:
+	var cur := f
+	for i in 6:
+		var sup := support_under(cur)
+		if sup == null:
+			break
+		cur = sup
+	return cur
 
 
 # ── Pathing (experimental — only in force while Floor.pathing_enabled) ──────
@@ -1781,6 +2074,14 @@ func get_inaccessible_furniture() -> Array:
 # the older "one free tile beside it" rule, so the game's blocked-piece
 # marker, the win condition and the level validator all follow it.
 static var pathing_enabled := false
+
+# Set by Main while the player is inside a box that stands on a table or
+# shelf: how much (in this apartment's own, unshrunk weight) everything in it
+# may add up to before that table outside would break, what weighs in here
+# now, and the table's name. carry_limit < 0: no such limit.
+static var carry_limit := -1.0
+static var carried_weight: Callable
+static var carry_support_name := ""
 const WALK_WIDTH := 4            # tiles (40 cm): the narrowest gap a person fits through
 const HEAD_HEIGHT := 18.0        # tiles: anything starting above this is walked under
 
@@ -1951,6 +2252,9 @@ func _front_sides(f: Furniture) -> Array[int]:
 
 # True when the tenant can walk up to the side this piece is used from.
 func is_reachable(f: Furniture) -> bool:
+	var ground := _ground_piece(f)
+	if ground != f:
+		return is_reachable(ground)
 	if not blocks_walking(f) or f.is_stair:
 		return true
 	var reached := get_reachable_floor()

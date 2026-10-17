@@ -64,6 +64,7 @@ static func glyph(id: String) -> String:
 		"sight": return "👁"
 		"zones": return "🚧"
 		"apartments": return "🏠"
+		"reach": return "🚶"   # can't get there (TenantLayer._try_to_reach)
 	return TenantCard.NEED_GLYPH.get(key, "❔") as String
 
 

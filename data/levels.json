@@ -79718,6 +79718,23 @@
 			"block": 0.0,
 			"district": "Debug",
 			"external_zone": {
+				"by_wall": {
+					"east": {
+						"forbidden_functions": [
+							"work"
+						],
+						"label": "Busy street"
+					},
+					"north": {
+						"label": "Quiet courtyard"
+					},
+					"south": {
+						"label": "Bins alley",
+						"min_boundary_distance": {
+							"sleep": 8
+						}
+					}
+				},
 				"forbidden_functions": [
 					"balcony"
 				],
@@ -80160,6 +80177,11 @@
 					"id": "desk",
 					"x": 3,
 					"y": 3
+				},
+				{
+					"id": "rental_capsule",
+					"x": 7,
+					"y": 4
 				},
 				{
 					"id": "nightstand",

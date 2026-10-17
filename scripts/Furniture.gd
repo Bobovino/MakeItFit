@@ -93,6 +93,15 @@ var weight: float = 1.0
 var is_surface: bool = false
 var max_support_weight: float = 0.0
 var requires_surface: bool = false
+# Height of the piece in tiles (the catalogue's wall_h, what the 3D view
+# draws): how high whatever is stacked on it stands. See Floor.stack_lift().
+var body_h: float = 8.0
+# How many surfaces this piece stands on top of (0 = the floor); the plan
+# draws it that far up so it shows over its table. Floor keeps it current.
+var stack_z: int = 0
+# How loaded this surface is (Floor.strain_of(), a share of
+# max_support_weight; over 1 = what is being carried over it would break it).
+var _strain: float = 0.0
 var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
 # A screen hides what is behind it without darkening the room: reeded glass,
 # a curtain. It stops a line of sight and divides zones like tall storage
@@ -166,24 +175,77 @@ var _base_mobility_tier: String = "red"
 var is_noisy: bool = false
 var needs_quiet: bool = false
 var _noise_muted: bool = false
+# What the noise comes from (a piece's name, here or outside the box), for
+# saying why a bed stopped working; and whether this piece is keeping
+# something from working right now. Both live, set with _noise_muted.
+var _noise_by: String = ""
+var _noise_making: bool = false
+# A box only: how much daylight gets in (Main._compute_box_occlusion(), 1 =
+# all of it), drawn as shade over it on the plan and as dimmer windows in 3D.
+var _shade: float = 1.0
 
 
 # Applies this box's current interior weight — combines it with the box's
 # OWN catalog weight for anything that reads `weight` (stacking capacity,
 # mezzanine load), and escalates mobility_tier as interior weight climbs
 # past the thresholds above. Only meaningful for is_nested_box pieces;
-# harmless no-op otherwise.
-func apply_interior_weight(w: float) -> void:
+# harmless no-op otherwise. `shrink` is how much the fax shrank what is
+# inside (the box's footprint over the apartment's floor, see
+# Main._box_shrink()): the furniture in there weighs that much less out here,
+# so a furnished box still fits on a sturdy table but not on a flimsy one.
+# The mobility thresholds keep reading the full interior weight.
+func apply_interior_weight(w: float, shrink: float = 1.0) -> void:
 	interior_weight = w
-	weight = _base_weight + w
+	weight = _base_weight + w * shrink
 	if not is_nested_box:
 		return
-	if w >= BOX_WEIGHT_RED_MIN:
-		mobility_tier = "red"
-	elif w >= BOX_WEIGHT_YELLOW_MIN:
-		mobility_tier = "yellow"
-	else:
-		mobility_tier = _base_mobility_tier
+	var tier := Furniture.box_tier(w, _base_mobility_tier)
+	if tier != mobility_tier:
+		mobility_tier = tier
+		queue_redraw()
+
+
+# The mobility tier of a box holding `interior` worth of furniture (see the
+# thresholds above), starting from `base` when it is nearly empty.
+static func box_tier(interior: float, base: String) -> String:
+	if interior >= BOX_WEIGHT_RED_MIN:
+		return "red"
+	if interior >= BOX_WEIGHT_YELLOW_MIN:
+		return "yellow"
+	return base
+
+# A catalogue piece's weight: its own "weight", else its footprint in tiles
+# (the same default setup() gives `weight`).
+static func catalog_weight(fdata: Dictionary) -> float:
+	var sz := fdata.get("size", {}) as Dictionary
+	return fdata.get("weight", float((sz.get("w", 4) as int) * (sz.get("h", 4) as int))) as float
+
+
+# How many floor tiles a level's apartment has, over its floors and lofts
+# (a floor with no painted tiles counts its whole grid).
+static func level_floor_tiles(level: Dictionary) -> int:
+	var apt := level.get("apartment", {}) as Dictionary
+	var gw := apt.get("grid_w", 0) as int
+	var gh := apt.get("grid_h", 0) as int
+	var total := 0
+	for fd in apt.get("floors", []) as Array:
+		var fdata := fd as Dictionary
+		if fdata.get("type", "floor") as String not in ["floor", "loft"]:
+			continue
+		var tiles := fdata.get("floor_tiles", []) as Array
+		total += tiles.size() if not tiles.is_empty() else gw * gh
+	return total
+
+
+# How much the fax shrank `level` to fit a box `box_w` x `box_h` tiles: the
+# box's footprint over the apartment's floor. What is inside weighs that much
+# less out here (see apply_interior_weight()).
+static func box_shrink(box_w: int, box_h: int, level: Dictionary) -> float:
+	var inner := level_floor_tiles(level)
+	if inner <= 0:
+		return 1.0
+	return clampf(float(box_w * box_h) / inner, 0.0, 1.0)
+
 
 # Rail: constrains dragging to one axis within a defined extent. rail_axis
 # itself is LIVE (Ctrl-drag clears it to detach) — _home_rail_* is the
@@ -316,6 +378,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	is_surface            = data.get("is_surface",        false)    as bool
 	max_support_weight    = data.get("max_support_weight", 0.0)     as float
 	requires_surface      = data.get("requires_surface",  false)    as bool
+	body_h                = data.get("wall_h",            8.0)      as float
 	walkable              = data.get("walkable",          false)    as bool
 	screen                = data.get("screen",            false)    as bool
 	screen_when           = data.get("screen_when",       "always") as String
@@ -543,6 +606,16 @@ func _draw() -> void:
 	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
 	# only the fill/hatch/symbol need to actually spin.
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if is_surface:
+		_draw_strain(float(w), float(h))
+	if is_nested_box and _shade < 0.99:
+		_draw_shade(float(w), float(h))
+	if is_nested_box:
+		_draw_packing(float(w), float(h))
+	if _noise_making:
+		_draw_noise(float(w), float(h), Color(0.98, 0.70, 0.22))
+	if needs_quiet and _noise_muted:
+		_draw_kept_awake(float(w), float(h))
 
 	# Name label: dark ink with a light halo. The piece's own ink colour is
 	# close to its fill and to the white of its symbol, which left names like
@@ -672,10 +745,18 @@ func _draw() -> void:
 	# drag look permanently rejected, since it never matched wherever the
 	# ghost currently was; the live ✓/✗ pulse below already covers "can I drop
 	# here" during the drag itself.
+	# The residents now act an unreachable piece out (TenantLayer._try_to_reach),
+	# so this is only the quiet reminder that stays: a dashed red outline and
+	# a small "no way in" sign, which a level without residents relies on.
 	if not _accessible and not _dragging:
-		draw_rect(Rect2(0, 0, w, h), Color(0.88, 0.08, 0.08, 0.32))
-		draw_line(Vector2(3, 3),     Vector2(w - 3, h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
-		draw_line(Vector2(w - 3, 3), Vector2(3,     h - 3), Color(0.85, 0.05, 0.05, 0.80), 2.0)
+		var red := Color(0.88, 0.16, 0.12, 0.9)
+		var pts := [Vector2(1, 1), Vector2(w - 1, 1), Vector2(w - 1, h - 1), Vector2(1, h - 1), Vector2(1, 1)]
+		for i in 4:
+			draw_dashed_line(pts[i], pts[i + 1], red, 2.0, 4.0)
+		var c := Vector2(7, h - 7)
+		draw_circle(c, 4.5, Color(1, 1, 1, 0.9))
+		draw_arc(c, 4.5, 0.0, TAU, 16, red, 1.5, true)
+		draw_line(c + Vector2(-3, 0), c + Vector2(3, 0), red, 1.8)
 
 	# Drag validity tint — soft pulsing sage when the spot is free, terracotta
 	# when blocked, so validity reads before the piece is even dropped. The
@@ -1439,7 +1520,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_R and _is_mouse_over():
+		if event.keycode == KEY_R and _is_mouse_over() and not _rider_covers(get_viewport().get_mouse_position()):
 			_rotate()
 			get_viewport().set_input_as_handled()
 
@@ -1447,7 +1528,7 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			# The press's own position, not the live pointer: a finger has no
 			# hover, so the pointer is still wherever the last touch left it.
-			if event.pressed and _contains_screen_point(event.position):
+			if event.pressed and _contains_screen_point(event.position) and not _rider_covers(event.position):
 				_press_pos = event.position
 				_press_ms = Time.get_ticks_msec()
 				_press_moved = false
@@ -1457,7 +1538,7 @@ func _input(event: InputEvent) -> void:
 				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
 				if was_click and foldable:
 					_dragging = false
-					z_index = 0
+					z_index = stack_z
 					if _wall_ref:
 						_wall_ref.grid_draw.show_grid = false
 						_wall_ref.grid_draw.queue_redraw()
@@ -1467,7 +1548,7 @@ func _input(event: InputEvent) -> void:
 				else:
 					_end_drag(event.position)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if _is_mouse_over():
+			if _is_mouse_over() and not _rider_covers(event.position):
 				sell_requested.emit(self)
 				get_viewport().set_input_as_handled()
 
@@ -1483,6 +1564,113 @@ func _input(event: InputEvent) -> void:
 func _contains_screen_point(screen_pos: Vector2) -> bool:
 	var local := get_global_transform_with_canvas().affine_inverse() * screen_pos
 	return Rect2(Vector2.ZERO, Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)).has_point(local)
+
+
+# Whether something standing on this piece (a lamp, a box on a table) is
+# under that point: every piece hears every click, so the table lets the one
+# on top of it take it instead of being picked up, sold or turned as well.
+func _rider_covers(screen_pos: Vector2) -> bool:
+	if not is_surface or not _wall_ref or not _wall_ref.is_registered(self):
+		return false
+	for r in _wall_ref.riders_of(self):
+		if is_instance_valid(r) and (r as Furniture)._contains_screen_point(screen_pos):
+			return true
+	return false
+
+
+func set_strain(ratio: float) -> void:
+	if not is_equal_approx(ratio, _strain):
+		_strain = ratio
+		queue_redraw()
+
+
+# A surface under strain, on the plan: its long edges pull in toward the
+# middle like a beam drawn under load, amber as it fills, red with a crack
+# when what is being carried over it would break it. (In 3D it bows instead.)
+func _draw_strain(w: float, h: float) -> void:
+	if _strain <= Floor.STRAIN_FROM:
+		return
+	var over := _strain > 1.0 + 0.0001
+	var t := clampf((_strain - Floor.STRAIN_FROM) / (1.0 - Floor.STRAIN_FROM), 0.0, 1.0)
+	var col := Color(0.98, 0.72, 0.22).lerp(Color(0.93, 0.26, 0.18), t)
+	var along_x := w >= h
+	var span := w if along_x else h
+	var across := h if along_x else w
+	var depth := across * (0.28 if over else lerpf(0.05, 0.16, t))
+	for side in [0.0, 1.0]:
+		var pts := PackedVector2Array()
+		for i in 13:
+			var u := i / 12.0
+			var pull: float = depth * 4.0 * u * (1.0 - u) * (1.0 - 2.0 * side)
+			var a := u * span
+			var b: float = side * across + pull
+			pts.append(Vector2(a, b) if along_x else Vector2(b, a))
+		draw_polyline(pts, col, 2.5 if over else 2.0, true)
+		if over:
+			# A crack where the edge gives, pointing into the piece.
+			var dir: float = 1.0 - 2.0 * side
+			var crack := PackedVector2Array()
+			for k in 4:
+				var a2 := span * 0.5 + (2.5 if k % 2 == 0 else -2.5)
+				var b2: float = side * across + (depth + 1.0 + k * 3.0) * dir
+				crack.append(Vector2(a2, b2) if along_x else Vector2(b2, a2))
+			draw_polyline(crack, col, 1.5, true)
+
+
+# How full a box is, on the plan: taped shut once what is inside makes it
+# heavy (yellow tier), strapped crosswise once it is packed full (red), and a
+# thin gauge along its bottom edge filling toward the next of those.
+const TAPE_COLOR := Color(0.80, 0.66, 0.42, 0.95)
+const STRAP_COLOR := Color(0.22, 0.16, 0.12, 0.95)
+
+func _draw_packing(w: float, h: float) -> void:
+	if mobility_tier == "yellow" or mobility_tier == "red":
+		var band := maxf(2.0, h * 0.12)
+		draw_rect(Rect2(0, h * 0.5 - band * 0.5, w, band), TAPE_COLOR)
+	if mobility_tier == "red":
+		var strap := maxf(2.0, w * 0.10)
+		draw_rect(Rect2(w * 0.5 - strap * 0.5, 0, strap, h), STRAP_COLOR)
+		draw_rect(Rect2(0, h * 0.5 - strap * 0.5, w, strap), STRAP_COLOR)
+	var fill := clampf(interior_weight / BOX_WEIGHT_RED_MIN, 0.0, 1.0)
+	var gauge := Rect2(2, h - 4, w - 4, 2.5)
+	draw_rect(gauge, Color(0.04, 0.08, 0.14, 0.7))
+	var col := GameTheme.C_GOOD if mobility_tier == "green" else (GameTheme.C_AMBER if mobility_tier == "yellow" else GameTheme.C_BAD)
+	draw_rect(Rect2(gauge.position, Vector2(gauge.size.x * fill, gauge.size.y)), col)
+	var mark := gauge.position.x + gauge.size.x * (BOX_WEIGHT_YELLOW_MIN / BOX_WEIGHT_RED_MIN)
+	draw_line(Vector2(mark, gauge.position.y - 1), Vector2(mark, gauge.end.y + 1), Color(1, 1, 1, 0.8), 1.0)
+
+
+# A box in another piece's shadow, on the plan: shade over it, darker the
+# less daylight gets in.
+func _draw_shade(w: float, h: float) -> void:
+	var dark := (1.0 - _shade) * 0.6
+	draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.03, 0.08, dark))
+	var hatch := Color(0.02, 0.03, 0.08, dark + 0.15)
+	var d := 3.0
+	while d < w + h:
+		draw_line(Vector2(maxf(0.0, d - h), minf(d, h)), Vector2(minf(d, w), maxf(0.0, d - w)), hatch, 1.0, true)
+		d += 3.0
+
+
+# Sound coming off a piece: arcs either side of its top corner.
+func _draw_noise(w: float, h: float, col: Color) -> void:
+	var c := Vector2(w - 6.0, 6.0)
+	for r in [3.0, 5.5, 8.0]:
+		draw_arc(c, r, -0.7, 0.7, 6, col, 1.5, true)
+		draw_arc(c, r, PI - 0.7, PI + 0.7, 6, col, 1.5, true)
+	draw_circle(c, 1.5, col)
+
+
+# A bed noise keeps anyone from sleeping in: a struck-through "Zz" and the
+# sound reaching it.
+func _draw_kept_awake(w: float, h: float) -> void:
+	var red := Color(0.93, 0.28, 0.22)
+	var font := ThemeDB.fallback_font
+	var at := Vector2(w * 0.5 - 7.0, h * 0.5 + 5.0)
+	draw_string_outline(font, at, "Zz", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color(1, 1, 1, 0.85))
+	draw_string(font, at, "Zz", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, red)
+	draw_line(at + Vector2(-2, -4), at + Vector2(16, -4), red, 2.0, true)
+	_draw_noise(w, h, red)
 
 
 func _is_mouse_over() -> bool:
@@ -1662,10 +1850,17 @@ func _rotate(quiet: bool = false) -> void:
 	if _wall_ref and _wall_ref.is_registered(self):
 		var cx := clampf(grid_pos.x, 0.0, float(_wall_ref.grid_w - new_w))
 		var cy := clampf(grid_pos.y, 0.0, float(_wall_ref.grid_h - new_h))
+		# What stands on it turns with it (Floor.turn_riders).
+		var riders := _wall_ref.riders_of(self) if is_surface else []
+		var old_pos := grid_pos
+		var old_w := grid_w
+		_wall_ref.begin_batch()
 		grid_w = new_w
 		grid_h = new_h
 		rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
 		_wall_ref.place_furniture(self, Vector2(cx, cy))
+		_wall_ref.turn_riders(self, riders, old_pos, old_w)
+		_wall_ref.end_batch()
 	else:
 		grid_w = new_w
 		grid_h = new_h
@@ -1675,7 +1870,7 @@ func _rotate(quiet: bool = false) -> void:
 
 func _end_drag(_mouse_pos: Vector2) -> void:
 	_dragging = false
-	z_index = 0
+	z_index = stack_z
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
@@ -1698,8 +1893,10 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 			and Furniture.all_moment_ids.size() > 1:
 		ok = _wall_ref.can_place_across_moments(self, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
 
+	# Whatever stands on it comes along; if any of that can't land, nothing moves.
+	if ok and not _wall_ref.move_with_riders(self, snap_pos):
+		ok = false
 	if ok:
-		_wall_ref.place_furniture(self, snap_pos)
 		if has_own_moment_position() and Furniture.test_mode_active:
 			moment_positions[Furniture.active_moment_id] = grid_pos
 		elif mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
@@ -1775,7 +1972,7 @@ func cancel_drag() -> void:
 	if not _dragging or _placement_mode:
 		return
 	_dragging = false
-	z_index = 0
+	z_index = stack_z
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
@@ -1795,6 +1992,7 @@ func cancel_placement() -> void:
 		_wall_ref.grid_draw.queue_redraw()
 	placement_cancelled.emit()
 	if _wall_ref:
+		_wall_ref.clear_floor_drag_ghost()   # a table it was held over stops showing its weight
 		_wall_ref.forget_furniture(self)   # never leave a freed node on the floor's books
 	queue_free()
 

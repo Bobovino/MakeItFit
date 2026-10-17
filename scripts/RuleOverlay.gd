@@ -50,12 +50,185 @@ func set_lines(status: Array) -> void:
 	queue_redraw()
 
 
+# While a piece is carried: where it can't go (Floor.carry_hints()). Other
+# pieces' clearance as soft amber zones, flooring it can't stand on and a
+# ceiling too low for it as red hatching, and the loft's load with what the
+# piece would add.
+const NO_GO := Color(0.93, 0.30, 0.24)
+const CLEARANCE := Color(0.98, 0.78, 0.30)
+var carry_hints: Dictionary = {}
+var _no_go_runs: Array = []     # [Rect2] in pixels, tile runs merged per row
+var _low_runs: Array = []
+
+func set_carry_hints(hints: Dictionary) -> void:
+	carry_hints = hints
+	_no_go_runs = _runs(hints.get("bad_floor", []) as Array)
+	_low_runs = _runs(hints.get("low_ceiling", []) as Array)
+	queue_redraw()
+
+
+# Tiles as one rect per unbroken run along a row, in pixels.
+static func _runs(tiles: Array) -> Array:
+	var by_row: Dictionary = {}
+	for t in tiles:
+		var tv := t as Vector2i
+		if not by_row.has(tv.y):
+			by_row[tv.y] = []
+		(by_row[tv.y] as Array).append(tv.x)
+	var out: Array = []
+	for y in by_row:
+		var xs := by_row[y] as Array
+		xs.sort()
+		var start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size() + 1):
+			var x: int = xs[i] if i < xs.size() else prev + 2
+			if x != prev + 1:
+				out.append(Rect2(Vector2(start, y) * TILE, Vector2(prev - start + 1, 1) * TILE))
+				start = x
+			prev = x
+	return out
+
+
+func _draw_carry_hints(font: Font) -> void:
+	if carry_hints.is_empty():
+		return
+	for r in carry_hints.get("clearance", []) as Array:
+		var z := Rect2((r as Rect2).position * TILE, (r as Rect2).size * TILE)
+		draw_rect(z, Color(CLEARANCE.r, CLEARANCE.g, CLEARANCE.b, 0.07))
+		var c := [z.position, Vector2(z.end.x, z.position.y), z.end, Vector2(z.position.x, z.end.y), z.position]
+		for i in 4:
+			draw_dashed_line(c[i], c[i + 1], Color(CLEARANCE.r, CLEARANCE.g, CLEARANCE.b, 0.55), 1.2, 3.0)
+	for runs in [_no_go_runs, _low_runs]:
+		for r in runs:
+			draw_rect(r as Rect2, Color(NO_GO.r, NO_GO.g, NO_GO.b, 0.16))
+	if not _low_runs.is_empty():
+		var area := _low_runs[0] as Rect2
+		for r in _low_runs:
+			area = area.merge(r as Rect2)
+		var text := tr("Ceiling too low here")
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := area.get_center() + Vector2(-tw * 0.5, 4)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, NO_GO)
+	var loft := carry_hints.get("loft", {}) as Dictionary
+	if not loft.is_empty():
+		var tiles := loft["tiles"] as Array
+		var area := Rect2(Vector2(tiles[0] as Vector2i) * TILE, Vector2.ONE * TILE)
+		for t in tiles:
+			area = area.merge(Rect2(Vector2(t as Vector2i) * TILE, Vector2.ONE * TILE))
+		var over := (loft["load"] as float) + (loft["weight"] as float) > (loft["max"] as float)
+		var col := NO_GO if over else CLEARANCE
+		draw_rect(area, col, false, 1.5)
+		var text := tr("Loft: %.0f / %.0f, this adds %.0f") % [loft["load"], loft["max"], loft["weight"]]
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := Vector2(area.get_center().x - tw * 0.5, area.position.y + 12)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+
+
+# Pieces moved away from where they started, costing comfort: a faint dashed
+# outline on the old spot, a dashed line from the piece back to it, and what
+# it costs, written on the old spot.
+const HOME_COLOR := Color(0.98, 0.82, 0.40)
+var home_marks: Array = []      # [{home: Vector2 tiles, size: Vector2 tiles, at: Vector2 tiles, cost: String}]
+
+func set_home_marks(marks: Array) -> void:
+	if marks == home_marks:
+		return
+	home_marks = marks
+	queue_redraw()
+
+
+func _draw_home_marks(font: Font) -> void:
+	for m in home_marks:
+		var mark := m as Dictionary
+		var home := Rect2((mark["home"] as Vector2) * TILE, (mark["size"] as Vector2) * TILE)
+		var now := Rect2((mark["at"] as Vector2) * TILE, (mark["size"] as Vector2) * TILE)
+		var faint := Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.75)
+		draw_rect(home, Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.10))
+		var c := [home.position, Vector2(home.end.x, home.position.y), home.end, Vector2(home.position.x, home.end.y), home.position]
+		for i in 4:
+			draw_dashed_line(c[i], c[i + 1], faint, 1.5, 4.0)
+		draw_dashed_line(now.get_center(), home.get_center(), Color(0.04, 0.08, 0.14, 0.6), 4.0, 6.0)
+		draw_dashed_line(now.get_center(), home.get_center(), faint, 1.8, 6.0)
+		var cost := mark["cost"] as String
+		var tw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := home.get_center() + Vector2(-tw * 0.5, 4)
+		draw_string_outline(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HOME_COLOR)
+
+
+# Outside walls with rules for the boxes nearest them: a plate just outside
+# each such wall with its name and what it does, and a dashed line from each
+# box to the wall it takes those rules from.
+const OUTSIDE_COLOR := Color(0.98, 0.78, 0.36)
+var outside_walls: Array = []   # [{side, name, rules}]
+var box_links: Array = []       # [{from: Vector2 tiles, side, held}]
+var room: Rect2i = Rect2i()
+
+func set_outside(walls: Array, links: Array, bounds: Rect2i) -> void:
+	if walls == outside_walls and links == box_links and bounds == room:
+		return
+	outside_walls = walls
+	box_links = links
+	room = bounds
+	queue_redraw()
+
+
+# Middle of a wall of the room, in plan pixels, and which way is out.
+func _wall_mid(side: String) -> Array:
+	var r := Rect2(Vector2(room.position) * TILE, Vector2(room.size) * TILE)
+	match side:
+		"north": return [Vector2(r.get_center().x, r.position.y), Vector2.UP]
+		"south": return [Vector2(r.get_center().x, r.end.y), Vector2.DOWN]
+		"east":  return [Vector2(r.end.x, r.get_center().y), Vector2.RIGHT]
+	return [Vector2(r.position.x, r.get_center().y), Vector2.LEFT]
+
+
+func _draw_outside(font: Font) -> void:
+	var r := Rect2(Vector2(room.position) * TILE, Vector2(room.size) * TILE)
+	for l in box_links:
+		var link := l as Dictionary
+		var from := (link["from"] as Vector2) * TILE
+		var side := link["side"] as String
+		var to := Vector2(from.x, r.position.y) if side == "north" else Vector2(from.x, r.end.y) if side == "south" \
+			else Vector2(r.end.x, from.y) if side == "east" else Vector2(r.position.x, from.y)
+		var w := 2.5 if link["held"] else 1.5
+		draw_dashed_line(from, to, Color(0.04, 0.08, 0.14, 0.7), w + 2.5, 6.0)
+		draw_dashed_line(from, to, OUTSIDE_COLOR, w, 6.0)
+		draw_circle(to, 3.5, OUTSIDE_COLOR)
+	for wl in outside_walls:
+		var wall := wl as Dictionary
+		var mid: Array = _wall_mid(wall["side"] as String)
+		var at: Vector2 = mid[0]
+		var out: Vector2 = mid[1]
+		var title := wall["name"] as String
+		var rules := wall["rules"] as String
+		var tw := maxf(font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x,
+			font.get_string_size(rules, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+		# Turned along a side wall, so it lies alongside it like the others.
+		var angle := 0.0 if out.y != 0.0 else (-PI * 0.5 if out.x < 0.0 else PI * 0.5)
+		# Just inside the wall: outside it, the plan's edges and the screen's
+		# bars cut it off.
+		draw_set_transform(at - out * 15.0, angle, Vector2.ONE)
+		var plate := Rect2(Vector2(-tw * 0.5 - 4, -11), Vector2(tw + 8, 22))
+		draw_rect(plate, Color(0.04, 0.08, 0.14, 0.62))
+		draw_rect(plate, Color(OUTSIDE_COLOR.r, OUTSIDE_COLOR.g, OUTSIDE_COLOR.b, 0.7), false, 1.0)
+		draw_string(font, Vector2(-tw * 0.5, -1), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, OUTSIDE_COLOR)
+		draw_string(font, Vector2(-tw * 0.5, 8), rules, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.92, 0.94, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _center(tile: Vector2i) -> Vector2:
 	return (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
 
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
+	_draw_carry_hints(font)
+	_draw_home_marks(font)
+	_draw_outside(font)
 	# Zone name plates: what each zone holds, and a warning on one that
 	# holds two things that must be apart.
 	for zi in mini(zones.size(), zone_status.size()):

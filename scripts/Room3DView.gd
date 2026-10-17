@@ -281,6 +281,356 @@ func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
 
 
+# While a piece is carried: where it can't go, on the floor (Floor.carry_hints()):
+# other pieces' clearance as amber outlines, flooring it can't stand on and a
+# ceiling too low for it as a red tint, and the loft's load as a label.
+var _hints_for: Furniture = null
+var _hint_nodes: Array = []
+
+func _show_carry_hints(carried: Furniture) -> void:
+	_hints_for = carried
+	for n in _hint_nodes:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_hint_nodes.clear()
+	if carried == null or not is_instance_valid(_apt_floor) or not is_instance_valid(build_root):
+		return
+	var hints := _apt_floor.carry_hints(carried)
+	var origin := Vector2(_room_bounds.position)
+	for r in hints["clearance"] as Array:
+		var z := r as Rect2
+		var group := _build_outline_group(z.size * TILE_M, Color(0.98, 0.78, 0.30, 0.7), HITBOX_Y + 0.003)
+		group.position.x = (z.position.x - origin.x) * TILE_M
+		group.position.z = (z.position.y - origin.y) * TILE_M
+		build_root.add_child(group)
+		_hint_nodes.append(group)
+	var tiles: Array = (hints["bad_floor"] as Array) + (hints["low_ceiling"] as Array)
+	if not tiles.is_empty():
+		var verts := PackedVector3Array()
+		for rr in RuleOverlay._runs(tiles):
+			var px := rr as Rect2   # plan pixels: TILE per tile
+			var x0 := (px.position.x / RuleOverlay.TILE - origin.x) * TILE_M
+			var z0 := (px.position.y / RuleOverlay.TILE - origin.y) * TILE_M
+			var x1 := x0 + px.size.x / RuleOverlay.TILE * TILE_M
+			var z1 := z0 + px.size.y / RuleOverlay.TILE * TILE_M
+			var y := HITBOX_Y + 0.002
+			verts.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
+				Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.93, 0.30, 0.24, 0.28)
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		build_root.add_child(mi)
+		_hint_nodes.append(mi)
+	var loft := hints["loft"] as Dictionary
+	if not loft.is_empty():
+		var lt := loft["tiles"] as Array
+		var c := Vector2.ZERO
+		for t in lt:
+			c += Vector2(t as Vector2i)
+		c = c / lt.size() + Vector2(0.5, 0.5)
+		var over := (loft["load"] as float) + (loft["weight"] as float) > (loft["max"] as float)
+		var label := Label3D.new()
+		label.text = tr("Loft: %.0f / %.0f, this adds %.0f") % [loft["load"], loft["max"], loft["weight"]]
+		label.font_size = 36
+		label.pixel_size = 0.003 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		label.modulate = Color(0.93, 0.30, 0.24) if over else Color(0.98, 0.78, 0.30)
+		label.outline_size = 10
+		label.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = true
+		label.position = Vector3((c.x - origin.x) * TILE_M, WALL_H_M * 0.6, (c.y - origin.y) * TILE_M)
+		build_root.add_child(label)
+		_hint_nodes.append(label)
+
+
+# Pieces moved away from where they started (Main._show_moved_from_home()):
+# a faint outline on the floor of each one's old spot.
+var _home_marks: Array = []
+var _home_outlines: Array = []
+
+func set_home_marks(marks: Array) -> void:
+	if marks == _home_marks:
+		return
+	_home_marks = marks
+	_build_home_outlines()
+
+
+func _build_home_outlines() -> void:
+	for n in _home_outlines:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_home_outlines.clear()
+	if _room_w_m <= 0.0 or not is_instance_valid(build_root):
+		return
+	for m in _home_marks:
+		var mark := m as Dictionary
+		var size := (mark["size"] as Vector2) * TILE_M
+		var group := _build_outline_group(size, Color(0.98, 0.82, 0.40, 0.8), HITBOX_Y + 0.002)
+		var home := mark["home"] as Vector2
+		group.position.x = (home.x - _room_bounds.position.x) * TILE_M
+		group.position.z = (home.y - _room_bounds.position.y) * TILE_M
+		build_root.add_child(group)
+		_home_outlines.append(group)
+		var cost := Label3D.new()
+		cost.text = mark["cost"] as String
+		cost.font_size = 36
+		cost.pixel_size = 0.003 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		cost.modulate = Color(0.98, 0.82, 0.40)
+		cost.outline_size = 10
+		cost.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		cost.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+		cost.position = Vector3(group.position.x + size.x * 0.5, HITBOX_Y + 0.004, group.position.z + size.y * 0.5)
+		build_root.add_child(cost)
+		_home_outlines.append(cost)
+
+
+# Outside walls whose rules pass into a box nearest them (Main._show_outside_walls):
+# each gets its name and what it does lettered on the ground just outside it,
+# like a street name on the pavement (standing up, it hid the room).
+var _outside_walls: Array = []
+var _outside_signs: Array = []
+
+func set_outside_walls(walls: Array) -> void:
+	if walls == _outside_walls:
+		return
+	_outside_walls = walls
+	_build_outside_signs()
+
+
+func _build_outside_signs() -> void:
+	for n in _outside_signs:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_outside_signs.clear()
+	if _room_w_m <= 0.0 or not is_instance_valid(build_root):
+		return
+	for wl in _outside_walls:
+		var wall := wl as Dictionary
+		var ground := DESK_MAT_Y + 0.01 if _parent_scenery.is_empty() else -0.05
+		var at := Vector3(_room_w_m * 0.5, ground, _room_d_m * 0.5)
+		var turn := 0.0
+		match wall["side"]:
+			"north": at.z = -0.45
+			"south": at.z = _room_d_m + 0.45
+			"east":
+				at.x = _room_w_m + 0.45
+				turn = 90.0
+			"west":
+				at.x = -0.45
+				turn = -90.0
+		var plate3d := Label3D.new()
+		plate3d.text = "%s\n%s" % [wall["name"], wall["rules"]]
+		plate3d.font_size = 40
+		plate3d.pixel_size = 0.0035 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		plate3d.modulate = Color(0.98, 0.78, 0.36)
+		plate3d.outline_size = 12
+		plate3d.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		plate3d.rotation_degrees = Vector3(-90.0, turn, 0.0)
+		plate3d.double_sided = true
+		plate3d.position = at
+		build_root.add_child(plate3d)
+		_outside_signs.append(plate3d)
+
+
+# How much daylight reaches this room, 0..1: less inside a box that stands in
+# the shadow of something in the flat around it (Main._compute_box_occlusion).
+var _daylight := 1.0
+
+func set_daylight(factor: float) -> void:
+	_daylight = factor
+	if _style != null:
+		_style.daylight = factor
+
+
+# ── What noise and shade do, shown on the pieces ────────────────────────────
+# A piece whose noise keeps a bed from working has sound coming off it; the
+# bed gets a struck-through "Zz". A box in another piece's shadow has its
+# little windows dimmed, as much as less daylight gets into it. All of it
+# read from what Main last worked out (Furniture._noise_*, _shade), twice a
+# second.
+const NOISE_COLOR := Color(0.98, 0.70, 0.22)
+const AWAKE_COLOR := Color(0.93, 0.28, 0.22)
+var _status_t := 0.0
+
+func _sync_status_marks() -> void:
+	for entry in _furniture_entries:
+		var f := entry.get("furniture") as Furniture
+		var mi := entry.get("mesh") as MeshInstance3D
+		if not is_instance_valid(f) or not is_instance_valid(mi):
+			continue
+		var want := "awake" if (f.needs_quiet and f._noise_muted) else ("noise" if f._noise_making else "")
+		if mi.get_meta("status_kind", "") != want:
+			var old = mi.get_meta("status_mark") if mi.has_meta("status_mark") else null
+			if is_instance_valid(old):
+				(old as Node).queue_free()
+			mi.set_meta("status_kind", want)
+			mi.remove_meta("status_mark")
+			if want != "":
+				# Big enough to read from the whole room's view, in a big room too.
+				var ms := clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+				var mark := _status_mark(want, ms)
+				mark.position.y = (entry["size"] as Vector3).y * 0.5 + 0.12 * ms
+				mi.add_child(mark)
+				mi.set_meta("status_mark", mark)
+		if f.is_nested_box:
+			_shade_box_windows(mi, f._shade)
+			_strap_box(entry, f.mobility_tier)
+
+
+# A box as full as its tier: a band of tape round its walls once it is heavy
+# (yellow), and a dark strap over it crosswise once it is packed full (red),
+# the same as on the plan.
+func _strap_box(entry: Dictionary, tier: String) -> void:
+	var mi := entry["mesh"] as MeshInstance3D
+	if mi.get_meta("strap_tier", "") == tier:
+		return
+	mi.set_meta("strap_tier", tier)
+	if mi.has_meta("straps") and is_instance_valid(mi.get_meta("straps")):
+		(mi.get_meta("straps") as Node).queue_free()
+	mi.remove_meta("straps")
+	if tier != "yellow" and tier != "red":
+		return
+	var straps := Node3D.new()
+	straps.name = "Straps"
+	mi.add_child(straps)
+	mi.set_meta("straps", straps)
+	# The box's own frame: mi is turned with the box, so its canonical size.
+	var size: Vector3 = (mi.mesh as BoxMesh).size if mi.mesh is BoxMesh else entry["size"]
+	var walls_h := size.y * 0.55   # the walls, below the roof of the house-shaped models
+	var bottom := -size.y * 0.5
+	var add_band := func(band_size: Vector3, pos: Vector3, col: Color) -> void:
+		var band := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = band_size
+		band.mesh = bm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		mat.roughness = 0.9
+		band.material_override = mat
+		band.position = pos
+		straps.add_child(band)
+	var pad := 0.006
+	add_band.call(Vector3(size.x + pad, walls_h * 0.16, size.z + pad), Vector3(0, bottom + walls_h * 0.55, 0), Furniture.TAPE_COLOR)
+	if tier == "red":
+		var t := maxf(size.x, size.z) * 0.09
+		add_band.call(Vector3(t, walls_h + pad, size.z + pad * 2.0), Vector3(0, bottom + walls_h * 0.5, 0), Furniture.STRAP_COLOR)
+		add_band.call(Vector3(size.x + pad * 2.0, walls_h + pad, t), Vector3(0, bottom + walls_h * 0.5, 0), Furniture.STRAP_COLOR)
+
+
+# A floating mark: "noise" (sound arcs) or "awake" (a struck-through Zz in
+# the sound), `s` times its normal size. Always drawn facing the camera and
+# over whatever is in front of it.
+func _status_mark(kind: String, s: float) -> Node3D:
+	var root := Node3D.new()
+	root.name = "StatusMark"
+	var col := AWAKE_COLOR if kind == "awake" else NOISE_COLOR
+	var arcs := MeshInstance3D.new()
+	arcs.mesh = _sound_arcs_mesh(s)
+	arcs.material_override = _mark_material(col)
+	arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(arcs)
+	if kind == "awake":
+		var zz := Label3D.new()
+		zz.text = "Zz"
+		zz.font_size = 48
+		zz.pixel_size = 0.0028 * s
+		zz.modulate = col
+		zz.outline_size = 10
+		zz.outline_modulate = Color(1, 1, 1, 0.9)
+		zz.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		zz.no_depth_test = true
+		zz.render_priority = 11
+		zz.outline_render_priority = 10
+		root.add_child(zz)
+		var strike := MeshInstance3D.new()
+		var bar := QuadMesh.new()
+		bar.size = Vector2(0.11, 0.012) * s
+		strike.mesh = bar
+		strike.material_override = _mark_material(col)
+		strike.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(strike)
+	return root
+
+
+func _mark_material(col: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = col
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.no_depth_test = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.render_priority = 12
+	return mat
+
+
+# Three arcs either side of a point, like sound going out both ways.
+func _sound_arcs_mesh(s: float) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var thick := 0.009 * s
+	for side in [-1.0, 1.0]:
+		for r in [0.05, 0.08, 0.11]:
+			var rr: float = r * s
+			var steps := 6
+			for i in steps:
+				var a0 := lerpf(-0.85, 0.85, float(i) / steps)
+				var a1 := lerpf(-0.85, 0.85, float(i + 1) / steps)
+				var p0 := Vector3(side * cos(a0) * rr, sin(a0) * rr, 0.0)
+				var p1 := Vector3(side * cos(a1) * rr, sin(a1) * rr, 0.0)
+				var q0 := Vector3(side * cos(a0) * (rr + thick), sin(a0) * (rr + thick), 0.0)
+				var q1 := Vector3(side * cos(a1) * (rr + thick), sin(a1) * (rr + thick), 0.0)
+				verts.append_array([p0, p1, q1, p0, q1, q0])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+# The box's windows (its model's "lamp" material, which glows) shine only as
+# much as daylight gets in. Works on a copy per box, kept in step with the
+# shared material it came from (which changes from day to night).
+func _shade_box_windows(mi: MeshInstance3D, factor: float) -> void:
+	if not mi.has_meta("model_inst") or not is_instance_valid(mi.get_meta("model_inst")):
+		return
+	var parts: Array = [mi.get_meta("model_inst")]
+	while not parts.is_empty():
+		var n := parts.pop_back() as Node
+		parts.append_array(n.get_children())
+		if not (n is MeshInstance3D) or (n as MeshInstance3D).mesh == null:
+			continue
+		var m := n as MeshInstance3D
+		for i in m.mesh.get_surface_count():
+			var src := m.mesh.surface_get_material(i)
+			if src == null or src.resource_name != "lamp":
+				continue
+			var cur := m.get_surface_override_material(i)
+			var base: Material = cur.get_meta("shade_src") if cur != null and cur.has_meta("shade_src") else cur
+			if not (base is ShaderMaterial):
+				continue
+			if factor >= 0.99:
+				if cur != base:
+					m.set_surface_override_material(i, base)
+				continue
+			var dim: ShaderMaterial = cur if cur != base else (base as ShaderMaterial).duplicate()
+			dim.set_meta("shade_src", base)
+			var energy = (base as ShaderMaterial).get_shader_parameter("emission_energy")
+			# Squared: half the daylight should read as clearly dimmer windows.
+			dim.set_shader_parameter("emission_energy", (energy as float if energy != null else 1.0) * factor * factor)
+			m.set_surface_override_material(i, dim)
+
+
 func _no_shadows(node: Node) -> void:
 	if node is GeometryInstance3D:
 		(node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -335,6 +685,86 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		lo = box.position - Vector2(20, 20)
 		hi = box.end + Vector2(20, 20)
 
+	# The parent's furniture, built first because the box may stand on some of
+	# it: a box on a table has that table under the room, and the parent's
+	# floor a table's height further down. Each piece stands on the floor or
+	# on the surface under it (as Floor.support_under() decides in the game),
+	# at the height that surface is drawn.
+	var placed: Array = []   # [{rect, fdata, mi, height}] in the order they were stacked up
+	var items: Array = []
+	for it in data.get("items", []) as Array:
+		var item := it as Dictionary
+		var fdata := item.get("fdata", {}) as Dictionary
+		var size_t := fdata.get("size", {}) as Dictionary
+		var rot: int = item.get("rot_steps", 0) as int
+		var tw := (size_t.get("w", 4) as float)
+		var th := (size_t.get("h", 4) as float)
+		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
+		items.append({"item": item, "fdata": fdata, "rot": rot, "tw": tw, "th": th, "foot": foot,
+			"rect": Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot)})
+	var support_of := func(rect: Rect2, self_i: int) -> int:
+		var best := -1
+		for j in items.size():
+			var o := items[j] as Dictionary
+			if j != self_i and (o["fdata"] as Dictionary).get("is_surface", false) and (o["rect"] as Rect2).encloses(rect) 					and (best < 0 or (o["rect"] as Rect2).get_area() < (items[best]["rect"] as Rect2).get_area()):
+				best = j
+		return best
+	var depth_of := func(i: int) -> int:
+		var n := 0
+		var cur := i
+		while n < 6:
+			cur = support_of.call(items[cur]["rect"], cur)
+			if cur < 0:
+				break
+			n += 1
+		return n
+	var box_support: int = support_of.call(box, -1)
+	var order: Array = range(items.size())
+	order.sort_custom(func(a, b): return depth_of.call(a) < depth_of.call(b))
+	var top_rel: Dictionary = {}   # item index -> its top above the parent's floor, as drawn
+	for i in order:
+		var e := items[i] as Dictionary
+		var rect: Rect2 = e["rect"]
+		var under_box := false
+		var cur := box_support
+		while cur >= 0 and not under_box:
+			under_box = cur == i
+			cur = support_of.call(items[cur]["rect"], cur)
+		if rect.intersects(box) and not under_box:
+			continue   # the box itself, and anything sharing its tiles
+		var fdata := e["fdata"] as Dictionary
+		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
+		var canon := Vector3((e["tw"] as float) * TILE_M * s, height, (e["th"] as float) * TILE_M * s)
+		var sup: int = support_of.call(rect, i)
+		var lift: float = top_rel.get(sup, 0.0) if sup >= 0 else 0.0
+		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
+		var mi := _box(canon, Vector3(c.x, lift + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		if first and fdata.get("is_noisy", false) and rect.grow(1.0).intersects(box):
+			# What is keeping this room awake (see Main._has_noisy_neighbor).
+			var noise := _status_mark("noise", s)
+			noise.position.y = height * 0.5 + 0.12 * s
+			mi.add_child(noise)
+		mi.rotation.y = deg_to_rad((e["rot"] as int) * 90.0)
+		mi.set_meta("style_role", _item_role(fdata))
+		_apply_item_model(mi, _active_model_path(fdata, (e["item"] as Dictionary).get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
+		_style_if_bare(mi)
+		_no_shadows(mi)
+		top_rel[i] = lift + _drawn_height(mi, height)
+		placed.append({"mi": mi, "c": c, "height": height, "lift": lift, "e": e})
+	# The room's floor rests on the box's table: the parent's floor is that far down.
+	if box_support >= 0 and top_rel.has(box_support):
+		floor_y -= top_rel[box_support]
+	for p in placed:
+		var mi := p["mi"] as MeshInstance3D
+		var c: Vector3 = p["c"]
+		var e := p["e"] as Dictionary
+		var height: float = p["height"]
+		mi.position.y += floor_y
+		_scenery_nodes.append({"node": mi, "center": c})
+		pieces.append({"pos": mi.position, "mesh": mi, "rot_steps": e["rot"], "floor_y": floor_y + (p["lift"] as float),
+			"size": Vector3((e["foot"] as Vector2).x * TILE_M * s, height, (e["foot"] as Vector2).y * TILE_M * s),
+			"functions": (e["fdata"] as Dictionary).get("functions", [])})
+
 	var f0: Vector3 = to_view.call(lo.x, lo.y)
 	var f1: Vector3 = to_view.call(hi.x, hi.y)
 	var slab := _box(Vector3(f1.x - f0.x, 0.5, f1.z - f0.z),
@@ -367,29 +797,6 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		_no_shadows(wall)
 		_scenery_nodes.append({"node": wall, "center": mid})
 
-	for it in data.get("items", []) as Array:
-		var item := it as Dictionary
-		var fdata := item.get("fdata", {}) as Dictionary
-		var size_t := fdata.get("size", {}) as Dictionary
-		var rot: int = item.get("rot_steps", 0) as int
-		var tw := (size_t.get("w", 4) as float)
-		var th := (size_t.get("h", 4) as float)
-		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
-		var rect := Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot)
-		if rect.intersects(box):
-			continue   # the box itself, and anything sharing its tiles
-		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
-		var canon := Vector3(tw * TILE_M * s, height, th * TILE_M * s)
-		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
-		var mi := _box(canon, Vector3(c.x, floor_y + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
-		mi.rotation.y = deg_to_rad(rot * 90.0)
-		mi.set_meta("style_role", _item_role(fdata))
-		_apply_item_model(mi, _active_model_path(fdata, item.get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
-		_style_if_bare(mi)
-		_no_shadows(mi)
-		_scenery_nodes.append({"node": mi, "center": c})
-		pieces.append({"pos": Vector3(c.x, floor_y + height * 0.5, c.z), "mesh": mi, "rot_steps": rot, "floor_y": floor_y,
-			"size": Vector3(foot.x * TILE_M * s, height, foot.y * TILE_M * s), "functions": fdata.get("functions", [])})
 	if first:
 		_add_parent_household(data.get("level_id", "") as String, s, pieces, wall_lines,
 			Rect2(f0.x, f0.z, f1.x - f0.x, f1.z - f0.z), Rect2(x0, z0, w, d), floor_y)
@@ -571,6 +978,10 @@ func _process(delta: float) -> void:
 		_update_camera()
 	_update_wall_fade(delta)
 	_update_extras(delta)
+	_status_t -= delta
+	if _status_t <= 0.0:
+		_status_t = 0.5
+		_sync_status_marks()
 	if is_instance_valid(_tenant) and _tenant_stops.size() > 1:
 		_tenant_stop_t += delta
 		if _tenant_stop_t >= TENANT_STOP_SECONDS:
@@ -993,8 +1404,16 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		_flash_rail(mesh, Vector2(item_size.x, item_size.z), rail_attached)
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+	# Up onto a table or shelf when it is over one, which bows under it as if
+	# it were already there.
+	if _sag_preview_key != [f, tile]:
+		_settle_stacked(f, tile)
+	var lift := _lift_m(f, tile)
+	mesh.position.y = lift + item_size.y * 0.5
 	_drag_target["pos"] = mesh.position
 	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
+	if is_instance_valid(_drag_highlight):
+		_drag_highlight.position.y = lift
 
 	if Furniture.transfer_hover != 0:
 		_hide_reason()     # Main's tag by the pointer says what will happen
@@ -1015,7 +1434,15 @@ func _rotate_dragged_furniture() -> void:
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var box := mesh.mesh as BoxMesh
 	var height_m: float = box.size.y
+	var riders: Array = _apt_floor.riders_of(f) if is_instance_valid(_apt_floor) else []
 	f._rotate()
+	# What stands on it turned with it (Floor.turn_riders), where it stands.
+	for r in riders:
+		var re := _entry_of(r as Furniture)
+		if not re.is_empty():
+			_sync_entry_to_piece(re)
+	if not riders.is_empty():
+		_settle_stacked()
 	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
 	box.size = new_size
 	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
@@ -1112,6 +1539,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 	# this item over a wall surface must NOT arm that path.
 	if hit["mode"] == "wall" and not _buying_furniture.wall_flush_required:
 		_buying_on_wall = true
+		if not _sag_preview_key.is_empty() and _sag_preview_key[0] != null:
+			_settle_stacked()   # off the floor: no surface is carrying it
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
 		_hide_drag_highlight()
@@ -1154,7 +1583,10 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
-		_buying_mesh.position.y = box.size.y * 0.5
+		if _apt_floor and _sag_preview_key != [_buying_furniture, tile]:
+			_settle_stacked(_buying_furniture, tile)
+		var buy_lift := _lift_m(_buying_furniture, tile) if _apt_floor else 0.0
+		_buying_mesh.position.y = buy_lift + box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
 		_buying_mesh.rotation.y = deg_to_rad(_buying_furniture.rot_steps * 90.0)
 		# Fit the model into its CANONICAL (pre-rotation) box, same reasoning as
@@ -1188,6 +1620,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 			_hide_reason()
 			_show_drag_highlight(Vector2(box.size.x, box.size.z))
 			_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
+		if is_instance_valid(_drag_highlight):
+			_drag_highlight.position.y = buy_lift
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
@@ -1254,6 +1688,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_settle_stacked()
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1268,6 +1703,7 @@ func _cancel_buy() -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_settle_stacked()   # whatever was bowing under it straightens again
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1733,6 +2169,7 @@ func _finish_furniture_drag() -> void:
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
 		_hide_drag_highlight()
+		_settle_stacked()
 		return
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
 	# Mirrors Furniture.gd's own 2D drag-end (see there for the full
@@ -1743,8 +2180,24 @@ func _finish_furniture_drag() -> void:
 	if ok and f.mobility_tier == "red" and f.rail_axis == "" and Furniture.test_mode_active \
 			and Furniture.all_moment_ids.size() > 1:
 		ok = _apt_floor.can_place_across_moments(f, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+	# Whatever stands on it comes along (Floor.move_with_riders); if any of it
+	# can't land, nothing moves.
+	var riders: Array = _apt_floor.riders_of(f) if ok else []
+	if ok and not _apt_floor.move_with_riders(f, snap_pos):
+		ok = false
 	if ok:
-		_apt_floor.place_furniture(f, snap_pos)
+		for r in riders:
+			var re := _entry_of(r as Furniture)
+			if re.is_empty():
+				continue
+			var rsize: Vector3 = re["size"]
+			var rmesh := re["mesh"] as MeshInstance3D
+			rmesh.position.x = ((r as Furniture).grid_pos.x - _room_bounds.position.x) * TILE_M + rsize.x * 0.5
+			rmesh.position.z = ((r as Furniture).grid_pos.y - _room_bounds.position.y) * TILE_M + rsize.z * 0.5
+			for h in _hitbox_highlights:
+				if is_instance_valid(h) and h.get_meta("furniture", null) == r:
+					h.position.x = rmesh.position.x - rsize.x * 0.5
+					h.position.z = rmesh.position.z - rsize.z * 0.5
 		# Without this, moving a piece in the 3D view moved it for every
 		# moment at once instead of just the one currently being tested,
 		# since set_moment_view() only ever restores a position it finds
@@ -1757,6 +2210,7 @@ func _finish_furniture_drag() -> void:
 			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 				h.position.x = mesh.position.x - item_size.x * 0.5
 				h.position.z = mesh.position.z - item_size.z * 0.5
+		_settle_stacked()
 		Audio.play("place")
 		furniture_moved.emit(f)
 		_hide_reason()
@@ -1773,6 +2227,7 @@ func _finish_furniture_drag() -> void:
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 	_drag_target["pos"] = mesh.position
 	_drag_target = {}
+	_settle_stacked()   # nothing carried any more: every surface bows by what is really on it
 	_hide_drag_highlight()
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
@@ -1844,6 +2299,7 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 		_apply_item_model(mesh, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
 	entry["size"] = box_size
 	entry["pos"]  = pos
+	_settle_stacked()
 
 
 # Items whose two fold states are really one continuous mechanical motion
@@ -3171,6 +3627,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 			_dist = clampf(_next_camera_state.get("dist", _dist) as float, 1.5, 30.0)
 			_center = _clamp_pan_center(_next_camera_state.get("center", _center) as Vector3)
 
+	if _style != null:
+		_style.daylight = _daylight
 	_add_floor(w, d)
 	if below_floor == null:   # a loft shows the floor beneath it there instead
 		# Inside a box the room stands on its parent's floor; otherwise it
@@ -3196,6 +3654,10 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		return
 
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
+	_outside_signs.clear()   # freed with the rest of build_root's children
+	_build_outside_signs()
+	_home_outlines.clear()
+	_build_home_outlines()
 	_add_columns(bounds)
 	_add_window_door_overlays(bounds)
 	_add_rails(bounds)
@@ -3207,6 +3669,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	for item in apt_floor.get_all_furniture():
 		_add_piece_rail(item as Furniture, bounds)
 		_add_furniture_box(item as Furniture, bounds, catalog)
+	_settle_stacked()
 	_rule_root = null   # freed with the rest of build_root's children
 	_rebuild_rule_overlays()
 
@@ -4648,6 +5111,311 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			_add_wall_grid(mi, length, maxf(h0, h1))
 
 
+# ── Stacking: pieces standing on tables and shelves ─────────────────────────
+# Floor.support_under() says which surface a piece rests on; here it is lifted
+# onto the top of that surface as drawn (the model's own height, which can be
+# a little off the catalogue's wall_h, see _refit_item_model), so it sits on
+# the table rather than inside it.
+
+func _entry_of(f: Furniture) -> Dictionary:
+	for entry in _furniture_entries:
+		if entry.get("furniture") == f:
+			return entry
+	return {}
+
+
+# Height of the piece as drawn: its model's, or its box's if it has none.
+func _drawn_height(mi: MeshInstance3D, box_h: float) -> float:
+	if mi.has_meta("model_inst") and mi.has_meta("model_native"):
+		var inst := mi.get_meta("model_inst") as Node3D
+		if is_instance_valid(inst):
+			return (mi.get_meta("model_native") as AABB).size.y * inst.scale.y
+	return box_h
+
+
+# Where the top of `f` is in the view, in metres above the floor.
+func _top_m(f: Furniture) -> float:
+	var entry := _entry_of(f)
+	if entry.is_empty() or not is_instance_valid(entry.get("mesh")):
+		return (_apt_floor.stack_lift(f) + f.body_h) * TILE_M
+	var mi := entry["mesh"] as MeshInstance3D
+	var box_h := (entry["size"] as Vector3).y
+	return mi.position.y - box_h * 0.5 + _drawn_height(mi, box_h)
+
+
+# How high `f` stands when its corner is at `at` (where it is now if null):
+# on the top of what it stands on, as far down as that top is bowed there.
+func _lift_m(f: Furniture, at: Variant = null) -> float:
+	if not is_instance_valid(_apt_floor):
+		return 0.0
+	var sup := _apt_floor.support_under(f, at)
+	if sup == null:
+		return 0.0
+	var corner: Vector2 = f.grid_pos if at == null else at as Vector2
+	var cx := (corner.x - _room_bounds.position.x + f.grid_w * 0.5) * TILE_M
+	var cz := (corner.y - _room_bounds.position.y + f.grid_h * 0.5) * TILE_M
+	return _top_m(sup) - _sag_at(_entry_of(sup), cx, cz)
+
+
+# ── Bowing: a loaded surface sags ───────────────────────────────────────────
+# A table, desk or shelf bows under what stands on it once it is past
+# SAG_FROM of what it can hold, a little more as it fills, and clearly too
+# much (SAG_OVER_M) when a piece being carried over it would break it: the
+# weight limit, shown on the furniture itself rather than as a number. Only
+# the top bends (legs and plinths stay put), deepest in the middle, and
+# whatever stands on it sinks with it. Done by bending a copy of the model's
+# meshes, only when the sag changes.
+const SAG_FROM := Floor.STRAIN_FROM   # share of max_support_weight before anything shows
+const SAG_FULL_M := 0.03    # metres of sag in the middle when exactly full
+const SAG_OVER_M := 0.07    # ... when what is being carried over it would break it
+const SAG_SPAN_M := 1.2     # surfaces at least this long bow fully; shorter ones less
+
+# How far `sup` should sag in the middle. `carried` (being dragged or bought,
+# its corner at `carried_at`) counts on the surface it is over and no longer
+# on the one it was lifted off.
+func _sag_for(sup: Furniture, entry: Dictionary, carried: Furniture = null, carried_at: Variant = null) -> float:
+	if sup.max_support_weight <= 0.0 or not entry.has("mesh") or not (entry["mesh"] as Node).has_meta("model_inst"):
+		return 0.0
+	var ratio := _apt_floor.strain_of(sup, carried, carried_at)
+	if ratio <= SAG_FROM:
+		return 0.0
+	var size: Vector3 = entry["size"]
+	var span := clampf(maxf(size.x, size.z) / SAG_SPAN_M, 0.4, 1.0)
+	if ratio > 1.0 + 0.0001:
+		return SAG_OVER_M * span
+	var t := (ratio - SAG_FROM) / (1.0 - SAG_FROM)
+	return SAG_FULL_M * span * t * t * (3.0 - 2.0 * t)
+
+
+# Share of the sag at a point (room metres) on a surface: all of it in the
+# middle, none at the edges.
+func _sag_shape(entry: Dictionary, x: float, z: float) -> float:
+	var pos: Vector3 = entry["pos"]
+	var size: Vector3 = entry["size"]
+	var u := (x - pos.x) / maxf(size.x * 0.5, 0.001)
+	var v := (z - pos.z) / maxf(size.z * 0.5, 0.001)
+	return maxf(0.0, 1.0 - u * u) * maxf(0.0, 1.0 - v * v)
+
+
+func _sag_at(entry: Dictionary, x: float, z: float) -> float:
+	if entry.is_empty():
+		return 0.0
+	return (entry.get("sag", 0.0) as float) * _sag_shape(entry, x, z)
+
+
+# Bends the model of a surface piece down by `sag` in the middle (straight
+# again at 0). Each of its meshes keeps its original to bend from.
+func _apply_sag(entry: Dictionary, sag: float) -> void:
+	var mi := entry["mesh"] as MeshInstance3D
+	if not mi.has_meta("model_inst") or not is_instance_valid(mi.get_meta("model_inst")):
+		return
+	var key := [snappedf(sag, 0.0005), mi.transform]
+	if mi.get_meta("sag_key", []) == key:
+		return
+	mi.set_meta("sag_key", key)
+	var size: Vector3 = entry["size"]
+	var bottom := mi.position.y - size.y * 0.5
+	var height := maxf(_drawn_height(mi, size.y), 0.01)
+	var room_inv := build_root.global_transform.affine_inverse()
+	var parts: Array = [mi.get_meta("model_inst")]
+	while not parts.is_empty():
+		var n := parts.pop_back() as Node
+		parts.append_array(n.get_children())
+		if not (n is MeshInstance3D):
+			continue
+		var m := n as MeshInstance3D
+		if not m.has_meta("sag_orig"):
+			if sag <= 0.0 or m.mesh == null:
+				continue
+			m.set_meta("sag_orig", m.mesh)
+		var orig := m.get_meta("sag_orig") as Mesh
+		if sag <= 0.0:
+			m.mesh = orig
+			continue
+		var to_room := room_inv * m.global_transform
+		var down := to_room.basis.inverse() * Vector3.DOWN
+		# These models are low-poly: a tabletop is a slab with vertices only at
+		# its corners, where the sag is nothing. Its top part is cut finer once
+		# (kept for every later bend) so there is something to bend.
+		if not m.has_meta("sag_fine"):
+			m.set_meta("sag_fine", _finer_top(orig, to_room, bottom + height * 0.45))
+		var fine := m.get_meta("sag_fine") as Array   # surface arrays, one per surface
+		var bent := ArrayMesh.new()
+		for i in fine.size():
+			var arrays := (fine[i] as Array).duplicate()
+			var verts: PackedVector3Array = (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).duplicate()
+			for k in verts.size():
+				var p := to_room * verts[k]
+				var up := clampf((p.y - bottom) / height, 0.0, 1.0)
+				var d := sag * _sag_shape(entry, p.x, p.z) * up * up
+				if d > 0.0:
+					verts[k] += down * d
+			arrays[Mesh.ARRAY_VERTEX] = verts
+			bent.add_surface_from_arrays(orig.surface_get_primitive_type(i), arrays)
+			bent.surface_set_material(i, orig.surface_get_material(i))
+		m.mesh = bent
+
+
+const SAG_EDGE_M := 0.07   # edges above the bend line get cut down to about this long
+
+# `mesh`'s surfaces as arrays, with every triangle edge that lies above
+# `above_y` (room metres, through `to_room`) and is longer than SAG_EDGE_M
+# cut in half, again and again, until none is. An edge is cut the same way
+# in every triangle that has it, so the surface stays closed. Surfaces that
+# aren't plain triangles, or that carry bones, are left as they are.
+func _finer_top(mesh: Mesh, to_room: Transform3D, above_y: float) -> Array:
+	var out: Array = []
+	for si in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(si)
+		if mesh.surface_get_primitive_type(si) != Mesh.PRIMITIVE_TRIANGLES or arrays[Mesh.ARRAY_BONES] != null:
+			out.append(arrays)
+			continue
+		# Plain Arrays: the helpers below add to them, and a lambda would only
+		# be adding to its own copy of a packed array.
+		var buf := {
+			"v": Array(arrays[Mesh.ARRAY_VERTEX]),
+			"n": Array(arrays[Mesh.ARRAY_NORMAL]) if arrays[Mesh.ARRAY_NORMAL] != null else [],
+			"t": Array(arrays[Mesh.ARRAY_TANGENT]) if arrays[Mesh.ARRAY_TANGENT] != null else [],
+			"c": Array(arrays[Mesh.ARRAY_COLOR]) if arrays[Mesh.ARRAY_COLOR] != null else [],
+			"uv": Array(arrays[Mesh.ARRAY_TEX_UV]) if arrays[Mesh.ARRAY_TEX_UV] != null else [],
+			"uv2": Array(arrays[Mesh.ARRAY_TEX_UV2]) if arrays[Mesh.ARRAY_TEX_UV2] != null else [],
+		}
+		var vs: Array = buf["v"]
+		var tris: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(vs.size()))
+		var mids: Dictionary = {}   # Vector2i(lo, hi) vertex pair -> the vertex halfway along it
+		var mid_of := func(a: int, b: int) -> int:
+			var key := Vector2i(mini(a, b), maxi(a, b))
+			if mids.has(key):
+				return mids[key]
+			vs.append(((vs[a] as Vector3) + (vs[b] as Vector3)) * 0.5)
+			var ns: Array = buf["n"]
+			if not ns.is_empty():
+				ns.append(((ns[a] as Vector3) + (ns[b] as Vector3)).normalized())
+			var ts: Array = buf["t"]
+			if not ts.is_empty():
+				for c in 4:
+					ts.append(((ts[a * 4 + c] as float) + (ts[b * 4 + c] as float)) * 0.5)
+			var cs: Array = buf["c"]
+			if not cs.is_empty():
+				cs.append((cs[a] as Color).lerp(cs[b] as Color, 0.5))
+			for k in ["uv", "uv2"]:
+				var us: Array = buf[k]
+				if not us.is_empty():
+					us.append(((us[a] as Vector2) + (us[b] as Vector2)) * 0.5)
+			mids[key] = vs.size() - 1
+			return vs.size() - 1
+		var long := func(a: int, b: int) -> bool:
+			var pa := to_room * (vs[a] as Vector3)
+			var pb := to_room * (vs[b] as Vector3)
+			return maxf(pa.y, pb.y) > above_y and pa.distance_to(pb) > SAG_EDGE_M
+		for pass_i in 8:
+			var next := PackedInt32Array()
+			var cut := false
+			for t in range(0, tris.size(), 3):
+				var v := [tris[t], tris[t + 1], tris[t + 2]]
+				var flags := [long.call(v[0], v[1]), long.call(v[1], v[2]), long.call(v[2], v[0])]
+				var n := int(flags[0]) + int(flags[1]) + int(flags[2])
+				if n == 0:
+					next.append_array(v)
+					continue
+				cut = true
+				# Turn the triangle so its cut edges come first: 1 cut -> edge 0;
+				# 2 cuts -> edges 0 and 1.
+				var r := 0
+				if n == 1:
+					r = flags.find(true)
+				elif n == 2:
+					r = [1, 2, 0][flags.find(false)]
+				var a: int = v[r]
+				var b: int = v[(r + 1) % 3]
+				var c: int = v[(r + 2) % 3]
+				var ab: int = mid_of.call(a, b)
+				if n == 1:
+					next.append_array([a, ab, c, ab, b, c])
+					continue
+				var bc: int = mid_of.call(b, c)
+				if n == 2:
+					next.append_array([a, ab, bc, ab, b, bc, a, bc, c])
+					continue
+				var ca: int = mid_of.call(c, a)
+				next.append_array([a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca])
+			tris = next
+			if not cut:
+				break
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(vs)
+		if not (buf["n"] as Array).is_empty(): arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(buf["n"])
+		if not (buf["t"] as Array).is_empty(): arrays[Mesh.ARRAY_TANGENT] = PackedFloat32Array(buf["t"])
+		if not (buf["c"] as Array).is_empty(): arrays[Mesh.ARRAY_COLOR] = PackedColorArray(buf["c"])
+		if not (buf["uv"] as Array).is_empty(): arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(buf["uv"])
+		if not (buf["uv2"] as Array).is_empty(): arrays[Mesh.ARRAY_TEX_UV2] = PackedVector2Array(buf["uv2"])
+		arrays[Mesh.ARRAY_INDEX] = tris
+		out.append(arrays)
+	return out
+
+
+# Redraws a placed piece where and how it now is on the floor (position,
+# turn, footprint), after something other than the player's own drag moved it.
+func _sync_entry_to_piece(entry: Dictionary) -> void:
+	var f := entry["furniture"] as Furniture
+	var mesh := entry["mesh"] as MeshInstance3D
+	var height_m: float = (entry["size"] as Vector3).y
+	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
+	(mesh.mesh as BoxMesh).size = new_size
+	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
+	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	if fdata.get("animated_fold", false):
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
+	else:
+		_refit_item_model(mesh, Vector3(new_size.z, new_size.y, new_size.x) if f.rot_steps % 2 == 1 else new_size)
+	mesh.position.x = (f.grid_pos.x - _room_bounds.position.x) * TILE_M + new_size.x * 0.5
+	mesh.position.z = (f.grid_pos.y - _room_bounds.position.y) * TILE_M + new_size.z * 0.5
+	entry["size"] = new_size
+	entry["pos"] = mesh.position
+	for i in range(_hitbox_highlights.size() - 1, -1, -1):
+		var h = _hitbox_highlights[i]
+		if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+			h.queue_free()
+			_hitbox_highlights.remove_at(i)
+	_add_hitbox_highlight(Vector3(mesh.position.x, 0.0, mesh.position.z), Vector2(new_size.x, new_size.z), f)
+	(_hitbox_highlights[-1] as Node3D).visible = _dragging_furniture   # shown alongside the others mid-drag
+
+
+# Puts every placed piece at its height: on the floor, or on what it stands
+# on (lowest first, so a lamp on a box on a table lands on the box), with
+# every surface bowed by its load. The piece in hand is left alone; while one
+# is carried (`carried`, its corner at `carried_at`) the surface under it
+# bows as if it were already put down there.
+var _sag_preview_key: Array = []
+
+func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> void:
+	if not is_instance_valid(_apt_floor):
+		return
+	_sag_preview_key = [carried, carried_at]
+	if Floor.carry_preview.is_valid():
+		Floor.carry_preview.call(carried, carried_at)
+	if carried != _hints_for:
+		_show_carry_hints(carried)
+	var order := _furniture_entries.filter(func(e): return is_instance_valid(e.get("furniture")) and is_instance_valid(e.get("mesh")))
+	order.sort_custom(func(a, b): return _apt_floor.stack_lift(a["furniture"]) < _apt_floor.stack_lift(b["furniture"]))
+	for entry in order:
+		var f := entry["furniture"] as Furniture
+		if f.is_surface:
+			entry["sag"] = _sag_for(f, entry, carried, carried_at)
+	for entry in order:
+		if _dragging_furniture and is_same(entry, _drag_target):
+			continue
+		var f := entry["furniture"] as Furniture
+		var mi := entry["mesh"] as MeshInstance3D
+		var lift := _lift_m(f)
+		mi.position.y = lift + (entry["size"] as Vector3).y * 0.5
+		entry["pos"] = mi.position
+		if f.is_surface:
+			_apply_sag(entry, entry.get("sag", 0.0) as float)
+		for h in _hitbox_highlights:
+			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+				h.position.y = lift
+
+
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var fdata := _find_furniture_data(catalog, f.furniture_id)
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
@@ -4750,6 +5518,7 @@ func touch_cancel_drag() -> void:
 		_hide_reason()
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
+		_settle_stacked()
 	elif _dragging_wall_item:
 		_drag_wall_target["preview_origin"] = _drag_wall_target["origin"]
 		_finish_wall_item_drag()

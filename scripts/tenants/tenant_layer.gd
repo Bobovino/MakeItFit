@@ -18,6 +18,11 @@ class_name TenantLayer
 #     requirement's icon and, when the checker knows what is in the way, an
 #     ink line from that piece to them. One reaction at a time; a new
 #     placement replaces it.
+#   - When a placement leaves a piece nobody can get to, the resident nearest
+#     it walks over as far as they can, shrugs, and a dotted trail runs on
+#     from where they had to stop to the piece: that, not a red cross, is how
+#     an unreachable piece shows. It takes the place of a requirement
+#     reaction for that placement.
 #   - When the player leaves things alone for a few seconds, one resident
 #     goes to see about one of their needs: walks to whatever provides it and
 #     acts it out if it's there and works, or gets as close as they can and
@@ -57,6 +62,9 @@ var _idle := 0.0
 var _errand_gen := 0
 var _errand_rid: StringName = &""           # who is out on an errand, if anyone
 var _last_errand_req := ""
+var _unreachable: Dictionary = {}           # furniture instance id -> true, as of the last placement
+var _trail2d: Node2D
+var _reach_rid: StringName = &""            # who is walking to an unreachable piece, if anyone
 
 
 func _ready() -> void:
@@ -133,8 +141,26 @@ func commit() -> void:
 	var moved := _changed_piece()
 	var before := _status
 	_status = Requirements.status(gm)
+	var was_unreachable := _unreachable
+	_unreachable = _unreachable_now()
 	_clear_reaction()
 	_scatter(true)
+	# Something nobody can reach now that could be reached before: the piece
+	# just moved if it's one of them, else any of them.
+	var stuck: Furniture = null
+	for entry in _floor.get_all_furniture():
+		var f := entry as Furniture
+		var id := f.get_instance_id()
+		if _unreachable.has(id) and not was_unreachable.has(id) and (stuck == null or f == moved):
+			stuck = f
+	if stuck != null:
+		_reaction_gen += 1
+		var sgen := _reaction_gen
+		await get_tree().create_timer(HOP_TIME).timeout
+		if sgen != _reaction_gen or _app == null or _placing or not is_instance_valid(stuck):
+			return
+		_try_to_reach(stuck)
+		return
 	var req := _pick_violation(before, _status)
 	if req == "":
 		return
@@ -304,6 +330,18 @@ func _tile_to_3d(t: Vector2) -> Vector3:
 func _snapshot() -> void:
 	_status = Requirements.status(gm)
 	_changed_piece()
+	_unreachable = _unreachable_now()
+
+
+# The pieces nobody can get to right now (as Main last worked out, see
+# Furniture.set_accessible()).
+func _unreachable_now() -> Dictionary:
+	var out := {}
+	for entry in _floor.get_all_furniture():
+		var f := entry as Furniture
+		if not f._accessible:
+			out[f.get_instance_id()] = true
+	return out
 
 
 # The piece the last placement moved, folded or added (null for a sale).
@@ -415,6 +453,18 @@ func _react(req: String, cause: Furniture) -> void:
 
 func _clear_reaction() -> void:
 	_cancel_errand()
+	if _reach_rid != &"":
+		# Stopped on the way to a piece it couldn't reach: stays where it got to.
+		var token := _tokens.get(_reach_rid) as TenantToken2D
+		if token:
+			token.stop_moving()
+			_tiles[_reach_rid] = token.tile
+			token.place(token.tile, false)
+		var pawn := _pawns.get(_reach_rid) as TenantPawn3D
+		if pawn:
+			pawn.stop_moving()
+		_reach_rid = &""
+		_place_pawns(false)
 	_reacting = false
 	_reaction_gen += 1
 	for t in _tokens.values():
@@ -427,8 +477,11 @@ func _clear_reaction() -> void:
 		_link2d.queue_free()
 	if is_instance_valid(_link3d):
 		_link3d.queue_free()
+	if is_instance_valid(_trail2d):
+		_trail2d.queue_free()
 	_link2d = null
 	_link3d = null
+	_trail2d = null
 
 
 func _draw_link_2d(from: Vector2, to: Vector2) -> void:
@@ -482,6 +535,80 @@ func _draw_link_3d(cause: Furniture, pawn: TenantPawn3D) -> void:
 	link.add_child(dot)
 	dot.global_position = a
 	_link3d = link
+
+
+# The resident nearest `piece` walks towards it as far as the floor lets
+# them, shrugs (a "can't get there" bubble), and a dotted trail runs on from
+# where they stopped to the piece. A reaction like the annoyed ones: the next
+# placement, or picking a piece up, ends it (moving the mouse doesn't).
+func _try_to_reach(piece: Furniture) -> void:
+	var rid: StringName = &""
+	var best := INF
+	for r in _app.residents:
+		var t: Vector2 = _tiles.get((r as TenantResident).id, Vector2.ZERO)
+		var d := t.distance_to(_center(piece))
+		if d < best:
+			best = d
+			rid = (r as TenantResident).id
+	var token := _tokens.get(rid) as TenantToken2D
+	if token == null:
+		return
+	_reacting = true
+	_reach_rid = rid
+	var gen := _reaction_gen
+	var pawn := _pawns.get(rid) as TenantPawn3D
+	var walk := _walk_to(_tiles[rid] as Vector2, _approach_tiles(piece))
+	var path: Array = walk["path"]
+	if not path.is_empty():
+		var tw := token.walk(path, STEP_TIME)
+		if pawn and is_instance_valid(_pawn_root):
+			pawn.walk(path.map(func(t): return _tile_to_3d((t as Vector2) + Vector2(PATCH, PATCH) * 0.5)), STEP_TIME)
+		await tw.finished
+		if gen != _reaction_gen:
+			return
+		_tiles[rid] = token.tile
+	Audio.play("huh")
+	var act := token.shrug("reach")
+	if pawn:
+		pawn.shrug("reach", _piece_3d(piece))
+		if is_instance_valid(_pawn_root):
+			_draw_link_3d(piece, pawn)
+	_draw_trail_2d(token.position, _center(piece) * Floor.TILE_SIZE)
+	await act.finished
+	if gen != _reaction_gen:
+		return
+	await get_tree().create_timer(1.0).timeout
+	if gen != _reaction_gen:
+		return
+	_clear_reaction()
+
+
+# Footsteps that go on where the resident couldn't: dots from `from` to `to`
+# (plan pixels), with a cross where the piece is.
+func _draw_trail_2d(from: Vector2, to: Vector2) -> void:
+	var trail := _Trail.new()
+	trail.a = from
+	trail.b = to
+	trail.z_index = 25
+	_floor.add_child(trail)
+	_trail2d = trail
+
+
+class _Trail extends Node2D:
+	var a := Vector2.ZERO
+	var b := Vector2.ZERO
+
+	func _draw() -> void:
+		var ink := Color(FaxStyle.STAMP_INK, 0.9)
+		var length := a.distance_to(b)
+		var dir := (b - a) / maxf(length, 0.001)
+		var d := Floor.TILE_SIZE * 2.4
+		while d < length - Floor.TILE_SIZE:
+			draw_circle(a + dir * d, 1.6, ink)
+			d += Floor.TILE_SIZE * 1.4
+		var x := 4.0
+		draw_line(b - Vector2(x, x), b + Vector2(x, x), ink, 2.0, true)
+		draw_line(b - Vector2(x, -x), b + Vector2(x, -x), ink, 2.0, true)
 
 
 # Each resident keeps one colour, whatever the language or the session.

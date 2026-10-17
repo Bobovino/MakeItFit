@@ -1471,6 +1471,10 @@ msgstr "Necesita una mesa o una estantería debajo"
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr "Demasiado pesado para %s: se rompería (%.0f / %.0f)"
 
+#: scripts/Wall.gd:1076
+msgid "Too heavy: what this box stands on would break (%s)"
+msgstr "Demasiado pesado: lo que hay bajo esta caja se rompería (%s)"
+
 #: scripts/Wall.gd:1143
 msgid "Needs clearance around %s"
 msgstr "Necesita espacio libre alrededor de %s"
@@ -3032,3 +3036,98 @@ msgstr "Baño a medida"
 #: scripts/Main.gd
 msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
 msgstr "Demasiado estrecha para entrar: %.0f m² dentro, una casa necesita al menos %.0f m²"
+
+msgid "Little daylight gets in here: the %s outside stands in front of the box."
+msgstr "Aquí entra poca luz: fuera, %s está delante de la caja."
+
+#: scripts/Main.gd
+msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
+msgstr "Aquí hay ruido: %s, justo fuera de la caja, no deja dormir a nadie."
+
+#: scripts/Main.gd
+msgid "%s can't be slept in: the %s is too noisy."
+msgstr "No se puede dormir en %s: %s hace demasiado ruido."
+
+#: scripts/Main.gd
+msgid "No %s"
+msgstr "Sin %s"
+
+#: scripts/Main.gd
+msgid "%s at least %.1f m from the wall"
+msgstr "%s a %.1f m de la pared como mínimo"
+
+#: scripts/Main.gd
+msgid "North side"
+msgstr "Lado norte"
+
+#: scripts/Main.gd
+msgid "East side"
+msgstr "Lado este"
+
+#: scripts/Main.gd
+msgid "South side"
+msgstr "Lado sur"
+
+#: scripts/Main.gd
+msgid "West side"
+msgstr "Lado oeste"
+
+#: scripts/Main.gd
+msgid "boxes here: %s"
+msgstr "cajas aquí: %s"
+
+#: scripts/Main.gd
+msgid "nothing extra for boxes here"
+msgstr "nada especial para las cajas aquí"
+
+#: scripts/Main.gd
+msgid "This box stands by the %s: %s."
+msgstr "Esta caja está junto a %s: %s."
+
+#: scripts/Main.gd
+msgid "Busy street"
+msgstr "Calle con tráfico"
+
+#: scripts/Main.gd
+msgid "Quiet courtyard"
+msgstr "Patio tranquilo"
+
+#: scripts/Main.gd
+msgid "Bins alley"
+msgstr "Callejón de los contenedores"
+
+#: scripts/Main.gd
+msgid "%s is lighter again: easier to move."
+msgstr "%s vuelve a pesar menos: más fácil de mover."
+
+#: scripts/Main.gd
+msgid "%s is getting heavy: moving it away from where it started now costs comfort."
+msgstr "%s empieza a pesar: moverla de su sitio inicial ahora resta comodidad."
+
+#: scripts/Main.gd
+msgid "%s is packed full: it now stays in one place for every moment of the day."
+msgstr "%s está llena a reventar: ahora se queda en el mismo sitio en todos los momentos del día."
+
+#: scripts/Main.gd
+msgid "This box"
+msgstr "Esta caja"
+
+#: scripts/Main.gd
+msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
+msgstr "%s estaba bien donde estaba: moverlo cuesta un %d%% de comodidad. Su sitio anterior queda marcado."
+
+#: scripts/Main.gd
+msgid "The %s is back where it started: comfort restored."
+msgstr "%s vuelve a su sitio: comodidad recuperada."
+
+#: scripts/Main.gd
+msgid "−%d%%"
+msgstr "−%d%%"
+
+#: scripts/Main.gd
+msgid "Away from where it started: %s"
+msgstr "Fuera de su sitio inicial: %s"
+
+#: scripts/RuleOverlay.gd
+msgid "Loft: %.0f / %.0f, this adds %.0f"
+msgstr "Altillo: %.0f / %.0f, esto suma %.0f"

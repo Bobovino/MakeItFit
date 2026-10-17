@@ -666,11 +666,55 @@ func _position_comfort_meter() -> void:
 	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
 
 
+# Every yellow-tier piece that sits away from where it started (and so costs
+# comfort, see GameManager.compute_comfort()) shows where that was: a faint
+# outline of it on its old spot, a line back to it and what it costs, on the
+# plan and in 3D. When a piece starts or stops costing comfort, that is said
+# once (pieces seen for the first time, on loading, are only noted).
+var _moved_names: Array = []           # what is costing comfort right now, for the meter's tooltip
+var _away_seen: Dictionary = {}        # furniture instance id -> whether it was away last time
+var _home_marks: Array = []            # what _show_moved_from_home() last showed, for a 3D view built later
+
+func _show_moved_from_home() -> void:
+	_moved_names = []
+	var all_marks: Array = []
+	var moment := _active_moment_id as String
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var marks: Array = []
+		for entry in fl.get_all_furniture():
+			var f := entry as Furniture
+			if f.mobility_tier != "yellow" or f._home_grid_pos == Vector2(-1, -1):
+				continue
+			var at := f.get_moment_position(moment)
+			var away := at != f._home_grid_pos
+			var id := f.get_instance_id()
+			if _away_seen.has(id) and _away_seen[id] != away and not _restoring_furniture:
+				if away:
+					_toast(tr("The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked.") % [f.furniture_name, roundi(gm.COMFORT_COST_PER_ITEM)])
+				else:
+					_toast(tr("The %s is back where it started: comfort restored.") % f.furniture_name)
+			_away_seen[id] = away
+			if not away:
+				continue
+			_moved_names.append(f.furniture_name)
+			var mark := {"home": f._home_grid_pos, "size": Vector2(f.grid_w, f.grid_h), "at": at,
+				"cost": tr("−%d%%") % roundi(gm.COMFORT_COST_PER_ITEM)}
+			marks.append(mark)
+			if fid == _current_floor_id:
+				all_marks.append(mark)
+		fl.set_home_marks(marks)
+	_home_marks = all_marks
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.set_home_marks(all_marks)
+
+
 # Only worth showing on a level that actually uses the mechanic — a level
 # with no yellow-tier furniture at all would just show a permanent, mute
 # "Comfort 100%" that explains nothing. Called from _refresh_functions()
 # alongside every other post-move recompute.
 func _update_comfort_meter() -> void:
+	_show_moved_from_home()
 	var has_yellow := false
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
@@ -688,6 +732,7 @@ func _update_comfort_meter() -> void:
 	var was_hidden := not _comfort_meter.visible
 	_comfort_meter.visible = true
 	_comfort_meter.set_value(gm.comfort_pct, gm.COMFORT_WARN_THRESHOLD)
+	_comfort_meter.set_moved(_moved_names)
 	if was_hidden:
 		_position_minimap()   # re-lays the bar, which now reserves room for the gauge
 	_position_comfort_meter()
@@ -1450,6 +1495,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	# A level can author a piece already turned ("rot_steps": quarter turns).
 	var authored_rot := rail_data.get("rot_steps", 0) as int
 	if authored_rot != 0:
@@ -1519,8 +1565,20 @@ func _on_box_entered(box: Furniture) -> void:
 		return
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
+	var shade_by := _shade_by
 	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
+	var noisy_by := _noisy_by
 	var wall_side := _closest_wall_side(box._wall_ref, box)
+	# Standing on a table, the box can only get as heavy as the table allows:
+	# what that leaves for its contents, in their own (unshrunk) weight.
+	var carry_limit := -1.0
+	var carry_name := ""
+	var sup := box._wall_ref.support_under(box) if is_instance_valid(box._wall_ref) else null
+	if sup != null:
+		var spare := sup.max_support_weight - box._wall_ref._surface_load(sup, box) - box._base_weight
+		var shrink := _box_shrink(box)
+		carry_limit = maxf(spare, 0.0) / shrink if shrink > 0.0 else INF
+		carry_name = sup.furniture_name
 	var wall_override: Dictionary = (gm.external_restrictions.get("by_wall", {}) as Dictionary).get(wall_side, {}) as Dictionary
 	_remember_level_state()
 	# Remembers whether the level being left was in post-win "Watch Again"
@@ -1538,10 +1596,16 @@ func _on_box_entered(box: Furniture) -> void:
 	_nested_stack.append({
 		"parent_level_id": _current_level_id,
 		"daylight_factor": factor,
+		"shade_by": shade_by,
 		"noisy_from_outside": noisy_outside,
+		"noisy_by": noisy_by,
 		"was_post_win_view": was_showcasing,
 		"box_floor_id": box_floor_id,
 		"box_rect": Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)),
+		"box_name": box.furniture_name,
+		"box_base_tier": box._base_mobility_tier,
+		"carry_limit": carry_limit,
+		"carry_support_name": carry_name,
 	})
 	_current_nested_daylight_factor = factor
 	_current_nested_noisy_from_outside = noisy_outside
@@ -1557,6 +1621,17 @@ func _on_box_entered(box: Furniture) -> void:
 	# showcase yet, same as any other not-yet-completed level.
 	if was_showcasing and gm.check_win():
 		_on_watch_again_reveal()
+	# What the flat around the box does to it, said once on the way in (the
+	# dim light and the noise marks show it from then on).
+	var news: Array = []
+	if factor < 0.99 and shade_by != "":
+		news.append(tr("Little daylight gets in here: the %s outside stands in front of the box.") % shade_by)
+	if noisy_outside and noisy_by != "":
+		news.append(tr("Noisy in here: the %s right outside the box keeps anyone from sleeping.") % noisy_by)
+	if not wall_override.is_empty() and _wall_rules_text(wall_override) != "":
+		news.append(tr("This box stands by the %s: %s.") % [_wall_side_name(wall_side, wall_override), _wall_rules_text(wall_override)])
+	if not news.is_empty():
+		_toast("\n".join(news))
 	_nested_transition_busy = false
 
 
@@ -1638,8 +1713,23 @@ func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
 			"x": d.get("x", 0) as float, "y": d.get("y", 0) as float,
 			"w": float(sz.get("w", 4) as int), "h": float(sz.get("h", 4) as int),
 			"color": Color("#" + (fdata.get("color", "888888") as String)),
+			"surface": fdata.get("is_surface", false) as bool,
 		})
-	return out
+	# Drawn in order: what stands on a table (a box, a lamp) after the table,
+	# so the thumbnail shows it on top rather than hidden underneath.
+	var depth := func(r: Dictionary) -> int:
+		var rect := Rect2(r["x"], r["y"], r["w"], r["h"])
+		var n := 0
+		for o in out:
+			if not is_same(o, r) and o["surface"] and Rect2(o["x"], o["y"], o["w"], o["h"]).encloses(rect):
+				n += 1
+		return n
+	for r in out:
+		r["depth"] = depth.call(r)
+	var by_depth: Array = []
+	for level in range(4):
+		by_depth.append_array(out.filter(func(r): return mini(r["depth"], 3) == level))
+	return by_depth
 
 
 # Inside a box, the 3D view can draw the apartment the box sits in around the
@@ -2044,17 +2134,7 @@ func _level_floor_area_m2(level_id: String) -> float:
 	var level := _lookup_level_dict(level_id)
 	if level.is_empty():
 		return 0.0
-	var apt := level.get("apartment", {}) as Dictionary
-	var gw := apt.get("grid_w", 0) as int
-	var gh := apt.get("grid_h", 0) as int
-	var total_tiles := 0
-	for fd in apt.get("floors", []) as Array:
-		var fdata := fd as Dictionary
-		if fdata.get("type", "floor") as String not in ["floor", "loft"]:
-			continue
-		var tiles := fdata.get("floor_tiles", []) as Array
-		total_tiles += tiles.size() if not tiles.is_empty() else gw * gh
-	return total_tiles * TILE_M2
+	return Furniture.level_floor_tiles(level) * TILE_M2
 
 
 # Pops the stack all the way down to (and including) _nested_stack[index],
@@ -2197,29 +2277,58 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 # nearby piece: a "tall" neighbor blocks most of the light (this is a closed
 # box after all, blocked doubly so), "medium" dims it partway, otherwise the
 # box gets full daylight.
-func _compute_box_occlusion(box: Furniture) -> float:
+#
+# A box standing on a table or shelf takes its light from where it really is:
+# what it stands on doesn't shade it, and neither does anything whose top is
+# below the box (a chair beside the table, a low cabinet beside the dresser).
+var _shade_by := ""   # what shaded the box _compute_box_occlusion() looked at last ("" = nothing)
+
+# Every piece with a tile in the one-tile ring around `pos` (gw x gh) on
+# `fl`, other than `exclude`. With `carried` (a piece being dragged or
+# bought, its corner at `carried_at`): as if it already stood there instead
+# of where it is now.
+func _ring_pieces(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture,
+		carried: Furniture = null, carried_at: Variant = null) -> Array:
+	var out: Array = []
+	var x0 := floori(pos.x) - 1
+	var y0 := floori(pos.y) - 1
+	var x1 := x0 + gw + 2
+	var y1 := y0 + gh + 2
+	for x in range(x0, x1):
+		for y in range(y0, y1):
+			if x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1:
+				continue
+			for f in fl._placed_list(Vector2i(x, y)):
+				if f != exclude and f != carried and not (f in out):
+					out.append(f)
+	if carried != null and carried_at != null and carried != exclude \
+			and Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)).intersects(Rect2(carried_at as Vector2, Vector2(carried.grid_w, carried.grid_h))):
+		out.append(carried)
+	return out
+
+
+func _compute_box_occlusion(box: Furniture, carried: Furniture = null, carried_at: Variant = null) -> float:
+	_shade_by = ""
 	var fl := box._wall_ref
 	if not is_instance_valid(fl):
 		return 1.0
-	var x0 := floori(box.grid_pos.x) - 1
-	var y0 := floori(box.grid_pos.y) - 1
-	var x1 := x0 + box.grid_w + 2
-	var y1 := y0 + box.grid_h + 2
+	var under := _supports_under(fl, box.grid_pos, box.grid_w, box.grid_h, box)
+	var base := fl.stack_lift(box)
 	var worst := "low"
-	for x in range(x0, x1):
-		for y in range(y0, y1):
-			var tile := Vector2i(x, y)
-			var inside_box := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
-			if inside_box:
-				continue
-			for f in fl._placed_list(tile):
-				var fur := f as Furniture
-				if fur == box:
-					continue
-				if fur.blocks_light():
-					worst = "tall"
-				elif fur.height_category == "medium" and worst != "tall":
-					worst = "medium"
+	for f in _ring_pieces(fl, box.grid_pos, box.grid_w, box.grid_h, box, carried, carried_at):
+		var fur := f as Furniture
+		if fur in under:
+			continue
+		var lift := fl.stack_lift(fur, carried_at if fur == carried else null)
+		if base > 0.0 and lift + fur.body_h <= base:
+			continue
+		if fur.blocks_light():
+			if worst != "tall":
+				_shade_by = fur.furniture_name
+			worst = "tall"
+		elif fur.height_category == "medium" and worst == "low":
+			worst = "medium"
+			_shade_by = fur.furniture_name
 	match worst:
 		"tall":   return 0.15
 		"medium": return 0.55
@@ -2241,10 +2350,103 @@ func _compute_box_occlusion(box: Furniture) -> float:
 # specific WALLS, not a uniform ring around the whole apartment the way
 # light/noise occlusion are, so this measures against one side at a time
 # rather than reusing the ring-scan shape those two use.
-func _closest_wall_side(fl: Floor, box: Furniture) -> String:
+# A box's mobility tier rises as it is furnished (Furniture.box_tier()). The
+# tape and straps on it show where it stands; the moment it changes is also
+# said once, whether that happens out here (a box's tier read as it is now)
+# or inside it while furnishing (from what is in this apartment right now).
+# Keyed by the box's apartment, which outlives the box nodes (they are made
+# again every time a level loads), so nothing is said on loading.
+var _box_tier_seen: Dictionary = {}   # child level id -> tier last seen
+
+func _note_box_tiers() -> void:
+	for box in _collect_nested_boxes():
+		_note_box_tier(box.child_level_id, box.furniture_name, box.mobility_tier)
+	if not _nested_stack.is_empty():
+		var ctx := _nested_stack[-1] as Dictionary
+		_note_box_tier(_current_level_id, ctx.get("box_name", tr("This box")) as String,
+			Furniture.box_tier(_carried_weight(), ctx.get("box_base_tier", "green") as String), true)
+
+
+func _note_box_tier(level_id: String, box_name: String, tier: String, from_inside: bool = false) -> void:
+	var seen := _box_tier_seen.get(level_id, "") as String
+	_box_tier_seen[level_id] = tier
+	if seen == "" or seen == tier:
+		return
+	var order := ["green", "yellow", "red"]
+	if order.find(tier) < order.find(seen):
+		_toast(tr("%s is lighter again: easier to move.") % box_name)
+	elif tier == "yellow":
+		_toast(tr("%s is getting heavy: moving it away from where it started now costs comfort.") % box_name, from_inside)
+	else:
+		_toast(tr("%s is packed full: it now stays in one place for every moment of the day.") % box_name, from_inside)
+
+
+# What an outside-wall profile (external_zone.by_wall[side]) does to a box
+# standing nearest that wall, in words: "Sleep at least 0.8 m from the wall
+# · No Work". "" when it does nothing.
+func _wall_rules_text(profile: Dictionary) -> String:
+	var parts: Array = []
+	for fn in profile.get("forbidden_functions", []) as Array:
+		parts.append(tr("No %s") % Loc.need_name(fn as String))
+	var dist := profile.get("min_boundary_distance", {}) as Dictionary
+	for fn in dist:
+		parts.append(tr("%s at least %.1f m from the wall") % [Loc.need_name(fn as String), (dist[fn] as float) * 0.1])
+	return " · ".join(parts)
+
+
+# The name a wall's outside goes by: its profile's label ("Busy street"), or
+# which side of the flat it is.
+func _wall_side_name(side: String, profile: Dictionary) -> String:
+	var label := profile.get("label", "") as String
+	if label != "":
+		return tr(label)
+	match side:
+		"north": return tr("North side")
+		"east":  return tr("East side")
+		"south": return tr("South side")
+	return tr("West side")
+
+
+# Shows every outside wall that has a profile, on the plan (a plate outside
+# it) and in 3D (a sign outside it), and links each box to the wall whose
+# rules it takes inside: a dashed line on the plan, following a box that is
+# being carried (`carried`, its corner at `at`).
+var _outside_walls: Array = []   # what _show_outside_walls() last showed, for a 3D view built later
+
+func _show_outside_walls(carried: Furniture = null, at: Variant = null) -> void:
+	var by_wall := gm.external_restrictions.get("by_wall", {}) as Dictionary
+	var walls: Array = []
+	for side in ["north", "east", "south", "west"]:
+		if not by_wall.has(side):
+			continue
+		var p := by_wall[side] as Dictionary
+		var rules := _wall_rules_text(p)
+		walls.append({"side": side, "name": _wall_side_name(side, p),
+			"rules": tr("boxes here: %s") % rules if rules != "" else tr("nothing extra for boxes here")})
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var links: Array = []
+		if not walls.is_empty():
+			for box in _collect_nested_boxes():
+				if box._wall_ref != fl:
+					continue
+				var held := box == carried and at != null
+				var side := _closest_wall_side(fl, box, at if held else null)
+				if not by_wall.has(side):
+					continue
+				var corner: Vector2 = at as Vector2 if held else box.grid_pos
+				links.append({"from": corner + Vector2(box.grid_w, box.grid_h) * 0.5, "side": side, "held": held})
+		fl.set_outside_walls(walls, links)
+	_outside_walls = walls
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.set_outside_walls(walls)
+
+
+func _closest_wall_side(fl: Floor, box: Furniture, at: Variant = null) -> String:
 	var b := fl.get_room_bounds()
-	var cx := box.grid_pos.x + box.grid_w * 0.5
-	var cy := box.grid_pos.y + box.grid_h * 0.5
+	var corner: Vector2 = box.grid_pos if at == null else at as Vector2
+	var cx := corner.x + box.grid_w * 0.5
+	var cy := corner.y + box.grid_h * 0.5
 	var d_west  := cx - b.position.x
 	var d_east  := (b.position.x + b.size.x) - cx
 	var d_north := cy - b.position.y
@@ -2259,23 +2461,93 @@ func _closest_wall_side(fl: Floor, box: Furniture) -> String:
 	return "south"
 
 
-func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
+# What a footprint at `pos` would stand on: the surface under it, the one
+# under that, and so on down to the floor (empty on the floor).
+func _supports_under(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> Array:
+	var out: Array = []
+	var cur := fl._surface_support_at(fl._rect_tiles(pos, gw, gh), exclude)
+	while cur != null and cur not in out:
+		out.append(cur)
+		cur = fl.support_under(cur)
+	return out
+
+
+# A box standing on something noisy hears it as well as one beside it, even
+# when that table is no bigger than the box and so not in the ring.
+var _noisy_by := ""   # the noisy piece _has_noisy_neighbor() found last
+var _noisy_piece: Furniture = null
+
+func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture,
+		carried: Furniture = null, carried_at: Variant = null) -> bool:
+	_noisy_by = ""
+	_noisy_piece = null
 	if not is_instance_valid(fl):
 		return false
-	var x0 := floori(pos.x) - 1
-	var y0 := floori(pos.y) - 1
-	var x1 := x0 + gw + 2
-	var y1 := y0 + gh + 2
-	for x in range(x0, x1):
-		for y in range(y0, y1):
-			var inside := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
-			if inside:
-				continue
-			for f in fl._placed_list(Vector2i(x, y)):
-				var fur := f as Furniture
-				if fur != exclude and fur.is_noisy:
-					return true
+	for sup in _supports_under(fl, pos, gw, gh, exclude):
+		if (sup as Furniture).is_noisy and sup != carried:
+			_noisy_by = (sup as Furniture).furniture_name
+			_noisy_piece = sup
+			return true
+	for f in _ring_pieces(fl, pos, gw, gh, exclude, carried, carried_at):
+		var fur := f as Furniture
+		if fur.is_noisy:
+			_noisy_by = fur.furniture_name
+			_noisy_piece = fur
+			return true
 	return false
+
+
+# While a piece is carried over the plan or in 3D (Floor.carry_preview, with
+# its corner at `at`), every box shows the shade and noise it would get if
+# the piece were put down there: the hatch and dimmed windows, and the sound
+# coming off the piece. `carried` null puts everything back as it really is.
+var _carry_previewing := false
+var _carry_preview_args: Array = []   # [carried, at] while previewing
+
+func _preview_carry(carried: Furniture, at: Variant) -> void:
+	if carried == null or at == null or not is_instance_valid(carried):
+		if _carry_previewing:
+			_carry_previewing = false
+			_carry_preview_args = []
+			_recompute_box_effects()
+		return
+	_carry_previewing = true
+	_carry_preview_args = [carried, at]
+	_apply_carry_preview(carried, at)
+
+
+# The preview itself; also put back on top by _recompute_box_effects(), which
+# moving the piece over the plan sets off and which works out the real state.
+func _apply_carry_preview(carried: Furniture, at: Variant) -> void:
+	if carried.is_nested_box:
+		_show_outside_walls(carried, at)
+	var boxes := _collect_nested_boxes()
+	if boxes.is_empty():
+		return
+	var making: Dictionary = {}   # piece -> true while it would keep a box's bed awake
+	for box in boxes:
+		if box == carried or not is_instance_valid(box._wall_ref) or box._wall_ref != carried._wall_ref:
+			continue
+		box._shade = _compute_box_occlusion(box, carried, at)
+		if _child_has_bed(box.child_level_id) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box, carried, at) \
+				and is_instance_valid(_noisy_piece):
+			making[_noisy_piece] = true
+		box.queue_redraw()
+	# Only the noise between pieces and boxes is previewed; a pet's or a noisy
+	# box's own reach stays as it is.
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			var fur := f as Furniture
+			if fur.is_noisy and not fur.is_nested_box and fur.noise_radius <= 0:
+				var now := making.has(fur)
+				if now != fur._noise_making:
+					fur._noise_making = now
+					fur.queue_redraw()
+	if carried.is_noisy and carried._noise_making != making.has(carried):
+		carried._noise_making = making.has(carried)
+		carried.queue_redraw()
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view._sync_status_marks()
 
 
 # Everything currently in a child level's floors — the live per-session
@@ -2304,9 +2576,15 @@ func _compute_child_interior_weight(child_level_id: String) -> float:
 		var fdata := gm.get_furniture_by_id((item as Dictionary).get("id", "") as String)
 		if fdata.is_empty():
 			continue
-		var sz := fdata.get("size", {}) as Dictionary
-		total += fdata.get("weight", float((sz.get("w", 4) as int) * (sz.get("h", 4) as int))) as float
+		total += Furniture.catalog_weight(fdata)
 	return total
+
+
+func _child_has_bed(child_level_id: String) -> bool:
+	for item in _child_furniture_items(child_level_id):
+		if gm.get_furniture_by_id((item as Dictionary).get("id", "") as String).get("needs_quiet", false) as bool:
+			return true
+	return false
 
 
 func _compute_child_is_noisy(child_level_id: String) -> bool:
@@ -2326,28 +2604,98 @@ func _compute_child_is_noisy(child_level_id: String) -> bool:
 # mutes behind on furniture that's since moved away or was never really its
 # fault to begin with).
 func _recompute_box_effects() -> void:
+	_apply_carry_limit()
+	var was_muted: Dictionary = {}   # piece -> whether noise kept it from working before this pass
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
-			(f as Furniture)._noise_muted = false
+			var fur := f as Furniture
+			was_muted[fur] = fur._noise_muted
+			fur._noise_muted = false
+			fur._noise_by = ""
+			fur._noise_making = false
 	_recompute_pet_effects()
 	# Direction 1 (parent noise -> child): if we're currently INSIDE a box
 	# that had a noisy neighbor outside it when we entered, every needs_quiet
 	# piece in here is muted — set once at entry (_on_box_entered), applied
 	# fresh on every recompute same as everything else in this function.
 	if not _nested_stack.is_empty() and _current_nested_noisy_from_outside:
+		var source := (_nested_stack[-1] as Dictionary).get("noisy_by", "") as String
 		for fid in _floors:
 			for f in (_floors[fid] as Floor).get_all_furniture():
 				if (f as Furniture).needs_quiet:
 					(f as Furniture)._noise_muted = true
+					(f as Furniture)._noise_by = source
 	# Direction 2 (child noise -> parent): a box whose OWN interior is noisy
 	# mutes needs_quiet furniture near it in THIS (parent) room.
 	for box in _collect_nested_boxes():
 		if box.child_level_id.is_empty():
 			continue
-		box.apply_interior_weight(_compute_child_interior_weight(box.child_level_id))
+		box.apply_interior_weight(_compute_child_interior_weight(box.child_level_id), _box_shrink(box))
 		box.is_noisy = _compute_child_is_noisy(box.child_level_id)
 		if box.is_noisy and is_instance_valid(box._wall_ref):
 			_mute_quiet_neighbors(box._wall_ref, box)
+		# How much daylight reaches it, for the plan's shade and the 3D view's
+		# dimmed windows.
+		box._shade = _compute_box_occlusion(box)
+		# Noise right outside a box with a bed in it keeps that bed from
+		# working (see _on_box_entered): the piece making it shows it here too.
+		if is_instance_valid(box._wall_ref) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box) 				and _child_has_bed(box.child_level_id) and is_instance_valid(_noisy_piece):
+			_noisy_piece._noise_making = true
+	_note_box_tiers()
+	_show_outside_walls()
+	if _carry_previewing and _carry_preview_args.size() == 2 and is_instance_valid(_carry_preview_args[0]):
+		_apply_carry_preview(_carry_preview_args[0], _carry_preview_args[1])
+	# A bed that just stopped working because of noise says why, once (a piece
+	# that only now appeared, on loading or stepping into a box, doesn't: the
+	# marks show it, and stepping in already said so).
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			var fur := f as Furniture
+			if fur._noise_muted and was_muted.has(fur) and not was_muted[fur] and fur._noise_by != "":
+				_toast(tr("%s can't be slept in: the %s is too noisy.") % [fur.furniture_name, fur._noise_by], true)
+			fur.queue_redraw()
+
+
+# Inside a box that stands on a table, nothing new can go in that would make
+# the box too heavy for that table (Floor.carry_limit); anywhere else, no limit.
+func _apply_carry_limit() -> void:
+	var ctx: Dictionary = _nested_stack[-1] if not _nested_stack.is_empty() else {}
+	Floor.carry_limit = ctx.get("carry_limit", -1.0) as float
+	Floor.carry_support_name = ctx.get("carry_support_name", "") as String
+	Floor.carried_weight = _carried_weight
+	Floor.carry_preview = _preview_carry
+
+
+# The limit is static: it must not outlive the game it belongs to (the level
+# editor's floors and the tests share it).
+func _exit_tree() -> void:
+	Floor.carry_limit = -1.0
+	Floor.carried_weight = Callable()
+	Floor.carry_preview = Callable()
+
+
+# What everything in the current apartment weighs, the way the box outside
+# counts it (catalogue weights, see _compute_child_interior_weight()).
+func _carried_weight() -> float:
+	var total := 0.0
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			total += (f as Furniture)._base_weight
+	return total
+
+
+# A box weighs what is in it from the moment it exists, not only from the
+# next refresh: a box being bought onto a table has to be weighed full.
+func _weigh_box(f: Furniture) -> void:
+	if f.is_nested_box and not f.child_level_id.is_empty():
+		f.apply_interior_weight(_compute_child_interior_weight(f.child_level_id), _box_shrink(f))
+
+
+# How much the fax shrank the apartment in `box`: the box's footprint over
+# that apartment's floor, both in tiles. What is inside weighs that much less
+# out here (see Furniture.apply_interior_weight()).
+func _box_shrink(box: Furniture) -> float:
+	return Furniture.box_shrink(box.grid_w, box.grid_h, _lookup_level_dict(box.child_level_id))
 
 
 func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:
@@ -2364,6 +2712,8 @@ func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:
 				var fur := f as Furniture
 				if fur != box and fur.needs_quiet:
 					fur._noise_muted = true
+					fur._noise_by = box.furniture_name
+					box._noise_making = true
 
 
 # ─── Runtime loft/mezzanine floors ────────────────────────────────────────────
@@ -3005,6 +3355,9 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
+	_mode3d_view.set_daylight(_current_nested_daylight_factor if not _nested_stack.is_empty() else 1.0)
+	_mode3d_view._outside_walls = _outside_walls   # signs built with the room
+	_mode3d_view._home_marks = _home_marks
 	_mode3d_view.household_of = _household_of
 	# Hand the rule overlays over before the build, so a view created (or
 	# rebuilt) after the last refresh still shows them.
@@ -3613,6 +3966,8 @@ func _recompute_pet_effects() -> void:
 				var q := other as Furniture
 				if q != pet and q.needs_quiet and reach.intersects(Rect2(q.grid_pos, Vector2(q.grid_w, q.grid_h))):
 					q._noise_muted = true
+					q._noise_by = pet.furniture_name
+					pet._noise_making = true
 
 
 # Hands a piece to another apartment: it joins that apartment's owned pieces,
@@ -3960,6 +4315,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
@@ -5160,6 +5516,7 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	# home_x/home_y (see _snapshot_all_furniture()) is the level's true
 	# authored starting position — fall back to (gx,gy) only for snapshots

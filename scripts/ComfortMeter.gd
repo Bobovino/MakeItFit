@@ -22,6 +22,15 @@ func _ready() -> void:
 	set_process(false)
 
 
+# What is costing comfort right now (piece names), added to the tooltip.
+func set_moved(names: Array) -> void:
+	var base := tr("Comfort. Below the warning line the apartment can't be rented like this. Yellow-tier furniture is uncomfortable to move — each piece sitting away from where it started costs comfort. Move it back and comfort recovers. Below the warning line, this arrangement can't be rented out.")
+	if names.is_empty():
+		tooltip_text = base
+	else:
+		tooltip_text = base + "\n\n" + tr("Away from where it started: %s") % Loc.join_list(names)
+
+
 func set_value(pct: float, warn_threshold: float) -> void:
 	_pct = pct
 	_warn_threshold = warn_threshold
