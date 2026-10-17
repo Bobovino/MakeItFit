@@ -600,6 +600,27 @@ func setup(floor_data: Dictionary) -> void:
 # one: nothing can be put through it and nothing can be seen through it, but
 # daylight passes. `for_light` leaves those segments out, so the light map
 # flows straight through them.
+# The tiles of the wall line a window takes up. _partition_tile_set() leaves
+# them open (light and lines of sight go through a window), but nothing can
+# be put in one or walk through one: a stool used to fit in the window gap.
+func _window_tile_set() -> Dictionary:
+	var out: Dictionary = {}
+	if not _use_new_format:
+		return out
+	for p in segments:
+		if p.get("demolished", false) or not (p.get("has_window", false) as bool):
+			continue
+		var x1: int = p["x1"]; var y1: int = p["y1"]
+		var x2: int = p["x2"]; var y2: int = p["y2"]
+		var wp := p.get("window_pos", -1) as int
+		var wl := p.get("window_len", 0) as int
+		if wp < 0:
+			continue
+		for i in range(wp, wp + wl):
+			out[Vector2i(x1, mini(y1, y2) + i) if x1 == x2 else Vector2i(mini(x1, x2) + i, y1)] = true
+	return out
+
+
 func _partition_tile_set(for_light: bool = false) -> Dictionary:
 	var blocked: Dictionary = {}
 
@@ -1018,6 +1039,7 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 func can_place(furniture: Furniture, at: Vector2) -> bool:
 	_block_reason = ""
 	var blocked := _partition_tile_set()
+	blocked.merge(_window_tile_set())
 	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
 		if not is_floor_tile(tile):
 			_block_reason = tr("Outside the room")
@@ -1062,6 +1084,11 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		if mezzanine_mask.get(tile, false):
 			on_mezzanine = true
 			break
+	# Under a loft there is LOFT_HEADROOM of height: a chest freezer or a
+	# desk fits, a fridge or a wardrobe doesn't (they used to go anywhere).
+	if on_mezzanine and not furniture.walkable and stack_lift(furniture, at) + furniture.body_h > LOFT_HEADROOM:
+		_block_reason = tr("Too tall to go under the loft")
+		return false
 	if on_mezzanine and mezzanine_max_load > 0.0:
 		var projected_load := _mezzanine_load(furniture) + furniture.weight
 		if projected_load > mezzanine_max_load:
@@ -1153,6 +1180,10 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		var f: Furniture = entry["furniture"]
 		if f == furniture or f in under or f.ghost_radius <= 0 or f in carried:
 			continue
+		# Clearance is floor space around a piece: a loft bed up at 1.4 m is
+		# not in a desk's way, and the desk is not in its.
+		if furniture.z_top <= f.z_bottom or furniture.z_bottom >= f.z_top:
+			continue
 		var fpos: Vector2 = entry["pos"]
 		var ghost := Rect2(
 			fpos - Vector2(f.ghost_radius, f.ghost_radius),
@@ -1243,7 +1274,8 @@ func _moment_clash(furniture: Furniture, at: Vector2, under: Array, carried: Arr
 			var r := other.get_moment_rect(m)
 			if rect.intersects(r) and not (furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top):
 				return tr("Would overlap %s during \"%s\"") % [other.furniture_name, label]
-			if other.ghost_radius > 0 and r.grow(float(other.ghost_radius)).intersects(rect):
+			var apart := furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top
+			if other.ghost_radius > 0 and not apart and r.grow(float(other.ghost_radius)).intersects(rect):
 				return tr("Needs clearance around %s during \"%s\"") % [other.furniture_name, label]
 	return ""
 
@@ -1503,6 +1535,7 @@ func clear_floor_drag_ghost() -> void:
 # piece being carried over it counts as already there, so the player sees a
 # table give before putting something too heavy on it.
 const STRAIN_FROM := 0.6
+const LOFT_HEADROOM := 14.0   # tiles under a loft's platform (see WallInspector: it sits at 1.4 m)
 
 # Set by Main: told about the piece being carried (and its corner), or null
 # when nothing is any more, so boxes can preview their shade and noise.
@@ -1557,6 +1590,9 @@ func carry_hints(carried: Furniture) -> Dictionary:
 					var ceil_h := (sc.get("min_h", 1.8) as float) + (coord - low_s) / span * ((sc.get("max_h", 2.4) as float) - (sc.get("min_h", 1.8) as float))
 					if ceil_h < height_m:
 						out["low_ceiling"].append(t)
+	if not carried.walkable and carried.body_h > LOFT_HEADROOM:
+		for t in mezzanine_mask:
+			out["low_ceiling"].append(t)   # too tall to go under the loft
 	if not mezzanine_mask.is_empty() and mezzanine_max_load > 0.0:
 		out["loft"] = {"tiles": mezzanine_mask.keys(), "load": _mezzanine_load(carried),
 			"max": mezzanine_max_load, "weight": carried.weight}
@@ -2235,6 +2271,7 @@ func _compute_reachable_floor() -> Dictionary:
 	var solid := PackedByteArray()
 	solid.resize(w * h)
 	var walls := _partition_tile_set()
+	walls.merge(_window_tile_set())   # nobody walks through a window
 	for y in h:
 		for x in w:
 			var t := Vector2i(x0 + x, y0 + y)

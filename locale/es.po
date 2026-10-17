@@ -1723,17 +1723,17 @@ msgstr "Recuerdos, y hacia arriba"
 
 #: data/levels.json:three_freezers
 msgid ""
-"A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three freezers are staying.\n"
+"A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three chest freezers are staying.\n"
 "\n"
-"That leaves very little floor for a desk and a bed. So the bed goes up: a Loft Bed sleeps above head height and leaves the floor beneath it free.\n"
+"They take up most of the floor, but they are low. A Loft Bed sleeps above head height, and anything low enough fits under it: a chest freezer, a desk, a chair.\n"
 "\n"
-"Move the freezers out of the way first if you need the room."
+"There is no room for a desk yet. Move the freezers around until there is."
 msgstr ""
-"Una pieza con un corazón tras su nombre es un recuerdo. Puedes moverla, pero el inquilino nunca te dejará venderla. Los tres congeladores de Dani se quedan.\n"
+"Una pieza con un corazón tras su nombre es un recuerdo. Puedes moverla, pero el inquilino nunca te dejará venderla. Los tres arcones congeladores de Dani se quedan.\n"
 "\n"
-"Eso deja muy poco suelo para un escritorio y una cama. Así que la cama sube: una cama alta se duerme por encima de la cabeza y deja libre el suelo de debajo.\n"
+"Ocupan casi todo el suelo, pero son bajos. Una cama alta se duerme por encima de la cabeza, y debajo cabe todo lo que sea bajo: un arcón, un escritorio, una silla.\n"
 "\n"
-"Si necesitas sitio, aparta primero los congeladores."
+"Todavía no hay sitio para un escritorio. Mueve los arcones hasta que lo haya."
 
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
@@ -3147,3 +3147,15 @@ msgstr "Estaba aquí"
 #: scripts/Main.gd
 msgid "Comfort −%d%%"
 msgstr "Comodidad −%d%%"
+
+#: data/furniture.json
+msgid "Too tall to go under the loft"
+msgstr "Demasiado alto para ir bajo el altillo"
+
+#: data/furniture.json
+msgid "Chest Freezer"
+msgstr "Arcón congelador"
+
+#: data/furniture.json
+msgid "Upright Freezer"
+msgstr "Congelador vertical"

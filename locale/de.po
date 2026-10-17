@@ -1723,17 +1723,17 @@ msgstr "Erbstücke, und ab nach oben"
 
 #: data/levels.json:three_freezers
 msgid ""
-"A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three freezers are staying.\n"
+"A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three chest freezers are staying.\n"
 "\n"
-"That leaves very little floor for a desk and a bed. So the bed goes up: a Loft Bed sleeps above head height and leaves the floor beneath it free.\n"
+"They take up most of the floor, but they are low. A Loft Bed sleeps above head height, and anything low enough fits under it: a chest freezer, a desk, a chair.\n"
 "\n"
-"Move the freezers out of the way first if you need the room."
+"There is no room for a desk yet. Move the freezers around until there is."
 msgstr ""
 "Ein Stück mit einem Herz hinter dem Namen ist ein Erbstück. Du kannst es bewegen, aber der Mieter lässt es dich nie verkaufen. Danis drei Gefriertruhen bleiben.\n"
 "\n"
-"Da bleibt sehr wenig Boden für einen Schreibtisch und ein Bett. Also kommt das Bett nach oben: Ein Hochbett schläft über Kopfhöhe und lässt den Boden darunter frei.\n"
+"Sie nehmen fast den ganzen Boden ein, aber sie sind niedrig. Ein Hochbett schläft über Kopfhöhe, und darunter passt alles, was niedrig genug ist: eine Gefriertruhe, ein Schreibtisch, ein Stuhl.\n"
 "\n"
-"Schieb zuerst die Gefriertruhen aus dem Weg, wenn du den Platz brauchst."
+"Für einen Schreibtisch ist noch kein Platz. Schieb die Truhen herum, bis er da ist."
 
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
@@ -3147,3 +3147,15 @@ msgstr "Stand hier"
 #: scripts/Main.gd
 msgid "Comfort −%d%%"
 msgstr "Komfort −%d%%"
+
+#: data/furniture.json
+msgid "Too tall to go under the loft"
+msgstr "Zu hoch für unter die Hochebene"
+
+#: data/furniture.json
+msgid "Chest Freezer"
+msgstr "Gefriertruhe"
+
+#: data/furniture.json
+msgid "Upright Freezer"
+msgstr "Gefrierschrank"

@@ -31,6 +31,7 @@ func _ready() -> void:
 	await _t_unreachable_shown()
 	await _t_moved_from_home()
 	await _t_carry_hints()
+	await _t_three_freezers()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -48,6 +49,7 @@ func _run_all() -> void:
 	_test("pathing: a piece must be reachable from its front", func(): _t_path_front())
 	_test("a swing door keeps the quarter circle it opens through", func(): _t_door_swing())
 	_test("a bed unfolded in another moment keeps its space then", func(): _t_other_moment())
+	_test("under a loft only what is low enough; nothing in a window", func(): _t_loft_and_window())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -106,6 +108,48 @@ func _make_furniture(fl: Floor, w: int = 2, h: int = 2) -> Furniture:
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
+
+# A loft over the room's left half: a chest freezer (0.9 m) fits under it, a
+# fridge (1.8 m) doesn't; and a window in the top wall is still wall.
+func _t_loft_and_window() -> void:
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup({"id": "loft_floor", "label": "Loft", "grid_w": 24, "grid_h": 24, "floor_tiles": [],
+		"segments": [
+			{"x1": 1, "y1": 1, "x2": 21, "y2": 1, "primary": true, "demolished": false,
+				"has_window": true, "window_pos": 4, "window_len": 10},
+			{"x1": 21, "y1": 1, "x2": 21, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+		]})
+	for x in range(2, 12):
+		for y in range(2, 21):
+			fl.mezzanine_mask[Vector2i(x, y)] = true
+	var make := func(id: String) -> Furniture:
+		var f := load("res://scenes/Furniture.tscn").instantiate() as Furniture
+		fl.add_child(f)
+		f.setup(main_catalog_entry(id), fl)
+		return f
+	var freezer: Furniture = make.call("chest_freezer")
+	var fridge: Furniture = make.call("fridge")
+	var under_ok := fl.can_place(freezer, Vector2(2, 10))
+	var fridge_under := fl.can_place(fridge, Vector2(2, 10))
+	var fridge_reason := fl.get_block_reason()
+	var fridge_beside := fl.can_place(fridge, Vector2(13, 10))
+	var stool := _make_furniture(fl, 3, 3)
+	var in_window := fl.can_place(stool, Vector2(7, 1))
+	_ok(under_ok and not fridge_under and fridge_reason == "Too tall to go under the loft" and fridge_beside and not in_window,
+		"freezer %s, fridge under %s (%s), beside %s, stool in window %s" % [under_ok, fridge_under, fridge_reason, fridge_beside, in_window])
+	fl.queue_free()
+
+
+func main_catalog_entry(id: String) -> Dictionary:
+	var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/furniture.json"))
+	for f in data["furniture"]:
+		if f["id"] == id:
+			return f
+	return {}
+
 
 # A 20 x 20 room (tiles 2..20) with a swing door in its north wall at
 # x 6..16, opening south into the room.
@@ -387,7 +431,9 @@ func _t_progress_round_trip() -> void:
 	sofa.set_rot_steps(1)
 	var unfolded := false
 	var bounds := fl.get_room_bounds()
-	for y in range(bounds.position.y, bounds.end.y, 2):
+	# Every row: unfolded it only fits the room's full height (it used to find
+	# a spot only by standing in the top wall's window gap).
+	for y in range(bounds.position.y, bounds.end.y):
 		for x in range(bounds.position.x, bounds.end.x, 2):
 			if unfolded or not fl.can_place(sofa, Vector2(x, y)):
 				continue
@@ -937,6 +983,60 @@ func _t_carry_hints() -> void:
 		held.queue_free()
 		main.queue_free()
 		await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+
+
+# ── Three Freezers: no room for a desk until the freezers move ──────────────
+# As the level starts, a desk fits nowhere. Moving the middle chest freezer
+# into the free corner, putting the desk where it was and the loft bed over
+# the freezers, with a stool, rents it out.
+func _t_three_freezers() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_freezers_save.json"
+	GameState.pending_level_id = "three_freezers"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var b := fl.get_room_bounds()
+	var desk: Furniture = main._spawn_furniture("desk", fl, 0, 0)
+	fl.forget_furniture(desk)
+	var desk_fits := false
+	for r in 2:
+		for y in range(b.position.y, b.end.y):
+			for x in range(b.position.x, b.end.x):
+				desk_fits = desk_fits or fl.can_place(desk, Vector2(x, y))
+		desk._rotate(true)
+	_current = "three freezers: as it starts, there is no room for a desk"
+	_ok(not desk_fits)
+	var middle: Furniture = null
+	for f in fl.get_all_furniture():
+		if (f as Furniture).furniture_id == "chest_freezer" and (f as Furniture).grid_pos == Vector2(13, 7):
+			middle = f
+	var moved := fl.can_place(middle, Vector2(19, 3))
+	fl.place_furniture(middle, Vector2(19, 3))
+	desk.set_rot_steps(1)
+	var desk_ok := fl.can_place(desk, Vector2(13, 2))
+	fl.place_furniture(desk, Vector2(13, 2))
+	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+	fl.forget_furniture(stool)
+	var stool_ok := fl.can_place(stool, Vector2(2, 9))
+	fl.place_furniture(stool, Vector2(2, 9))
+	var bed: Furniture = main._spawn_furniture("high_bed", fl, 0, 0)
+	fl.forget_furniture(bed)
+	var bed_ok := fl.can_place(bed, Vector2(3, 3))
+	fl.place_furniture(bed, Vector2(3, 3))
+	main._promote_to_loft(bed, fl)
+	main._refresh_functions()
+	_current = "three freezers: a freezer moved, the desk in its place and the bed over the freezers rents it out"
+	_ok(moved and desk_ok and stool_ok and bed_ok and main.gm.check_win() and main._all_furniture_accessible(),
+		"%s %s %s %s win %s reach %s" % [moved, desk_ok, stool_ok, bed_ok, main.gm.check_win(), main._all_furniture_accessible()])
+	main.queue_free()
+	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path

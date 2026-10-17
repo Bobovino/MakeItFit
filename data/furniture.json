@@ -1782,6 +1782,47 @@
       "model": "res://assets/models/furniture/makeitfit/fridge_large.glb"
     },
     {
+      "id": "chest_freezer",
+      "name": "Chest Freezer",
+      "placement": "floor",
+      "size": {
+        "w": 11,
+        "h": 7
+      },
+      "wall_h": 9,
+      "floor_depth": 7,
+      "height_category": "low",
+      "z_top": 9,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 300,
+      "sell_price": 120,
+      "color": "dfe6ec",
+      "front": "long",
+      "model": "res://assets/models/furniture/makeitfit/chest_freezer.glb"
+    },
+    {
+      "id": "upright_freezer",
+      "name": "Upright Freezer",
+      "placement": "floor",
+      "size": {
+        "w": 6,
+        "h": 7
+      },
+      "wall_h": 16,
+      "floor_depth": 7,
+      "height_category": "tall",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 380,
+      "sell_price": 150,
+      "color": "d4dce4",
+      "front": "long",
+      "model": "res://assets/models/furniture/makeitfit/upright_freezer.glb"
+    },
+    {
       "id": "mini_fridge",
       "name": "Mini Fridge",
       "placement": "floor",
