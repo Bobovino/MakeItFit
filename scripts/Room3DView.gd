@@ -682,6 +682,16 @@ func _no_shadows(node: Node) -> void:
 # drag lists, it casts no shadows (the box's daylight is already modelled by
 # the game's own occlusion value), and anything on the camera's side is
 # hidden so it can't block the view, the same idea as lowering near walls.
+# How far the camera may pull back. Inside a box the apartment around it is
+# drawn giant, and pulling back far enough put the camera outside those giant
+# walls, with one of them filling the screen: there, the limit is a little
+# beyond the view the room opens with.
+func _max_dist() -> float:
+	if not _parent_scenery.is_empty():
+		return minf(30.0, maxf(_home_dist * 1.5, 3.0))
+	return 30.0
+
+
 func _add_parent_scenery(w: float, d: float) -> bool:
 	if _style == null or _parent_scenery.is_empty():
 		return false
@@ -1130,7 +1140,7 @@ func _on_container_input(event: InputEvent) -> void:
 			_dist = maxf(1.5, _dist - 0.5)
 			_update_camera()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			_dist = minf(30.0, _dist + 0.5)
+			_dist = minf(_max_dist(), _dist + 0.5)
 			_update_camera()
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			if mb.pressed:
@@ -3662,7 +3672,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		else:
 			_yaw = _next_camera_state.get("yaw", HOME_YAW) as float
 			_pitch = _next_camera_state.get("pitch", HOME_PITCH) as float
-			_dist = clampf(_next_camera_state.get("dist", _dist) as float, 1.5, 30.0)
+			_dist = clampf(_next_camera_state.get("dist", _dist) as float, 1.5, _max_dist())
 			_center = _clamp_pan_center(_next_camera_state.get("center", _center) as Vector3)
 
 	if _style != null:
