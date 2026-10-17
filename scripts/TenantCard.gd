@@ -498,9 +498,10 @@ func update_rules(rules: Array) -> void:
 		for r in rules:
 			var rule := r as Dictionary
 			var is_sight := (rule["kind"] as String) == "sight"
-			if not is_sight:
+			var is_items := (rule["kind"] as String) == "items"
+			if not is_sight and not is_items:
 				zone_number += 1
-			var req_id := ("sight:%d" % rule["number"]) if is_sight else ("zones:%d" % zone_number)
+			var req_id := ("sight:%d" % rule["number"]) if is_sight else (("items:%d" % rule["number"]) if is_items else ("zones:%d" % zone_number))
 			var chip := _make_need_chip("rule", false, req_id)
 			var text := rule.get("short", "") as String
 			if text == "":
@@ -510,13 +511,18 @@ func update_rules(rules: Array) -> void:
 			(chip.get_child(0).get_child(1) as Label).text = text
 			chip.tooltip_text = (rule["label"] as String) + (
 				"\n" + tr("The numbered line on the plan shows it.") if is_sight
-				else "\n" + tr("Tall storage splits a room into zones."))
+				else ("\n" + tr("Put them all down in the flat.") if is_items
+				else "\n" + tr("Tall storage splits a room into zones.")))
 			_rule_row.add_child(chip)
 			_rule_chips.append(chip)
 			_register_chip(req_id, chip)
 		_apply_requirement_state()
 	for i in rules.size():
-		_set_need_chip(_rule_chips[i] as PanelContainer, (rules[i] as Dictionary)["ok"] as bool)
+		var rule_i := rules[i] as Dictionary
+		_set_need_chip(_rule_chips[i] as PanelContainer, rule_i["ok"] as bool)
+		if (rule_i["kind"] as String) == "items":
+			# The count changes as pieces go down: "3 freezers 1/3".
+			(_rule_chips[i].get_child(0).get_child(1) as Label).text = rule_i["short"] as String
 
 
 func update_checks(fulfilled: Array, required: Array) -> void:

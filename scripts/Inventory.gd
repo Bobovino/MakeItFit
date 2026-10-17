@@ -267,6 +267,10 @@ func unmet_needs() -> Array:
 	for need in wanted:
 		if need not in _gm.fulfilled_functions and need not in hidden_needs:
 			out.append(need)
+	# Counted needs ("three freezers") not met yet, as "items:<n>".
+	for i in _gm.items_status.size():
+		if not ((_gm.items_status[i] as Dictionary)["ok"] as bool):
+			out.append("items:%d" % (i + 1))
 	return out
 
 
@@ -397,6 +401,15 @@ func _render() -> void:
 		if _last_unmet.is_empty():
 			_add_note(tr("The tenant has everything they asked for. Pick a tab to browse."))
 		for need in _last_unmet:
+			if (need as String).begins_with("items:"):
+				# A counted need: the pieces that count towards it, and how many are in.
+				var idx := (need as String).trim_prefix("items:").to_int() - 1
+				var req := _gm.required_items[idx] as Dictionary
+				var st := _gm.items_status[idx] as Dictionary
+				var of := req.get("of", []) as Array
+				_add_heading(Requirements.glyph(need as String), "%s %d/%d" % [st["label"], st["have"], st["count"]])
+				_add_cards(furniture.filter(func(f): return (f as Dictionary).get("id", "") in of))
+				continue
 			var options := furniture.filter(func(f): return need in Inventory.provides(f))
 			_add_heading(TenantCard.NEED_GLYPH.get(need, "❔") as String, Loc.need_name(need as String))
 			if options.is_empty():

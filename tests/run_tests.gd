@@ -1026,12 +1026,23 @@ func _t_three_freezers() -> void:
 	_current = "three freezers: every piece on offer fits somewhere as the level starts"
 	_ok(nowhere.is_empty(), str(nowhere))
 	var spent := 0
-	for need in ["sleep", "hygiene", "cook", "work", "sit"]:
-		var cheapest := ""
-		for id in gm.current_level["allowed_furniture"]:
+	var cheapest_of := func(ids: Array) -> String:
+		var best := ""
+		for id in ids:
 			var fd := gm.get_furniture_by_id(id)
-			if need in (fd.get("functions", []) as Array) and fd.get("placement", "floor") != "wall" 					and (cheapest == "" or (fd["buy_price"] as int) < (gm.get_furniture_by_id(cheapest)["buy_price"] as int)):
-				cheapest = id
+			if fd.get("placement", "floor") != "wall" 					and (best == "" or (fd["buy_price"] as int) < (gm.get_furniture_by_id(best)["buy_price"] as int)):
+				best = id
+		return best
+	var shopping: Array = []
+	for need in ["sleep", "hygiene", "cook", "work", "sit"]:
+		shopping.append(cheapest_of.call((gm.current_level["allowed_furniture"] as Array).filter(func(id):
+			return need in (gm.get_furniture_by_id(id).get("functions", []) as Array))))
+	var freezers: Dictionary = gm.current_level["tenant"]["required_items"][0]
+	for k in freezers["count"]:
+		shopping.append(cheapest_of.call(freezers["of"]))
+	_current = "three freezers: the freezers are a need on the bar, not yet met"
+	_ok(Requirements.status(gm).get("items:1", true) == false, str(Requirements.status(gm)))
+	for cheapest in shopping:
 		var f: Furniture = main._spawn_furniture(cheapest, fl, 0, 0)
 		fl.forget_furniture(f)
 		var at = first_spot.call(f)

@@ -45,6 +45,13 @@ var current_zones: Array = []        # latest zone snapshot from the active floo
 # only place that actually has a Floor reference to evaluate these against.
 var sightline_requirements: Array = []
 var sightline_ok: bool = true
+
+# Counted needs: so many pieces of a kind placed in the flat ("three
+# freezers"). From tenant.required_items: [{of: [furniture ids], count,
+# label, short}]; any of the ids counts towards it. items_status holds one
+# {label, short, have, count, ok} per entry, as of the last update_functions().
+var required_items: Array = []
+var items_status: Array = []
 var sightline_status: Array = []   # one per requirement: {from, to, must_be_clear, block, ok, label, short}
 
 # External zones & restrictions — noise/smells/birds/municipal ordinances
@@ -98,6 +105,8 @@ func load_level(level_id: String) -> void:
 		zone_separations   = _tenant.get("zone_separations",   []).duplicate(true) as Array
 		sightline_requirements = _tenant.get("sightline_requirements", []).duplicate(true) as Array
 		sightline_ok = true
+		required_items = _tenant.get("required_items", []).duplicate(true) as Array
+		items_status = []
 		external_restrictions = (current_level.get("external_zone", {}) as Dictionary).duplicate(true)
 		external_zone_ok = true
 		fulfilled_functions = []
@@ -125,6 +134,8 @@ func load_level(level_id: String) -> void:
 			zone_separations   = (level.get("tenant", {}) as Dictionary).get("zone_separations", []).duplicate(true) as Array
 			sightline_requirements = (level.get("tenant", {}) as Dictionary).get("sightline_requirements", []).duplicate(true) as Array
 			sightline_ok = true
+			required_items = (level.get("tenant", {}) as Dictionary).get("required_items", []).duplicate(true) as Array
+			items_status = []
 			external_restrictions = (level.get("external_zone", {}) as Dictionary).duplicate(true)
 			external_zone_ok = true
 			fulfilled_functions = []
@@ -280,6 +291,16 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 		for fn in _functions_of(entry, active_moment_id):
 			if fn not in fulfilled_functions:
 				fulfilled_functions.append(fn)
+	items_status = []
+	for req in required_items:
+		var of := (req as Dictionary).get("of", []) as Array
+		var need := (req as Dictionary).get("count", 1) as int
+		var have := 0
+		for entry in placed_furniture:
+			if entry is Furniture and (entry as Furniture).furniture_id in of:
+				have += 1
+		items_status.append({"label": tr((req as Dictionary).get("label", "") as String),
+			"short": tr((req as Dictionary).get("short", "") as String), "have": have, "count": need, "ok": have >= need})
 	for fn in extra_functions:
 		if fn not in fulfilled_functions:
 			fulfilled_functions.append(fn)
@@ -403,6 +424,10 @@ func update_sightlines(apt_floor) -> void:
 # the needs bar: {kind: "sight" | "zones", label, short, ok}.
 func rule_status() -> Array:
 	var out: Array = []
+	for i in items_status.size():
+		var st := items_status[i] as Dictionary
+		out.append({"kind": "items", "number": i + 1, "label": "%s (%d/%d)" % [st["label"], st["have"], st["count"]],
+			"short": "%s %d/%d" % [st["short"], st["have"], st["count"]], "ok": st["ok"]})
 	for i in sightline_status.size():
 		var s := sightline_status[i] as Dictionary
 		out.append({"kind": "sight", "number": i + 1, "label": s["label"], "short": s["short"], "ok": s["ok"],
@@ -506,6 +531,9 @@ func check_zone_separations() -> bool:
 func check_win() -> bool:
 	if not external_zone_ok:
 		return false
+	for st in items_status:
+		if not ((st as Dictionary)["ok"] as bool):
+			return false
 	if moments.is_empty():
 		if not check_zone_separations():
 			return false

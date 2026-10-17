@@ -303,6 +303,8 @@
 		{
 			"acquisition_cost": 0,
 			"allowed_furniture": [
+				"upright_freezer",
+				"chest_freezer",
 				"normal_bed",
 				"high_bed",
 				"toilet",
@@ -423,47 +425,38 @@
 			],
 			"map_row": 0,
 			"mechanic_intro": {
-				"body": "Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n\nEvery other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n\nShort on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it.",
+				"body": "Dani's flat is empty, and Dani needs a lot. The bar at the bottom lists it: a cross for every need the flat doesn't meet yet, a tick once it does.\n\nEach need ticks as soon as there is a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The freezers are one need of their own: it counts them, and ticks once all three are in.\n\nOpen Furniture: the catalogue starts on what is still missing. There is room and money for all of it. Short on floor anyway? A Loft Bed sleeps above head height, and a low chest freezer fits under it.",
 				"title": "The basic needs"
 			},
 			"min_stars": 0,
 			"moments": [],
 			"name": "Three Freezers",
 			"palette": "slate",
-			"starting_budget": 1500,
-			"starting_furniture": [
-				{
-					"id": "chest_freezer",
-					"keepsake": true,
-					"x": 2,
-					"y": 2
-				},
-				{
-					"id": "chest_freezer",
-					"keepsake": true,
-					"x": 2,
-					"y": 10
-				},
-				{
-					"id": "chest_freezer",
-					"keepsake": true,
-					"x": 2,
-					"y": 18
-				}
-			],
+			"starting_budget": 2800,
+			"starting_furniture": [],
 			"starting_inventory": [],
 			"tenant": {
 				"age": "23",
-				"flavor": "Streams twelve hours a day and buys frozen pizza by the pallet. The three freezers are not negotiable.",
+				"flavor": "Streams twelve hours a day and buys frozen pizza by the pallet. Needs three freezers, and is not negotiating.",
 				"monthly_rent": 520,
 				"name": "Dani",
 				"required_functions": [
-					"storage",
 					"sleep",
 					"hygiene",
 					"cook",
 					"work",
 					"sit"
+				],
+				"required_items": [
+					{
+						"count": 3,
+						"label": "Three freezers",
+						"of": [
+							"chest_freezer",
+							"upright_freezer"
+						],
+						"short": "Freezers"
+					}
 				]
 			}
 		},

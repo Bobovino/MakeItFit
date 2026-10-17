@@ -3181,3 +3181,37 @@ msgstr ""
 #: data/tenants/three_freezers.tres
 msgid "And an oven. The pizzas will not bake themselves."
 msgstr "Y un horno. Las pizzas no se hornean solas."
+
+#: data/levels.json:three_freezers
+msgid "Three freezers"
+msgstr "Tres congeladores"
+
+#: data/levels.json:three_freezers
+msgid "Freezers"
+msgstr "Congeladores"
+
+#: scripts/TenantCard.gd
+msgid "Put them all down in the flat."
+msgstr "Colócalos todos en el piso."
+
+#: data/tenants/three_freezers.tres
+msgid "I need three freezers. Three. Frozen pizza by the pallet does not fit in one."
+msgstr "Necesito tres congeladores. Tres. La pizza congelada por palés no cabe en uno."
+
+#: data/levels.json:three_freezers
+msgid ""
+"Dani's flat is empty, and Dani needs a lot. The bar at the bottom lists it: a cross for every need the flat doesn't meet yet, a tick once it does.\n"
+"\n"
+"Each need ticks as soon as there is a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The freezers are one need of their own: it counts them, and ticks once all three are in.\n"
+"\n"
+"Open Furniture: the catalogue starts on what is still missing. There is room and money for all of it. Short on floor anyway? A Loft Bed sleeps above head height, and a low chest freezer fits under it."
+msgstr ""
+"El piso de Dani está vacío, y Dani necesita mucho. La barra de abajo lo enumera: una cruz por cada necesidad que el piso aún no cubre, un tic cuando ya la cubre.\n"
+"\n"
+"Cada necesidad se marca en cuanto hay una pieza que la cubre: una cama para dormir, un váter o un lavabo para asearse, una cocina para cocinar, un escritorio para trabajar y una silla para sentarse. Los congeladores son una necesidad aparte: los cuenta, y se marca cuando están los tres.\n"
+"\n"
+"Abre Muebles: el catálogo empieza por lo que aún falta. Hay sitio y dinero para todo. ¿Aun así te falta suelo? Una cama alta se duerme por encima de la cabeza, y un arcón congelador, que es bajo, cabe debajo."
+
+#: data/levels.json:three_freezers
+msgid "Streams twelve hours a day and buys frozen pizza by the pallet. Needs three freezers, and is not negotiating."
+msgstr "Hace directos doce horas al día y compra pizza congelada por palés. Necesita tres congeladores, y no negocia."

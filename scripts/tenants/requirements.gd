@@ -10,6 +10,7 @@ class_name Requirements
 #   sight:<n>                the n-th line of sight (1-based, as numbered on
 #                            the plan and on its chip)
 #   zones:<n>                the n-th zone separation (1-based)
+#   items:<n>                the n-th counted need ("three freezers", 1-based)
 #
 # These name what the checker (GameManager) already evaluates; nothing here
 # changes how a level is solved.
@@ -34,6 +35,8 @@ static func ids_for_level(level: Dictionary) -> Array[String]:
 		_add(out, "sight:%d" % (i + 1))
 	for i in (tenant.get("zone_separations", []) as Array).size():
 		_add(out, "zones:%d" % (i + 1))
+	for i in (tenant.get("required_items", []) as Array).size():
+		_add(out, "items:%d" % (i + 1))
 	return out
 
 
@@ -64,6 +67,7 @@ static func glyph(id: String) -> String:
 		"sight": return "👁"
 		"zones": return "🚧"
 		"apartments": return "🏠"
+		"items": return "❄"   # counted needs; so far only Dani's freezers
 		"reach": return "🚶"   # can't get there (TenantLayer._try_to_reach)
 	return TenantCard.NEED_GLYPH.get(key, "❔") as String
 
@@ -110,5 +114,7 @@ static func status(gm: GameManager) -> Dictionary:
 		out["sight:%d" % (i + 1)] = (gm.sightline_status[i] as Dictionary).get("ok", true)
 	for i in gm.zone_separations.size():
 		out["zones:%d" % (i + 1)] = gm._separation_ok(gm.zone_separations[i] as Array)
+	for i in gm.items_status.size():
+		out["items:%d" % (i + 1)] = (gm.items_status[i] as Dictionary)["ok"]
 	return out
 

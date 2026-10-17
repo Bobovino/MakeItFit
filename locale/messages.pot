@@ -3100,3 +3100,32 @@ msgstr ""
 #: data/tenants/three_freezers.tres
 msgid "And an oven. The pizzas will not bake themselves."
 msgstr ""
+
+#: data/levels.json:three_freezers
+msgid "Three freezers"
+msgstr ""
+
+#: data/levels.json:three_freezers
+msgid "Freezers"
+msgstr ""
+
+#: scripts/TenantCard.gd
+msgid "Put them all down in the flat."
+msgstr ""
+
+#: data/tenants/three_freezers.tres
+msgid "I need three freezers. Three. Frozen pizza by the pallet does not fit in one."
+msgstr ""
+
+#: data/levels.json:three_freezers
+msgid ""
+"Dani's flat is empty, and Dani needs a lot. The bar at the bottom lists it: a cross for every need the flat doesn't meet yet, a tick once it does.\n"
+"\n"
+"Each need ticks as soon as there is a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The freezers are one need of their own: it counts them, and ticks once all three are in.\n"
+"\n"
+"Open Furniture: the catalogue starts on what is still missing. There is room and money for all of it. Short on floor anyway? A Loft Bed sleeps above head height, and a low chest freezer fits under it."
+msgstr ""
+
+#: data/levels.json:three_freezers
+msgid "Streams twelve hours a day and buys frozen pizza by the pallet. Needs three freezers, and is not negotiating."
+msgstr ""

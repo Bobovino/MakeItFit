@@ -12,8 +12,8 @@ body = "adult"
 
 [sub_resource type="Resource" id="line_1"]
 script = ExtResource("3_line")
-text = "The freezers come with me. All three. This is not up for discussion."
-requirement = "need:storage"
+text = "I need three freezers. Three. Frozen pizza by the pallet does not fit in one."
+requirement = "items:1"
 speaker = &"dani"
 
 [sub_resource type="Resource" id="line_2"]
