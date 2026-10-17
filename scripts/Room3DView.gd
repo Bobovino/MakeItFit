@@ -1140,7 +1140,15 @@ func _on_container_input(event: InputEvent) -> void:
 		if mm.position.distance_to(_press_pos) >= CLICK_MOVE_THRESHOLD:
 			_press_moved = true
 		_last_local_mouse = mm.position
-		if _buying_furniture:
+		if _dragging:
+			# Middle-drag orbits, also with a piece in hand: turning the view
+			# to look at it from another side while deciding where it goes
+			# (the piece follows the pointer, see _update_camera).
+			_hide_hover_highlight()
+			_yaw   -= mm.relative.x * 0.4
+			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
+			_update_camera()
+		elif _buying_furniture:
 			# Skip while the cursor is over some other UI panel (e.g. the shop
 			# list) instead of the 3D view itself — this script's _input()
 			# receives every mouse-motion event regardless of what's drawn on
@@ -1156,11 +1164,6 @@ func _on_container_input(event: InputEvent) -> void:
 		elif _dragging_wall_item:
 			_hide_hover_highlight()
 			_update_wall_item_drag(_to_vp(mm.position))
-		elif _dragging:
-			_hide_hover_highlight()
-			_yaw   -= mm.relative.x * 0.4
-			_pitch  = clampf(_pitch - mm.relative.y * 0.4, -80.0, -5.0)
-			_update_camera()
 		elif _panning:
 			_hide_hover_highlight()
 			# Pan speed scales with _dist so it feels consistent whether zoomed
@@ -2579,6 +2582,10 @@ func _update_camera() -> void:
 	cam.position = _center + offset * _cam_dist_scale
 	cam.look_at(_center, Vector3.UP)
 	_update_wall_visibility(offset)
+	# A piece being bought stays under the pointer while the view turns,
+	# zooms or moves around it.
+	if _buying_furniture != null and not TouchControls.active and _mouse_over_own_view():
+		_update_buy_ghost(_to_vp(_last_local_mouse))
 	if _style != null:
 		_style.refresh_view()
 
