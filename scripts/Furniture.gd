@@ -1749,7 +1749,10 @@ func _drag(mouse_pos: Vector2) -> void:
 	# panel, and could surface its own rejection reason (e.g. "Outside the
 	# room") even while the player was clearly placing the item on a wall.
 	if Furniture.is_in_floor_pane.is_valid() and not Furniture.is_in_floor_pane.call(mouse_pos):
+		if _placement_mode:
+			visible = false   # Main carries it at the pointer until it reaches the plan
 		return
+	visible = true
 	var target := _wall_ref.to_local(mouse_pos) + _drag_offset
 	var tx := target.x / TILE_SIZE
 	var ty := target.y / TILE_SIZE

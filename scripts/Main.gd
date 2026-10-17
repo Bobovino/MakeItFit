@@ -3981,6 +3981,7 @@ func _follow_transfer(to_id: String, fid: String, piece_name: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_carry_icon()
 	if not _xfer_dragging:
 		return
 	if _xfer_purchase:
@@ -3991,6 +3992,48 @@ func _process(_delta: float) -> void:
 			_end_transfer_cues()
 	elif not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_end_transfer_cues()
+
+
+# While a piece just picked in the catalogue is still over the catalogue (or
+# anywhere off the plan), its ghost on the plan is hidden: the piece's picture
+# rides at the pointer instead, so a click in the shop shows at once that
+# the piece is in hand.
+var _carry_layer: CanvasLayer = null
+var _carry_icon: Control = null
+var _carry_fid := ""
+
+func _update_carry_icon() -> void:
+	var ghost := _pending_floor_ghost
+	var carrying := is_instance_valid(ghost) and ghost._placement_mode and not ghost.visible
+	if not carrying:
+		if is_instance_valid(_carry_icon):
+			_carry_icon.visible = false
+		return
+	if not is_instance_valid(_carry_layer):
+		_carry_layer = CanvasLayer.new()
+		_carry_layer.layer = 30
+		add_child(_carry_layer)
+	if _carry_fid != ghost.furniture_id or not is_instance_valid(_carry_icon):
+		if is_instance_valid(_carry_icon):
+			_carry_icon.queue_free()
+		_carry_fid = ghost.furniture_id
+		var tex: Texture2D = Thumb.get_cached(_carry_fid)
+		if tex:
+			var rect := TextureRect.new()
+			rect.texture = tex
+			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			rect.custom_minimum_size = Vector2(72, 72)
+			rect.size = Vector2(72, 72)
+			_carry_icon = rect
+		else:
+			_carry_icon = Inventory._make_item_icon(gm.get_furniture_by_id(_carry_fid), 56.0)
+		_carry_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_carry_icon.modulate.a = 0.85
+		_carry_layer.add_child(_carry_icon)
+	_carry_icon.visible = true
+	var sz := _carry_icon.size if _carry_icon.size != Vector2.ZERO else _carry_icon.custom_minimum_size
+	_carry_icon.position = _carry_layer.get_viewport().get_mouse_position() - sz * 0.5
 
 
 func _transfer_refusal(f: Furniture) -> String:
@@ -4213,6 +4256,11 @@ func _settle_placement(furniture_id: String, owned: bool) -> void:
 func _on_buy_requested(furniture_id: String) -> void:
 	# The catalogue strip stays open: buy, place, buy the next one.
 	var owned := _place_owned_next
+	# Clicking another piece while one is still being placed swaps it: the
+	# first is put back, not left following the pointer underneath.
+	if is_instance_valid(_pending_floor_ghost) and _pending_floor_ghost._placement_mode:
+		_pending_floor_ghost.cancel_placement()
+	_pending_floor_ghost = null
 	_pending_purchase = {"fid": furniture_id, "owned": owned}
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
