@@ -3215,3 +3215,7 @@ msgstr ""
 #: data/levels.json:three_freezers
 msgid "Streams twelve hours a day and buys frozen pizza by the pallet. Needs three freezers, and is not negotiating."
 msgstr "Streamt zwölf Stunden am Tag und kauft Tiefkühlpizza palettenweise. Braucht drei Gefriergeräte und verhandelt nicht."
+
+#: scripts/TenantCard.gd
+msgid "Click to see the pieces that count"
+msgstr "Klicken, um die passenden Stücke zu sehen"

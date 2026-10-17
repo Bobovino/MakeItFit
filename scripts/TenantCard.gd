@@ -3,6 +3,7 @@ class_name TenantCard
 
 signal moment_selected(moment_id: String)
 signal need_clicked(need: String)   # a need chip was clicked: show what provides it
+signal items_clicked(number: int)    # a counted need ("3 freezers") was clicked: show the pieces that count
 signal height_changed               # the chips wrapped onto more or fewer rows
 signal application_requested        # the fax button: show the tenant's rental application again
 signal project_map_requested        # the apartments chip: show every apartment of the project
@@ -526,6 +527,14 @@ func update_rules(rules: Array) -> void:
 				"\n" + tr("The numbered line on the plan shows it.") if is_sight
 				else ("\n" + tr("Put them all down in the flat.") if is_items
 				else "\n" + tr("Tall storage splits a room into zones.")))
+			if is_items:
+				var n: int = rule["number"]
+				chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				chip.tooltip_text += "
+" + tr("Click to see the pieces that count")
+				chip.gui_input.connect(func(event: InputEvent):
+					if event is InputEventMouseButton and (event as InputEventMouseButton).pressed 							and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+						items_clicked.emit(n))
 			_rule_row.add_child(chip)
 			_rule_chips.append(chip)
 			_register_chip(req_id, chip)

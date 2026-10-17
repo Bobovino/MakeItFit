@@ -58,6 +58,8 @@ var _sub_filter_buttons: Dictionary = {}   # category name -> Button
 var _search: LineEdit = null
 var _row: HBoxContainer = null       # the strip's single row of cards
 var _need_filter: String = ""        # set when opened from a need chip: only what provides it
+var _items_filter: Array = []        # set when opened from a counted need: only those pieces
+var _items_label := ""
 var _last_unmet: Array = []
 
 # The catalogue's left-hand list. "Needed" comes first and is where the
@@ -148,6 +150,7 @@ func _ensure_filter_box() -> void:
 	_search.add_theme_color_override("clear_button_color", GameTheme.INK_SOFT)
 	_search.text_changed.connect(func(_t: String):
 		_need_filter = ""
+		_items_filter = []
 		_sync_filter_buttons()
 		_render())
 	# Enter hands the keyboard back to the game (R to rotate, Q/E, WASD).
@@ -187,7 +190,21 @@ func _on_needs_changed(_fulfilled: Array, _required: Array) -> void:
 func show_need(need: String) -> void:
 	_ensure_filter_box()
 	_category = Category.FURNITURE
+	_items_filter = []
 	_need_filter = need
+	_search.text = ""
+	_sync_filter_buttons()
+	visible = true
+	_render()
+
+
+# Opened from a counted need ("3 freezers"): only the pieces that count.
+func show_items(ids: Array, label: String) -> void:
+	_ensure_filter_box()
+	_category = Category.FURNITURE
+	_need_filter = "_items"   # keeps the tab buttons unpressed, as a need filter does
+	_items_filter = ids.duplicate()
+	_items_label = label
 	_search.text = ""
 	_sync_filter_buttons()
 	visible = true
@@ -201,6 +218,7 @@ func _current_view() -> String:
 
 func _set_view(id: String) -> void:
 	_need_filter = ""
+	_items_filter = []
 	if id == VIEW_BUILDER:
 		_category = Category.BUILDER
 	else:
@@ -222,6 +240,7 @@ func open_catalog() -> void:
 	_category = Category.FURNITURE
 	_sub_category = VIEW_NEEDED if not unmet_needs().is_empty() else "All"
 	_need_filter = ""
+	_items_filter = []
 	_builder_tool = ""
 	_search.text = ""
 	_sync_filter_buttons()
@@ -388,6 +407,12 @@ func _render() -> void:
 		_add_cards(hits)
 		if hits.is_empty():
 			_add_note(tr("Nothing matches. Try a need (sleep, sit, work, storage) or part of a name."))
+	elif not _items_filter.is_empty():
+		var picked := furniture.filter(func(f): return (f.get("id", "") as String) in _items_filter)
+		_add_heading("", _items_label)
+		_add_cards(picked)
+		if picked.is_empty():
+			_add_note(tr("No piece in this level provides it."))
 	elif _need_filter != "":
 		var options := furniture.filter(func(f): return _need_filter in Inventory.provides(f))
 		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "\uf91d") as String, Loc.need_name(_need_filter))

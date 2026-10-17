@@ -276,6 +276,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
 	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
+	tenant_card.items_clicked.connect(_on_items_clicked)
 	tenant_card.application_requested.connect(_reopen_application)
 	tenant_card.project_map_requested.connect(_open_nested_map)
 	tenant_layer = TenantLayer.new()
@@ -3431,6 +3432,19 @@ func _on_need_clicked(need: String) -> void:
 	if not inventory.close_requested.is_connected(_close_furniture_menu):
 		inventory.close_requested.connect(_close_furniture_menu)
 	inventory.show_need(need)
+	_catalog_wanted = true
+	_relayout_for_catalog()
+
+
+# A counted need was clicked ("3 freezers"): open the strip on the pieces
+# that count for it.
+func _on_items_clicked(number: int) -> void:
+	if _post_win_view or number < 1 or number > gm.required_items.size():
+		return
+	var req := gm.required_items[number - 1] as Dictionary
+	if not inventory.close_requested.is_connected(_close_furniture_menu):
+		inventory.close_requested.connect(_close_furniture_menu)
+	inventory.show_items(req.get("of", []) as Array, tr(req.get("label", "") as String))
 	_catalog_wanted = true
 	_relayout_for_catalog()
 
