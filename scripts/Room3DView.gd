@@ -845,7 +845,10 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		var wall := _box(Vector3(length, wall_h, wall_t) if along_x else Vector3(wall_t, wall_h, length),
 			Vector3(mid.x, floor_y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
 		_no_shadows(wall)
-		_scenery_nodes.append({"node": wall, "center": mid})
+		# Walls are lowered rather than hidden when they come in the way (see
+		# _update_scenery_visibility), like the room's own walls.
+		_scenery_nodes.append({"node": wall, "center": mid, "wall": true,
+			"a": Vector2(a.x, a.z), "b": Vector2(b.x, b.z), "floor_y": floor_y, "h": wall_h})
 
 	if first:
 		_add_parent_household(data.get("level_id", "") as String, s, pieces, wall_lines,
@@ -857,9 +860,26 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 # from the room, flattened (see _update_wall_visibility).
 func _update_scenery_visibility(flat: Vector3) -> void:
 	var room_center := Vector3(_room_w_m * 0.5, 0.0, _room_d_m * 0.5)
+	# The ground line from the room to the camera: a giant wall of the
+	# apartment outside that crosses it (or comes close) stands between the
+	# camera and the room, and is cut down to a line on the floor, the way
+	# the room's own walls are in the cutaway.
+	var from := Vector2(room_center.x, room_center.z)
+	var to := Vector2(cam.position.x, cam.position.z)
+	var clear := maxf(_room_w_m, _room_d_m) * 0.5 + 0.6
 	for sc in _scenery_nodes:
 		var node: Node3D = sc["node"]
 		if not is_instance_valid(node):
+			continue
+		if sc.get("wall", false):
+			var near := Geometry2D.get_closest_points_between_segments(sc["a"], sc["b"], from, to)
+			var in_way: bool = (near[0] as Vector2).distance_to(near[1]) < clear \
+				and (near[1] as Vector2).distance_to(from) > 0.2
+			var h: float = sc["h"]
+			var k := clampf(STUB_HEIGHT_M / h, 0.0, 1.0) if in_way else 1.0
+			node.visible = true
+			node.scale.y = k
+			node.position.y = (sc["floor_y"] as float) + h * k * 0.5
 			continue
 		var away: Vector3 = (sc["center"] as Vector3) - room_center
 		away.y = 0.0
