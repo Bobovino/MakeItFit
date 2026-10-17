@@ -71,11 +71,11 @@ msgid "Redesign from Scratch"
 msgstr ""
 
 #: scripts/CityMap.gd:591
-msgid "⚙ Settings"
+msgid " Settings"
 msgstr ""
 
 #: scripts/CityMap.gd:599
-msgid "⏻ Quit"
+msgid " Quit"
 msgstr ""
 
 #: scripts/CityMap.gd:600
@@ -92,7 +92,7 @@ msgid "BLOCK %d — %s"
 msgstr ""
 
 #: scripts/CityMap.gd:1605
-msgid "Locked — needs %d ★"
+msgid "Locked — needs %d "
 msgstr ""
 
 #: scripts/CityMap.gd:1609
@@ -122,7 +122,7 @@ msgid "%d€ / month"
 msgstr ""
 
 #: scripts/CityMap.gd:1778
-msgid "Locked — need %d total ★"
+msgid "Locked — need %d total "
 msgstr ""
 
 #: scripts/CityMap.gd:1779
@@ -504,15 +504,15 @@ msgid "Costs %d€ — you have %d€"
 msgstr ""
 
 #: scripts/Inventory.gd:858
-msgid "🪶 Light — freely movable"
+msgid " Light — freely movable"
 msgstr ""
 
 #: scripts/Inventory.gd:861
-msgid "🪶🪶 Medium — uncomfortable to move"
+msgid " Medium — uncomfortable to move"
 msgstr ""
 
 #: scripts/Inventory.gd:864
-msgid "🪶🪶🪶 Heavy — fixed in place"
+msgid " Heavy — fixed in place"
 msgstr ""
 
 #: scripts/Inventory.gd:872
@@ -805,7 +805,7 @@ msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned�
 msgstr ""
 
 #: scripts/Main.gd:3708
-msgid "♥ %s is a keepsake: it stays in this flat"
+msgid " %s is a keepsake: it stays in this flat"
 msgstr ""
 
 #: scripts/Main.gd:3710
@@ -845,7 +845,7 @@ msgid "%s is already renting here — pick a different box."
 msgstr ""
 
 #: scripts/Main.gd:4040
-msgid "♥ %s is a keepsake: it can be moved, not sold."
+msgid " %s is a keepsake: it can be moved, not sold."
 msgstr ""
 
 #: scripts/Main.gd:4045
@@ -883,7 +883,7 @@ msgid ""
 msgstr ""
 
 #: scripts/Main.gd:4494
-msgid "✕ Back to Results"
+msgid " Back to Results"
 msgstr ""
 
 #: scripts/Main.gd:4624
@@ -1017,7 +1017,7 @@ msgid "Too elongated — max ratio %.0f:1"
 msgstr ""
 
 #: scripts/PaintedFurniture.gd:80
-msgid "✓  Valid — costs %d€"
+msgid "  Valid — costs %d€"
 msgstr ""
 
 #: scripts/PauseMenu.gd:51
@@ -1188,7 +1188,7 @@ msgid "Can't place here"
 msgstr ""
 
 #: scripts/Room3DView.gd:1313
-msgid "♥ %s is a keepsake: it can be moved, not sold"
+msgid " %s is a keepsake: it can be moved, not sold"
 msgstr ""
 
 #: scripts/Room3DView.gd:1316

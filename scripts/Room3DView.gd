@@ -1766,7 +1766,7 @@ func _cancel_buy() -> void:
 # have no labels, the heart floats above the piece itself.
 func _add_keepsake_mark(mesh: Node3D, height_m: float) -> void:
 	var heart := Label3D.new()
-	heart.text = "♥"
+	heart.text = "\uf67c"
 	heart.font_size = 64
 	heart.pixel_size = 0.0022
 	heart.modulate = Color(0.86, 0.22, 0.30)
@@ -1787,7 +1787,7 @@ func _sell_furniture(hit: Dictionary) -> void:
 	var f: Furniture = hit["furniture"]
 	if f.keepsake:
 		# Refused here, before the piece is dropped from this view's cache.
-		_flash_reason(tr("♥ %s is a keepsake: it can be moved, not sold") % f.furniture_name)
+		_flash_reason(tr("\uf67c %s is a keepsake: it can be moved, not sold") % f.furniture_name)
 		return
 	if f.buy_price < 0 and budget_getter.is_valid() and (budget_getter.call() as int) < -f.buy_price:
 		_flash_reason(tr("Removing %s means repaying its %d€ rent") % [f.furniture_name, -f.buy_price])
@@ -4694,7 +4694,7 @@ func _rebuild_rule_overlays() -> void:
 				if text != "":
 					var c2 := RuleOverlay.zone_center(z)
 					var plate := Label3D.new()
-					plate.text = ("✗ " + text) if conflict else text
+					plate.text = ("\ueb55 " + text) if conflict else text
 					plate.font_size = 44
 					plate.pixel_size = 0.0042
 					plate.modulate = SIGHT_BAD_COLOR if conflict else Color(0.92, 0.96, 1.0)

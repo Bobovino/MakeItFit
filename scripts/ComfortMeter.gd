@@ -76,7 +76,7 @@ func _draw() -> void:
 	# Short enough for the bar; the tooltip carries the explanation.
 	var label := tr("Comfort %d%%") % roundi(_pct)
 	if failing:
-		label += "  ✗"
+		label += "  \ueb55"
 	var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
 	draw_string(font, Vector2((size.x - tw) * 0.5, size.y * 0.5 + FSIZE * 0.35), label,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, Color(0.06, 0.12, 0.08) if _pct >= 60.0 else TEXT_COL)

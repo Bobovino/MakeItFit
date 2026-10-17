@@ -622,7 +622,7 @@ func _draw() -> void:
 	# "Bathtub" all but invisible.
 	# A keepsake wears a heart after its name, so it is recognisable before
 	# the player tries to sell it.
-	var shown_name := (furniture_name + " ♥") if keepsake else furniture_name
+	var shown_name := (furniture_name + " \uf67c") if keepsake else furniture_name
 	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
 		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1.0, 0.98, 0.94, 0.85))
 	draw_string(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
@@ -641,7 +641,7 @@ func _draw() -> void:
 		_:        tier_col = GameTheme.C_BAD
 	const BADGE_R := 3.0
 	draw_circle(Vector2(w - BADGE_R - 3.0, BADGE_R + 3.0), BADGE_R, tier_col)
-	var feathers := "🪶" if mobility_tier == "green" else ("🪶🪶" if mobility_tier == "yellow" else "🪶🪶🪶")
+	var feathers := "\uee8b" if mobility_tier == "green" else ("\uee8b\uee8b" if mobility_tier == "yellow" else "\uee8b\uee8b\uee8b")
 	var ffont := ThemeDB.fallback_font
 	const FSIZE := 8
 	var ftw := ffont.get_string_size(feathers, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
@@ -772,7 +772,7 @@ func _draw() -> void:
 		draw_rect(Rect2(0, 0, w, h), Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
 		var glyph_col := Color(0.16, 0.42, 0.18, 0.9) if ok else Color(0.55, 0.10, 0.08, 0.9)
 		draw_string(ThemeDB.fallback_font, Vector2(4, 12),
-			"✓" if ok else "✗", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
+			"\uea5e" if ok else "\ueb55", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
 
 		# Say *why* it's blocked, not just that it is — a bare red ✗ never told
 		# the player whether it was overlap, wrong floor type, a low ceiling,
@@ -808,7 +808,7 @@ func _draw() -> void:
 		var nfont := ThemeDB.fallback_font
 		const NSIZE := 13
 		var nfade := clampf(_notice_flash_t / 0.6, 0.0, 1.0)   # fade out over the last 0.6s
-		var ntext := "🔄 " + _notice_reason
+		var ntext := "\ueb13 " + _notice_reason
 		var ntw := nfont.get_string_size(ntext, HORIZONTAL_ALIGNMENT_LEFT, -1, NSIZE).x
 		var nbg := Color(0.10, 0.12, 0.20, 0.92 * nfade)
 		var nrect := Rect2(0, h + 3, ntw + 12, NSIZE + 10)

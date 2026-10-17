@@ -489,7 +489,7 @@ func _apply_ui_theme() -> void:
 		# a labelled bar — "Menu" spelled out next to a gear was needed there
 		# to read as a button at all; alone in the corner the gear reads fine
 		# by itself, same as any other icon-only HUD button.
-		_settings_btn.text = "⚙"
+		_settings_btn.text = "\ueb20"
 		_settings_btn.tooltip_text = tr("Menu — settings, back to projects, quit")
 		_settings_btn.add_theme_font_size_override("font_size", 16)
 		_settings_btn.custom_minimum_size = Vector2(32, 0)
@@ -532,7 +532,7 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn = Button.new()
 		_furniture_menu_btn.name = "FurnitureMenuBtn"
-		_furniture_menu_btn.text = "🛋  %s  ▴" % tr("Furniture")
+		_furniture_menu_btn.text = "\uefaf  %s  \uea62" % tr("Furniture")
 		_furniture_menu_btn.tooltip_text = tr("Open or close the furniture catalogue (F)")
 		_furniture_menu_btn.add_theme_font_size_override("font_size", 13)
 		# It sits at the right-hand end of the needs bar and is drawn as part
@@ -562,7 +562,7 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_undo_btn):
 		_undo_btn = Button.new()
 		_undo_btn.name = "UndoBtn"
-		_undo_btn.text = "↶"
+		_undo_btn.text = "\ueb77"
 		_undo_btn.tooltip_text = tr("Undo last action (Ctrl+%s)") % OS.get_keycode_string(GameState.undo_keycode)
 		_undo_btn.add_theme_font_size_override("font_size", 16)
 		_undo_btn.custom_minimum_size = Vector2(32, 0)
@@ -572,7 +572,7 @@ func _apply_ui_theme() -> void:
 	if not is_instance_valid(_redo_btn):
 		_redo_btn = Button.new()
 		_redo_btn.name = "RedoBtn"
-		_redo_btn.text = "↷"
+		_redo_btn.text = "\ueb78"
 		_redo_btn.tooltip_text = tr("Redo (Ctrl+Shift+%s)") % OS.get_keycode_string(GameState.undo_keycode)
 		_redo_btn.add_theme_font_size_override("font_size", 16)
 		_redo_btn.custom_minimum_size = Vector2(32, 0)
@@ -3474,7 +3474,7 @@ func _position_furniture_menu_btn() -> void:
 	_furniture_menu_btn.offset_left   = _furniture_menu_btn.offset_right - w
 	_furniture_menu_btn.offset_top    = tenant_card.offset_top + 5.0
 	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
-	_furniture_menu_btn.text = "🛋  %s%s  %s" % [tr("Furniture"), ("  🎁%d" % owned) if owned > 0 else "", "▾" if _is_furniture_menu_open() else "▴"]
+	_furniture_menu_btn.text = "\uefaf  %s%s  %s" % [tr("Furniture"), ("  \ueb68%d" % owned) if owned > 0 else "", "\uea5f" if _is_furniture_menu_open() else "\uea62"]
 	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
 	_position_budget_label()
 
@@ -4072,7 +4072,7 @@ func _process(_delta: float) -> void:
 
 func _transfer_refusal(f: Furniture) -> String:
 	if f.keepsake:
-		return tr("♥ %s is a keepsake: it stays in this flat") % f.furniture_name
+		return tr("\uf67c %s is a keepsake: it stays in this flat") % f.furniture_name
 	if f.is_nested_box:
 		return tr("A box can't go inside another apartment")
 	if f.is_stair:
@@ -4405,7 +4405,7 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 	# piece from its own cache; this is the plan's path and the backstop.)
 	if is_instance_valid(furniture) and furniture.keepsake:
 		Audio.play("error")
-		_set_mode_hint(tr("♥ %s is a keepsake: it can be moved, not sold.") % furniture.furniture_name)
+		_set_mode_hint(tr("\uf67c %s is a keepsake: it can be moved, not sold.") % furniture.furniture_name)
 		return
 	# Taking a rental box back out means handing its rent back.
 	if is_instance_valid(furniture) and furniture.buy_price < 0 and gm.budget < -furniture.buy_price:
@@ -4859,7 +4859,7 @@ func _show_watch_done_button() -> void:
 	if is_instance_valid(_watch_done_btn):
 		_watch_done_btn.queue_free()
 	_watch_done_btn = Button.new()
-	_watch_done_btn.text = tr("✕ Back to Results")
+	_watch_done_btn.text = tr("\ueb55 Back to Results")
 	_watch_done_btn.add_theme_font_size_override("font_size", 13)
 	_watch_done_btn.custom_minimum_size = Vector2(200, 40)
 	ui_layer.add_child(_watch_done_btn)

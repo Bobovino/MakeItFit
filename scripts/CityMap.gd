@@ -587,7 +587,7 @@ func _build_ui() -> void:
 	keys.add_theme_constant_override("separation", 9)
 	vb.add_child(keys)
 	var settings_btn := Button.new()
-	settings_btn.text = tr("⚙ Settings")
+	settings_btn.text = tr("\ueb20 Settings")
 	settings_btn.custom_minimum_size = Vector2(0, 34)
 	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_btn.add_theme_font_size_override("font_size", 12)
@@ -595,7 +595,7 @@ func _build_ui() -> void:
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	keys.add_child(settings_btn)
 	var quit_btn := Button.new()
-	quit_btn.text = tr("⏻ Quit")
+	quit_btn.text = tr("\ueb0d Quit")
 	quit_btn.tooltip_text = tr("Quit to desktop")
 	quit_btn.custom_minimum_size = Vector2(0, 34)
 	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -801,7 +801,7 @@ func _find_block(bid: int) -> Dictionary:
 # rendered as empty tofu boxes. These are the same glyphs already proven to
 # render correctly elsewhere in this game (Settings/Undo/Redo/stars).
 const BLOCK_ICONS := {
-	0: "★", 1: "⚙", 2: "▲", 3: "↺", 4: "⏻", 5: "!", -1: "•",
+	0: "\uf6a6", 1: "\ueb20", 2: "▲", 3: "\ueb13", 4: "\ueb0d", 5: "!", -1: "•",
 }
 
 func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
@@ -1601,9 +1601,9 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 	var tenant := ld.get("tenant", {}) as Dictionary
 	var status_line: String
 	if not level_visible:
-		status_line = tr("Locked — needs %d ★") % min_stars
+		status_line = tr("Locked — needs %d \uf6a6") % min_stars
 	elif stars > 0:
-		status_line = "★".repeat(stars) + "☆".repeat(3 - stars)
+		status_line = "\uf6a6".repeat(stars) + "\ueb2e".repeat(3 - stars)
 	elif is_owned:
 		status_line = tr("Available")
 	else:
@@ -1700,16 +1700,16 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 	status.add_theme_font_size_override("font_size", 12)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not level_visible:
-		status.text = "🔒"
+		status.text = "\ueae2"
 		status.add_theme_color_override("font_color", Color(0.40, 0.42, 0.46))
 	elif stars > 0:
-		status.text = "★".repeat(stars)
+		status.text = "\uf6a6".repeat(stars)
 		status.add_theme_color_override("font_color", GameTheme.C_AMBER)
 	elif is_owned:
 		status.text = "●"
 		status.add_theme_color_override("font_color", Color(0.55, 0.85, 0.65))
 	else:
-		status.text = ("%d€" % cost) if can_buy else "🔒 %d€" % cost
+		status.text = ("%d€" % cost) if can_buy else "\ueae2 %d€" % cost
 		status.add_theme_color_override("font_color",
 			Color(0.80, 0.86, 0.92) if can_buy else Color(0.44, 0.46, 0.50))
 	btn.add_child(status)
@@ -1752,7 +1752,7 @@ func _select_level(ld: Dictionary) -> void:
 
 	var star_suffix := ""
 	if stars > 0:
-		star_suffix = "\n" + "★".repeat(stars) + "☆".repeat(3 - stars)
+		star_suffix = "\n" + "\uf6a6".repeat(stars) + "\ueb2e".repeat(3 - stars)
 	var flavor := tenant.get("flavor", "") as String
 	var flavor_line := "\n\"%s\"" % flavor if flavor != "" else ""
 	_info_tenant.text = "%s, %d%s%s" % [
@@ -1765,7 +1765,7 @@ func _select_level(ld: Dictionary) -> void:
 	var mechanic_intro := ld.get("mechanic_intro", {}) as Dictionary
 	if not mechanic_intro.is_empty():
 		var intro_title := mechanic_intro.get("title", "") as String
-		_info_reqs.text = "★ " + intro_title
+		_info_reqs.text = "\uf6a6 " + intro_title
 	elif funcs.is_empty():
 		_info_reqs.text = tr("Requires: (see Moments)")
 	else:
@@ -1774,7 +1774,7 @@ func _select_level(ld: Dictionary) -> void:
 	_info_rent.text   = tr("%d€ / month") % (tenant.get("monthly_rent", 0) as int)
 
 	if not level_visible:
-		_info_cost.text    = tr("Locked — need %d total ★") % min_st
+		_info_cost.text    = tr("Locked — need %d total \uf6a6") % min_st
 		_action_btn.text   = tr("LOCKED")
 		_action_btn.disabled = true
 		_redesign_btn.visible = false
@@ -1815,7 +1815,7 @@ func _sqm_label(ld: Dictionary) -> String:
 
 func _update_top_bar_counters() -> void:
 	if _stars_label:
-		_stars_label.text = "★ %d  |  " % GameState.total_stars()
+		_stars_label.text = "\uf6a6 %d  |  " % GameState.total_stars()
 	if _funds_label:
 		_funds_label.text = tr("Studio Funds: %d€") % GameState.company_funds
 

@@ -22,14 +22,14 @@ const SUB_CATEGORIES := ["All", "Bedroom", "Bathroom", "Kitchen", "Living", "Sto
 # the sub-category row reads as a compact row of pictograms instead of a wall
 # of overlapping text buttons that had to wrap across three lines.
 const SUB_CATEGORY_GLYPH := {
-	"All":           "▦",
-	"Bedroom":       "🛏",
-	"Bathroom":      "🚿",
-	"Kitchen":       "🍳",
-	"Living":        "🛋",
-	"Storage":       "📦",
-	"Transformable": "🔀",
-	"Rentals":       "💰",
+	"All":           "\uedba",
+	"Bedroom":       "\ueb5c",
+	"Bathroom":      "\uef48",
+	"Kitchen":       "\ueeff",
+	"Living":        "\uefaf",
+	"Storage":       "\uea45",
+	"Transformable": "\ued56",
+	"Rentals":       "\ueb82",
 }
 
 
@@ -65,10 +65,10 @@ var _last_unmet: Array = []
 const VIEW_NEEDED := "Needed"
 const VIEW_BUILDER := "Builder"
 const VIEWS := [
-	["Needed", "⭐", "Needed"], ["All", "▦", "All"], ["Bedroom", "🛏", "Bedroom"],
-	["Bathroom", "🚿", "Bathroom"], ["Kitchen", "🍳", "Kitchen"], ["Living", "🛋", "Living"],
-	["Storage", "📦", "Storage"], ["Transformable", "🔀", "Folding"], ["Rentals", "💰", "Rentals"],
-	["Builder", "🛠", "Build"],
+	["Needed", "\uf6a6", "Needed"], ["All", "\uedba", "All"], ["Bedroom", "\ueb5c", "Bedroom"],
+	["Bathroom", "\uef48", "Bathroom"], ["Kitchen", "\ueeff", "Kitchen"], ["Living", "\uefaf", "Living"],
+	["Storage", "\uea45", "Storage"], ["Transformable", "\ued56", "Folding"], ["Rentals", "\ueb82", "Rentals"],
+	["Builder", "\ueb40", "Build"],
 ]
 var _builder_tool_buttons: Array = []
 var _builder_tool: String = ""
@@ -244,7 +244,7 @@ func _sync_filter_buttons() -> void:
 		var b := _sub_filter_buttons[id] as Button
 		b.button_pressed = (id == view) and not searching
 		if id == VIEW_NEEDED:
-			b.text = "⭐ %s" % _view_label(id) + ((" (%d)" % needed) if needed > 0 else "")
+			b.text = "\uf6a6 %s" % _view_label(id) + ((" (%d)" % needed) if needed > 0 else "")
 
 
 # What the tenant still lacks: every need the level asks for (in any moment)
@@ -383,13 +383,13 @@ func _render() -> void:
 				if not hay.contains(word):
 					return false
 			return true)
-		_add_heading("🔎", tr("%d found") % hits.size())
+		_add_heading("\ueb1c", tr("%d found") % hits.size())
 		_add_cards(hits)
 		if hits.is_empty():
 			_add_note(tr("Nothing matches. Try a need (sleep, sit, work, storage) or part of a name."))
 	elif _need_filter != "":
 		var options := furniture.filter(func(f): return _need_filter in Inventory.provides(f))
-		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "❔") as String, Loc.need_name(_need_filter))
+		_add_heading(TenantCard.NEED_GLYPH.get(_need_filter, "\uf91d") as String, Loc.need_name(_need_filter))
 		_add_cards(options)
 		if options.is_empty():
 			_add_note(tr("No piece in this level provides it."))
@@ -411,7 +411,7 @@ func _render() -> void:
 				_add_cards(furniture.filter(func(f): return (f as Dictionary).get("id", "") in of))
 				continue
 			var options := furniture.filter(func(f): return need in Inventory.provides(f))
-			_add_heading(TenantCard.NEED_GLYPH.get(need, "❔") as String, Loc.need_name(need as String))
+			_add_heading(TenantCard.NEED_GLYPH.get(need, "\uf91d") as String, Loc.need_name(need as String))
 			if options.is_empty():
 				_add_note(tr("Nothing in this level provides it."))
 			else:
@@ -709,7 +709,7 @@ class ItemCell extends PanelContainer:
 		if covers >= 2:
 			var gold := GameTheme.make_card_stylebox(Color(0.20, 0.23, 0.22), GameTheme.C_AMBER, 8)
 			add_theme_stylebox_override("panel", gold)
-			name_lbl.text = "★ " + name_lbl.text
+			name_lbl.text = "\uf6a6 " + name_lbl.text
 			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.62))
 			set_meta("covers", covers)
 
@@ -868,13 +868,13 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	var tier_lbl := Label.new()
 	match tier:
 		"green":
-			tier_lbl.text = tr("🪶 Light — freely movable")
+			tier_lbl.text = tr("\uee8b Light — freely movable")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_GOOD)
 		"yellow":
-			tier_lbl.text = tr("🪶🪶 Medium — uncomfortable to move")
+			tier_lbl.text = tr("\uee8b\uee8b Medium — uncomfortable to move")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
 		_:
-			tier_lbl.text = tr("🪶🪶🪶 Heavy — fixed in place")
+			tier_lbl.text = tr("\uee8b\uee8b\uee8b Heavy — fixed in place")
 			tier_lbl.add_theme_color_override("font_color", GameTheme.C_BAD)
 	tier_lbl.add_theme_font_size_override("font_size", 10)
 	vb.add_child(tier_lbl)
@@ -1096,7 +1096,7 @@ func _render_owned_section() -> void:
 			continue
 		if not any:
 			any = true
-			_add_heading("🎁", tr("Owned"))
+			_add_heading("\ueb68", tr("Owned"))
 		for _i in range(count):
 			var card := PanelContainer.new()
 			card.custom_minimum_size = Vector2(116, 132)

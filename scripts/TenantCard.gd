@@ -64,18 +64,18 @@ const INK_GREEN := Color(0.56, 0.85, 0.50)
 # Small glyph per need — WoW-quest-style: a glance at the panel should read
 # as a row of icons with check/cross overlays, not a paragraph of chips.
 const NEED_GLYPH := {
-	"sleep":   "🛏",
-	"hygiene": "🚿",
-	"cook":    "🍳",
-	"work":    "💻",
-	"sit":     "🛋",
-	"storage": "📦",
-	"eat":     "🍽",
-	"dine":    "🍽",
-	"dress":   "👕",
-	"laundry": "🧺",
-	"social":  "🎉",
-	"pet":     "🐦",
+	"sleep":   "\ueb5c",
+	"hygiene": "\uef48",
+	"cook":    "\ueeff",
+	"work":    "\ueb64",
+	"sit":     "\uefaf",
+	"storage": "\uea45",
+	"eat":     "\ued64",
+	"dine":    "\ued64",
+	"dress":   "\uec0a",
+	"laundry": "\uebe1",
+	"social":  "\uee46",
+	"pet":     "\ueff9",
 }
 
 
@@ -387,10 +387,10 @@ func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = f
 	chip.add_theme_stylebox_override("panel", _chip_style(satisfied, showcased))
 	var badge := chip.find_child("Badge", true, false) as Label
 	if satisfied:
-		badge.text = "✓"
+		badge.text = "\uea5e"
 		badge.add_theme_color_override("font_color", Color(0.180, 0.420, 0.160))
 	else:
-		badge.text = "✗"
+		badge.text = "\ueb55"
 		badge.add_theme_color_override("font_color", Color(0.620, 0.220, 0.180))
 
 
@@ -578,7 +578,7 @@ func set_application(available: bool, hidden_requirements: Array) -> void:
 func _add_application_button() -> void:
 	var btn := Button.new()
 	btn.name = "ApplicationButton"
-	btn.text = "📠"
+	btn.text = "\ueb0e"
 	btn.tooltip_text = tr("Read the tenant's rental application again")
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER

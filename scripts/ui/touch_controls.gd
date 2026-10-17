@@ -128,24 +128,24 @@ func _rebuild() -> void:
 	match _state:
 		"placing":
 			_add_button("⟳  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_placing())
-			_add_button("✓  " + tr("Place"), FaxStyle.KEY_GREEN, func(): main.touch_confirm_placing())
-			_add_button("✕  " + tr("Cancel"), Color(0.62, 0.26, 0.24), func(): main.touch_cancel_placing())
+			_add_button("\uea5e  " + tr("Place"), FaxStyle.KEY_GREEN, func(): main.touch_confirm_placing())
+			_add_button("\ueb55  " + tr("Cancel"), Color(0.62, 0.26, 0.24), func(): main.touch_cancel_placing())
 		"piece":
 			_add_button("⟳  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_piece(_piece))
 			if _piece.foldable:
-				_add_button("⇕  " + tr("Fold"), FaxStyle.KEY_GREY, func(): main.touch_fold_piece(_piece))
+				_add_button("\ued56  " + tr("Fold"), FaxStyle.KEY_GREY, func(): main.touch_fold_piece(_piece))
 			if not _piece.keepsake:
 				_add_button("€  " + tr("Sell"), Color(0.62, 0.26, 0.24), func():
 					var f := _piece
 					close_actions()
 					main.touch_sell_piece(f))
-			_add_button("✕", FaxStyle.KEY_GREY, close_actions)
+			_add_button("\ueb55", FaxStyle.KEY_GREY, close_actions)
 		"wall":
 			_add_button("€  " + tr("Sell"), Color(0.62, 0.26, 0.24), func():
 				var hit := _wall_hit
 				close_actions()
 				main.touch_sell_wall_item(hit))
-			_add_button("✕", FaxStyle.KEY_GREY, close_actions)
+			_add_button("\ueb55", FaxStyle.KEY_GREY, close_actions)
 	_bar.visible = _state != ""
 	_bar.reset_size()
 

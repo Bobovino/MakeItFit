@@ -73,12 +73,12 @@ msgid "Redesign from Scratch"
 msgstr "Rediseñar desde cero"
 
 #: scripts/CityMap.gd:591
-msgid "⚙ Settings"
-msgstr "⚙ Ajustes"
+msgid " Settings"
+msgstr " Ajustes"
 
 #: scripts/CityMap.gd:599
-msgid "⏻ Quit"
-msgstr "⏻ Salir"
+msgid " Quit"
+msgstr " Salir"
 
 #: scripts/CityMap.gd:600
 msgid "Quit to desktop"
@@ -94,8 +94,8 @@ msgid "BLOCK %d — %s"
 msgstr "BLOQUE %d — %s"
 
 #: scripts/CityMap.gd:1605
-msgid "Locked — needs %d ★"
-msgstr "Bloqueado — necesita %d ★"
+msgid "Locked — needs %d "
+msgstr "Bloqueado — necesita %d "
 
 #: scripts/CityMap.gd:1609
 msgid "Available"
@@ -124,8 +124,8 @@ msgid "%d€ / month"
 msgstr "%d€ / mes"
 
 #: scripts/CityMap.gd:1778
-msgid "Locked — need %d total ★"
-msgstr "Bloqueado — necesitas %d ★ en total"
+msgid "Locked — need %d total "
+msgstr "Bloqueado — necesitas %d  en total"
 
 #: scripts/CityMap.gd:1779
 msgid "LOCKED"
@@ -506,16 +506,16 @@ msgid "Costs %d€ — you have %d€"
 msgstr "Cuesta %d€ — tienes %d€"
 
 #: scripts/Inventory.gd:858
-msgid "🪶 Light — freely movable"
-msgstr "🪶 Ligero — se mueve libremente"
+msgid " Light — freely movable"
+msgstr " Ligero — se mueve libremente"
 
 #: scripts/Inventory.gd:861
-msgid "🪶🪶 Medium — uncomfortable to move"
-msgstr "🪶🪶 Medio — incómodo de mover"
+msgid " Medium — uncomfortable to move"
+msgstr " Medio — incómodo de mover"
 
 #: scripts/Inventory.gd:864
-msgid "🪶🪶🪶 Heavy — fixed in place"
-msgstr "🪶🪶🪶 Pesado — fijo en su sitio"
+msgid " Heavy — fixed in place"
+msgstr " Pesado — fijo en su sitio"
 
 #: scripts/Inventory.gd:872
 msgid "Satisfies: %s"
@@ -807,8 +807,8 @@ msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned�
 msgstr "%s ha venido contigo. Haz clic para colocarlo  ·  Esc lo deja en «Tuyos»."
 
 #: scripts/Main.gd:3708
-msgid "♥ %s is a keepsake: it stays in this flat"
-msgstr "♥ %s es un recuerdo: se queda en este piso"
+msgid " %s is a keepsake: it stays in this flat"
+msgstr " %s es un recuerdo: se queda en este piso"
 
 #: scripts/Main.gd:3710
 msgid "A box can't go inside another apartment"
@@ -847,8 +847,8 @@ msgid "%s is already renting here — pick a different box."
 msgstr "%s ya está alquilado aquí: elige otra caja."
 
 #: scripts/Main.gd:4040
-msgid "♥ %s is a keepsake: it can be moved, not sold."
-msgstr "♥ %s es un recuerdo: se puede mover, pero no vender."
+msgid " %s is a keepsake: it can be moved, not sold."
+msgstr " %s es un recuerdo: se puede mover, pero no vender."
 
 #: scripts/Main.gd:4045
 msgid "Removing %s means repaying its %d€ rent — you only have %d€."
@@ -891,8 +891,8 @@ msgstr ""
 "Deja al menos una casilla libre para pasar a su alrededor."
 
 #: scripts/Main.gd:4494
-msgid "✕ Back to Results"
-msgstr "✕ Volver a los resultados"
+msgid " Back to Results"
+msgstr " Volver a los resultados"
 
 #: scripts/Main.gd:4624
 msgid "CUSTOM BUILD"
@@ -1025,8 +1025,8 @@ msgid "Too elongated — max ratio %.0f:1"
 msgstr "Demasiado alargado: proporción máx. %.0f:1"
 
 #: scripts/PaintedFurniture.gd:80
-msgid "✓  Valid — costs %d€"
-msgstr "✓  Válido — cuesta %d€"
+msgid "  Valid — costs %d€"
+msgstr "  Válido — cuesta %d€"
 
 #: scripts/PauseMenu.gd:51
 msgid "Menu"
@@ -1200,8 +1200,8 @@ msgid "Can't place here"
 msgstr "No se puede colocar aquí"
 
 #: scripts/Room3DView.gd:1313
-msgid "♥ %s is a keepsake: it can be moved, not sold"
-msgstr "♥ %s es un recuerdo: se puede mover, pero no vender"
+msgid " %s is a keepsake: it can be moved, not sold"
+msgstr " %s es un recuerdo: se puede mover, pero no vender"
 
 #: scripts/Room3DView.gd:1316
 msgid "Removing %s means repaying its %d€ rent"
@@ -3012,8 +3012,8 @@ msgstr "Baño a medida"
 #~ msgid "Not yet:"
 #~ msgstr "Todavía no:"
 
-#~ msgid "↺ Restart Level"
-#~ msgstr "↺ Reiniciar nivel"
+#~ msgid " Restart Level"
+#~ msgstr " Reiniciar nivel"
 
 #~ msgid "🔍 View Apartment"
 #~ msgstr "🔍 Ver el piso"

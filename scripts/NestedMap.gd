@@ -209,13 +209,13 @@ func _make_node(node: Dictionary) -> Control:
 		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		match state:
 			"ready":
-				st.text = "✓ " + tr("Ready")
+				st.text = "\uea5e " + tr("Ready")
 				st.add_theme_color_override("font_color", Color(0.56, 0.85, 0.50))
 			"recheck":
 				st.text = "⟳ " + tr("Check again")
 				st.add_theme_color_override("font_color", GameTheme.C_AMBER)
 			_:
-				st.text = "✗ " + tr("To furnish")
+				st.text = "\ueb55 " + tr("To furnish")
 				st.add_theme_color_override("font_color", Color(0.90, 0.48, 0.42))
 		vb.add_child(st)
 

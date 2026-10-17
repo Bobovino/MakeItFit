@@ -268,7 +268,7 @@ func _draw() -> void:
 			continue
 		var conflict := st["conflict"] as bool
 		if conflict:
-			text = "✗ " + text
+			text = "\ueb55 " + text
 		var at := RuleOverlay.zone_center(zones[zi] as Dictionary) * TILE
 		var tsz := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
 		var plate := Rect2(at - Vector2(tsz.x * 0.5 + 6, 10), Vector2(tsz.x + 12, 18))

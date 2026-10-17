@@ -151,7 +151,7 @@ func show_failure(reason: String, missing: Array = []) -> void:
 			row.add_theme_constant_override("separation", 10)
 			list.add_child(row)
 			var x := Label.new()
-			x.text = "✕"
+			x.text = "\ueb55"
 			x.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 			x.add_theme_color_override("font_color", GameTheme.RED)
 			x.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -359,7 +359,7 @@ func _reveal() -> void:
 
 # Stars fill in one at a time with a pop; all at once with Reduce motion.
 func _animate_stars(lbl: Label, stars: int) -> void:
-	var shown := func(n: int) -> String: return "★".repeat(n) + "☆".repeat(3 - n)
+	var shown := func(n: int) -> String: return "\uf6a6".repeat(n) + "\ueb2e".repeat(3 - n)
 	if GameState.reduce_motion:
 		lbl.text = shown.call(stars)
 		return

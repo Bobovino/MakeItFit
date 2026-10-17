@@ -36,6 +36,11 @@ const TOUCH_SMALL := 52
 
 # Archivo (UI and text), Anton (titles, upper case), IBM Plex Mono (numbers,
 # measurements, the fax). Caveat stays for signatures on the fax only.
+#
+# Icons are Tabler's (MIT), as a font: every text font falls back to it, so an
+# icon is just a character in a string ("\ueb5c" is the bed) and takes the
+# text's size and colour wherever text goes, labels, buttons and draw_string
+# alike. The codes are Tabler's own; see https://tabler.io/icons.
 static var _fonts: Dictionary = {}
 
 static func font(kind: String) -> Font:
@@ -45,17 +50,27 @@ static func font(kind: String) -> Font:
 	match kind:
 		"ui", "body":
 			var v := FontVariation.new()
-			v.base_font = load("res://assets/fonts/Archivo.ttf")
+			v.base_font = _with_icons("res://assets/fonts/Archivo.ttf")
 			var ts := TextServerManager.get_primary_interface()
 			v.variation_opentype = {ts.name_to_tag("wght"): 600 if kind == "ui" else 500}
 			f = v
 		"display":
-			f = load("res://assets/fonts/Anton-Regular.ttf")
+			f = _with_icons("res://assets/fonts/Anton-Regular.ttf")
 		"mono":
-			f = load("res://assets/fonts/IBMPlexMono-Regular.ttf")
+			f = _with_icons("res://assets/fonts/IBMPlexMono-Regular.ttf")
 		"mono_bold":
-			f = load("res://assets/fonts/IBMPlexMono-SemiBold.ttf")
+			f = _with_icons("res://assets/fonts/IBMPlexMono-SemiBold.ttf")
+		"icons":
+			f = load("res://assets/fonts/TablerIcons.ttf")
 	_fonts[kind] = f
+	return f
+
+
+static func _with_icons(path: String) -> Font:
+	var f: Font = load(path)
+	var icons := font("icons")
+	if icons != null and not f.fallbacks.has(icons):
+		f.fallbacks = f.fallbacks + [icons]
 	return f
 
 
@@ -115,7 +130,7 @@ static var _hand_font: Font = null
 
 static func handwriting() -> Font:
 	if _hand_font == null and ResourceLoader.exists("res://assets/fonts/Caveat.ttf"):
-		_hand_font = load("res://assets/fonts/Caveat.ttf")
+		_hand_font = _with_icons("res://assets/fonts/Caveat.ttf")
 	return _hand_font
 
 

@@ -42,7 +42,7 @@ func _build(req_id: String, mood: int) -> void:
 	if req_id != "":
 		row.add_child(Requirements.make_icon(req_id, SIZE_PX))
 	var mark := Label.new()
-	mark.text = {Mood.ANNOYED: "!", Mood.HAPPY: "✓", Mood.UNSURE: "?"}[mood]
+	mark.text = {Mood.ANNOYED: "!", Mood.HAPPY: "\uea5e", Mood.UNSURE: "?"}[mood]
 	mark.add_theme_font_size_override("font_size", SIZE_PX)
 	mark.add_theme_color_override("font_color", edge)
 	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

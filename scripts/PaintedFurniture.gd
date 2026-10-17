@@ -77,7 +77,7 @@ func validation_message() -> String:
 		return tr("Too narrow — needs ≥ %d tiles on short side") % min_short_side
 	if shorter > 0 and float(longer) / float(shorter) > max_aspect:
 		return tr("Too elongated — max ratio %.0f:1") % max_aspect
-	return tr("✓  Valid — costs %d€") % total_cost()
+	return tr("\uea5e  Valid — costs %d€") % total_cost()
 
 
 func _is_contiguous() -> bool:

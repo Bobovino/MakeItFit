@@ -64,16 +64,18 @@ static func icon(id: String) -> Texture2D:
 static func glyph(id: String) -> String:
 	var key := icon_key(id)
 	match key:
-		"sight": return "👁"
-		"zones": return "🚧"
-		"apartments": return "🏠"
-		"items": return "❄"   # counted needs; so far only Dani's freezers
-		"reach": return "🚶"   # can't get there (TenantLayer._try_to_reach)
-	return TenantCard.NEED_GLYPH.get(key, "❔") as String
+		"sight": return "\uea9a"
+		"zones": return "\uf00e"
+		"apartments": return "\ueac1"
+		"items": return "\uec0b"   # counted needs; so far only Dani's freezers
+		"reach": return "\uec87"   # can't get there (TenantLayer._try_to_reach)
+	return TenantCard.NEED_GLYPH.get(key, "\uf91d") as String
 
 
-# A control showing the requirement's icon at `px` pixels.
-static func make_icon(id: String, px: int) -> Control:
+# A control showing the requirement's icon at `px` pixels, in `color` (the
+# glyphs are a font now, so they take a text colour; navy reads on the light
+# chips, bubbles and fax paper they sit on).
+static func make_icon(id: String, px: int, color := GameTheme.INK) -> Control:
 	var tex := icon(id)
 	if tex:
 		var rect := TextureRect.new()
@@ -86,6 +88,7 @@ static func make_icon(id: String, px: int) -> Control:
 	var lbl := Label.new()
 	lbl.text = glyph(id)
 	lbl.add_theme_font_size_override("font_size", px)
+	lbl.add_theme_color_override("font_color", color)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE

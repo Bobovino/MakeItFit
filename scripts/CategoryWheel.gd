@@ -17,7 +17,7 @@ const BUILDER_ID := "Builder"
 var _wedges: Array = []   # [{id, glyph, start, end}]
 var _hover_index: int = -1
 var _hub_hover: bool = false
-var _hub_label: String = "All"   # shows the hovered wedge's name — glyphs alone (esp. Transformable's 🔀) aren't identifiable without it
+var _hub_label: String = "All"   # shows the hovered wedge's name — glyphs alone (esp. Transformable's \ued56) aren't identifiable without it
 
 
 func _ready() -> void:
@@ -41,7 +41,7 @@ func _build_wedges() -> void:
 		})
 		start += unit
 	_wedges.append({
-		"id": BUILDER_ID, "glyph": "🛠",
+		"id": BUILDER_ID, "glyph": "\ueb40",
 		"start": start, "end": start + unit * 0.5,
 	})
 
