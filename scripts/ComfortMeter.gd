@@ -7,9 +7,9 @@ extends Control
 # Main.gd handles that visibility check, this just draws whatever value it's
 # given.
 
-const BG_COL     := Color(0.05, 0.11, 0.19, 0.95)
-const BORDER_COL := Color(0.62, 0.82, 0.98, 0.55)
-const TEXT_COL   := Color(0.93, 0.90, 0.86, 0.95)
+const BG_COL     := GameTheme.CARD_DIM
+const BORDER_COL := GameTheme.NAVY
+const TEXT_COL   := GameTheme.INK
 
 var _pct: float = 100.0
 var _warn_threshold: float = 50.0
@@ -47,10 +47,10 @@ func _process(delta: float) -> void:
 
 func _fill_color() -> Color:
 	if _pct < _warn_threshold:
-		return GameTheme.C_BAD
+		return GameTheme.RED
 	if _pct < 100.0:
-		return GameTheme.C_AMBER
-	return GameTheme.C_GOOD
+		return GameTheme.INK_SOFT
+	return GameTheme.NAVY
 
 
 func _draw() -> void:
@@ -65,18 +65,18 @@ func _draw() -> void:
 	# alone (amber vs red) is easy to read as "fine, just not perfect"
 	# rather than "this blocks renting" unless it visibly draws the eye.
 	var border_col := BORDER_COL
-	var border_w := 1.0
+	var border_w := 2.0
 	if failing:
 		var pulse := (sin(_pulse_t * 4.0) + 1.0) * 0.5   # 0..1
-		border_col = GameTheme.C_BAD.lerp(Color(1.0, 0.9, 0.9, 1.0), pulse * 0.6)
-		border_w = 1.5 + pulse * 1.0
+		border_col = GameTheme.RED.lerp(GameTheme.CARD, pulse * 0.5)
+		border_w = 2.0 + pulse * 1.5
 	draw_rect(r, border_col, false, border_w)
 	var font := ThemeDB.fallback_font
-	const FSIZE := 10
+	const FSIZE := GameTheme.FS_CAPTION
 	# Short enough for the bar; the tooltip carries the explanation.
 	var label := tr("Comfort %d%%") % roundi(_pct)
 	if failing:
 		label += "  \ueb55"
 	var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
 	draw_string(font, Vector2((size.x - tw) * 0.5, size.y * 0.5 + FSIZE * 0.35), label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, Color(0.06, 0.12, 0.08) if _pct >= 60.0 else TEXT_COL)
+		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, GameTheme.CHALK if _pct >= 60.0 else TEXT_COL)

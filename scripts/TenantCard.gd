@@ -80,21 +80,17 @@ const NEED_GLYPH := {
 
 
 func _ready() -> void:
-	# A full-width bottom HUD strip, styled as the blueprint's own title block
-	# rather than the old warm quest-tracker glass — same navy fill and light
-	# blueprint-ink border GridDraw.gd used to draw in the plan's corner.
+	# A full-width bottom strip: a white card along the foot of the drawing
+	# board, edged in navy like every card of the capsule look.
 	var paper := StyleBoxFlat.new()
-	paper.bg_color = BP_BG
-	paper.border_color = BP_LINE
-	paper.set_border_width(SIDE_TOP, 1)
+	paper.bg_color = GameTheme.CARD
+	paper.border_color = GameTheme.NAVY
+	paper.set_border_width(SIDE_TOP, 2)
 	paper.set_content_margin(SIDE_LEFT, 12)
 	paper.set_content_margin(SIDE_RIGHT, 310)   # Main adjusts this: see set_right_reserve()
 	paper.set_content_margin(SIDE_TOP, 8)
 	paper.set_content_margin(SIDE_BOTTOM, 8)
 	paper.anti_aliasing = true
-	paper.shadow_color = Color(0, 0, 0, 0.3)
-	paper.shadow_size = 6
-	paper.shadow_offset = Vector2(0, -2)
 	add_theme_stylebox_override("panel", paper)
 
 	# Now a bottom status bar, not a quest-tracker sidebar column — the name/
@@ -197,9 +193,14 @@ func _add_goal_label() -> void:
 	if _has_application:
 		_add_application_button()
 	var lbl := Label.new()
+	lbl.name = "GoalLabel"
+	# The fax button stands for the tenant's application: with it, whose
+	# needs these are goes in its tooltip instead of taking up the bar.
+	lbl.visible = not _has_application
 	lbl.text = (tr("%s NEEDS") % _tenant_name.to_upper()) if _tenant_name != "" else tr("NEEDS")
-	lbl.add_theme_font_size_override("font_size", 11)
-	lbl.add_theme_color_override("font_color", INK_MUTED)
+	lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	lbl.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	lbl.tooltip_text = tr("Furnish the apartment so every need here is ticked")
@@ -277,8 +278,9 @@ func _build_moment_checklist() -> void:
 func _make_section_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 9)
-	lbl.add_theme_color_override("font_color", INK_MUTED)
+	lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	lbl.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	return lbl
 
 
@@ -294,17 +296,17 @@ func _make_moment_header_btn(text: String, mid: String, index: int, count: int) 
 	btn.button_group = _moment_group
 	btn.focus_mode   = Control.FOCUS_NONE
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	btn.add_theme_font_size_override("font_size", 9)
-	var n := _tab_style(Color(0.045, 0.095, 0.165, 0.85), BP_LINE, index, count)
-	var h := _tab_style(Color(0.09, 0.19, 0.32, 0.9),     BP_LINE, index, count)
-	var p := _tab_style(BP_BG,                            Color(1.0, 0.95, 0.70), index, count)
-	btn.add_theme_stylebox_override("normal",   n)
-	btn.add_theme_stylebox_override("hover",    h)
-	btn.add_theme_stylebox_override("pressed",  p)
+	btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	btn.custom_minimum_size.y = 36
+	btn.add_theme_stylebox_override("normal",   GameTheme.segment_style(index, count, false))
+	btn.add_theme_stylebox_override("hover",    GameTheme.segment_style(index, count, false, true))
+	btn.add_theme_stylebox_override("pressed",  GameTheme.segment_style(index, count, true))
+	btn.add_theme_stylebox_override("hover_pressed", GameTheme.segment_style(index, count, true))
 	btn.add_theme_stylebox_override("focus",    StyleBoxEmpty.new())
-	btn.add_theme_color_override("font_color",         INK_MUTED)
-	btn.add_theme_color_override("font_hover_color",   INK)
-	btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
+	btn.add_theme_color_override("font_color",         GameTheme.INK)
+	btn.add_theme_color_override("font_hover_color",   GameTheme.INK)
+	btn.add_theme_color_override("font_pressed_color", GameTheme.CHALK)
+	btn.add_theme_color_override("font_hover_pressed_color", GameTheme.CHALK)
 	btn.pressed.connect(func(): moment_selected.emit(mid))
 	return btn
 
@@ -346,7 +348,7 @@ func highlight_moment(moment_id: String) -> void:
 # say about a need than "done or not."
 func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") -> PanelContainer:
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(0, 30)
+	chip.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
 	chip.tooltip_text = tr("%s — click to see the furniture that provides it") % Loc.need_name(func_name)
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	if func_name != "rule":
@@ -362,20 +364,22 @@ func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") ->
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(row)
 
-	row.add_child(Requirements.make_icon(req_id if req_id != "" else "need:" + func_name, 15))
+	var icon := Requirements.make_icon(req_id if req_id != "" else "need:" + func_name, GameTheme.FS_LABEL)
+	icon.name = "Icon"
+	row.add_child(icon)
 
 	var name_lbl := Label.new()
+	name_lbl.name = "Name"
 	name_lbl.text = Loc.need_name(func_name)
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 12)
-	name_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
+	name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(name_lbl)
 
 	var badge := Label.new()
 	badge.name = "Badge"
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	badge.add_theme_font_size_override("font_size", 13)
+	badge.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(badge)
 
@@ -385,13 +389,26 @@ func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") ->
 
 func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = false) -> void:
 	chip.add_theme_stylebox_override("panel", _chip_style(satisfied, showcased))
+	# Done: a navy card with white ink. Still to do: a white card ringed in
+	# red with a red cross, so the two differ in shape and fill, not only
+	# in colour.
+	var ink := GameTheme.CHALK if satisfied else GameTheme.INK
+	for part in ["Icon", "Name"]:
+		var lbl := chip.find_child(part, true, false) as Label
+		if lbl:
+			lbl.add_theme_color_override("font_color", ink)
+	# A need that is met folds down to its icon and tick (its name stays in
+	# the tooltip): what is still to do is what takes the room.
+	var name_lbl := chip.find_child("Name", true, false) as Label
+	if name_lbl:
+		name_lbl.visible = not satisfied
 	var badge := chip.find_child("Badge", true, false) as Label
 	if satisfied:
 		badge.text = "\uea5e"
-		badge.add_theme_color_override("font_color", Color(0.180, 0.420, 0.160))
+		badge.add_theme_color_override("font_color", GameTheme.CHALK)
 	else:
 		badge.text = "\ueb55"
-		badge.add_theme_color_override("font_color", Color(0.620, 0.220, 0.180))
+		badge.add_theme_color_override("font_color", GameTheme.RED)
 
 
 # Objective tiles: a filled green tile when solved, a dim red-outline tile
@@ -402,21 +419,17 @@ func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = f
 static func _chip_style(satisfied: bool, showcased: bool = false) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	if satisfied:
-		# Sage fill on cream paper — a highlighted, done line item
-		s.bg_color     = Color(0.780, 0.880, 0.720)
-		s.border_color = Color(0.420, 0.620, 0.380)
+		s.bg_color     = GameTheme.NAVY
+		s.border_color = GameTheme.NAVY
 	else:
-		# Blank cream tile with a terracotta pen outline — still to do
-		s.bg_color     = Color(0.930, 0.895, 0.820)
-		s.border_color = Color(0.800, 0.470, 0.390)
+		s.bg_color     = GameTheme.CARD
+		s.border_color = GameTheme.RED
+	s.set_border_width_all(4 if showcased else 2)
 	if showcased:
-		s.border_color = Color(1.0, 0.85, 0.30)
-		s.set_border_width_all(3)
-	else:
-		s.set_border_width_all(1)
-	s.set_corner_radius_all(7)
-	s.set_content_margin(SIDE_LEFT, 8)
-	s.set_content_margin(SIDE_RIGHT, 8)
+		s.border_color = GameTheme.RED
+	s.set_corner_radius_all(10)
+	s.set_content_margin(SIDE_LEFT, 12)
+	s.set_content_margin(SIDE_RIGHT, 12)
 	s.set_content_margin(SIDE_TOP, 2)
 	s.set_content_margin(SIDE_BOTTOM, 2)
 	s.anti_aliasing = true
@@ -572,6 +585,9 @@ func set_application(available: bool, hidden_requirements: Array) -> void:
 		checklist_container.move_child(checklist_container.get_node("ApplicationButton"), 0)
 	elif not available and existing != null:
 		existing.queue_free()
+	var goal := checklist_container.get_node_or_null("GoalLabel")
+	if goal:
+		(goal as Control).visible = not available
 	_apply_requirement_state()
 
 
@@ -579,11 +595,11 @@ func _add_application_button() -> void:
 	var btn := Button.new()
 	btn.name = "ApplicationButton"
 	btn.text = "\ueb0e"
-	btn.tooltip_text = tr("Read the tenant's rental application again")
+	btn.tooltip_text = tr("Read the tenant's rental application again") + \
+		(("\n" + tr("%s NEEDS") % _tenant_name.to_upper()) if _tenant_name != "" else "")
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.custom_minimum_size = Vector2(34, 30)
-	btn.add_theme_font_size_override("font_size", 15)
+	GameTheme.hud_button(btn, true)
 	btn.pressed.connect(func(): application_requested.emit())
 	checklist_container.add_child(btn)
 

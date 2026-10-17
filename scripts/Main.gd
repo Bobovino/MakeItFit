@@ -534,24 +534,16 @@ func _apply_ui_theme() -> void:
 		_furniture_menu_btn.name = "FurnitureMenuBtn"
 		_furniture_menu_btn.text = "\uefaf  %s  \uea62" % tr("Furniture")
 		_furniture_menu_btn.tooltip_text = tr("Open or close the furniture catalogue (F)")
-		_furniture_menu_btn.add_theme_font_size_override("font_size", 13)
 		# It sits at the right-hand end of the needs bar and is drawn as part
 		# of it: the bar is the handle of the catalogue that opens under it.
-		# (It used to float alone in the top-left corner, as a large amber
-		# slab with nothing around it.)
-		for state in ["normal", "hover", "pressed"]:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color(0.42, 0.36, 0.13) if state != "normal" else Color(0.13, 0.22, 0.34)
-			sb.border_color = GameTheme.C_AMBER
-			sb.set_border_width_all(1)
-			sb.set_corner_radius_all(8)
-			sb.set_content_margin(SIDE_LEFT, 12)
-			sb.set_content_margin(SIDE_RIGHT, 12)
-			sb.anti_aliasing = true
+		# It is the screen's one red button: buying is the main action.
+		GameTheme.hud_button(_furniture_menu_btn)
+		for state in ["normal", "hover", "pressed", "hover_pressed"]:
+			var sb := (_furniture_menu_btn.get_theme_stylebox(state) as StyleBoxFlat).duplicate() as StyleBoxFlat
+			sb.bg_color = GameTheme.RED if state == "normal" else GameTheme.RED.darkened(0.15)
 			_furniture_menu_btn.add_theme_stylebox_override(state, sb)
-		_furniture_menu_btn.add_theme_color_override("font_color",         GameTheme.C_AMBER)
-		_furniture_menu_btn.add_theme_color_override("font_hover_color",   Color(1.0, 0.96, 0.72))
-		_furniture_menu_btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.96, 0.72))
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			_furniture_menu_btn.add_theme_color_override(c, GameTheme.CHALK)
 		_furniture_menu_btn.pressed.connect(func():
 			if _is_furniture_menu_open():
 				_close_furniture_menu()
@@ -621,7 +613,9 @@ func _position_budget_label() -> void:
 		plain.set_content_margin(SIDE_LEFT, 4)
 		plain.set_content_margin(SIDE_RIGHT, 4)
 		budget_label.add_theme_stylebox_override("normal", plain)
-		budget_label.add_theme_font_size_override("font_size", 14)
+		budget_label.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		budget_label.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+		budget_label.add_theme_color_override("font_color", GameTheme.INK)
 		budget_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	budget_label.offset_left = 0.0
 	budget_label.reset_size()
@@ -629,13 +623,13 @@ func _position_budget_label() -> void:
 	var right := (_furniture_menu_btn.offset_left - 12.0) if is_instance_valid(_furniture_menu_btn) else (RIGHT_X - 12.0)
 	budget_label.offset_right  = right
 	budget_label.offset_left   = right - w
-	budget_label.offset_top    = tenant_card.offset_top + 5.0
-	budget_label.offset_bottom = budget_label.offset_top + 28.0
+	budget_label.offset_top    = _bar_row_top(GameTheme.TOUCH_SMALL)
+	budget_label.offset_bottom = budget_label.offset_top + GameTheme.TOUCH_SMALL
 	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
 	_position_comfort_meter()
 
 
-const COMFORT_METER_SIZE := Vector2(132.0, 22.0)  # a gauge in the bottom bar: "Comfort 100%"
+const COMFORT_METER_SIZE := Vector2(140.0, 36.0)  # a gauge in the bottom bar: "Comfort 100%"
 
 func _ensure_comfort_meter() -> void:
 	if is_instance_valid(_comfort_meter):
@@ -659,9 +653,15 @@ func _position_comfort_meter() -> void:
 	# the bar's left end.)
 	_comfort_meter.offset_right  = budget_label.offset_left - 14.0
 	_comfort_meter.offset_left   = _comfort_meter.offset_right - COMFORT_METER_SIZE.x
-	_comfort_meter.offset_top    = tenant_card.offset_top + 8.0
+	_comfort_meter.offset_top    = _bar_row_top(COMFORT_METER_SIZE.y)
 	_comfort_meter.offset_bottom = _comfort_meter.offset_top + COMFORT_METER_SIZE.y
 	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
+
+
+# Where something `h` tall goes so it is centred on the needs bar's first row
+# (its chips are TOUCH_SMALL tall, under the bar's 8 px top margin).
+func _bar_row_top(h: float) -> float:
+	return tenant_card.offset_top + 8.0 + (GameTheme.TOUCH_SMALL - h) * 0.5
 
 
 # Every yellow-tier piece that sits away from where it started (and so costs
@@ -1032,7 +1032,9 @@ func _load_level(level_id: String) -> void:
 	_refresh_owned_ui()
 	if _reopen_catalog:
 		_open_furniture_menu.call_deferred()
-	budget_label.text = tr("Budget: %d€") % gm.budget
+	budget_label.text = "\ueb82 %d €" % gm.budget
+	budget_label.tooltip_text = tr("Budget")
+	budget_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	wall_inspector.setup(gm.furniture_data["furniture"])
 
 	# Start on the first visible floor (skip hidden ones)
@@ -3460,17 +3462,17 @@ func _hide_modal_backdrop() -> void:
 # F key (see _input) — same "click it or press a key" access The Sims itself
 # offers for its own build/buy mode; pressing F opens the wheel at the cursor
 # instead of this button's fixed position (see _open_furniture_menu).
-const FURNITURE_BTN_W := 178.0
+const FURNITURE_BTN_W := 190.0
 
 func _position_furniture_menu_btn() -> void:
 	if not is_instance_valid(_furniture_menu_btn) or not is_instance_valid(tenant_card):
 		return
 	var owned := _owned_count() if gm != null else 0
 	var w := FURNITURE_BTN_W
-	var h := 28.0
-	_furniture_menu_btn.offset_right  = RIGHT_X - 10.0
+	var h := float(GameTheme.TOUCH_SMALL)
+	_furniture_menu_btn.offset_right  = RIGHT_X - 12.0
 	_furniture_menu_btn.offset_left   = _furniture_menu_btn.offset_right - w
-	_furniture_menu_btn.offset_top    = tenant_card.offset_top + 5.0
+	_furniture_menu_btn.offset_top    = _bar_row_top(h)
 	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
 	_furniture_menu_btn.text = "\uefaf  %s%s  %s" % [tr("Furniture"), ("  \ueb68%d" % owned) if owned > 0 else "", "\uea5f" if _is_furniture_menu_open() else "\uea62"]
 	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
@@ -4527,7 +4529,7 @@ func _refresh_functions() -> void:
 
 
 func _on_budget_changed(new_budget: int) -> void:
-	budget_label.text = tr("Budget: %d€") % new_budget
+	budget_label.text = "\ueb82 %d €" % new_budget
 
 
 func _on_functions_updated(fulfilled: Array, required: Array) -> void:
