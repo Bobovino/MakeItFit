@@ -5,21 +5,23 @@ const TILE_SIZE    := 8
 # ── Cyanotype blueprint palette ───────────────────────────────────────────────
 # Everything reads as a classic architectural blueprint: white/cyan ink on
 # deep blue. Room interior is a slightly lighter blue so it reads as "inside".
-const BP_PAPER     := Color(0.070, 0.150, 0.260, 1.0)  # deep blueprint blue (outside)
-const BP_FLOOR     := Color(0.110, 0.245, 0.385, 1.0)  # room interior (lighter blue)
-const BP_INK       := Color(0.91, 0.945, 0.965, 1.0)   # aged white drafting ink
-const BP_INK_SOFT  := Color(0.64, 0.79, 0.92, 1.0)     # secondary lines
-const BP_GRID_FINE := Color(0.42, 0.64, 0.86, 0.10)    # 10 cm subcell grid (quiet)
-const BP_GRID_MAJ  := Color(0.56, 0.78, 0.98, 0.26)    # 1 m grid lines (quiet)
+# The plan is drawn in chalk on the drawing board: the sheet a deeper indigo
+# than the board around it, the rooms deeper still, white walls.
+const BP_PAPER     := Color("3b3e74")                  # the sheet (GameTheme.INDIGO_DK)
+const BP_FLOOR     := Color("2c2f63")                  # room interior, deeper
+const BP_INK       := Color(1, 1, 1, 1.0)              # chalk white
+const BP_INK_SOFT  := Color("c9cbe6")                  # secondary lines (GameTheme.CHALK_SOFT)
+const BP_GRID_FINE := Color(1, 1, 1, 0.05)             # 10 cm subcell grid (quiet)
+const BP_GRID_MAJ  := Color(1, 1, 1, 0.14)             # 1 m grid lines (quiet)
 
 const FLOOR_COLOR  := BP_FLOOR
 const WALL_COLOR   := BP_INK
 const GRID_MINOR   := BP_GRID_FINE
 const GRID_MAJOR   := BP_GRID_MAJ
-const DOOR_COLOR   := Color(0.55, 0.82, 0.98, 1.0)   # cyan swing
-const WINDOW_COLOR := Color(0.60, 0.86, 1.00, 0.95)  # bright glazing
-const EDGE_HOVER   := Color(0.96, 0.80, 0.45, 0.55)   # honey amber (matches UI accent)
-const EDGE_ACTIVE  := Color(1.0, 0.66, 0.20, 1.0)
+const DOOR_COLOR   := Color("c9cbe6")                # door swing, soft chalk
+const WINDOW_COLOR := Color(0.66, 0.84, 1.00, 0.95)  # glazing, the one pale blue on the plan
+const EDGE_HOVER   := Color(0.85, 0.27, 0.25, 0.55)   # GameTheme.RED
+const EDGE_ACTIVE  := Color(0.85, 0.27, 0.25, 1.0)
 const WALL_THICK   := 6.0
 const EDGE_W       := 10.0   # clickable strip width — must match Wall.gd EDGE_MARGIN
 const METER_TILES  := 10
@@ -162,8 +164,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# Deep blueprint-blue canvas
 	const CANVAS_BG   := BP_PAPER
 	# Grid lines — cyan, visible on both the deep-blue paper and lighter floor
-	const FINE_COL    := Color(0.34, 0.54, 0.76, 0.55)  # 10 cm subcell lines
-	const MAJOR_COL   := Color(0.52, 0.74, 0.96, 0.75)  # 1 m cell lines (brighter)
+	const FINE_COL    := Color(1, 1, 1, 0.16)  # 10 cm subcell lines
+	const MAJOR_COL   := Color(1, 1, 1, 0.30)  # 1 m cell lines (brighter)
 
 	# The level's authored canvas (grid_w x grid_h) is usually much bigger than
 	# any one room actually uses — drawing the paper sheet/grid across the
@@ -200,14 +202,10 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# ── 1. Canvas background — a paper sheet lying on the desk ───────────────
 	# Stacked soft drop shadows first, so the blueprint reads as a physical
 	# document resting on the warm desk surface behind it.
-	draw_rect(Rect2(sheet_x + 6, sheet_y + 8, sheet_w, sheet_h), Color(0, 0, 0, 0.10))
-	draw_rect(Rect2(sheet_x + 4, sheet_y + 5, sheet_w, sheet_h), Color(0, 0, 0, 0.14))
-	draw_rect(Rect2(sheet_x + 2, sheet_y + 3, sheet_w, sheet_h), Color(0, 0, 0, 0.18))
+	# The sheet stands on a navy edge, like every card of the look.
+	draw_rect(Rect2(sheet_x + 4, sheet_y + 5, sheet_w, sheet_h), Color("1b2759"))
 	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), CANVAS_BG)
-	# Faint paper grain — one shared noise texture tiled across the sheet
-	draw_texture_rect(_get_grain(), Rect2(sheet_x, sheet_y, sheet_w, sheet_h), true, Color(1, 1, 1, 0.05))
-	# Cream cut edge — the white rim of the actual paper stock
-	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), Color(0.955, 0.930, 0.870, 0.85), false, 1.5)
+	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), Color(1, 1, 1, 0.85), false, 1.5)
 
 	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
 	if not parent.shadow_mask.is_empty():
@@ -241,8 +239,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				f.grid_w * TILE_SIZE, f.grid_h * TILE_SIZE), BELOW_FURN_COL)
 
 	# ── 2. Painted floor tiles (blueprint blue, or tinted by kind) ───────────
-	const BALCONY_COL  := Color(0.14, 0.34, 0.32, 1.0)   # outdoor decking (teal-blue)
-	const BATHROOM_COL := Color(0.16, 0.34, 0.46, 1.0)   # wet-room (brighter cyan-blue)
+	const BALCONY_COL  := Color("2b4a5e")   # outdoor decking, a cooler blue-green
+	const BATHROOM_COL := Color("33407a")   # wet-room, a bluer indigo
 	for tile in parent.floor_mask:
 		var t := tile as Vector2i
 		var kind := parent.get_tile_kind(t) if parent.has_method("get_tile_kind") else "normal"
@@ -567,7 +565,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, min_px_maj, true)
 
 	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
-	const FRAME_COL := Color(0.56, 0.78, 0.98, 0.70)
+	const FRAME_COL := Color(1, 1, 1, 0.55)
 	var m1 := 4.0
 	var m2 := 7.0
 	draw_rect(Rect2(sheet_x + m1, sheet_y + m1, sheet_w - m1 * 2, sheet_h - m1 * 2), FRAME_COL, false, 1.5)
@@ -658,7 +656,7 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
 	if not _is_plate(parent):
 		return
-	const DIM_COL := Color(0.62, 0.82, 0.98, 0.85)
+	const DIM_COL := Color(1, 1, 1, 0.80)
 	var b := _room_bounds_tiles(parent)
 	var font := ThemeDB.fallback_font
 	var left   := float(b.position.x * TILE_SIZE)
@@ -773,8 +771,8 @@ func _draw_segments(parent: Floor) -> void:
 	# Contrasts against both the cream floor AND the dark canvas background —
 	# a near-black ink (previously ~equal to CANVAS_BG) made walls vanish
 	# whenever there was no stray floor tile just outside them for contrast.
-	const PRIMARY_COL   := Color(0.90, 0.96, 1.00, 1.0)   # bold white blueprint wall
-	const SECONDARY_COL := Color(0.62, 0.80, 0.96, 0.90)  # lighter interior partition
+	const PRIMARY_COL   := Color(1, 1, 1, 1.0)            # bold chalk wall
+	const SECONDARY_COL := Color(0.79, 0.80, 0.90, 0.90)  # lighter interior partition
 	const DEMO_COL      := Color(0.95, 0.55, 0.35, 0.55)  # orange demolition guide
 	# Thickness in TILES — walls render as filled tile cells, not lines.
 	# Kept at the minimum (1 tile = 10 cm) for both primary and secondary walls

@@ -624,10 +624,9 @@ func _draw() -> void:
 	# the player tries to sell it.
 	var shown_name := (furniture_name + " \uf67c") if keepsake else furniture_name
 	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
-		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1.0, 0.98, 0.94, 0.85))
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1, 1, 1, 0.90))
 	draw_string(ThemeDB.fallback_font, Vector2(3, 9), shown_name,
-		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7,
-		Color(0.07, 0.14, 0.26, 0.95))
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, GameTheme.NAVY)
 
 	# Mobility tier badge — a small always-visible dot in the corner (color
 	# alone reads at any size) plus the feather-count text once there's room
@@ -636,9 +635,9 @@ func _draw() -> void:
 	# floor, there was no way to tell why moving it behaves the way it does.
 	var tier_col: Color
 	match mobility_tier:
-		"green":  tier_col = GameTheme.C_GOOD
-		"yellow": tier_col = GameTheme.C_AMBER
-		_:        tier_col = GameTheme.C_BAD
+		"green":  tier_col = Color("7fcf9d")
+		"yellow": tier_col = Color("f2c14e")
+		_:        tier_col = GameTheme.RED
 	const BADGE_R := 3.0
 	draw_circle(Vector2(w - BADGE_R - 3.0, BADGE_R + 3.0), BADGE_R, tier_col)
 	var feathers := "\uee8b" if mobility_tier == "green" else ("\uee8b\uee8b" if mobility_tier == "yellow" else "\uee8b\uee8b\uee8b")

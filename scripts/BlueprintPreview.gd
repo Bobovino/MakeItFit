@@ -8,10 +8,10 @@ class_name BlueprintPreview
 # floor-plan editor (GridDraw.gd's BP_* constants) so this reads as a small
 # version of that view, not a different style.
 
-const BP_PAPER := Color(0.070, 0.150, 0.260, 1.0)
-const BP_FLOOR := Color(0.110, 0.245, 0.385, 1.0)
-const BP_INK   := Color(0.91, 0.945, 0.965, 1.0)
-const BP_GRID_MAJ := Color(0.56, 0.78, 0.98, 0.26)
+const BP_PAPER := GridDraw.BP_PAPER
+const BP_FLOOR := GridDraw.BP_PAPER
+const BP_INK   := GridDraw.BP_INK
+const BP_GRID_MAJ := GridDraw.BP_GRID_MAJ
 
 var _segments: Array = []
 var _bounds: Rect2 = Rect2()

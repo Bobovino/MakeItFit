@@ -804,7 +804,7 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	# clipping the bottom of the button.
 	btn.text = "%s  %s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
 	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	btn.add_theme_font_size_override("font_size", 12)
 	btn.add_theme_color_override("font_color", GameTheme.CHALK)
 	btn.add_theme_color_override("font_hover_color", GameTheme.CHALK)
 
