@@ -19,8 +19,8 @@ class_name NestedMap
 signal node_chosen(path: Array, hops: Array)
 signal closed
 
-const NODE_W  := 124.0
-const NODE_H  := 138.0
+const NODE_W  := 150.0
+const NODE_H  := 172.0
 const GAP_X   := 18.0
 const GAP_Y   := 44.0
 const MAX_VIEW := Vector2(1000.0, 520.0)
@@ -39,7 +39,7 @@ func _build(tree: Dictionary) -> void:
 	layer = 26   # above the settings menu's 25, so it can never open underneath it
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.05, 0.09, 0.88)
+	bg.color = Color(GameTheme.NAVY, 0.80)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
 	ScreenFit.cover(bg)
@@ -60,15 +60,7 @@ func _build(tree: Dictionary) -> void:
 	canvas.edges = _edges
 
 	var card := PanelContainer.new()
-	var cs := StyleBoxFlat.new()
-	cs.bg_color = Color(0.115, 0.100, 0.085)
-	cs.border_color = GameTheme.C_BORDER
-	cs.set_border_width_all(2)
-	cs.set_corner_radius_all(10)
-	cs.anti_aliasing = true
-	cs.set_content_margin_all(20)
-	cs.shadow_color = Color(0, 0, 0, 0.4)
-	cs.shadow_size = 10
+	var cs := GameTheme.card_style(GameTheme.CARD, 14, 22, Vector2(6, 7))
 	card.add_theme_stylebox_override("panel", cs)
 	add_child(card)
 
@@ -78,22 +70,15 @@ func _build(tree: Dictionary) -> void:
 
 	var title_row := HBoxContainer.new()
 	vb.add_child(title_row)
-	var title := Label.new()
-	title.text = tr("APARTMENT MAP")
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	var title := GameTheme.title_label(tr("APARTMENT MAP"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
-	var close_btn := Button.new()
-	close_btn.text = tr("Close")
-	close_btn.add_theme_font_size_override("font_size", 12)
-	close_btn.pressed.connect(_close)
-	title_row.add_child(close_btn)
+	title_row.add_child(MenuKit.close_button(_close))
 
 	var hint := Label.new()
 	hint.text = tr("Every apartment in this project. Click one to go there.")
-	hint.add_theme_font_size_override("font_size", 12)
-	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	hint.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	hint.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(hint)
 
 	# A big tree scrolls inside the card rather than growing past the screen.
@@ -163,9 +148,12 @@ func _make_node(node: Dictionary) -> Control:
 	btn.custom_minimum_size = Vector2(NODE_W, NODE_H)
 	btn.size = Vector2(NODE_W, NODE_H)
 	btn.disabled = is_current or not enterable
-	var normal := GameTheme.make_card_stylebox(Color(0.165, 0.145, 0.120), GameTheme.C_BORDER, 8)
-	var hover := GameTheme.make_card_stylebox(Color(0.230, 0.195, 0.140), GameTheme.C_AMBER, 8)
-	var here := GameTheme.make_card_stylebox(Color(0.270, 0.215, 0.115), GameTheme.C_AMBER, 8)
+	var normal := GameTheme.card_style(GameTheme.CARD, 10, 0, Vector2(3, 4))
+	var hover := GameTheme.card_style(GameTheme.CARD_DIM, 10, 0, Vector2(3, 4))
+	hover.border_color = GameTheme.RED
+	var here := GameTheme.card_style(GameTheme.CARD_DIM, 10, 0, Vector2(3, 4))
+	here.border_color = GameTheme.RED
+	here.set_border_width_all(3)
 	here.set_border_width_all(2)
 	btn.add_theme_stylebox_override("normal", here if is_current else normal)
 	btn.add_theme_stylebox_override("hover", hover)
@@ -190,12 +178,12 @@ func _make_node(node: Dictionary) -> Control:
 
 	var name_lbl := Label.new()
 	name_lbl.text = node.get("name", "") as String
-	name_lbl.add_theme_font_size_override("font_size", 10)
-	name_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER if is_current else GameTheme.C_TEXT)
+	name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	name_lbl.add_theme_color_override("font_color", GameTheme.INK)
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.max_lines_visible = 2
-	name_lbl.custom_minimum_size = Vector2(0, 28)
+	name_lbl.custom_minimum_size = Vector2(0, 38)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(name_lbl)
 
@@ -204,19 +192,19 @@ func _make_node(node: Dictionary) -> Control:
 	var state := node.get("state", "none") as String
 	if state != "none":
 		var st := Label.new()
-		st.add_theme_font_size_override("font_size", 10)
+		st.add_theme_font_size_override("font_size", 14)
 		st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		match state:
 			"ready":
 				st.text = "\uea5e " + tr("Ready")
-				st.add_theme_color_override("font_color", Color(0.56, 0.85, 0.50))
+				st.add_theme_color_override("font_color", GameTheme.OK)
 			"recheck":
-				st.text = "⟳ " + tr("Check again")
-				st.add_theme_color_override("font_color", GameTheme.C_AMBER)
+				st.text = "\ueb13 " + tr("Check again")
+				st.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 			_:
 				st.text = "\ueb55 " + tr("To furnish")
-				st.add_theme_color_override("font_color", Color(0.90, 0.48, 0.42))
+				st.add_theme_color_override("font_color", GameTheme.RED)
 		vb.add_child(st)
 
 	# Blueprint thumbnail, letterboxed into a fixed box so every node is the
@@ -234,19 +222,19 @@ func _make_node(node: Dictionary) -> Control:
 	holder.add_child(preview)
 
 	var tag := Label.new()
-	tag.add_theme_font_size_override("font_size", 9)
+	tag.add_theme_font_size_override("font_size", 13)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_current:
 		tag.text = tr("You are here")
-		tag.add_theme_color_override("font_color", GameTheme.C_AMBER)
+		tag.add_theme_color_override("font_color", GameTheme.RED)
 	elif node.get("shared", false):
 		# Two boxes can point at one interior; it is the same room both times.
 		tag.text = tr("Same room as another box")
-		tag.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		tag.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	elif not enterable:
 		tag.text = tr("Too small to enter")
-		tag.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		tag.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(tag)
 	return btn
 
@@ -267,4 +255,4 @@ class _TreeCanvas extends Control:
 			var to: Vector2 = e[1]
 			var mid_y := (from.y + to.y) * 0.5
 			draw_polyline(PackedVector2Array([from, Vector2(from.x, mid_y), Vector2(to.x, mid_y), to]),
-				GameTheme.C_BORDER.lightened(0.25), 2.0, true)
+				GameTheme.NAVY, 2.5, true)
