@@ -2933,9 +2933,42 @@ func _tenant_anchor_for(entry: Dictionary, pose: String, scale: float = 1.0) -> 
 	# points along X, the Z half-depth when it points
 	# along Z) without needing to special-case each of the 4 facings by hand.
 	var front := Vector3.BACK.rotated(Vector3.UP, rot_y)
-	var half_extent := absf(front.x) * size.x * 0.5 + absf(front.z) * size.z * 0.5
-	var stand_pos := center + front * (half_extent + USE_STANDOFF_M * scale)
-	return {"pos": Vector3(stand_pos.x, floor_y, stand_pos.z), "rot_y": rot_y + PI, "pose": pose}
+	# The front first; if that spot is outside the room (the piece faces a
+	# wall) or inside another piece, the back, then the sides. Only for this
+	# room's own pieces (scale 1): the giant scenery around a box is not.
+	var sides := [front, -front, front.rotated(Vector3.UP, PI * 0.5), front.rotated(Vector3.UP, -PI * 0.5)]
+	var chosen := front
+	if is_equal_approx(scale, 1.0) and _room_w_m > 0.0:
+		for side in sides:
+			var d: Vector3 = side
+			var ext := absf(d.x) * size.x * 0.5 + absf(d.z) * size.z * 0.5
+			if _standing_spot_free(center + d * (ext + USE_STANDOFF_M), f):
+				chosen = d
+				break
+	var half_extent := absf(chosen.x) * size.x * 0.5 + absf(chosen.z) * size.z * 0.5
+	var stand_pos := center + chosen * (half_extent + USE_STANDOFF_M * scale)
+	if is_equal_approx(scale, 1.0) and _room_w_m > 0.0:
+		# Never outside the walls, whatever else is in the way.
+		stand_pos.x = clampf(stand_pos.x, WALL_THICK + 0.15, _room_w_m - WALL_THICK - 0.15)
+		stand_pos.z = clampf(stand_pos.z, WALL_THICK + 0.15, _room_d_m - WALL_THICK - 0.15)
+	return {"pos": Vector3(stand_pos.x, floor_y, stand_pos.z), "rot_y": atan2(-chosen.x, -chosen.z) if chosen != front else rot_y + PI, "pose": pose}
+
+
+# Whether a tenant could stand at `p` (room space, floor level): inside the
+# walls and clear of every piece's footprint but `own`'s.
+func _standing_spot_free(p: Vector3, own: Variant) -> bool:
+	const MARGIN := 0.15
+	if p.x < WALL_THICK + MARGIN or p.x > _room_w_m - WALL_THICK - MARGIN \
+			or p.z < WALL_THICK + MARGIN or p.z > _room_d_m - WALL_THICK - MARGIN:
+		return false
+	for e in _furniture_entries:
+		if e.get("furniture") == own:
+			continue
+		var c: Vector3 = e["pos"]
+		var s: Vector3 = e["size"]
+		if absf(p.x - c.x) < s.x * 0.5 + 0.1 and absf(p.z - c.z) < s.z * 0.5 + 0.1:
+			return false
+	return true
 
 
 # One stop per NEED (not per moment) — whichever placed furniture piece
@@ -3614,8 +3647,14 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_catalog   = catalog
 	var bounds := apt_floor.get_room_bounds()
 	_room_bounds = bounds
-	var w := bounds.size.x * TILE_M
-	var d := bounds.size.y * TILE_M
+	# Every wall is one tile thick and stands on the tile row (or column) of
+	# its own line, as in the plan (GridDraw, Floor.can_place): the north and
+	# west walls on the room's first row and column, the south and east walls
+	# on the row and column just past the last one furniture can use. So the
+	# model spans one tile more than the bounds, and the far walls stand on
+	# that extra tile, not on the last usable one.
+	var w := (bounds.size.x + 1) * TILE_M
+	var d := (bounds.size.y + 1) * TILE_M
 	_room_w_m = w
 	_room_d_m = d
 
@@ -4377,7 +4416,28 @@ func _add_stairs(bounds: Rect2i) -> void:
 			var stair_model := _find_furniture_data(_catalog, (stair_f as Furniture).furniture_id).get("model", "") as String
 			if not stair_model.is_empty() and ResourceLoader.exists(stair_model):
 				continue
+		# The level's own stairs use the catalogue's staircase model for their
+		# direction, fitted to their footprint; the block flight only if it
+		# is missing.
+		if _add_stair_model(entry as Dictionary, bounds, full_h):
+			continue
 		_add_stair_flight(entry as Dictionary, bounds, full_h, 0.0, false)
+
+
+func _add_stair_model(ed: Dictionary, bounds: Rect2i, full_h: float) -> bool:
+	var dir := ed.get("direction", "north") as String
+	var path := "res://assets/models/furniture/makeitfit/stair_%s.glb" % dir.substr(0, 1)
+	if not ResourceLoader.exists(path):
+		return false
+	var r := ed["rect"] as Rect2i
+	var size := Vector3(r.size.x * TILE_M, full_h, r.size.y * TILE_M)
+	var pos := Vector3((r.position.x - bounds.position.x) * TILE_M + size.x * 0.5, full_h * 0.5,
+		(r.position.y - bounds.position.y) * TILE_M + size.z * 0.5)
+	var mi := _box(size, pos, STAIR_FLOOR_COL)
+	mi.set_meta("style_role", StyleController.ROLE_FURNITURE)
+	_apply_item_model(mi, path, size, [])
+	_style_if_bare(mi)
+	return true
 
 
 func _add_stair_flight(ed: Dictionary, bounds: Rect2i, full_h: float,
@@ -5238,17 +5298,19 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			# An interior wall drawn from (or to) the perimeter stops at the
 			# perimeter wall's inner face, not inside it: its end used to
 			# poke out through the outside, which shows on a glass wall.
+			# (The east wall stands past the room's last column, so a wall
+			# running to it already stops at its inner face.)
 			if y1 != by0 and y1 != by1:
 				if xs == bx0:
 					local_x += WALL_THICK
 					length -= WALL_THICK
-				if xe == bx1:
-					length -= WALL_THICK
+			elif y1 == by1 and xe == bx1:
+				length += WALL_THICK   # the south wall fills the corner with the east one
 			var pos_z: float; var normal: Vector3
 			if y1 == by0:
 				pos_z = 0.0; normal = Vector3(0, 0, -1)                       # north perimeter
 			elif y1 == by1:
-				pos_z = line_z - WALL_THICK; normal = Vector3(0, 0, 1)        # south perimeter
+				pos_z = line_z; normal = Vector3(0, 0, 1)                     # south perimeter
 			else:
 				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role)
@@ -5275,13 +5337,11 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				if ys == by0:
 					local_z += WALL_THICK
 					length -= WALL_THICK
-				if ye == by1:
-					length -= WALL_THICK
 			var pos_x: float; var normal: Vector3
 			if x1 == bx0:
 				pos_x = WALL_THICK; normal = Vector3(-1, 0, 0)                # west perimeter
 			elif x1 == bx1:
-				pos_x = line_x; normal = Vector3(1, 0, 0)                     # east perimeter
+				pos_x = line_x + WALL_THICK; normal = Vector3(1, 0, 0)        # east perimeter
 			else:
 				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role)
