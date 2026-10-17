@@ -2957,3 +2957,15 @@ msgstr ""
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr ""
+
+#: scripts/Main.gd
+msgid "Little daylight gets in here: the %s outside stands in front of the box."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s can't be slept in: the %s is too noisy."
+msgstr ""

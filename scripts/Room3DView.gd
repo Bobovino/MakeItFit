@@ -281,6 +281,153 @@ func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
 
 
+# How much daylight reaches this room, 0..1: less inside a box that stands in
+# the shadow of something in the flat around it (Main._compute_box_occlusion).
+var _daylight := 1.0
+
+func set_daylight(factor: float) -> void:
+	_daylight = factor
+	if _style != null:
+		_style.daylight = factor
+
+
+# ── What noise and shade do, shown on the pieces ────────────────────────────
+# A piece whose noise keeps a bed from working has sound coming off it; the
+# bed gets a struck-through "Zz". A box in another piece's shadow has its
+# little windows dimmed, as much as less daylight gets into it. All of it
+# read from what Main last worked out (Furniture._noise_*, _shade), twice a
+# second.
+const NOISE_COLOR := Color(0.98, 0.70, 0.22)
+const AWAKE_COLOR := Color(0.93, 0.28, 0.22)
+var _status_t := 0.0
+
+func _sync_status_marks() -> void:
+	for entry in _furniture_entries:
+		var f := entry.get("furniture") as Furniture
+		var mi := entry.get("mesh") as MeshInstance3D
+		if not is_instance_valid(f) or not is_instance_valid(mi):
+			continue
+		var want := "awake" if (f.needs_quiet and f._noise_muted) else ("noise" if f._noise_making else "")
+		if mi.get_meta("status_kind", "") != want:
+			var old = mi.get_meta("status_mark") if mi.has_meta("status_mark") else null
+			if is_instance_valid(old):
+				(old as Node).queue_free()
+			mi.set_meta("status_kind", want)
+			mi.remove_meta("status_mark")
+			if want != "":
+				# Big enough to read from the whole room's view, in a big room too.
+				var ms := clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+				var mark := _status_mark(want, ms)
+				mark.position.y = (entry["size"] as Vector3).y * 0.5 + 0.12 * ms
+				mi.add_child(mark)
+				mi.set_meta("status_mark", mark)
+		if f.is_nested_box:
+			_shade_box_windows(mi, f._shade)
+
+
+# A floating mark: "noise" (sound arcs) or "awake" (a struck-through Zz in
+# the sound), `s` times its normal size. Always drawn facing the camera and
+# over whatever is in front of it.
+func _status_mark(kind: String, s: float) -> Node3D:
+	var root := Node3D.new()
+	root.name = "StatusMark"
+	var col := AWAKE_COLOR if kind == "awake" else NOISE_COLOR
+	var arcs := MeshInstance3D.new()
+	arcs.mesh = _sound_arcs_mesh(s)
+	arcs.material_override = _mark_material(col)
+	arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(arcs)
+	if kind == "awake":
+		var zz := Label3D.new()
+		zz.text = "Zz"
+		zz.font_size = 48
+		zz.pixel_size = 0.0028 * s
+		zz.modulate = col
+		zz.outline_size = 10
+		zz.outline_modulate = Color(1, 1, 1, 0.9)
+		zz.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		zz.no_depth_test = true
+		zz.render_priority = 11
+		zz.outline_render_priority = 10
+		root.add_child(zz)
+		var strike := MeshInstance3D.new()
+		var bar := QuadMesh.new()
+		bar.size = Vector2(0.11, 0.012) * s
+		strike.mesh = bar
+		strike.material_override = _mark_material(col)
+		strike.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(strike)
+	return root
+
+
+func _mark_material(col: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = col
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.no_depth_test = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.render_priority = 12
+	return mat
+
+
+# Three arcs either side of a point, like sound going out both ways.
+func _sound_arcs_mesh(s: float) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var thick := 0.009 * s
+	for side in [-1.0, 1.0]:
+		for r in [0.05, 0.08, 0.11]:
+			var rr: float = r * s
+			var steps := 6
+			for i in steps:
+				var a0 := lerpf(-0.85, 0.85, float(i) / steps)
+				var a1 := lerpf(-0.85, 0.85, float(i + 1) / steps)
+				var p0 := Vector3(side * cos(a0) * rr, sin(a0) * rr, 0.0)
+				var p1 := Vector3(side * cos(a1) * rr, sin(a1) * rr, 0.0)
+				var q0 := Vector3(side * cos(a0) * (rr + thick), sin(a0) * (rr + thick), 0.0)
+				var q1 := Vector3(side * cos(a1) * (rr + thick), sin(a1) * (rr + thick), 0.0)
+				verts.append_array([p0, p1, q1, p0, q1, q0])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+# The box's windows (its model's "lamp" material, which glows) shine only as
+# much as daylight gets in. Works on a copy per box, kept in step with the
+# shared material it came from (which changes from day to night).
+func _shade_box_windows(mi: MeshInstance3D, factor: float) -> void:
+	if not mi.has_meta("model_inst") or not is_instance_valid(mi.get_meta("model_inst")):
+		return
+	var parts: Array = [mi.get_meta("model_inst")]
+	while not parts.is_empty():
+		var n := parts.pop_back() as Node
+		parts.append_array(n.get_children())
+		if not (n is MeshInstance3D) or (n as MeshInstance3D).mesh == null:
+			continue
+		var m := n as MeshInstance3D
+		for i in m.mesh.get_surface_count():
+			var src := m.mesh.surface_get_material(i)
+			if src == null or src.resource_name != "lamp":
+				continue
+			var cur := m.get_surface_override_material(i)
+			var base: Material = cur.get_meta("shade_src") if cur != null and cur.has_meta("shade_src") else cur
+			if not (base is ShaderMaterial):
+				continue
+			if factor >= 0.99:
+				if cur != base:
+					m.set_surface_override_material(i, base)
+				continue
+			var dim: ShaderMaterial = cur if cur != base else (base as ShaderMaterial).duplicate()
+			dim.set_meta("shade_src", base)
+			var energy = (base as ShaderMaterial).get_shader_parameter("emission_energy")
+			# Squared: half the daylight should read as clearly dimmer windows.
+			dim.set_shader_parameter("emission_energy", (energy as float if energy != null else 1.0) * factor * factor)
+			m.set_surface_override_material(i, dim)
+
+
 func _no_shadows(node: Node) -> void:
 	if node is GeometryInstance3D:
 		(node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -389,6 +536,11 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		var lift: float = top_rel.get(sup, 0.0) if sup >= 0 else 0.0
 		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
 		var mi := _box(canon, Vector3(c.x, lift + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		if first and fdata.get("is_noisy", false) and rect.grow(1.0).intersects(box):
+			# What is keeping this room awake (see Main._has_noisy_neighbor).
+			var noise := _status_mark("noise", s)
+			noise.position.y = height * 0.5 + 0.12 * s
+			mi.add_child(noise)
 		mi.rotation.y = deg_to_rad((e["rot"] as int) * 90.0)
 		mi.set_meta("style_role", _item_role(fdata))
 		_apply_item_model(mi, _active_model_path(fdata, (e["item"] as Dictionary).get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
@@ -623,6 +775,10 @@ func _process(delta: float) -> void:
 		_update_camera()
 	_update_wall_fade(delta)
 	_update_extras(delta)
+	_status_t -= delta
+	if _status_t <= 0.0:
+		_status_t = 0.5
+		_sync_status_marks()
 	if is_instance_valid(_tenant) and _tenant_stops.size() > 1:
 		_tenant_stop_t += delta
 		if _tenant_stop_t >= TENANT_STOP_SECONDS:
@@ -3268,6 +3424,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 			_dist = clampf(_next_camera_state.get("dist", _dist) as float, 1.5, 30.0)
 			_center = _clamp_pan_center(_next_camera_state.get("center", _center) as Vector3)
 
+	if _style != null:
+		_style.daylight = _daylight
 	_add_floor(w, d)
 	if below_floor == null:   # a loft shows the floor beneath it there instead
 		# Inside a box the room stands on its parent's floor; otherwise it

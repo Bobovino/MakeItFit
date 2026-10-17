@@ -175,6 +175,14 @@ var _base_mobility_tier: String = "red"
 var is_noisy: bool = false
 var needs_quiet: bool = false
 var _noise_muted: bool = false
+# What the noise comes from (a piece's name, here or outside the box), for
+# saying why a bed stopped working; and whether this piece is keeping
+# something from working right now. Both live, set with _noise_muted.
+var _noise_by: String = ""
+var _noise_making: bool = false
+# A box only: how much daylight gets in (Main._compute_box_occlusion(), 1 =
+# all of it), drawn as shade over it on the plan and as dimmer windows in 3D.
+var _shade: float = 1.0
 
 
 # Applies this box's current interior weight — combines it with the box's
@@ -592,6 +600,12 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if is_surface:
 		_draw_strain(float(w), float(h))
+	if is_nested_box and _shade < 0.99:
+		_draw_shade(float(w), float(h))
+	if _noise_making:
+		_draw_noise(float(w), float(h), Color(0.98, 0.70, 0.22))
+	if needs_quiet and _noise_muted:
+		_draw_kept_awake(float(w), float(h))
 
 	# Name label: dark ink with a light halo. The piece's own ink colour is
 	# close to its fill and to the white of its symbol, which left names like
@@ -1583,6 +1597,39 @@ func _draw_strain(w: float, h: float) -> void:
 				var b2: float = side * across + (depth + 1.0 + k * 3.0) * dir
 				crack.append(Vector2(a2, b2) if along_x else Vector2(b2, a2))
 			draw_polyline(crack, col, 1.5, true)
+
+
+# A box in another piece's shadow, on the plan: shade over it, darker the
+# less daylight gets in.
+func _draw_shade(w: float, h: float) -> void:
+	var dark := (1.0 - _shade) * 0.6
+	draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.03, 0.08, dark))
+	var hatch := Color(0.02, 0.03, 0.08, dark + 0.15)
+	var d := 3.0
+	while d < w + h:
+		draw_line(Vector2(maxf(0.0, d - h), minf(d, h)), Vector2(minf(d, w), maxf(0.0, d - w)), hatch, 1.0, true)
+		d += 3.0
+
+
+# Sound coming off a piece: arcs either side of its top corner.
+func _draw_noise(w: float, h: float, col: Color) -> void:
+	var c := Vector2(w - 6.0, 6.0)
+	for r in [3.0, 5.5, 8.0]:
+		draw_arc(c, r, -0.7, 0.7, 6, col, 1.5, true)
+		draw_arc(c, r, PI - 0.7, PI + 0.7, 6, col, 1.5, true)
+	draw_circle(c, 1.5, col)
+
+
+# A bed noise keeps anyone from sleeping in: a struck-through "Zz" and the
+# sound reaching it.
+func _draw_kept_awake(w: float, h: float) -> void:
+	var red := Color(0.93, 0.28, 0.22)
+	var font := ThemeDB.fallback_font
+	var at := Vector2(w * 0.5 - 7.0, h * 0.5 + 5.0)
+	draw_string_outline(font, at, "Zz", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 3, Color(1, 1, 1, 0.85))
+	draw_string(font, at, "Zz", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, red)
+	draw_line(at + Vector2(-2, -4), at + Vector2(16, -4), red, 2.0, true)
+	_draw_noise(w, h, red)
 
 
 func _is_mouse_over() -> bool:

@@ -77,6 +77,18 @@ signal applied(palette: LevelPalette)
 				if entry["role"] == ROLE_WINDOW or entry["role"] == ROLE_GLASS_WALL:
 					_configure_material(entry)
 
+## How much of the daylight reaches the room, 0..1: the sun and the light
+## coming through the windows are dimmed by it (an apartment in a box that
+## stands in another piece's shadow). Nights are unchanged.
+@export_range(0.0, 1.0, 0.01) var daylight: float = 1.0:
+	set(value):
+		daylight = clampf(value, 0.0, 1.0)
+		if is_node_ready() and palette != null:
+			_apply_light()
+			for entry in _materials.values():
+				if entry["role"] == ROLE_WINDOW or entry["role"] == ROLE_GLASS_WALL:
+					_configure_material(entry)
+
 ## Pick StyleQuality.recommended() at startup instead of the value above.
 @export var auto_quality: bool = false
 ## HIGH only: subtle far blur behind the level. Off unless asked for.
@@ -360,12 +372,12 @@ func _configure_material(entry: Dictionary) -> void:
 	elif role == ROLE_GLASS_WALL:
 		# Light is coming through it: a soft glow by day, almost none at night.
 		mat.set_shader_parameter("emission", palette.glow_color.lerp(_night_glass(), night))
-		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * 0.16, 0.0, night))
+		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * 0.16 * daylight, 0.0, night))
 	elif role == ROLE_WINDOW:
 		# Daylight coming in; at night the glass is a dim pane of night sky,
 		# still faintly self-lit so it never drops to a black hole.
 		mat.set_shader_parameter("emission", palette.glow_color.lerp(_night_glass(), night))
-		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy, 0.5, night))
+		mat.set_shader_parameter("emission_energy", lerpf(palette.glow_energy * lerpf(0.25, 1.0, daylight), 0.5, night))
 	else:
 		mat.set_shader_parameter("emission_energy", 0.0)
 
@@ -486,7 +498,7 @@ func _apply_light() -> void:
 	if sun == null:
 		return
 	sun.light_color = palette.light_color.lerp(NIGHT_SUN_COLOR, night)
-	sun.light_energy = lerpf(palette.light_energy, palette.light_energy * NIGHT_SUN_SCALE, night)
+	sun.light_energy = lerpf(palette.light_energy * daylight, palette.light_energy * NIGHT_SUN_SCALE, night)
 	sun.light_specular = 0.0
 	sun.shadow_enabled = true
 	sun.shadow_blur = 0.6   # fairly crisp: graphic shadows, not smudges

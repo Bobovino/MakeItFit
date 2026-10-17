@@ -3032,3 +3032,15 @@ msgstr "Maßbad"
 
 #~ msgid "NOT RENTED"
 #~ msgstr "NICHT VERMIETET"
+
+#: scripts/Main.gd
+msgid "Little daylight gets in here: the %s outside stands in front of the box."
+msgstr "Hier kommt wenig Tageslicht herein: draußen steht %s vor der Kiste."
+
+#: scripts/Main.gd
+msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
+msgstr "Hier ist es laut: %s direkt vor der Kiste lässt niemanden schlafen."
+
+#: scripts/Main.gd
+msgid "%s can't be slept in: the %s is too noisy."
+msgstr "In %s kann niemand schlafen: %s ist zu laut."

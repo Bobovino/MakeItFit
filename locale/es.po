@@ -3032,3 +3032,15 @@ msgstr "Baño a medida"
 
 #~ msgid "NOT RENTED"
 #~ msgstr "SIN ALQUILAR"
+
+#: scripts/Main.gd
+msgid "Little daylight gets in here: the %s outside stands in front of the box."
+msgstr "Aquí entra poca luz: fuera, %s está delante de la caja."
+
+#: scripts/Main.gd
+msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
+msgstr "Aquí hay ruido: %s, justo fuera de la caja, no deja dormir a nadie."
+
+#: scripts/Main.gd
+msgid "%s can't be slept in: the %s is too noisy."
+msgstr "No se puede dormir en %s: %s hace demasiado ruido."

@@ -563,6 +563,9 @@ func _t_box_on_a_surface() -> void:
 	_current = "surface box: a washer below it is heard but doesn't shade it"
 	_ok(placed_washer and main._has_noisy_neighbor(fl, box.grid_pos, box.grid_w, box.grid_h, box)
 		and is_equal_approx(main._compute_box_occlusion(box), 1.0), fl.get_block_reason())
+	main._refresh_functions()
+	_current = "noise feedback: the washer shows it is noisy when the box has a bed inside"
+	_ok(washer._noise_making == main._child_has_bed(box.child_level_id), "making %s, bed inside %s" % [washer._noise_making, main._child_has_bed(box.child_level_id)])
 	fl.remove_furniture(washer)
 	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
 	var placed_shelf := fl.can_place(shelf, Vector2(2, 14))
@@ -570,6 +573,8 @@ func _t_box_on_a_surface() -> void:
 	main._refresh_functions()
 	_current = "surface box: a bookshelf taller than the dresser does shade it"
 	_ok(placed_shelf and main._compute_box_occlusion(box) < 0.2, str(main._compute_box_occlusion(box)))
+	_current = "daylight feedback: the box knows how little daylight gets in, and from what"
+	_ok(box._shade < 0.2 and main._shade_by == shelf.furniture_name, "%s by %s" % [box._shade, main._shade_by])
 
 	main._on_box_entered(box)
 	for i in 5:

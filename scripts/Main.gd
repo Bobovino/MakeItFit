@@ -1514,7 +1514,9 @@ func _on_box_entered(box: Furniture) -> void:
 		return
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
+	var shade_by := _shade_by
 	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
+	var noisy_by := _noisy_by
 	var wall_side := _closest_wall_side(box._wall_ref, box)
 	# Standing on a table, the box can only get as heavy as the table allows:
 	# what that leaves for its contents, in their own (unshrunk) weight.
@@ -1543,7 +1545,9 @@ func _on_box_entered(box: Furniture) -> void:
 	_nested_stack.append({
 		"parent_level_id": _current_level_id,
 		"daylight_factor": factor,
+		"shade_by": shade_by,
 		"noisy_from_outside": noisy_outside,
+		"noisy_by": noisy_by,
 		"was_post_win_view": was_showcasing,
 		"box_floor_id": box_floor_id,
 		"box_rect": Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)),
@@ -1564,6 +1568,15 @@ func _on_box_entered(box: Furniture) -> void:
 	# showcase yet, same as any other not-yet-completed level.
 	if was_showcasing and gm.check_win():
 		_on_watch_again_reveal()
+	# What the flat around the box does to it, said once on the way in (the
+	# dim light and the noise marks show it from then on).
+	var news: Array = []
+	if factor < 0.99 and shade_by != "":
+		news.append(tr("Little daylight gets in here: the %s outside stands in front of the box.") % shade_by)
+	if noisy_outside and noisy_by != "":
+		news.append(tr("Noisy in here: the %s right outside the box keeps anyone from sleeping.") % noisy_by)
+	if not news.is_empty():
+		_toast("\n".join(news))
 	_nested_transition_busy = false
 
 
@@ -2210,7 +2223,10 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 # A box standing on a table or shelf takes its light from where it really is:
 # what it stands on doesn't shade it, and neither does anything whose top is
 # below the box (a chair beside the table, a low cabinet beside the dresser).
+var _shade_by := ""   # what shaded the box _compute_box_occlusion() looked at last ("" = nothing)
+
 func _compute_box_occlusion(box: Furniture) -> float:
+	_shade_by = ""
 	var fl := box._wall_ref
 	if not is_instance_valid(fl):
 		return 1.0
@@ -2234,9 +2250,12 @@ func _compute_box_occlusion(box: Furniture) -> float:
 				if base > 0.0 and fl.stack_lift(fur) + fur.body_h <= base:
 					continue
 				if fur.blocks_light():
+					if worst != "tall":
+						_shade_by = fur.furniture_name
 					worst = "tall"
-				elif fur.height_category == "medium" and worst != "tall":
+				elif fur.height_category == "medium" and worst == "low":
 					worst = "medium"
+					_shade_by = fur.furniture_name
 	match worst:
 		"tall":   return 0.15
 		"medium": return 0.55
@@ -2289,11 +2308,18 @@ func _supports_under(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furnitu
 
 # A box standing on something noisy hears it as well as one beside it, even
 # when that table is no bigger than the box and so not in the ring.
+var _noisy_by := ""   # the noisy piece _has_noisy_neighbor() found last
+var _noisy_piece: Furniture = null
+
 func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
+	_noisy_by = ""
+	_noisy_piece = null
 	if not is_instance_valid(fl):
 		return false
 	for sup in _supports_under(fl, pos, gw, gh, exclude):
 		if (sup as Furniture).is_noisy:
+			_noisy_by = (sup as Furniture).furniture_name
+			_noisy_piece = sup
 			return true
 	var x0 := floori(pos.x) - 1
 	var y0 := floori(pos.y) - 1
@@ -2307,6 +2333,8 @@ func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Fur
 			for f in fl._placed_list(Vector2i(x, y)):
 				var fur := f as Furniture
 				if fur != exclude and fur.is_noisy:
+					_noisy_by = fur.furniture_name
+					_noisy_piece = fur
 					return true
 	return false
 
@@ -2341,6 +2369,13 @@ func _compute_child_interior_weight(child_level_id: String) -> float:
 	return total
 
 
+func _child_has_bed(child_level_id: String) -> bool:
+	for item in _child_furniture_items(child_level_id):
+		if gm.get_furniture_by_id((item as Dictionary).get("id", "") as String).get("needs_quiet", false) as bool:
+			return true
+	return false
+
+
 func _compute_child_is_noisy(child_level_id: String) -> bool:
 	for item in _child_furniture_items(child_level_id):
 		var fdata := gm.get_furniture_by_id((item as Dictionary).get("id", "") as String)
@@ -2359,19 +2394,26 @@ func _compute_child_is_noisy(child_level_id: String) -> bool:
 # fault to begin with).
 func _recompute_box_effects() -> void:
 	_apply_carry_limit()
+	var was_muted: Dictionary = {}   # piece -> whether noise kept it from working before this pass
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
-			(f as Furniture)._noise_muted = false
+			var fur := f as Furniture
+			was_muted[fur] = fur._noise_muted
+			fur._noise_muted = false
+			fur._noise_by = ""
+			fur._noise_making = false
 	_recompute_pet_effects()
 	# Direction 1 (parent noise -> child): if we're currently INSIDE a box
 	# that had a noisy neighbor outside it when we entered, every needs_quiet
 	# piece in here is muted — set once at entry (_on_box_entered), applied
 	# fresh on every recompute same as everything else in this function.
 	if not _nested_stack.is_empty() and _current_nested_noisy_from_outside:
+		var source := (_nested_stack[-1] as Dictionary).get("noisy_by", "") as String
 		for fid in _floors:
 			for f in (_floors[fid] as Floor).get_all_furniture():
 				if (f as Furniture).needs_quiet:
 					(f as Furniture)._noise_muted = true
+					(f as Furniture)._noise_by = source
 	# Direction 2 (child noise -> parent): a box whose OWN interior is noisy
 	# mutes needs_quiet furniture near it in THIS (parent) room.
 	for box in _collect_nested_boxes():
@@ -2381,6 +2423,22 @@ func _recompute_box_effects() -> void:
 		box.is_noisy = _compute_child_is_noisy(box.child_level_id)
 		if box.is_noisy and is_instance_valid(box._wall_ref):
 			_mute_quiet_neighbors(box._wall_ref, box)
+		# How much daylight reaches it, for the plan's shade and the 3D view's
+		# dimmed windows.
+		box._shade = _compute_box_occlusion(box)
+		# Noise right outside a box with a bed in it keeps that bed from
+		# working (see _on_box_entered): the piece making it shows it here too.
+		if is_instance_valid(box._wall_ref) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box) 				and _child_has_bed(box.child_level_id) and is_instance_valid(_noisy_piece):
+			_noisy_piece._noise_making = true
+	# A bed that just stopped working because of noise says why, once (a piece
+	# that only now appeared, on loading or stepping into a box, doesn't: the
+	# marks show it, and stepping in already said so).
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			var fur := f as Furniture
+			if fur._noise_muted and was_muted.has(fur) and not was_muted[fur] and fur._noise_by != "":
+				_toast(tr("%s can't be slept in: the %s is too noisy.") % [fur.furniture_name, fur._noise_by], true)
+			fur.queue_redraw()
 
 
 # Inside a box that stands on a table, nothing new can go in that would make
@@ -2437,6 +2495,8 @@ func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:
 				var fur := f as Furniture
 				if fur != box and fur.needs_quiet:
 					fur._noise_muted = true
+					fur._noise_by = box.furniture_name
+					box._noise_making = true
 
 
 # ─── Runtime loft/mezzanine floors ────────────────────────────────────────────
@@ -3078,6 +3138,7 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
+	_mode3d_view.set_daylight(_current_nested_daylight_factor if not _nested_stack.is_empty() else 1.0)
 	_mode3d_view.household_of = _household_of
 	# Hand the rule overlays over before the build, so a view created (or
 	# rebuilt) after the last refresh still shows them.
@@ -3686,6 +3747,8 @@ func _recompute_pet_effects() -> void:
 				var q := other as Furniture
 				if q != pet and q.needs_quiet and reach.intersects(Rect2(q.grid_pos, Vector2(q.grid_w, q.grid_h))):
 					q._noise_muted = true
+					q._noise_by = pet.furniture_name
+					pet._noise_making = true
 
 
 # Hands a piece to another apartment: it joins that apartment's owned pieces,
