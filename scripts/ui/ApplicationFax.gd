@@ -16,8 +16,10 @@ signal closed
 
 const WIDTH := 470.0
 const LINE_FONT_SIZE := 22
-const FEED_TIME := 0.22
-const CHARS_PER_SEC := 55.0
+# The whole sheet prints in this long, however many lines it has: each line
+# gets an equal share (plus one share each for the header and the footer),
+# split between feeding the paper, typing the line and a short pause.
+const PRINT_TIME := 0.9
 
 var _app: TenantApplication
 var _card: TenantCard
@@ -33,6 +35,7 @@ var _links: Node2D
 var _printing := false
 var _skipping := false
 var _active_tween: Tween
+var _step := 0.1             # one share of PRINT_TIME
 
 
 # `animate` false shows the sheet already printed (reopening it).
@@ -243,6 +246,7 @@ func _print_sheet() -> void:
 		(r["row"] as Control).visible = false
 		(r["icon"] as Control).modulate.a = 0.0
 	_footer.visible = false
+	_step = PRINT_TIME / float(_rows.size() + 2)
 	await get_tree().process_frame
 	Audio.play("fax")
 	await _feed()
@@ -256,15 +260,14 @@ func _print_sheet() -> void:
 		await get_tree().process_frame
 		await _feed()
 		_active_tween = create_tween()
-		_active_tween.tween_property(lbl, "visible_ratio", 1.0,
-			clampf(lbl.text.length() / CHARS_PER_SEC, 0.25, 1.1))
+		_active_tween.tween_property(lbl, "visible_ratio", 1.0, _step * 0.6)
 		if _skipping:
 			_active_tween.custom_step(10.0)
 		else:
 			await _active_tween.finished
 		_stamp_row(r, not _skipping)
 		if not _skipping:
-			await get_tree().create_timer(0.18).timeout
+			await get_tree().create_timer(_step * 0.1).timeout
 
 	_footer.visible = true
 	await get_tree().process_frame
@@ -279,10 +282,10 @@ func _feed() -> void:
 		return
 	var h := _sheet_height()
 	_active_tween = create_tween().set_parallel()
-	_active_tween.tween_property(_scroll, "custom_minimum_size:y", h, FEED_TIME) \
+	_active_tween.tween_property(_scroll, "custom_minimum_size:y", h, _step * 0.3) \
 		.set_trans(Tween.TRANS_LINEAR)
 	var bottom := maxf(0.0, _paper.get_combined_minimum_size().y - h)
-	_active_tween.tween_property(_scroll, "scroll_vertical", int(bottom), FEED_TIME)
+	_active_tween.tween_property(_scroll, "scroll_vertical", int(bottom), _step * 0.3)
 	if _skipping:
 		_active_tween.custom_step(10.0)
 		return
