@@ -3642,7 +3642,7 @@ func _update_breadcrumb() -> void:
 func _update_nested_nav() -> void:
 	var nav_layer := _ensure_nested_ui_layer()
 	if not is_instance_valid(_map_btn):
-		_map_btn = _make_nav_button(tr("Map"))
+		_map_btn = _make_nav_button("\ueae7  " + tr("Map"))
 		_map_btn.name = "NestedMapBtn"
 		_map_btn.tooltip_text = tr("See every apartment in this project and jump to any of them")
 		_map_btn.pressed.connect(_open_nested_map)
@@ -3666,7 +3666,7 @@ func _update_nested_nav() -> void:
 		x += _map_btn.size.x + 6.0
 	if _back_btn.visible:
 		var parent_id := (_nested_stack[-1] as Dictionary)["parent_level_id"] as String
-		_back_btn.text = tr("←  Back to %s") % _level_display_name(parent_id)
+		_back_btn.text = "\uea60  " + _level_display_name(parent_id)
 		_back_btn.reset_size()
 		_back_btn.position = Vector2(x, y)
 
@@ -3674,12 +3674,7 @@ func _update_nested_nav() -> void:
 func _make_nav_button(label: String) -> Button:
 	var btn := Button.new()
 	btn.text = label
-	btn.add_theme_font_size_override("font_size", 13)
-	var rs := GameTheme.make_rent_btn_style()
-	btn.add_theme_stylebox_override("normal",  rs[0])
-	btn.add_theme_stylebox_override("hover",   rs[1])
-	btn.add_theme_stylebox_override("pressed", rs[1])
-	btn.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	GameTheme.hud_button(btn)
 	return btn
 
 
