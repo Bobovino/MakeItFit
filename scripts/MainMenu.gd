@@ -23,7 +23,7 @@ func _draw() -> void:
 
 
 func _ready() -> void:
-	theme = GameTheme.make()
+	theme = GameTheme.make_legacy()
 
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

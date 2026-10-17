@@ -43,19 +43,11 @@ func _build() -> void:
 	var vb := MenuKit._margins(VBoxContainer.new(), 26, 12, 26, 24)
 	card.add_child(vb.get_parent())
 	vb.add_theme_constant_override("separation", 8)
-	vb.custom_minimum_size.x = 340
+	vb.custom_minimum_size.x = 380
 
 	var head := HBoxContainer.new()
 	vb.add_child(head)
-	var t := Label.new()
-	t.text = tr("Menu")
-	var hand := GameTheme.handwriting()
-	if hand:
-		t.add_theme_font_override("font", hand)
-		t.add_theme_font_size_override("font_size", 40)
-	else:
-		t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	var t := GameTheme.title_label(tr("Menu"))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	var x := MenuKit.close_button(_close)

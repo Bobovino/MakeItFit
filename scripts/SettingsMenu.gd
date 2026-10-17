@@ -219,7 +219,7 @@ func _reset_page() -> void:
 		2:
 			GameState.set_graphics_quality(StyleQuality.recommended())
 		3:
-			GameState.set_ui_scale(1.0)
+			GameState.set_ui_scale(GameState.default_ui_scale)
 			GameState.set_reduce_motion(false)
 			GameState.set_undo_keycode(KEY_Z)
 	_show_page(_page_index)

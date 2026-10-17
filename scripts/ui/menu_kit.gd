@@ -16,8 +16,8 @@ extends RefCounted
 # Every one of them works with the mouse, a finger or the keyboard alone:
 # whatever is selected is outlined, ↑ ↓ move, Enter picks, Esc goes back.
 
-const PANEL_BG := Color(0.118, 0.103, 0.088)
-const NAV_BG := Color(0.090, 0.080, 0.069)
+const PANEL_BG := GameTheme.CARD
+const NAV_BG := GameTheme.CARD_DIM
 const EDGE := 16.0                     # the least room left around a window
 const SCREEN_SIZE := Vector2(980, 620)
 
@@ -48,19 +48,11 @@ static func screen(layer: CanvasLayer, title: String, close: Callable, with_nav 
 	col.add_theme_constant_override("separation", 0)
 	panel.add_child(col)
 
-	# Header: the title in the game's hand, like a note on the drawing.
-	var header := _margins(HBoxContainer.new(), 26, 10, 14, 6)
+	# Header: the title in the logo's letter.
+	var header := _margins(HBoxContainer.new(), 26, 12, 14, 8)
 	col.add_child(header.get_parent())
 	header.add_theme_constant_override("separation", 12)
-	var t := Label.new()
-	t.text = title
-	var hand := GameTheme.handwriting()
-	if hand:
-		t.add_theme_font_override("font", hand)
-		t.add_theme_font_size_override("font_size", 40)
-	else:
-		t.add_theme_font_size_override("font_size", 26)
-	t.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	var t := GameTheme.title_label(title)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(t)
@@ -81,7 +73,7 @@ static func screen(layer: CanvasLayer, title: String, close: Callable, with_nav 
 		ns.bg_color = NAV_BG
 		ns.set_content_margin_all(12)
 		nav_panel.add_theme_stylebox_override("panel", ns)
-		nav_panel.custom_minimum_size.x = 220
+		nav_panel.custom_minimum_size.x = 240
 		middle.add_child(nav_panel)
 		nav = VBoxContainer.new()
 		nav.add_theme_constant_override("separation", 4)
@@ -104,22 +96,23 @@ static func screen(layer: CanvasLayer, title: String, close: Callable, with_nav 
 	# What the selected setting does, in a strip of its own that keeps its
 	# height, so the page doesn't jump as the selection moves.
 	var about := PanelContainer.new()
-	about.add_theme_stylebox_override("panel", _card_style(Color(0.150, 0.132, 0.110), 10, 12))
-	(about.get_theme_stylebox("panel") as StyleBoxFlat).shadow_size = 0
-	(about.get_theme_stylebox("panel") as StyleBoxFlat).set_border_width_all(1)
-	about.custom_minimum_size.y = 84
+	var about_style := GameTheme.card_style(GameTheme.CARD_DIM, 10, 14, Vector2.ZERO)
+	about_style.set_border_width_all(0)
+	about.add_theme_stylebox_override("panel", about_style)
+	about.custom_minimum_size.y = 96
 	var about_wrap := _margins(about, 18, 0, 18, 14)
 	right.add_child(about_wrap.get_parent())
 	var about_box := VBoxContainer.new()
 	about_box.add_theme_constant_override("separation", 4)
 	about.add_child(about_box)
 	var about_title := Label.new()
-	about_title.add_theme_font_size_override("font_size", 15)
-	about_title.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	about_title.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	about_title.add_theme_color_override("font_color", GameTheme.INK)
 	about_box.add_child(about_title)
 	var about_text := Label.new()
-	about_text.add_theme_font_size_override("font_size", 14)
-	about_text.add_theme_color_override("font_color", GameTheme.C_TEXT.darkened(0.1))
+	about_text.add_theme_font_override("font", GameTheme.font("body"))
+	about_text.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	about_text.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	about_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	about_box.add_child(about_text)
 	if not with_about:
@@ -167,16 +160,16 @@ static func categories(nav: VBoxContainer, names: Array, show: Callable) -> Call
 		b.button_group = group
 		b.focus_mode = Control.FOCUS_NONE
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.custom_minimum_size.y = 44
-		b.add_theme_font_size_override("font_size", 16)
+		b.custom_minimum_size.y = GameTheme.TOUCH_SMALL
+		b.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
 		b.add_theme_stylebox_override("normal", _nav_style(false, false))
 		b.add_theme_stylebox_override("hover", _nav_style(false, true))
 		b.add_theme_stylebox_override("pressed", _nav_style(true, false))
 		b.add_theme_stylebox_override("hover_pressed", _nav_style(true, false))
-		b.add_theme_color_override("font_color", GameTheme.C_TEXT.darkened(0.15))
-		b.add_theme_color_override("font_hover_color", GameTheme.C_TEXT)
-		b.add_theme_color_override("font_pressed_color", GameTheme.C_AMBER)
-		b.add_theme_color_override("font_hover_pressed_color", GameTheme.C_AMBER)
+		b.add_theme_color_override("font_color", GameTheme.INK_SOFT)
+		b.add_theme_color_override("font_hover_color", GameTheme.INK)
+		b.add_theme_color_override("font_pressed_color", GameTheme.CHALK)
+		b.add_theme_color_override("font_hover_pressed_color", GameTheme.CHALK)
 		b.toggled.connect(func(on: bool):
 			if on:
 				show.call(i))
@@ -193,13 +186,8 @@ static func categories(nav: VBoxContainer, names: Array, show: Callable) -> Call
 
 static func _nav_style(on: bool, hover: bool) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
-	s.bg_color = Color(GameTheme.C_AMBER.r, GameTheme.C_AMBER.g, GameTheme.C_AMBER.b, 0.12) if on \
-		else (Color(1, 1, 1, 0.05) if hover else Color(0, 0, 0, 0))
-	s.border_color = GameTheme.C_AMBER if on else Color(0, 0, 0, 0)
-	s.border_width_left = 3
-	s.set_corner_radius_all(6)
-	s.corner_radius_top_left = 2
-	s.corner_radius_bottom_left = 2
+	s.bg_color = GameTheme.NAVY if on else (GameTheme.CARD if hover else Color(0, 0, 0, 0))
+	s.set_corner_radius_all(8)
 	s.content_margin_left = 16
 	s.content_margin_right = 12
 	return s
@@ -213,8 +201,9 @@ static func heading(page: Control, text: String) -> Label:
 	room.content_margin_top = 14 if page.get_child_count() > 0 else 0
 	room.content_margin_bottom = 2
 	l.add_theme_stylebox_override("normal", room)
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", GameTheme.C_AMBER.darkened(0.3))
+	l.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	l.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	l.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	page.add_child(l)
 	return l
 
@@ -225,11 +214,12 @@ static func keycap(key: String, what: String) -> HBoxContainer:
 	r.add_theme_constant_override("separation", 6)
 	var k := Label.new()
 	k.text = key
-	k.add_theme_font_size_override("font_size", 12)
-	k.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	k.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	k.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	k.add_theme_color_override("font_color", GameTheme.INK)
 	var ks := StyleBoxFlat.new()
-	ks.bg_color = Color(0.200, 0.176, 0.145)
-	ks.border_color = Color(0.380, 0.330, 0.260)
+	ks.bg_color = GameTheme.CARD
+	ks.border_color = GameTheme.NAVY
 	ks.set_border_width_all(1)
 	ks.border_width_bottom = 2
 	ks.set_corner_radius_all(4)
@@ -243,86 +233,84 @@ static func keycap(key: String, what: String) -> HBoxContainer:
 	if what != "":
 		var w := Label.new()
 		w.text = what
-		w.add_theme_font_size_override("font_size", 13)
-		w.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		w.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		w.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		w.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		r.add_child(w)
 	return r
 
 
 # ── Short lists (the pause menu) ─────────────────────────────────────────────
-# A wide entry: selected by pointing at it or by ↑ ↓, outlined in amber
-# while selected. "primary" is the default action, "danger" can't be undone.
+# A wide entry: selected by pointing at it or by ↑ ↓, filled navy while
+# selected. "primary" is the default action (red), "danger" can't be undone.
 static func menu_button(text: String, kind := "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size.y = 50
-	b.add_theme_font_size_override("font_size", 17)
-	var base := Color(0.170, 0.150, 0.125)
-	var normal := _entry_style(base, Color(0, 0, 0, 0))
-	var sel := _entry_style(base.lightened(0.08), GameTheme.C_AMBER)
+	b.custom_minimum_size.y = GameTheme.TOUCH
+	b.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	var normal := _entry_style(GameTheme.CARD)
+	var sel := _entry_style(GameTheme.NAVY)
 	if kind == "primary":
-		normal = _entry_style(Color(0.330, 0.245, 0.095), Color(0.560, 0.430, 0.180))
-		sel = _entry_style(Color(0.420, 0.310, 0.110), GameTheme.C_AMBER)
+		normal = _entry_style(GameTheme.RED)
+		sel = _entry_style(GameTheme.RED.darkened(0.15))
 	b.add_theme_stylebox_override("normal", normal)
 	b.add_theme_stylebox_override("hover", sel)
 	b.add_theme_stylebox_override("focus", sel)
 	b.add_theme_stylebox_override("pressed", sel)
-	var fc := GameTheme.C_AMBER if kind == "primary" else (GameTheme.C_BAD if kind == "danger" else GameTheme.C_TEXT)
+	var fc := GameTheme.CHALK if kind == "primary" else (GameTheme.RED if kind == "danger" else GameTheme.INK)
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color", "font_hover_pressed_color"]:
-		b.add_theme_color_override(c, fc if c == "font_color" else fc.lightened(0.15))
+		b.add_theme_color_override(c, fc if c == "font_color" else GameTheme.CHALK)
 	b.mouse_entered.connect(func():
 		if not b.has_focus():
 			b.grab_focus())
 	return b
 
 
-static func _entry_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = border
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(8)
+static func _entry_style(bg: Color) -> StyleBoxFlat:
+	var s := GameTheme.card_style(bg, 8, 0, Vector2(3, 4))
 	s.content_margin_left = 20
 	s.content_margin_right = 20
-	s.anti_aliasing = true
 	return s
 
 
-# A plain button: "primary" is the amber call to action, "danger" reads as a
+# A plain button: "primary" is the red call to action, "danger" reads as a
 # warning.
 static func button(text: String, kind := "") -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size.y = 40
-	b.add_theme_font_size_override("font_size", 15)
+	b.custom_minimum_size.y = GameTheme.TOUCH_SMALL
+	b.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 	if kind == "primary":
-		var rs := GameTheme.make_rent_btn_style()
-		b.add_theme_stylebox_override("normal", rs[0])
-		b.add_theme_stylebox_override("hover", rs[1])
-		b.add_theme_stylebox_override("pressed", rs[1])
-		b.add_theme_stylebox_override("focus", rs[1])
-		b.add_theme_color_override("font_color", GameTheme.C_AMBER)
-		b.add_theme_color_override("font_hover_color", Color(1.0, 0.96, 0.72))
-		b.add_theme_color_override("font_focus_color", Color(1.0, 0.96, 0.72))
+		var n := GameTheme.card_style(GameTheme.RED, 8, 0, Vector2(3, 4))
+		n.set_content_margin(SIDE_LEFT, 22)
+		n.set_content_margin(SIDE_RIGHT, 22)
+		var h := n.duplicate() as StyleBoxFlat
+		h.bg_color = GameTheme.RED.darkened(0.15)
+		b.add_theme_stylebox_override("normal", n)
+		b.add_theme_stylebox_override("hover", h)
+		b.add_theme_stylebox_override("pressed", h)
+		b.add_theme_stylebox_override("focus", h)
+		for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+			b.add_theme_color_override(c, GameTheme.CHALK)
 	elif kind == "danger":
-		b.add_theme_color_override("font_color", GameTheme.C_BAD)
-		b.add_theme_color_override("font_hover_color", GameTheme.C_BAD.lightened(0.2))
-		b.add_theme_color_override("font_focus_color", GameTheme.C_BAD.lightened(0.2))
+		b.add_theme_color_override("font_color", GameTheme.RED)
+		b.add_theme_color_override("font_hover_color", GameTheme.RED)
+		b.add_theme_color_override("font_focus_color", GameTheme.RED)
 	return b
 
 
 static func close_button(close: Callable) -> Button:
 	var x := Button.new()
-	x.text = "✕"
+	x.icon = load("res://assets/icons/x.svg")
+	x.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	x.flat = true
 	x.focus_mode = Control.FOCUS_NONE
 	x.tooltip_text = TranslationServer.translate("Close")
-	x.custom_minimum_size = Vector2(44, 44)
-	x.add_theme_font_size_override("font_size", 20)
-	x.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	x.add_theme_color_override("font_hover_color", GameTheme.C_AMBER)
+	x.custom_minimum_size = Vector2(GameTheme.TOUCH_SMALL, GameTheme.TOUCH_SMALL)
+	x.add_theme_color_override("icon_normal_color", GameTheme.INK_SOFT)
+	x.add_theme_color_override("icon_hover_color", GameTheme.RED)
+	x.add_theme_color_override("icon_pressed_color", GameTheme.RED)
 	x.pressed.connect(close)
 	return x
 
@@ -347,29 +335,26 @@ static func dialog(host: Node, title: String, text: String, yes_text: String, on
 	var card := PanelContainer.new()
 	card.theme = GameTheme.make()
 	card.add_theme_stylebox_override("panel", _card_style(PANEL_BG, 14, 2))
-	card.custom_minimum_size.x = 460
+	card.custom_minimum_size.x = 520
 	center.add_child(card)
 	var vb := _margins(VBoxContainer.new(), 26, 22, 26, 20)
 	card.add_child(vb.get_parent())
 	vb.add_theme_constant_override("separation", 14)
-	var t := Label.new()
-	t.text = title
-	t.add_theme_font_size_override("font_size", 20)
-	t.add_theme_color_override("font_color", GameTheme.C_AMBER)
-	vb.add_child(t)
+	vb.add_child(GameTheme.title_label(title))
 	var body := Label.new()
 	body.text = text
-	body.add_theme_font_size_override("font_size", 15)
-	body.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	body.add_theme_font_override("font", GameTheme.font("body"))
+	body.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	body.add_theme_color_override("font_color", GameTheme.INK)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size.x = 408
+	body.custom_minimum_size.x = 468
 	vb.add_child(body)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_END
 	vb.add_child(row)
 	var no := button(TranslationServer.translate("Cancel"))
-	no.custom_minimum_size.x = 140
+	no.custom_minimum_size.x = 150
 	no.pressed.connect(cancel)
 	row.add_child(no)
 	var yes := button(yes_text, "danger" if danger else "primary")
@@ -397,11 +382,12 @@ class _Dialog extends CanvasLayer:
 
 
 # ── Text for help pages ──────────────────────────────────────────────────────
-static func text(parent: Control, line: String, size := 15) -> Label:
+static func text(parent: Control, line: String, size := GameTheme.FS_BODY) -> Label:
 	var lbl := Label.new()
 	lbl.text = line
+	lbl.add_theme_font_override("font", GameTheme.font("body"))
 	lbl.add_theme_font_size_override("font_size", size)
-	lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	lbl.add_theme_color_override("font_color", GameTheme.INK)
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.add_theme_constant_override("paragraph_spacing", 2)
@@ -409,15 +395,15 @@ static func text(parent: Control, line: String, size := 15) -> Label:
 	return lbl
 
 
-# A list item: an amber bullet and its wrapped text beside it.
+# A list item: a red bullet and its wrapped text beside it.
 static func bullet(parent: Control, line: String) -> HBoxContainer:
 	var r := HBoxContainer.new()
 	r.add_theme_constant_override("separation", 12)
 	parent.add_child(r)
 	var dot := Label.new()
 	dot.text = "•"
-	dot.add_theme_font_size_override("font_size", 15)
-	dot.add_theme_color_override("font_color", GameTheme.C_AMBER.darkened(0.2))
+	dot.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	dot.add_theme_color_override("font_color", GameTheme.RED)
 	dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	r.add_child(dot)
 	text(r, line)
@@ -427,7 +413,7 @@ static func bullet(parent: Control, line: String) -> HBoxContainer:
 # A framed block, for a card inside a page.
 static func boxed(parent: Control) -> VBoxContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(Color(0.150, 0.132, 0.110), Color(0.260, 0.225, 0.178), 8))
+	panel.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(GameTheme.CARD_DIM, GameTheme.CARD_DIM, 8))
 	parent.add_child(panel)
 	var vb := _margins(VBoxContainer.new(), 8, 6, 8, 6)
 	vb.add_theme_constant_override("separation", 4)
@@ -444,7 +430,7 @@ static func is_escape(event: InputEvent) -> bool:
 # ── Pieces ───────────────────────────────────────────────────────────────────
 static func _backdrop(layer: CanvasLayer, close: Callable) -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.04, 0.06, 0.72)
+	bg.color = Color(GameTheme.NAVY, 0.72)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	layer.add_child(bg)
 	ScreenFit.cover(bg)
@@ -455,22 +441,12 @@ static func _backdrop(layer: CanvasLayer, close: Callable) -> void:
 
 
 static func _card_style(bg: Color, radius: int, margin: int) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = GameTheme.C_BORDER
-	s.set_border_width_all(2)
-	s.set_corner_radius_all(radius)
-	s.anti_aliasing = true
-	s.set_content_margin_all(margin)
-	s.shadow_color = Color(0, 0, 0, 0.5)
-	s.shadow_size = 22
-	s.shadow_offset = Vector2(0, 8)
-	return s
+	return GameTheme.card_style(bg, radius, margin, Vector2(6, 7))
 
 
 static func _rule() -> ColorRect:
 	var r := ColorRect.new()
-	r.color = Color(GameTheme.C_BORDER.r, GameTheme.C_BORDER.g, GameTheme.C_BORDER.b, 0.8)
+	r.color = Color(GameTheme.NAVY, 0.15)
 	r.custom_minimum_size.y = 1
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return r

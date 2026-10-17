@@ -365,7 +365,7 @@ func _ready() -> void:
 
 
 func _apply_ui_theme() -> void:
-	var t := GameTheme.make()
+	var t := GameTheme.make_legacy()
 	minimap.theme       = t
 	tenant_card.theme   = t
 	inventory.theme     = t

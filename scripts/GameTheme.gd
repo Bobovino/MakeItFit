@@ -1,8 +1,93 @@
 extends RefCounted
 class_name GameTheme
 
+# ── The look: "plano de cápsula" ────────────────────────────────────────────
+# Taken from the Steam capsule: an indigo drawing board with a white grid,
+# white cards that stand off it on a navy extrusion (like the logo's letters),
+# navy ink, and one warm colour, the red of her hair, kept for the main action
+# and for what is missing. Screens move onto this one at a time; the walnut
+# palette below (C_*) is what the ones not moved yet still use.
+const INDIGO     := Color("464a85")   # the drawing board
+const INDIGO_DK  := Color("3b3e74")   # floors and wells drawn on it
+const NAVY       := Color("1b2759")   # ink on white, and the extrusion under cards
+const CARD       := Color("ffffff")
+const CARD_DIM   := Color("eef0f8")   # a quieter card: side panels, strips
+const INK        := NAVY
+const INK_SOFT   := Color("5a5f86")   # secondary text on white (6:1)
+const CHALK      := Color("ffffff")   # text on indigo (8:1)
+const CHALK_SOFT := Color("c9cbe6")   # secondary text on indigo (5:1)
+const RED        := Color("d9443f")   # the main action; what is missing
+const OK         := Color("2e7d52")   # done, on white
+const EXTRUDE    := Vector2(4, 5)     # how far a card's navy edge shows
+
+# Type scale, in px of the 1280 x 720 design (a phone starts at ui_scale 1.25,
+# so body text is about 14 sp there). Nothing should need a size off this list.
+const FS_CAPTION := 16
+const FS_BODY    := 20
+const FS_LABEL   := 22
+const FS_TITLE   := 30
+const FS_DISPLAY := 44
+const FS_HERO    := 72
+
+# The least a control is tall: 64 px is about 46 dp on a phone, 52 px for
+# secondary controls.
+const TOUCH       := 64
+const TOUCH_SMALL := 52
+
+# Archivo (UI and text), Anton (titles, upper case), IBM Plex Mono (numbers,
+# measurements, the fax). Caveat stays for signatures on the fax only.
+static var _fonts: Dictionary = {}
+
+static func font(kind: String) -> Font:
+	if _fonts.has(kind):
+		return _fonts[kind]
+	var f: Font = null
+	match kind:
+		"ui", "body":
+			var v := FontVariation.new()
+			v.base_font = load("res://assets/fonts/Archivo.ttf")
+			var ts := TextServerManager.get_primary_interface()
+			v.variation_opentype = {ts.name_to_tag("wght"): 600 if kind == "ui" else 500}
+			f = v
+		"display":
+			f = load("res://assets/fonts/Anton-Regular.ttf")
+		"mono":
+			f = load("res://assets/fonts/IBMPlexMono-Regular.ttf")
+		"mono_bold":
+			f = load("res://assets/fonts/IBMPlexMono-SemiBold.ttf")
+	_fonts[kind] = f
+	return f
+
+
+# A card of the new look: white (or `bg`), rounded, standing on its navy edge.
+static func card_style(bg := CARD, radius := 12, margin := 0, extrude := EXTRUDE) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = NAVY
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(radius)
+	s.set_content_margin_all(margin)
+	s.anti_aliasing = true
+	if extrude != Vector2.ZERO:
+		s.shadow_color = NAVY
+		s.shadow_size = 1
+		s.shadow_offset = extrude
+	return s
+
+
+# A title in the logo's letter: Anton, upper case.
+static func title_label(text: String, size := FS_TITLE, color := INK) -> Label:
+	var l := Label.new()
+	l.text = text.to_upper()
+	l.add_theme_font_override("font", font("display"))
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+
 # Palette — "drafting desk at dusk": warm charcoal-umber chrome so the cool
 # cyanotype blueprint reads as a document lying on a warm desk, not wallpaper.
+# Still used by the screens not yet on the look above.
 const C_BG      := Color(0.145, 0.125, 0.105)   # desk shadow (warm charcoal)
 const C_BG2     := Color(0.195, 0.170, 0.140)   # raised surfaces / buttons (walnut)
 const C_BORDER  := Color(0.320, 0.270, 0.205)   # warm taupe
@@ -24,9 +109,8 @@ const BP_INK_SOFT := Color(0.640, 0.790, 0.920)
 const BP_GRID_MAJ := Color(0.560, 0.780, 0.980, 0.26)
 
 
-# Handwritten accent font (Caveat, OFL) — used sparingly: the APPROVED stamp,
-# tenant brief notes, pencil-style annotations. Everything else stays Space
-# Grotesk via the global fallback font.
+# Handwritten accent font (Caveat, OFL): signatures on the fax. Everything
+# else is Archivo (see font()), set on the root window by GameState.
 static var _hand_font: Font = null
 
 static func handwriting() -> Font:
@@ -35,7 +119,108 @@ static func handwriting() -> Font:
 	return _hand_font
 
 
+# The theme of the new look, for the screens moved onto it (the menus first).
 static func make() -> Theme:
+	var t := Theme.new()
+	t.default_font = font("ui")
+	t.default_font_size = FS_BODY
+
+	t.set_stylebox("panel", "PanelContainer", card_style(CARD, 12, 4))
+
+	var normal := card_style(CARD, 8, 0, Vector2(3, 4))
+	_pad(normal, 18, 8)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = CARD_DIM
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = NAVY
+	pressed.shadow_offset = Vector2(1, 1)
+	var focus := hover.duplicate() as StyleBoxFlat
+	focus.border_color = RED
+	focus.set_border_width_all(3)
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = CARD_DIM
+	disabled.border_color = INK_SOFT.lerp(CARD, 0.5)
+	disabled.shadow_size = 0
+	for pair in [["normal", normal], ["hover", hover], ["pressed", pressed], ["hover_pressed", pressed],
+			["focus", focus], ["disabled", disabled]]:
+		t.set_stylebox(pair[0], "Button", pair[1])
+	t.set_color("font_color", "Button", INK)
+	t.set_color("font_hover_color", "Button", INK)
+	t.set_color("font_focus_color", "Button", INK)
+	t.set_color("font_pressed_color", "Button", CHALK)
+	t.set_color("font_hover_pressed_color", "Button", CHALK)
+	t.set_color("font_disabled_color", "Button", INK_SOFT)
+	for c in ["icon_normal_color", "icon_hover_color", "icon_focus_color"]:
+		t.set_color(c, "Button", INK)
+	t.set_color("icon_pressed_color", "Button", CHALK)
+	t.set_color("icon_hover_pressed_color", "Button", CHALK)
+	t.set_constant("outline_size", "Button", 0)
+	t.set_constant("h_separation", "Button", 10)
+
+	t.set_color("font_color", "Label", INK)
+	t.set_stylebox("panel", "ScrollContainer", StyleBoxEmpty.new())
+	t.set_stylebox("scroll", "VScrollBar", _scroll_track())
+	t.set_stylebox("grabber", "VScrollBar", _scroll_grab(INK_SOFT.lerp(CARD, 0.4)))
+	t.set_stylebox("grabber_highlight", "VScrollBar", _scroll_grab(INK_SOFT))
+	t.set_stylebox("grabber_pressed", "VScrollBar", _scroll_grab(NAVY))
+
+	for type in ["CheckButton", "CheckBox"]:
+		var flat := StyleBoxEmpty.new()
+		flat.content_margin_top = 6
+		flat.content_margin_bottom = 6
+		for st in ["normal", "pressed", "disabled", "hover", "hover_pressed"]:
+			t.set_stylebox(st, type, flat)
+		t.set_stylebox("focus", type, StyleBoxEmpty.new())
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			t.set_color(c, type, INK)
+		t.set_color("font_disabled_color", type, INK_SOFT)
+		t.set_constant("h_separation", type, 10)
+	var off_track := INK_SOFT.lerp(CARD, 0.55)
+	t.set_icon("unchecked", "CheckButton", _switch_icon_in(false, false, off_track, NAVY, CARD))
+	t.set_icon("checked", "CheckButton", _switch_icon_in(true, false, NAVY, NAVY, CARD))
+	t.set_icon("unchecked_disabled", "CheckButton", _switch_icon_in(false, true, off_track, NAVY, CARD))
+	t.set_icon("checked_disabled", "CheckButton", _switch_icon_in(true, true, NAVY, NAVY, CARD))
+
+	t.set_stylebox("slider", "HSlider", _track(CARD_DIM.darkened(0.08)))
+	t.set_stylebox("grabber_area", "HSlider", _track(NAVY))
+	t.set_stylebox("grabber_area_highlight", "HSlider", _track(NAVY))
+	t.set_icon("grabber", "HSlider", _knob_icon(RED, 22))
+	t.set_icon("grabber_highlight", "HSlider", _knob_icon(RED.lightened(0.1), 24))
+	t.set_icon("grabber_disabled", "HSlider", _knob_icon(INK_SOFT, 22))
+	t.set_constant("center_grabber", "HSlider", 0)
+
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		t.set_stylebox(st, "OptionButton", t.get_stylebox(st, "Button"))
+	t.set_color("font_color", "OptionButton", INK)
+	t.set_color("font_hover_color", "OptionButton", INK)
+	t.set_color("font_focus_color", "OptionButton", INK)
+	t.set_stylebox("panel", "PopupMenu", card_style(CARD, 8, 6))
+	var row_hover := StyleBoxFlat.new()
+	row_hover.bg_color = CARD_DIM
+	row_hover.set_corner_radius_all(5)
+	t.set_stylebox("hover", "PopupMenu", row_hover)
+	t.set_color("font_color", "PopupMenu", INK)
+	t.set_color("font_hover_color", "PopupMenu", INK)
+	t.set_color("font_disabled_color", "PopupMenu", INK_SOFT)
+	t.set_constant("v_separation", "PopupMenu", 12)
+
+	var rule := StyleBoxLine.new()
+	rule.color = Color(NAVY, 0.15)
+	rule.thickness = 1
+	t.set_stylebox("separator", "HSeparator", rule)
+	return t
+
+
+static func _pad(s: StyleBox, h: int, v: int) -> void:
+	s.content_margin_left = h
+	s.content_margin_right = h
+	s.content_margin_top = v
+	s.content_margin_bottom = v
+
+
+# The walnut theme, for the screens not moved onto the new look yet (the
+# in-level HUD, the title screen, the map).
+static func make_legacy() -> Theme:
 	var t := Theme.new()
 
 	# PanelContainer
@@ -226,8 +411,12 @@ static func _over(under: Color, top: Color, dist: float) -> Color:
 
 
 static func _switch_icon(on: bool, disabled: bool) -> ImageTexture:
-	var track := Color(0.560, 0.430, 0.180) if on else Color(0.300, 0.262, 0.215)
-	var knob := C_PAPER if on else Color(0.700, 0.640, 0.560)
+	return _switch_icon_in(on, disabled, Color(0.560, 0.430, 0.180) if on else Color(0.300, 0.262, 0.215),
+		Color(0, 0, 0, 0), C_PAPER if on else Color(0.700, 0.640, 0.560))
+
+
+# A switch: `track` behind, `knob` on it, `edge` (unless clear) round the track.
+static func _switch_icon_in(on: bool, disabled: bool, track: Color, edge: Color, knob: Color) -> ImageTexture:
 	if disabled:
 		track = track.darkened(0.45)
 		knob = knob.darkened(0.45)
@@ -235,8 +424,11 @@ static func _switch_icon(on: bool, disabled: bool) -> ImageTexture:
 	var h := 22
 	var cx := w - 11.0 if on else 11.0
 	return _shape_icon(w, h, func(p: Vector2) -> Color:
-		var c := _over(Color(0, 0, 0, 0), track, _round_rect_dist(p, Rect2(1, 2, w - 2, h - 4), (h - 4) * 0.5))
-		return _over(c, knob, p.distance_to(Vector2(cx, h * 0.5)) - 8.0), "switch_%s_%s" % [on, disabled])
+		var d := _round_rect_dist(p, Rect2(1, 2, w - 2, h - 4), (h - 4) * 0.5)
+		var c := _over(Color(0, 0, 0, 0), track, d)
+		if edge.a > 0.0:
+			c = _over(c, edge, absf(d + 0.75) - 0.75)
+		return _over(c, knob, p.distance_to(Vector2(cx, h * 0.5)) - 7.0), "switch_%s_%s_%s_%s" % [on, disabled, track.to_html(), knob.to_html()])
 
 
 static func _tick_icon(on: bool, disabled: bool) -> ImageTexture:

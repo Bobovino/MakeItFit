@@ -290,7 +290,7 @@ func _build_scene() -> void:
 	# Themed root — buttons inherit GameTheme from here
 	var troot := Control.new()
 	troot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	troot.theme = GameTheme.make()
+	troot.theme = GameTheme.make_legacy()
 	troot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(troot)
 

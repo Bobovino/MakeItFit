@@ -53,7 +53,9 @@ var pathing_rule: bool = false
 # Multiplies Window.content_scale_factor — a blunt but genuinely global text/
 # UI size control, since font sizes are set ad-hoc per-Label throughout the
 # codebase rather than through one themed size that could be scaled centrally.
-var ui_scale: float = 1.0
+# A phone starts larger, so text and controls reach a readable, touchable size.
+var default_ui_scale: float = 1.25 if OS.has_feature("mobile") else 1.0
+var ui_scale: float = default_ui_scale
 # "" until the player picks one in Settings: follow the device's language.
 signal language_changed(lang: String)
 var language: String = ""
@@ -194,10 +196,15 @@ func set_undo_keycode(kc: int) -> void:
 # fallback_font, ...) call throughout the codebase — furniture labels, the
 # blueprint title block/dimensions, wall-panel item names — all resolve to
 # this same font as a result, without touching each call site individually.
+# Archivo everywhere. It goes into Godot's own default theme, the last place
+# every control looks. As ThemeDB.fallback_font it never showed, because the
+# default theme has a font of its own (Open Sans) and that wins; on the root
+# window's theme it would only reach controls whose parents are all controls,
+# not the many under a CanvasLayer or a plain Node.
 func _apply_global_font() -> void:
-	const FONT_PATH := "res://assets/fonts/SpaceGrotesk.ttf"
-	if ResourceLoader.exists(FONT_PATH):
-		ThemeDB.fallback_font = load(FONT_PATH)
+	var f := GameTheme.font("ui")
+	ThemeDB.get_default_theme().default_font = f
+	ThemeDB.fallback_font = f
 
 
 # ── Persistence ───────────────────────────────────────────────────────────────

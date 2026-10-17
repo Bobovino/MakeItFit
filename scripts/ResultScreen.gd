@@ -20,7 +20,7 @@ signal retry_requested          # start the level over
 signal watch_again_requested    # close this and look around the finished apartment
 signal advance_level_requested  # load the next owned level directly
 
-const STAMP_RED := Color(0.780, 0.320, 0.260)
+const STAMP_INK := GameTheme.NAVY   # the Housing Office's stamp
 
 var _layer_root: Control
 var _card: PanelContainer
@@ -51,8 +51,8 @@ func show_success(info: Dictionary) -> void:
 	star_box.add_theme_constant_override("separation", 2)
 	body.add_child(star_box)
 	var star_lbl := Label.new()
-	star_lbl.add_theme_font_size_override("font_size", 34)
-	star_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	star_lbl.add_theme_font_size_override("font_size", GameTheme.FS_DISPLAY)
+	star_lbl.add_theme_color_override("font_color", GameTheme.RED)
 	star_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	star_box.add_child(star_lbl)
 	_animate_stars(star_lbl, stars)
@@ -60,8 +60,8 @@ func show_success(info: Dictionary) -> void:
 	var left: int = info.get("budget_left", 0)
 	var share := float(left) / float(start) if start > 0 else 1.0
 	var why := Label.new()
-	why.add_theme_font_size_override("font_size", 14)
-	why.add_theme_color_override("font_color", GameTheme.C_TEXT.darkened(0.15))
+	why.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	why.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if stars >= 3:
@@ -89,21 +89,22 @@ func show_success(info: Dictionary) -> void:
 	body.add_child(goal_row)
 	var goal_lbl := Label.new()
 	goal_lbl.text = tr("Portfolio")
-	goal_lbl.add_theme_font_size_override("font_size", 14)
-	goal_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	goal_lbl.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	goal_lbl.add_theme_color_override("font_color", GameTheme.INK)
 	goal_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	goal_row.add_child(goal_lbl)
 	var goal_val := Label.new()
 	goal_val.text = tr("%s of %s €/month") % [_money(portfolio), _money(GameState.RETIRE_GOAL)]
-	goal_val.add_theme_font_size_override("font_size", 14)
-	goal_val.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	goal_val.add_theme_font_override("font", GameTheme.font("mono"))
+	goal_val.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	goal_val.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	goal_row.add_child(goal_val)
 	body.add_child(_progress(float(portfolio) / float(GameState.RETIRE_GOAL)))
 	if retired:
 		var done := Label.new()
 		done.text = tr("Goal reached: your portfolio is complete.")
-		done.add_theme_font_size_override("font_size", 14)
-		done.add_theme_color_override("font_color", GameTheme.C_GOOD)
+		done.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+		done.add_theme_color_override("font_color", GameTheme.OK)
 		done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		body.add_child(done)
 
@@ -151,8 +152,8 @@ func show_failure(reason: String, missing: Array = []) -> void:
 			list.add_child(row)
 			var x := Label.new()
 			x.text = "✕"
-			x.add_theme_font_size_override("font_size", 15)
-			x.add_theme_color_override("font_color", GameTheme.C_BAD)
+			x.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+			x.add_theme_color_override("font_color", GameTheme.RED)
 			x.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 			row.add_child(x)
 			MenuKit.text(row, m as String)
@@ -199,7 +200,7 @@ func _open() -> VBoxContainer:
 	add_child(_layer_root)
 	ScreenFit.cover(_layer_root)
 	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.04, 0.06, 0.62)
+	bg.color = Color(GameTheme.NAVY, 0.62)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP   # the level under it stays untouchable
 	_layer_root.add_child(bg)
 	ScreenFit.cover(bg)
@@ -210,7 +211,7 @@ func _open() -> VBoxContainer:
 	_card = PanelContainer.new()
 	_card.theme = GameTheme.make()
 	_card.add_theme_stylebox_override("panel", MenuKit._card_style(MenuKit.PANEL_BG, 14, 0))
-	_card.custom_minimum_size.x = 640
+	_card.custom_minimum_size.x = 680
 	center.add_child(_card)
 	var body := MenuKit._margins(VBoxContainer.new(), 32, 24, 32, 22) as VBoxContainer
 	body.add_theme_constant_override("separation", 18)
@@ -228,37 +229,35 @@ func _header(body: VBoxContainer, kicker: String, title: String, subtitle: Strin
 	row.add_child(col)
 	var k := Label.new()
 	k.text = kicker.to_upper()
-	k.add_theme_font_size_override("font_size", 13)
-	k.add_theme_color_override("font_color", GameTheme.C_GOOD if stamp else GameTheme.C_BAD)
+	k.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	k.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	k.add_theme_color_override("font_color", GameTheme.OK if stamp else GameTheme.RED)
 	col.add_child(k)
-	var t := Label.new()
-	t.text = title
-	var hand := GameTheme.handwriting()
-	if hand and stamp:
-		t.add_theme_font_override("font", hand)
-		t.add_theme_font_size_override("font_size", 46)
+	var t: Label
+	if stamp:
+		t = GameTheme.title_label(title, GameTheme.FS_DISPLAY)
 	else:
-		t.add_theme_font_size_override("font_size", 20 if not stamp else 30)
-	t.add_theme_color_override("font_color", GameTheme.C_AMBER if stamp else GameTheme.C_TEXT)
+		t = Label.new()
+		t.text = title
+		t.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+		t.add_theme_color_override("font_color", GameTheme.INK)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(t)
 	if subtitle != "":
 		var s := Label.new()
 		s.text = subtitle
-		s.add_theme_font_size_override("font_size", 15)
-		s.add_theme_color_override("font_color", GameTheme.C_TEXT.darkened(0.15))
+		s.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+		s.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		col.add_child(s)
 	if stamp:
 		var st := Label.new()
 		st.text = tr("APPROVED")
-		var hf := GameTheme.handwriting()
-		if hf:
-			st.add_theme_font_override("font", hf)
-		st.add_theme_font_size_override("font_size", 26)
-		st.add_theme_color_override("font_color", Color(STAMP_RED, 0.9))
+		st.add_theme_font_override("font", GameTheme.font("display"))
+		st.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+		st.add_theme_color_override("font_color", Color(STAMP_INK, 0.9))
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = Color(STAMP_RED, 0.85)
+		sb.border_color = Color(STAMP_INK, 0.85)
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(6)
 		sb.content_margin_left = 12
@@ -280,7 +279,7 @@ func _header(body: VBoxContainer, kicker: String, title: String, subtitle: Strin
 
 func _tile(row: HBoxContainer, label: String, value: String, note: String) -> void:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(Color(0.150, 0.132, 0.110), Color(0.260, 0.225, 0.178), 10))
+	p.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(GameTheme.CARD_DIM, GameTheme.CARD_DIM, 10))
 	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(p)
 	var vb := MenuKit._margins(VBoxContainer.new(), 6, 4, 6, 4)
@@ -288,32 +287,34 @@ func _tile(row: HBoxContainer, label: String, value: String, note: String) -> vo
 	p.add_child(vb.get_parent())
 	var l := Label.new()
 	l.text = label.to_upper()
-	l.add_theme_font_size_override("font_size", 11)
-	l.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	l.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	l.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	l.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(l)
 	var v := Label.new()
 	v.text = value
-	v.add_theme_font_size_override("font_size", 22)
-	v.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	v.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	v.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+	v.add_theme_color_override("font_color", GameTheme.INK)
 	vb.add_child(v)
 	var n := Label.new()
 	n.text = note
-	n.add_theme_font_size_override("font_size", 12)
-	n.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	n.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	n.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(n)
 
 
 func _progress(share: float) -> Control:
 	var track := Panel.new()
-	track.custom_minimum_size.y = 10
+	track.custom_minimum_size.y = 12
 	var ts := StyleBoxFlat.new()
-	ts.bg_color = Color(0.200, 0.176, 0.145)
-	ts.set_corner_radius_all(5)
+	ts.bg_color = GameTheme.CARD_DIM.darkened(0.08)
+	ts.set_corner_radius_all(6)
 	track.add_theme_stylebox_override("panel", ts)
 	var fill := Panel.new()
 	var fs := StyleBoxFlat.new()
-	fs.bg_color = GameTheme.C_GOOD
-	fs.set_corner_radius_all(5)
+	fs.bg_color = GameTheme.NAVY
+	fs.set_corner_radius_all(6)
 	fill.add_theme_stylebox_override("panel", fs)
 	track.add_child(fill)
 	track.resized.connect(func():

@@ -83,7 +83,7 @@ func _needs_legend(body: VBoxContainer) -> void:
 	body.add_child(row)
 	for need in TenantCard.NEED_GLYPH:
 		var tile := PanelContainer.new()
-		tile.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(Color(0.145, 0.127, 0.105), Color(0.250, 0.215, 0.170), 8))
+		tile.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(GameTheme.CARD_DIM, GameTheme.CARD_DIM, 8))
 		tile.custom_minimum_size = Vector2(160, 0)
 		row.add_child(tile)
 		var chip := HBoxContainer.new()
@@ -95,8 +95,8 @@ func _needs_legend(body: VBoxContainer) -> void:
 		chip.add_child(glyph)
 		var name_lbl := Label.new()
 		name_lbl.text = Loc.need_name(need as String)
-		name_lbl.add_theme_font_size_override("font_size", 14)
-		name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+		name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		name_lbl.add_theme_color_override("font_color", GameTheme.INK)
 		chip.add_child(name_lbl)
 
 
@@ -129,10 +129,10 @@ func _mechanic_card(parent: Control, mech_title: String, body: String) -> void:
 	var vb := MenuKit.boxed(parent)
 	var t := Label.new()
 	t.text = mech_title
-	t.add_theme_font_size_override("font_size", 15)
-	t.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	t.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	t.add_theme_color_override("font_color", GameTheme.INK)
 	vb.add_child(t)
-	MenuKit.text(vb, body, 13)
+	MenuKit.text(vb, body, GameTheme.FS_CAPTION)
 
 
 func _close() -> void:

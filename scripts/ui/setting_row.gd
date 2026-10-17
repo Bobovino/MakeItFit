@@ -93,7 +93,7 @@ static func action(label_text: String, describe: Variant, text: String, on_press
 	r._btn.focus_mode = Control.FOCUS_NONE
 	r._btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	r._btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	r._btn.add_theme_font_size_override("font_size", 14)
+	r._btn.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 	r._btn.pressed.connect(func(): r._activate())
 	r._value_box.add_child(r._btn)
 	return r
@@ -141,8 +141,8 @@ func _setup(label_text: String, describe: Variant, kind: String, value: Variant,
 	add_child(line)
 	var lbl := Label.new()
 	lbl.text = label_text
-	lbl.add_theme_font_size_override("font_size", 16)
-	lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+	lbl.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	lbl.add_theme_color_override("font_color", GameTheme.INK)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -166,8 +166,8 @@ func _setup(label_text: String, describe: Variant, kind: String, value: Variant,
 
 func _value_label(align: HorizontalAlignment) -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	l.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+	l.add_theme_color_override("font_color", GameTheme.INK)
 	l.horizontal_alignment = align
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -181,19 +181,19 @@ func _arrow(glyph: String, dir: int) -> Button:
 	b.text = glyph
 	b.flat = true
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(36, 36)
-	b.add_theme_font_size_override("font_size", 22)
-	b.add_theme_color_override("font_color", GameTheme.C_MUTED)
-	b.add_theme_color_override("font_hover_color", GameTheme.C_AMBER)
+	b.custom_minimum_size = Vector2(GameTheme.TOUCH_SMALL, GameTheme.TOUCH_SMALL)
+	b.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+	b.add_theme_color_override("font_color", GameTheme.INK_SOFT)
+	b.add_theme_color_override("font_hover_color", GameTheme.RED)
 	b.pressed.connect(func(): _step_by(dir))
 	return b
 
 
 func _style(on: bool) -> void:
 	var s := StyleBoxFlat.new()
-	s.bg_color = Color(1, 1, 1, 0.07) if on else Color(1, 1, 1, 0.025)
-	s.border_color = GameTheme.C_AMBER if on else Color(0, 0, 0, 0)
-	s.border_width_left = 3
+	s.bg_color = GameTheme.CARD_DIM if on else Color(0, 0, 0, 0)
+	s.border_color = GameTheme.NAVY if on else Color(0, 0, 0, 0)
+	s.border_width_left = 4
 	s.set_corner_radius_all(6)
 	s.corner_radius_top_left = 2
 	s.corner_radius_bottom_left = 2
@@ -211,7 +211,7 @@ func _refresh() -> void:
 					_value_lbl.text = it[0] as String
 		"toggle":
 			_value_lbl.text = tr("On") if _value else tr("Off")
-			_value_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER if _value else GameTheme.C_MUTED)
+			_value_lbl.add_theme_color_override("font_color", GameTheme.INK if _value else GameTheme.INK_SOFT)
 			if _switch.button_pressed != (_value as bool):
 				_switch.set_pressed_no_signal(_value as bool)
 		"slider":
