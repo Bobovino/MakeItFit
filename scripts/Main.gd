@@ -3073,14 +3073,15 @@ func _position_minimap() -> void:
 	# spans the bottom edge instead of sitting in a right-hand column.
 	var right_edge := RIGHT_X
 	if not minimap.has_meta("docked"):
-		# One piece with the bar: same navy, squared off where they meet.
+		# One piece with the bar: the same white card, edged in navy where it
+		# rises out of it.
 		minimap.set_meta("docked", true)
 		var tab := StyleBoxFlat.new()
-		tab.bg_color = TenantCard.BP_BG
-		tab.border_color = TenantCard.BP_LINE
-		tab.set_border_width(SIDE_TOP, 1)
-		tab.set_border_width(SIDE_LEFT, 1)
-		tab.corner_radius_top_left = 8
+		tab.bg_color = GameTheme.CARD
+		tab.border_color = GameTheme.NAVY
+		tab.set_border_width(SIDE_TOP, 2)
+		tab.set_border_width(SIDE_LEFT, 2)
+		tab.corner_radius_top_left = 12
 		tab.set_content_margin_all(8)
 		tab.anti_aliasing = true
 		minimap.add_theme_stylebox_override("panel", tab)

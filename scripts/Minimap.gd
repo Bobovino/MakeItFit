@@ -29,6 +29,7 @@ func set_compact(compact: bool) -> void:
 
 func setup(floors: Array, hidden_ids: Array = []) -> void:
 	var container: BoxContainer = $HBox
+	container.add_theme_constant_override("separation", 8)
 	for child in container.get_children():
 		child.queue_free()
 	_buttons.clear()
@@ -51,10 +52,7 @@ func setup(floors: Array, hidden_ids: Array = []) -> void:
 
 		var btn := Button.new()
 		btn.text = fd["label"] as String
-		btn.add_theme_font_size_override("font_size", 9 if _compact else 10)
-		btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		if _compact:
-			btn.custom_minimum_size.y = 30
+		_style_button(btn)
 		btn.toggle_mode  = true
 		btn.button_group = _button_group
 		btn.pressed.connect(_on_floor_pressed.bind(fid))
@@ -94,10 +92,7 @@ func add_floor(fd: Dictionary, anchor_floor_id: String = "") -> void:
 	var container: BoxContainer = $HBox
 	var btn := Button.new()
 	btn.text = fd["label"] as String
-	btn.add_theme_font_size_override("font_size", 9 if _compact else 10)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	if _compact:
-		btn.custom_minimum_size.y = 30
+	_style_button(btn)
 	btn.toggle_mode  = true
 	btn.button_group = _button_group
 	btn.pressed.connect(_on_floor_pressed.bind(fid))
@@ -135,6 +130,16 @@ func set_floor_locked(floor_id: String, locked: bool) -> void:
 	var lbl: String  = _labels.get(floor_id, floor_id) as String
 	btn.disabled = locked
 	btn.text     = (tr("%s (locked)") % lbl) if locked else lbl
+
+
+# A floor tab: a white card, navy when it is the floor on show, at touch
+# height and as wide as the column.
+func _style_button(btn: Button) -> void:
+	GameTheme.hud_button(btn)
+	btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	btn.custom_minimum_size.y = 44
+	btn.size_flags_horizontal = Control.SIZE_FILL if not _compact else Control.SIZE_SHRINK_BEGIN
+	btn.focus_mode = Control.FOCUS_NONE
 
 
 func _on_floor_pressed(floor_id: String) -> void:
