@@ -261,6 +261,7 @@ func _build_ui() -> void:
 	# this needs z_index to actually show instead of being painted over.
 	top_pc.add_theme_stylebox_override("panel", ts)
 	top_pc.z_index = 2
+	top_pc.visible = false   # the screen shows only the plan and the fax
 	add_child(top_pc)
 
 	var top_row := HBoxContainer.new()
@@ -326,6 +327,7 @@ func _build_ui() -> void:
 		var peek_sn := StyleBoxFlat.new()
 		peek_sn.bg_color = GameTheme.NAVY
 		peek.add_theme_stylebox_override("panel", peek_sn)
+		peek.visible = false
 		add_child(peek)
 
 	var table_bg := Panel.new()
@@ -340,6 +342,7 @@ func _build_ui() -> void:
 	table_sn.border_color = GameTheme.NAVY
 	table_sn.set_border_width_all(2)
 	table_bg.add_theme_stylebox_override("panel", table_sn)
+	table_bg.visible = false
 	add_child(table_bg)
 
 	# Paper grain — a scatter of tiny specks over the kraft sheet so it reads
@@ -377,7 +380,7 @@ func _build_ui() -> void:
 	# added on top of it all stacked up — this is CityMap's own map-only fill,
 	# not the shared constant, so brightening it here can't affect that editor.
 	var blueprint_fill := ColorRect.new()
-	blueprint_fill.color = GameTheme.INDIGO_DK
+	blueprint_fill.color = Color(0, 0, 0, 0)   # the board itself shows through
 	blueprint_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	blueprint_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_clip.add_child(blueprint_fill)
@@ -388,7 +391,7 @@ func _build_ui() -> void:
 	var grid_lines := Control.new()
 	grid_lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	grid_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grid_lines.draw.connect(_draw_blueprint_grid.bind(grid_lines))
+	grid_lines.visible = false
 	map_clip.add_child(grid_lines)
 
 	# A per-district color wash used to live here, translucent over the whole
@@ -410,6 +413,7 @@ func _build_ui() -> void:
 	frame_sn.border_color = GameTheme.NAVY
 	frame_sn.set_border_width_all(2)
 	clip_frame.add_theme_stylebox_override("panel", frame_sn)
+	clip_frame.visible = false
 	add_child(clip_frame)
 
 	_map_content = Control.new()
@@ -762,6 +766,8 @@ func _rebuild_tabs() -> void:
 				_current_block_id = bid
 				break
 	_update_tab_styles()
+	# One district (the demo): no rail to choose between districts.
+	_tabs_col.visible = _tab_buttons.size() > 1
 
 
 func _block_has_levels(bid: int) -> bool:
@@ -2068,6 +2074,7 @@ func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> fl
 	hdr.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	hdr.add_theme_color_override("font_color", GameTheme.CHALK)
 	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hdr.visible = false
 	_map_content.add_child(hdr)
 
 	var origin := Vector2(H_PAD, start_y + BLOCK_HEADER_H)
@@ -2106,15 +2113,12 @@ func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> fl
 # Draws the river, the islands, the bridges and the place names. Everything
 # is in fractions of this control's own size.
 class KoenigsbergPlan extends Control:
-	# Drawn in chalk on the indigo board, by hand and not very well: wobbly
-	# banks, two lumpy islands, the seven bridges as planks, a few houses and
-	# trees, and in the corner the graph Euler drew of it, which has no walk
-	# that crosses every bridge once.
+	# Only what the homes need around them: the Pregel, its two islands and
+	# the seven bridges (which famously have no walk crossing each once),
+	# in chalk on the indigo board.
 	const WATER := Color("394a96")
 	const LAND := GameTheme.INDIGO
-	const CHALK := Color(1, 1, 1, 0.92)
-	const CHALK_SOFT := Color(1, 1, 1, 0.45)
-	const INK_SOFT := GameTheme.CHALK_SOFT
+	const CHALK := Color(1, 1, 1, 0.85)
 
 	func _ready() -> void:
 		resized.connect(queue_redraw)
@@ -2122,21 +2126,11 @@ class KoenigsbergPlan extends Control:
 	func _frac(x: float, y: float, w: float, h: float) -> Rect2:
 		return Rect2(Vector2(x, y) * size, Vector2(w, h) * size)
 
-	# A point nudged by a smooth, repeatable wobble, so lines look hand drawn
-	# and come out the same every frame.
+	# A point nudged by a smooth, repeatable wobble, so lines look hand drawn.
 	func _wob(p: Vector2, amp: float, seed: float) -> Vector2:
 		return p + Vector2(sin(p.y * 0.045 + seed * 1.7) + sin(p.x * 0.11 + seed),
 			cos(p.x * 0.05 + seed * 2.3) + sin(p.y * 0.13 + seed * 0.7)) * amp * 0.5
 
-	# A chalk stroke: the line twice, a hair apart, the second fainter.
-	func _chalk(pts: PackedVector2Array, col: Color, width: float) -> void:
-		draw_polyline(pts, col, width, true)
-		var off := PackedVector2Array()
-		for p in pts:
-			off.append(p + Vector2(0.8, 0.6))
-		draw_polyline(off, Color(col, col.a * 0.35), width * 0.6, true)
-
-	# A wobbly line from a to b in `n` steps.
 	func _line(a: Vector2, b: Vector2, seed: float, amp := 2.0, n := 24) -> PackedVector2Array:
 		var pts := PackedVector2Array()
 		for i in n + 1:
@@ -2151,19 +2145,13 @@ class KoenigsbergPlan extends Control:
 		for i in 48:
 			var a := TAU * i / 48.0
 			var d := Vector2(cos(a), sin(a))
-			# a superellipse: squarer than an ellipse, rounder than a box
 			var p := Vector2(signf(d.x) * pow(absf(d.x), 0.55), signf(d.y) * pow(absf(d.y), 0.55))
-			p = c + p * half * (1.0 + 0.05 * sin(a * 3.0 + seed) + 0.03 * sin(a * 7.0 + seed * 2.0))
-			pts.append(p)
+			pts.append(c + p * half * (1.0 + 0.05 * sin(a * 3.0 + seed) + 0.03 * sin(a * 7.0 + seed * 2.0)))
 		return pts
 
 	func _draw() -> void:
-		var hand := GameTheme.handwriting()
-		var font := GameTheme.font("ui")
 		var w := size.x
 		var h := size.y
-
-		# The Pregel: a band across the page between two wobbly banks.
 		var north := _line(Vector2(-10, h * 0.30), Vector2(w + 10, h * 0.30), 1.0, 7.0, 40)
 		var south := _line(Vector2(-10, h * 0.70), Vector2(w + 10, h * 0.70), 4.0, 7.0, 40)
 		var water := PackedVector2Array(north)
@@ -2171,122 +2159,29 @@ class KoenigsbergPlan extends Control:
 		back.reverse()
 		water.append_array(back)
 		draw_colored_polygon(water, WATER)
-		# Little waves.
-		for i in 26:
-			var x := fmod(i * 97.0, w)
-			var y := h * (0.34 + 0.05 * (i % 7))
-			var wave := PackedVector2Array()
-			for k in 7:
-				wave.append(Vector2(x + k * 4.0, y + sin(k * 1.6) * 2.0))
-			draw_polyline(wave, CHALK_SOFT, 1.2, true)
-		_chalk(north, CHALK, 2.5)
-		_chalk(south, CHALK, 2.5)
-		if hand:
-			draw_string(hand, Vector2(w * 0.035, h * 0.53), "Pregel", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, INK_SOFT)
+		draw_polyline(north, CHALK, 2.0, true)
+		draw_polyline(south, CHALK, 2.0, true)
 
-		# The two islands.
 		var seed := 2.0
 		for isle in [_frac(0.20, 0.38, 0.26, 0.24), _frac(0.56, 0.38, 0.42, 0.24)]:
 			var blob := _blob(isle, seed)
 			draw_colored_polygon(blob, LAND)
 			var ring := blob.duplicate()
 			ring.append(blob[0])
-			_chalk(ring, CHALK, 2.5)
+			draw_polyline(ring, CHALK, 2.0, true)
 			seed += 3.0
 
-		# Houses and trees on the banks and islands, where nothing else goes.
-		var spots := [
-			Vector2(0.06, 0.18), Vector2(0.14, 0.22), Vector2(0.47, 0.12), Vector2(0.53, 0.22),
-			Vector2(0.86, 0.13), Vector2(0.93, 0.22), Vector2(0.24, 0.80), Vector2(0.06, 0.90),
-			Vector2(0.40, 0.88), Vector2(0.72, 0.84), Vector2(0.80, 0.92), Vector2(0.95, 0.80),
-		]
-		for i in spots.size():
-			var p: Vector2 = spots[i] * size
-			if i % 3 == 2:
-				_tree(p, 9.0 + (i % 2) * 3.0, float(i))
-			else:
-				_house(p, 14.0 + (i % 2) * 4.0, float(i))
-
-		# The seven bridges: a plank with its rails and a few boards.
-		var bseed := 10.0
+		# The seven bridges: white planks with navy rails.
 		for bridge in CityMap.KBG_BRIDGES:
 			var r := _frac(bridge[1], bridge[2], bridge[3], bridge[4])
-			draw_rect(r.grow(1.0), GameTheme.CARD_DIM)
+			draw_rect(r.grow(1.0), GameTheme.CARD)
 			var along_y := r.size.y > r.size.x
 			if along_y:
-				_chalk(_line(r.position, r.position + Vector2(0, r.size.y), bseed, 1.5, 8), GameTheme.NAVY, 2.5)
-				_chalk(_line(r.position + Vector2(r.size.x, 0), r.end, bseed + 1.0, 1.5, 8), GameTheme.NAVY, 2.5)
-				var y := r.position.y + 6.0
-				while y < r.end.y - 3.0:
-					draw_line(Vector2(r.position.x + 2, y), Vector2(r.end.x - 2, y + 1.0), Color(GameTheme.NAVY, 0.35), 1.0, true)
-					y += 7.0
+				draw_line(r.position, r.position + Vector2(0, r.size.y), GameTheme.NAVY, 3.0)
+				draw_line(r.position + Vector2(r.size.x, 0), r.end, GameTheme.NAVY, 3.0)
 			else:
-				_chalk(_line(r.position, r.position + Vector2(r.size.x, 0), bseed, 1.5, 8), GameTheme.NAVY, 2.5)
-				_chalk(_line(r.position + Vector2(0, r.size.y), r.end, bseed + 1.0, 1.5, 8), GameTheme.NAVY, 2.5)
-				var x := r.position.x + 6.0
-				while x < r.end.x - 3.0:
-					draw_line(Vector2(x, r.position.y + 2), Vector2(x + 1.0, r.end.y - 2), Color(GameTheme.NAVY, 0.35), 1.0, true)
-					x += 7.0
-			bseed += 2.0
-			var label := bridge[0] as String
-			var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-			var lp := (r.position + Vector2(r.size.x + 5.0, r.size.y * 0.5 + 4.0)) if along_y \
-				else (r.position + Vector2((r.size.x - lw) * 0.5, -6.0))
-			draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK_SOFT)
-
-		# Neighbourhood names.
-		for dn in CityMap.KBG_DISTRICTS:
-			draw_string(GameTheme.font("display"), Vector2(dn[1], dn[2]) * size + Vector2(0, 16),
-				(dn[0] as String).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, CHALK)
-
-		_euler_sketch(Vector2(w - 150.0, h - 112.0))
-
-	func _house(p: Vector2, s: float, seed: float) -> void:
-		var base := PackedVector2Array([p + Vector2(-s * 0.5, 0), p + Vector2(-s * 0.5, -s * 0.7),
-			p + Vector2(s * 0.5, -s * 0.7), p + Vector2(s * 0.5, 0), p + Vector2(-s * 0.5, 0)])
-		var roof := PackedVector2Array([p + Vector2(-s * 0.65, -s * 0.65), p + Vector2(0, -s * 1.25),
-			p + Vector2(s * 0.65, -s * 0.65)])
-		for i in base.size():
-			base[i] = _wob(base[i], 1.2, seed)
-		for i in roof.size():
-			roof[i] = _wob(roof[i], 1.2, seed + 1.0)
-		_chalk(base, CHALK_SOFT, 1.8)
-		_chalk(roof, CHALK_SOFT, 1.8)
-		draw_rect(Rect2(p + Vector2(-s * 0.12, -s * 0.38), Vector2(s * 0.24, s * 0.38)), CHALK_SOFT, false, 1.2)
-
-	func _tree(p: Vector2, r: float, seed: float) -> void:
-		var crown := PackedVector2Array()
-		for i in 21:
-			var a := TAU * i / 20.0
-			crown.append(p + Vector2(cos(a), sin(a)) * r * (1.0 + 0.15 * sin(a * 5.0 + seed)) + Vector2(0, -r * 1.4))
-		_chalk(crown, CHALK_SOFT, 1.8)
-		_chalk(PackedVector2Array([p + Vector2(0, -r * 0.45), p]), CHALK_SOFT, 1.8)
-
-	# Euler's drawing of the problem, 1736: the four pieces of land as dots,
-	# the seven bridges as lines between them. Every dot has an odd number of
-	# lines, so no walk crosses each bridge exactly once.
-	func _euler_sketch(o: Vector2) -> void:
-		var hand := GameTheme.handwriting()
-		var north := o + Vector2(60, 8)
-		var kneip := o + Vector2(18, 48)
-		var lomse := o + Vector2(110, 48)
-		var south := o + Vector2(60, 88)
-		var edges := [[north, kneip, -18.0], [north, kneip, 18.0], [south, kneip, -18.0],
-			[south, kneip, 18.0], [kneip, lomse, 0.0], [north, lomse, 0.0], [south, lomse, 0.0]]
-		for e in edges:
-			var a: Vector2 = e[0]
-			var b: Vector2 = e[1]
-			var bend: float = e[2]
-			var mid := (a + b) * 0.5 + (b - a).orthogonal().normalized() * bend
-			var pts := PackedVector2Array()
-			for i in 13:
-				var t := i / 12.0
-				pts.append(a.lerp(mid, t).lerp(mid.lerp(b, t), t))
-			_chalk(pts, CHALK_SOFT, 1.5)
-		for n in [north, kneip, lomse, south]:
-			draw_circle(n, 4.5, CHALK)
-		if hand:
-			draw_string(hand, o + Vector2(0, 116), "Euler, 1736: imposible", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, INK_SOFT)
+				draw_line(r.position, r.position + Vector2(r.size.x, 0), GameTheme.NAVY, 3.0)
+				draw_line(r.position + Vector2(0, r.size.y), r.end, GameTheme.NAVY, 3.0)
 
 
 func _build_debug_section(start_y: float) -> float:
