@@ -275,22 +275,11 @@ func _build_ui() -> void:
 	motif.draw.connect(_draw_title_motif.bind(motif))
 	top_row.add_child(motif)
 
-	var title_lbl := Label.new()
-	title_lbl.text = tr("PROJECTS")
-	title_lbl.add_theme_font_size_override("font_size", 15)
-	title_lbl.add_theme_color_override("font_color", Color(0.20, 0.17, 0.13))
-	var tape := StyleBoxFlat.new()          # a strip of masking tape, written on
-	tape.bg_color = Color(0.93, 0.88, 0.72, 0.94)
-	tape.set_content_margin(SIDE_LEFT, 16)
-	tape.set_content_margin(SIDE_RIGHT, 16)
-	tape.set_content_margin(SIDE_TOP, 3)
-	tape.set_content_margin(SIDE_BOTTOM, 3)
-	tape.shadow_color = Color(0, 0, 0, 0.25)
-	tape.shadow_size = 3
-	tape.shadow_offset = Vector2(1, 2)
-	title_lbl.add_theme_stylebox_override("normal", tape)
+	var title_lbl := GameTheme.title_label(tr("PROJECTS"), GameTheme.FS_TITLE, GameTheme.CHALK)
+	title_lbl.add_theme_color_override("font_shadow_color", GameTheme.NAVY)
+	title_lbl.add_theme_constant_override("shadow_offset_x", 3)
+	title_lbl.add_theme_constant_override("shadow_offset_y", 3)
 	title_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	title_lbl.rotation_degrees = -1.2
 	top_row.add_child(title_lbl)
 	var title_gap := Control.new()
 	title_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -316,8 +305,9 @@ func _build_ui() -> void:
 	top_row.add_child(legend_sep)
 	var legend := Label.new()
 	legend.text = "▲ N   ├── 5 m ──┤"
-	legend.add_theme_font_size_override("font_size", 11)
-	legend.add_theme_color_override("font_color", Color(0.70, 0.90, 0.82, 0.55))
+	legend.add_theme_font_override("font", GameTheme.font("mono"))
+	legend.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	legend.add_theme_color_override("font_color", GameTheme.CHALK_SOFT)
 	top_row.add_child(legend)
 
 	# The OUTSIDE reads as a thick stack of kraft/off-white paper resting on
@@ -334,7 +324,7 @@ func _build_ui() -> void:
 		peek.offset_bottom = corner_off.y - SHEET_GAP
 		peek.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var peek_sn := StyleBoxFlat.new()
-		peek_sn.bg_color = GameTheme.C_PAPER.darkened(0.12 if corner_off.x < -6 else 0.06)
+		peek_sn.bg_color = GameTheme.NAVY
 		peek.add_theme_stylebox_override("panel", peek_sn)
 		add_child(peek)
 
@@ -346,12 +336,9 @@ func _build_ui() -> void:
 	table_bg.offset_bottom = -SHEET_GAP
 	table_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var table_sn := StyleBoxFlat.new()
-	table_sn.bg_color = GameTheme.C_PAPER   # thick kraft/off-white sheet
-	table_sn.border_color = GameTheme.C_BORDER
-	table_sn.set_border_width_all(1)
-	table_sn.shadow_color = Color(0, 0, 0, 0.35)
-	table_sn.shadow_size = 10
-	table_sn.shadow_offset = Vector2(3, 5)
+	table_sn.bg_color = GameTheme.CARD
+	table_sn.border_color = GameTheme.NAVY
+	table_sn.set_border_width_all(2)
 	table_bg.add_theme_stylebox_override("panel", table_sn)
 	add_child(table_bg)
 
@@ -366,7 +353,7 @@ func _build_ui() -> void:
 	grain.offset_right = -(INFO_W + 1 + SCROLLBAR_W)
 	grain.offset_bottom = -SHEET_GAP
 	grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grain.draw.connect(_draw_paper_grain.bind(grain))
+	grain.visible = false   # the sheet is plain white card now
 	add_child(grain)
 
 	# Clipped map viewport — cards scroll within this. Inset from the paper
@@ -390,7 +377,7 @@ func _build_ui() -> void:
 	# added on top of it all stacked up — this is CityMap's own map-only fill,
 	# not the shared constant, so brightening it here can't affect that editor.
 	var blueprint_fill := ColorRect.new()
-	blueprint_fill.color = Color(0.11, 0.24, 0.40)
+	blueprint_fill.color = GameTheme.INDIGO_DK
 	blueprint_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	blueprint_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_clip.add_child(blueprint_fill)
@@ -420,7 +407,7 @@ func _build_ui() -> void:
 	clip_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var frame_sn := StyleBoxFlat.new()
 	frame_sn.bg_color = Color(0, 0, 0, 0)
-	frame_sn.border_color = Color(GameTheme.BP_INK.r, GameTheme.BP_INK.g, GameTheme.BP_INK.b, 0.55)
+	frame_sn.border_color = GameTheme.NAVY
 	frame_sn.set_border_width_all(2)
 	clip_frame.add_theme_stylebox_override("panel", frame_sn)
 	add_child(clip_frame)
@@ -480,13 +467,16 @@ func _build_ui() -> void:
 
 	const FAX_INK := FaxStyle.INK
 	const FAX_INK_SOFT := FaxStyle.INK_SOFT
-	var fax_head := _make_info_label(vb, 9, FAX_INK_SOFT)
+	var fax_head := _make_info_label(vb, 13, FAX_INK_SOFT)
+	fax_head.add_theme_font_override("font", GameTheme.font("mono"))
+	fax_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fax_head.text = tr("FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1")
 	var head_rule := HSeparator.new()
 	head_rule.add_theme_color_override("color", FAX_INK_SOFT)
 	vb.add_child(head_rule)
-	_info_title = _make_info_label(vb, 19, FAX_INK, true)
-	_info_district = _make_info_label(vb, 11, FAX_INK_SOFT)
+	_info_title = _make_info_label(vb, GameTheme.FS_TITLE, FAX_INK, true)
+	_info_title.add_theme_font_override("font", GameTheme.font("display"))
+	_info_district = _make_info_label(vb, GameTheme.FS_CAPTION, FAX_INK_SOFT)
 
 	var preview_frame := PanelContainer.new()
 	var pf_sn := StyleBoxFlat.new()
@@ -532,7 +522,7 @@ func _build_ui() -> void:
 
 	_info_tenant = Label.new()
 	_info_tenant.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_info_tenant.add_theme_font_size_override("font_size", 11)
+	_info_tenant.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	_info_tenant.add_theme_color_override("font_color", FAX_INK)
 	_info_tenant.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tenant_row.add_child(_info_tenant)
@@ -565,9 +555,9 @@ func _build_ui() -> void:
 	_fax_lcd = lcd
 
 	_action_btn = Button.new()
-	_action_btn.custom_minimum_size = Vector2(210, 44)
-	_action_btn.add_theme_font_size_override("font_size", 14)
-	_fax_key(_action_btn, Color(0.22, 0.56, 0.36), Color(0.94, 1.0, 0.95))   # the big green Start key
+	_action_btn.custom_minimum_size = Vector2(210, GameTheme.TOUCH)
+	_action_btn.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	_fax_key(_action_btn, FaxStyle.KEY_GREEN, GameTheme.CHALK)   # the big Start key
 	_action_btn.pressed.connect(_on_action_pressed)
 	vb.add_child(_action_btn)
 
@@ -576,10 +566,10 @@ func _build_ui() -> void:
 	# scratch instead of reopening the layout they won with.
 	_redesign_btn = Button.new()
 	_redesign_btn.text = tr("Redesign from Scratch")
-	_redesign_btn.custom_minimum_size = Vector2(210, 32)
-	_redesign_btn.add_theme_font_size_override("font_size", 11)
+	_redesign_btn.custom_minimum_size = Vector2(210, GameTheme.TOUCH_SMALL)
+	_redesign_btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	_redesign_btn.visible = false
-	_fax_key(_redesign_btn, Color(0.42, 0.44, 0.47), Color(0.95, 0.95, 0.95))
+	_fax_key(_redesign_btn, FaxStyle.KEY_GREY, GameTheme.CHALK)
 	_redesign_btn.pressed.connect(_on_redesign_pressed)
 	vb.add_child(_redesign_btn)
 
@@ -588,19 +578,19 @@ func _build_ui() -> void:
 	vb.add_child(keys)
 	var settings_btn := Button.new()
 	settings_btn.text = tr("\ueb20 Settings")
-	settings_btn.custom_minimum_size = Vector2(0, 34)
+	settings_btn.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
 	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	settings_btn.add_theme_font_size_override("font_size", 12)
-	_fax_key(settings_btn, Color(0.42, 0.44, 0.47), Color(0.95, 0.95, 0.95))
+	settings_btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	_fax_key(settings_btn, FaxStyle.KEY_GREY, GameTheme.CHALK)
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	keys.add_child(settings_btn)
 	var quit_btn := Button.new()
 	quit_btn.text = tr("\ueb0d Quit")
 	quit_btn.tooltip_text = tr("Quit to desktop")
-	quit_btn.custom_minimum_size = Vector2(0, 34)
+	quit_btn.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
 	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	quit_btn.add_theme_font_size_override("font_size", 12)
-	_fax_key(quit_btn, Color(0.62, 0.26, 0.24), Color(1.0, 0.94, 0.93))   # the red Stop key
+	quit_btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	_fax_key(quit_btn, FaxStyle.KEY_GREY, GameTheme.CHALK_SOFT)
 	quit_btn.pressed.connect(func(): get_tree().quit())
 	keys.add_child(quit_btn)
 
@@ -814,13 +804,13 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	# clipping the bottom of the button.
 	btn.text = "%s  %s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
 	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	btn.add_theme_font_size_override("font_size", 10)
-	btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
-	btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+	btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	btn.add_theme_color_override("font_color", GameTheme.CHALK)
+	btn.add_theme_color_override("font_hover_color", GameTheme.CHALK)
 
 	var sn := StyleBoxFlat.new()
-	sn.bg_color = col.darkened(0.35)
-	sn.border_color = col
+	sn.bg_color = GameTheme.NAVY
+	sn.border_color = GameTheme.NAVY
 	sn.set_border_width_all(1)
 	sn.corner_radius_top_right = 8
 	sn.corner_radius_bottom_right = 8
@@ -828,12 +818,11 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	btn.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
-	sh.bg_color = col.darkened(0.15)
+	sh.bg_color = GameTheme.NAVY.lightened(0.12)
 	btn.add_theme_stylebox_override("hover", sh)
 	btn.add_theme_stylebox_override("pressed", sh)
 
 	btn.pressed.connect(_on_tab_pressed.bind(bid))
-	btn.draw.connect(_draw_sheen.bind(btn))
 	return btn
 
 
@@ -1500,14 +1489,14 @@ func _create_parcel(ld: Dictionary) -> Button:
 
 	var sn := StyleBoxFlat.new()
 	sn.bg_color = Color(0, 0, 0, 0)
-	sn.border_color = Color(0.30, 0.46, 0.60, 0.7)
+	sn.border_color = Color(0, 0, 0, 0)
 	sn.set_border_width_all(1)
-	sn.set_corner_radius_all(2)
+	sn.set_corner_radius_all(8)
 	btn.add_theme_stylebox_override("normal", sn)
 
 	var sh := sn.duplicate() as StyleBoxFlat
-	sh.border_color = GameTheme.C_AMBER
-	sh.set_border_width_all(2)
+	sh.border_color = GameTheme.RED
+	sh.set_border_width_all(3)
 	btn.add_theme_stylebox_override("hover", sh)
 	btn.add_theme_stylebox_override("pressed", sh)
 
@@ -1517,8 +1506,8 @@ func _create_parcel(ld: Dictionary) -> Button:
 	# A bright white outline (distinct from hover's amber, and from the
 	# amber fill real levels already use) is _set_card_selected's job below.
 	var sn_selected := sn.duplicate() as StyleBoxFlat
-	sn_selected.border_color = Color(1, 1, 1, 0.95)
-	sn_selected.set_border_width_all(3)
+	sn_selected.border_color = GameTheme.RED
+	sn_selected.set_border_width_all(4)
 	btn.set_meta("sn_normal", sn)
 	btn.set_meta("sn_selected", sn_selected)
 
@@ -1633,7 +1622,7 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 		bld.offset_right = -bld_margin; bld.offset_bottom = -bld_margin
 		bld.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var bsn := StyleBoxFlat.new()
-		bsn.set_corner_radius_all(1)
+		bsn.set_corner_radius_all(8)
 		bsn.set_border_width_all(1)
 		# Real levels get a two-layer "keycap": a darker base filling the full
 		# cell, plus a brighter face inset from the bottom-right only, so the
@@ -1659,7 +1648,7 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 			base_dark = 0.55; face_dark = 0.30; border_dark = 0.15
 		else:
 			base_dark = 0.68; face_dark = 0.50; border_dark = 0.35
-		bsn.bg_color     = GameTheme.C_AMBER.darkened(base_dark)
+		bsn.bg_color     = GameTheme.NAVY
 		bsn.border_color = Color(0, 0, 0, 0)
 		bld.add_theme_stylebox_override("panel", bsn)
 		btn.add_child(bld)
@@ -1671,10 +1660,10 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 							 maxf(btn.size.y - bld_margin * 2.0 - depth, 1.0))
 		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var fsn := StyleBoxFlat.new()
-		fsn.set_corner_radius_all(1)
-		fsn.bg_color     = GameTheme.C_AMBER.darkened(face_dark)
-		fsn.border_color = GameTheme.C_AMBER if is_owned else GameTheme.C_AMBER.darkened(border_dark)
-		fsn.set_border_width_all(2 if is_owned else 1)
+		fsn.set_corner_radius_all(8)
+		fsn.bg_color     = GameTheme.CARD if is_owned else (GameTheme.CARD_DIM if can_buy else GameTheme.CARD_DIM.darkened(0.12))
+		fsn.border_color = GameTheme.NAVY
+		fsn.set_border_width_all(2)
 		face.add_theme_stylebox_override("panel", fsn)
 		bld.add_child(face)
 
@@ -1686,9 +1675,9 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 	nm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	nm.offset_left = margin + 4; nm.offset_right = -(margin + 4)
 	nm.offset_top  = margin + 3; nm.offset_bottom = -(margin + 20)
-	nm.add_theme_font_size_override("font_size", 14)
+	nm.add_theme_font_size_override("font_size", 17)
 	nm.add_theme_color_override("font_color",
-		Color(1, 1, 1, 0.92) if level_visible else Color(0.40, 0.42, 0.46))
+		GameTheme.INK if level_visible else GameTheme.CHALK_SOFT)
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(nm)
 
@@ -1697,21 +1686,20 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 	status.offset_top    = -(margin + 20)
 	status.offset_bottom = -margin
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status.add_theme_font_size_override("font_size", 12)
+	status.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if not level_visible:
 		status.text = "\ueae2"
-		status.add_theme_color_override("font_color", Color(0.40, 0.42, 0.46))
+		status.add_theme_color_override("font_color", GameTheme.CHALK_SOFT)
 	elif stars > 0:
 		status.text = "\uf6a6".repeat(stars)
-		status.add_theme_color_override("font_color", GameTheme.C_AMBER)
+		status.add_theme_color_override("font_color", GameTheme.RED)
 	elif is_owned:
-		status.text = "●"
-		status.add_theme_color_override("font_color", Color(0.55, 0.85, 0.65))
+		status.text = ""   # owned and not yet rented: nothing to add to the name
 	else:
 		status.text = ("%d€" % cost) if can_buy else "\ueae2 %d€" % cost
 		status.add_theme_color_override("font_color",
-			Color(0.80, 0.86, 0.92) if can_buy else Color(0.44, 0.46, 0.50))
+			GameTheme.INK if can_buy else GameTheme.INK_SOFT)
 	btn.add_child(status)
 
 
@@ -2023,8 +2011,8 @@ func _draw_paper_grain(node: Control) -> void:
 func _draw_blueprint_grid(node: Control) -> void:
 	var vw := int(node.size.x) + 1
 	var vh := int(node.size.y) + 1
-	var minor := Color(0.20, 0.30, 0.45, 0.28)
-	var major := Color(0.30, 0.44, 0.62, 0.45)
+	var minor := Color(1, 1, 1, 0.06)
+	var major := Color(1, 1, 1, 0.14)
 	for x in range(0, vw, 20):
 		node.draw_line(Vector2(x, 0), Vector2(x, vh), major if x % 100 == 0 else minor, 1.0)
 	for y in range(0, vh, 20):
@@ -2076,8 +2064,9 @@ func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> fl
 	hdr.text = "%s  ·  %s" % [(bd.get("name", "") as String).to_upper(), bd.get("subtitle", "") as String]
 	hdr.position = Vector2(H_PAD + BLOCK_PAD, start_y)
 	hdr.size = Vector2(map_w - BLOCK_PAD * 2, 16)
-	hdr.add_theme_font_size_override("font_size", 10)
-	hdr.add_theme_color_override("font_color", Color(bd.get("color", "#3870A0") as String).lightened(0.45))
+	hdr.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	hdr.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	hdr.add_theme_color_override("font_color", GameTheme.CHALK)
 	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_content.add_child(hdr)
 
@@ -2117,11 +2106,11 @@ func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> fl
 # Draws the river, the islands, the bridges and the place names. Everything
 # is in fractions of this control's own size.
 class KoenigsbergPlan extends Control:
-	const WATER := Color(0.30, 0.56, 0.78, 0.38)
-	const WATER_EDGE := Color(0.62, 0.82, 0.98, 0.55)
-	const LAND := Color(0.12, 0.26, 0.42, 1.0)
-	const INK := Color(0.88, 0.92, 0.96, 0.92)
-	const INK_SOFT := Color(0.62, 0.80, 0.96, 0.60)
+	const WATER := Color(0.30, 0.42, 0.78, 0.45)
+	const WATER_EDGE := Color(1, 1, 1, 0.55)
+	const LAND := GameTheme.INDIGO
+	const INK := GameTheme.CHALK
+	const INK_SOFT := GameTheme.CHALK_SOFT
 
 	func _ready() -> void:
 		resized.connect(queue_redraw)
@@ -2142,7 +2131,7 @@ class KoenigsbergPlan extends Control:
 			var wy := river.position.y + river.size.y * (0.12 + 0.13 * i)
 			draw_dashed_line(Vector2(0, wy), Vector2(size.x, wy), Color(WATER_EDGE.r, WATER_EDGE.g, WATER_EDGE.b, 0.16), 1.0, 14.0)
 		var flow := "P R E G E L"
-		draw_string(font, Vector2(size.x * 0.045, size.y * 0.515), flow, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, INK_SOFT)
+		draw_string(font, Vector2(size.x * 0.045, size.y * 0.515), flow, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, INK_SOFT)
 
 		# The two islands.
 		for isle in [_frac(0.20, 0.38, 0.26, 0.24), _frac(0.56, 0.38, 0.42, 0.24)]:
@@ -2157,24 +2146,24 @@ class KoenigsbergPlan extends Control:
 		# The seven bridges: a deck with a rail down each side.
 		for bridge in CityMap.KBG_BRIDGES:
 			var r := _frac(bridge[1], bridge[2], bridge[3], bridge[4])
-			draw_rect(r, Color(0.78, 0.70, 0.52, 0.95))
+			draw_rect(r, GameTheme.CARD_DIM)
 			var along_y := r.size.y > r.size.x
 			if along_y:
-				draw_line(r.position, r.position + Vector2(0, r.size.y), INK, 1.5)
-				draw_line(r.position + Vector2(r.size.x, 0), r.end, INK, 1.5)
+				draw_line(r.position, r.position + Vector2(0, r.size.y), GameTheme.NAVY, 2.0)
+				draw_line(r.position + Vector2(r.size.x, 0), r.end, GameTheme.NAVY, 2.0)
 			else:
-				draw_line(r.position, r.position + Vector2(r.size.x, 0), INK, 1.5)
-				draw_line(r.position + Vector2(0, r.size.y), r.end, INK, 1.5)
+				draw_line(r.position, r.position + Vector2(r.size.x, 0), GameTheme.NAVY, 2.0)
+				draw_line(r.position + Vector2(0, r.size.y), r.end, GameTheme.NAVY, 2.0)
 			var label := bridge[0] as String
-			var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+			var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 			var lp := (r.position + Vector2(r.size.x + 4.0, r.size.y * 0.5 + 3.0)) if along_y \
 				else (r.position + Vector2((r.size.x - lw) * 0.5, -4.0))
-			draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, INK_SOFT)
+			draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK_SOFT)
 
 		# Neighbourhood names.
 		for dn in CityMap.KBG_DISTRICTS:
-			draw_string(font, Vector2(dn[1], dn[2]) * size + Vector2(0, 12), dn[0] as String,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK_SOFT)
+			draw_string(GameTheme.font("display"), Vector2(dn[1], dn[2]) * size + Vector2(0, 16), (dn[0] as String).to_upper(),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 18, INK)
 
 
 func _build_debug_section(start_y: float) -> float:
