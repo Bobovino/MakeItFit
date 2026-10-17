@@ -1488,6 +1488,17 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 const MIN_NESTED_INTERIOR_M2 := 20.0
 const TILE_M2 := 0.01
 
+# A box whose apartment is under MIN_NESTED_INTERIOR_M2 can't be stepped
+# into. Says so (it used to just beep) and returns true when that's the case.
+func _refuse_cramped_box(box: Furniture) -> bool:
+	var area := _level_floor_area_m2(box.child_level_id)
+	if area >= MIN_NESTED_INTERIOR_M2:
+		return false
+	Audio.play("error")
+	_toast(tr("Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²") % [area, MIN_NESTED_INTERIOR_M2], true)
+	return true
+
+
 func _on_box_entered(box: Furniture) -> void:
 	if _nested_transition_busy or not is_instance_valid(box) or box.child_level_id.is_empty():
 		return
@@ -1504,11 +1515,7 @@ func _on_box_entered(box: Furniture) -> void:
 		if (ctx as Dictionary)["parent_level_id"] == box.child_level_id:
 			push_warning("Nested box would create a cycle back to %s — refusing to enter" % box.child_level_id)
 			return
-	var area := _level_floor_area_m2(box.child_level_id)
-	if area < MIN_NESTED_INTERIOR_M2:
-		Audio.play("error")
-		push_warning("Nested level '%s' is only %.1f m² — needs at least %.0f m² to be enterable" %
-			[box.child_level_id, area, MIN_NESTED_INTERIOR_M2])
+	if _refuse_cramped_box(box):
 		return
 	_nested_transition_busy = true
 	var factor := _compute_box_occlusion(box)
@@ -1876,6 +1883,9 @@ func _enter_box_animated(box: Furniture) -> void:
 	if _nested_travel_busy or _nested_transition_busy or _map_jump_busy:
 		return
 	if not is_instance_valid(box) or box.child_level_id.is_empty():
+		return
+	# Before the camera dives in: it used to fly into a box it then couldn't enter.
+	if _refuse_cramped_box(box):
 		return
 	_nested_travel_busy = true
 	await _travel_depart(box, true)

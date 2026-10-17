@@ -3028,3 +3028,7 @@ msgstr "Maßbad"
 
 #~ msgid "NOT RENTED"
 #~ msgstr "NICHT VERMIETET"
+
+#: scripts/Main.gd
+msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
+msgstr "Zu eng zum Betreten: %.0f m² innen, eine Wohnung braucht mindestens %.0f m²"

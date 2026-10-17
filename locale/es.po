@@ -3028,3 +3028,7 @@ msgstr "Baño a medida"
 
 #~ msgid "NOT RENTED"
 #~ msgstr "SIN ALQUILAR"
+
+#: scripts/Main.gd
+msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
+msgstr "Demasiado estrecha para entrar: %.0f m² dentro, una casa necesita al menos %.0f m²"

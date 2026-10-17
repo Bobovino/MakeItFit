@@ -2953,3 +2953,7 @@ msgstr ""
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr ""
+
+#: scripts/Main.gd
+msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
+msgstr ""
