@@ -803,8 +803,8 @@ func _create_tab_button(label_text: String, col: Color, bid: int) -> Button:
 	# own, and stacking the icon above it as a 3rd line overflowed TAB_H,
 	# clipping the bottom of the button.
 	btn.text = "%s  %s" % [BLOCK_ICONS.get(bid, "▪"), label_text.to_upper()]
-	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	btn.add_theme_font_size_override("font_size", 12)
+	btn.autowrap_mode = TextServer.AUTOWRAP_WORD
+	btn.add_theme_font_size_override("font_size", 11)
 	btn.add_theme_color_override("font_color", GameTheme.CHALK)
 	btn.add_theme_color_override("font_hover_color", GameTheme.CHALK)
 
@@ -2106,10 +2106,14 @@ func _build_koenigsberg_map(start_y: float, bd: Dictionary, levels: Array) -> fl
 # Draws the river, the islands, the bridges and the place names. Everything
 # is in fractions of this control's own size.
 class KoenigsbergPlan extends Control:
-	const WATER := Color(0.30, 0.42, 0.78, 0.45)
-	const WATER_EDGE := Color(1, 1, 1, 0.55)
+	# Drawn in chalk on the indigo board, by hand and not very well: wobbly
+	# banks, two lumpy islands, the seven bridges as planks, a few houses and
+	# trees, and in the corner the graph Euler drew of it, which has no walk
+	# that crosses every bridge once.
+	const WATER := Color("394a96")
 	const LAND := GameTheme.INDIGO
-	const INK := GameTheme.CHALK
+	const CHALK := Color(1, 1, 1, 0.92)
+	const CHALK_SOFT := Color(1, 1, 1, 0.45)
 	const INK_SOFT := GameTheme.CHALK_SOFT
 
 	func _ready() -> void:
@@ -2118,52 +2122,171 @@ class KoenigsbergPlan extends Control:
 	func _frac(x: float, y: float, w: float, h: float) -> Rect2:
 		return Rect2(Vector2(x, y) * size, Vector2(w, h) * size)
 
+	# A point nudged by a smooth, repeatable wobble, so lines look hand drawn
+	# and come out the same every frame.
+	func _wob(p: Vector2, amp: float, seed: float) -> Vector2:
+		return p + Vector2(sin(p.y * 0.045 + seed * 1.7) + sin(p.x * 0.11 + seed),
+			cos(p.x * 0.05 + seed * 2.3) + sin(p.y * 0.13 + seed * 0.7)) * amp * 0.5
+
+	# A chalk stroke: the line twice, a hair apart, the second fainter.
+	func _chalk(pts: PackedVector2Array, col: Color, width: float) -> void:
+		draw_polyline(pts, col, width, true)
+		var off := PackedVector2Array()
+		for p in pts:
+			off.append(p + Vector2(0.8, 0.6))
+		draw_polyline(off, Color(col, col.a * 0.35), width * 0.6, true)
+
+	# A wobbly line from a to b in `n` steps.
+	func _line(a: Vector2, b: Vector2, seed: float, amp := 2.0, n := 24) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		for i in n + 1:
+			pts.append(_wob(a.lerp(b, float(i) / n), amp, seed))
+		return pts
+
+	# A lumpy blob filling `r`: a rounded rectangle pushed about.
+	func _blob(r: Rect2, seed: float) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		var c := r.get_center()
+		var half := r.size * 0.5
+		for i in 48:
+			var a := TAU * i / 48.0
+			var d := Vector2(cos(a), sin(a))
+			# a superellipse: squarer than an ellipse, rounder than a box
+			var p := Vector2(signf(d.x) * pow(absf(d.x), 0.55), signf(d.y) * pow(absf(d.y), 0.55))
+			p = c + p * half * (1.0 + 0.05 * sin(a * 3.0 + seed) + 0.03 * sin(a * 7.0 + seed * 2.0))
+			pts.append(p)
+		return pts
+
 	func _draw() -> void:
-		var font := ThemeDB.fallback_font
-		# The Pregel: one band across the page. The islands drawn over it
-		# leave the two arms and the channel between them as water.
-		var river := _frac(0.0, 0.30, 1.0, 0.40)
-		draw_rect(river, WATER)
-		draw_line(river.position, river.position + Vector2(river.size.x, 0), WATER_EDGE, 1.5)
-		draw_line(river.position + Vector2(0, river.size.y), river.end, WATER_EDGE, 1.5)
-		# Current lines, so it reads as flowing water and not a blue stripe.
-		for i in 7:
-			var wy := river.position.y + river.size.y * (0.12 + 0.13 * i)
-			draw_dashed_line(Vector2(0, wy), Vector2(size.x, wy), Color(WATER_EDGE.r, WATER_EDGE.g, WATER_EDGE.b, 0.16), 1.0, 14.0)
-		var flow := "P R E G E L"
-		draw_string(font, Vector2(size.x * 0.045, size.y * 0.515), flow, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, INK_SOFT)
+		var hand := GameTheme.handwriting()
+		var font := GameTheme.font("ui")
+		var w := size.x
+		var h := size.y
+
+		# The Pregel: a band across the page between two wobbly banks.
+		var north := _line(Vector2(-10, h * 0.30), Vector2(w + 10, h * 0.30), 1.0, 7.0, 40)
+		var south := _line(Vector2(-10, h * 0.70), Vector2(w + 10, h * 0.70), 4.0, 7.0, 40)
+		var water := PackedVector2Array(north)
+		var back := south.duplicate()
+		back.reverse()
+		water.append_array(back)
+		draw_colored_polygon(water, WATER)
+		# Little waves.
+		for i in 26:
+			var x := fmod(i * 97.0, w)
+			var y := h * (0.34 + 0.05 * (i % 7))
+			var wave := PackedVector2Array()
+			for k in 7:
+				wave.append(Vector2(x + k * 4.0, y + sin(k * 1.6) * 2.0))
+			draw_polyline(wave, CHALK_SOFT, 1.2, true)
+		_chalk(north, CHALK, 2.5)
+		_chalk(south, CHALK, 2.5)
+		if hand:
+			draw_string(hand, Vector2(w * 0.035, h * 0.53), "Pregel", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, INK_SOFT)
 
 		# The two islands.
+		var seed := 2.0
 		for isle in [_frac(0.20, 0.38, 0.26, 0.24), _frac(0.56, 0.38, 0.42, 0.24)]:
-			var sb := StyleBoxFlat.new()
-			sb.bg_color = LAND
-			sb.border_color = WATER_EDGE
-			sb.set_border_width_all(1)
-			sb.set_corner_radius_all(14)
-			sb.anti_aliasing = true
-			draw_style_box(sb, isle)
+			var blob := _blob(isle, seed)
+			draw_colored_polygon(blob, LAND)
+			var ring := blob.duplicate()
+			ring.append(blob[0])
+			_chalk(ring, CHALK, 2.5)
+			seed += 3.0
 
-		# The seven bridges: a deck with a rail down each side.
+		# Houses and trees on the banks and islands, where nothing else goes.
+		var spots := [
+			Vector2(0.06, 0.18), Vector2(0.14, 0.22), Vector2(0.47, 0.12), Vector2(0.53, 0.22),
+			Vector2(0.86, 0.13), Vector2(0.93, 0.22), Vector2(0.24, 0.80), Vector2(0.06, 0.90),
+			Vector2(0.40, 0.88), Vector2(0.72, 0.84), Vector2(0.80, 0.92), Vector2(0.95, 0.80),
+		]
+		for i in spots.size():
+			var p: Vector2 = spots[i] * size
+			if i % 3 == 2:
+				_tree(p, 9.0 + (i % 2) * 3.0, float(i))
+			else:
+				_house(p, 14.0 + (i % 2) * 4.0, float(i))
+
+		# The seven bridges: a plank with its rails and a few boards.
+		var bseed := 10.0
 		for bridge in CityMap.KBG_BRIDGES:
 			var r := _frac(bridge[1], bridge[2], bridge[3], bridge[4])
-			draw_rect(r, GameTheme.CARD_DIM)
+			draw_rect(r.grow(1.0), GameTheme.CARD_DIM)
 			var along_y := r.size.y > r.size.x
 			if along_y:
-				draw_line(r.position, r.position + Vector2(0, r.size.y), GameTheme.NAVY, 2.0)
-				draw_line(r.position + Vector2(r.size.x, 0), r.end, GameTheme.NAVY, 2.0)
+				_chalk(_line(r.position, r.position + Vector2(0, r.size.y), bseed, 1.5, 8), GameTheme.NAVY, 2.5)
+				_chalk(_line(r.position + Vector2(r.size.x, 0), r.end, bseed + 1.0, 1.5, 8), GameTheme.NAVY, 2.5)
+				var y := r.position.y + 6.0
+				while y < r.end.y - 3.0:
+					draw_line(Vector2(r.position.x + 2, y), Vector2(r.end.x - 2, y + 1.0), Color(GameTheme.NAVY, 0.35), 1.0, true)
+					y += 7.0
 			else:
-				draw_line(r.position, r.position + Vector2(r.size.x, 0), GameTheme.NAVY, 2.0)
-				draw_line(r.position + Vector2(0, r.size.y), r.end, GameTheme.NAVY, 2.0)
+				_chalk(_line(r.position, r.position + Vector2(r.size.x, 0), bseed, 1.5, 8), GameTheme.NAVY, 2.5)
+				_chalk(_line(r.position + Vector2(0, r.size.y), r.end, bseed + 1.0, 1.5, 8), GameTheme.NAVY, 2.5)
+				var x := r.position.x + 6.0
+				while x < r.end.x - 3.0:
+					draw_line(Vector2(x, r.position.y + 2), Vector2(x + 1.0, r.end.y - 2), Color(GameTheme.NAVY, 0.35), 1.0, true)
+					x += 7.0
+			bseed += 2.0
 			var label := bridge[0] as String
 			var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-			var lp := (r.position + Vector2(r.size.x + 4.0, r.size.y * 0.5 + 3.0)) if along_y \
-				else (r.position + Vector2((r.size.x - lw) * 0.5, -4.0))
+			var lp := (r.position + Vector2(r.size.x + 5.0, r.size.y * 0.5 + 4.0)) if along_y \
+				else (r.position + Vector2((r.size.x - lw) * 0.5, -6.0))
 			draw_string(font, lp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK_SOFT)
 
 		# Neighbourhood names.
 		for dn in CityMap.KBG_DISTRICTS:
-			draw_string(GameTheme.font("display"), Vector2(dn[1], dn[2]) * size + Vector2(0, 16), (dn[0] as String).to_upper(),
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 18, INK)
+			draw_string(GameTheme.font("display"), Vector2(dn[1], dn[2]) * size + Vector2(0, 16),
+				(dn[0] as String).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, CHALK)
+
+		_euler_sketch(Vector2(w - 150.0, h - 112.0))
+
+	func _house(p: Vector2, s: float, seed: float) -> void:
+		var base := PackedVector2Array([p + Vector2(-s * 0.5, 0), p + Vector2(-s * 0.5, -s * 0.7),
+			p + Vector2(s * 0.5, -s * 0.7), p + Vector2(s * 0.5, 0), p + Vector2(-s * 0.5, 0)])
+		var roof := PackedVector2Array([p + Vector2(-s * 0.65, -s * 0.65), p + Vector2(0, -s * 1.25),
+			p + Vector2(s * 0.65, -s * 0.65)])
+		for i in base.size():
+			base[i] = _wob(base[i], 1.2, seed)
+		for i in roof.size():
+			roof[i] = _wob(roof[i], 1.2, seed + 1.0)
+		_chalk(base, CHALK_SOFT, 1.8)
+		_chalk(roof, CHALK_SOFT, 1.8)
+		draw_rect(Rect2(p + Vector2(-s * 0.12, -s * 0.38), Vector2(s * 0.24, s * 0.38)), CHALK_SOFT, false, 1.2)
+
+	func _tree(p: Vector2, r: float, seed: float) -> void:
+		var crown := PackedVector2Array()
+		for i in 21:
+			var a := TAU * i / 20.0
+			crown.append(p + Vector2(cos(a), sin(a)) * r * (1.0 + 0.15 * sin(a * 5.0 + seed)) + Vector2(0, -r * 1.4))
+		_chalk(crown, CHALK_SOFT, 1.8)
+		_chalk(PackedVector2Array([p + Vector2(0, -r * 0.45), p]), CHALK_SOFT, 1.8)
+
+	# Euler's drawing of the problem, 1736: the four pieces of land as dots,
+	# the seven bridges as lines between them. Every dot has an odd number of
+	# lines, so no walk crosses each bridge exactly once.
+	func _euler_sketch(o: Vector2) -> void:
+		var hand := GameTheme.handwriting()
+		var north := o + Vector2(60, 8)
+		var kneip := o + Vector2(18, 48)
+		var lomse := o + Vector2(110, 48)
+		var south := o + Vector2(60, 88)
+		var edges := [[north, kneip, -18.0], [north, kneip, 18.0], [south, kneip, -18.0],
+			[south, kneip, 18.0], [kneip, lomse, 0.0], [north, lomse, 0.0], [south, lomse, 0.0]]
+		for e in edges:
+			var a: Vector2 = e[0]
+			var b: Vector2 = e[1]
+			var bend: float = e[2]
+			var mid := (a + b) * 0.5 + (b - a).orthogonal().normalized() * bend
+			var pts := PackedVector2Array()
+			for i in 13:
+				var t := i / 12.0
+				pts.append(a.lerp(mid, t).lerp(mid.lerp(b, t), t))
+			_chalk(pts, CHALK_SOFT, 1.5)
+		for n in [north, kneip, lomse, south]:
+			draw_circle(n, 4.5, CHALK)
+		if hand:
+			draw_string(hand, o + Vector2(0, 116), "Euler, 1736: imposible", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, INK_SOFT)
 
 
 func _build_debug_section(start_y: float) -> float:
