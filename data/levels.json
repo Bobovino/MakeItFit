@@ -97,6 +97,7 @@
 							{
 								"demolished": false,
 								"door_pos": 15.0,
+								"door_side": -1,
 								"has_door": true,
 								"primary": false,
 								"x1": 45.0,
@@ -117,6 +118,7 @@
 							{
 								"demolished": false,
 								"door_pos": 8.0,
+								"door_side": -1,
 								"has_door": true,
 								"primary": false,
 								"x1": 25.0,
@@ -664,6 +666,7 @@
 							{
 								"demolished": false,
 								"door_pos": 11,
+								"door_side": -1,
 								"has_door": true,
 								"primary": true,
 								"x1": 1,
@@ -78178,6 +78181,7 @@
 							{
 								"demolished": false,
 								"door_pos": 10.0,
+								"door_side": -1,
 								"has_door": true,
 								"primary": true,
 								"x1": 26.0,
@@ -78188,6 +78192,7 @@
 							{
 								"demolished": false,
 								"door_pos": 10.0,
+								"door_type": "sliding",
 								"has_door": true,
 								"primary": false,
 								"x1": 26.0,
@@ -78222,6 +78227,7 @@
 							{
 								"demolished": false,
 								"door_pos": 7.0,
+								"door_side": -1,
 								"has_door": true,
 								"primary": false,
 								"x1": 27.0,
