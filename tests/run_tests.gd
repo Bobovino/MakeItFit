@@ -600,6 +600,19 @@ func _t_box_on_a_surface() -> void:
 			bottom = (entry["mesh"] as Node3D).position.y - (entry["size"] as Vector3).y * 0.5
 		_current = "surface box: in 3D it stands on top of the dresser"
 		_ok(bottom > 0.5 and is_equal_approx(bottom, view._top_m(dresser)), "bottom %s top %s" % [bottom, view._top_m(dresser)])
+		# Carrying a stool over the dresser bows it (box + stool is most of what
+		# it holds) and the box sinks with it; putting the stool away
+		# straightens it again.
+		var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+		fl.forget_furniture(stool)
+		view._settle_stacked(stool, dresser.grid_pos + Vector2(6, 0))
+		var bowed: float = view._entry_of(dresser).get("sag", 0.0)
+		var sunk: float = (entry["mesh"] as Node3D).position.y - (entry["size"] as Vector3).y * 0.5
+		view._settle_stacked()
+		_current = "surface box: a dresser carrying a lot bows, and the box on it sinks with it"
+		_ok(bowed > 0.0 and sunk < bottom - 0.0001 and is_equal_approx(view._entry_of(dresser).get("sag", 0.0), 0.0),
+			"sag %s, box %s -> %s" % [bowed, bottom, sunk])
+		stool.queue_free()
 		main._set_view_mode(main.ViewMode.TOPDOWN)
 
 		_current = "surface box: moving the dresser takes the box along"

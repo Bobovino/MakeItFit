@@ -1045,7 +1045,10 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		_flash_rail(mesh, Vector2(item_size.x, item_size.z), rail_attached)
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
-	# Up onto a table or shelf when it is over one.
+	# Up onto a table or shelf when it is over one, which bows under it as if
+	# it were already there.
+	if _sag_preview_key != [f, tile]:
+		_settle_stacked(f, tile)
 	var lift := _lift_m(f, tile)
 	mesh.position.y = lift + item_size.y * 0.5
 	_drag_target["pos"] = mesh.position
@@ -1177,6 +1180,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 	# this item over a wall surface must NOT arm that path.
 	if hit["mode"] == "wall" and not _buying_furniture.wall_flush_required:
 		_buying_on_wall = true
+		if not _sag_preview_key.is_empty() and _sag_preview_key[0] != null:
+			_settle_stacked()   # off the floor: no surface is carrying it
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
 		_hide_drag_highlight()
@@ -1219,6 +1224,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
+		if _apt_floor and _sag_preview_key != [_buying_furniture, tile]:
+			_settle_stacked(_buying_furniture, tile)
 		var buy_lift := _lift_m(_buying_furniture, tile) if _apt_floor else 0.0
 		_buying_mesh.position.y = buy_lift + box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
@@ -1337,6 +1344,7 @@ func _cancel_buy() -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_settle_stacked()   # whatever was bowing under it straightens again
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1802,6 +1810,7 @@ func _finish_furniture_drag() -> void:
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
 		_hide_drag_highlight()
+		_settle_stacked()
 		return
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
 	# Mirrors Furniture.gd's own 2D drag-end (see there for the full
@@ -1859,6 +1868,7 @@ func _finish_furniture_drag() -> void:
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 	_drag_target["pos"] = mesh.position
 	_drag_target = {}
+	_settle_stacked()   # nothing carried any more: every surface bows by what is really on it
 	_hide_drag_highlight()
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
@@ -4768,12 +4778,217 @@ func _top_m(f: Furniture) -> float:
 	return mi.position.y - box_h * 0.5 + _drawn_height(mi, box_h)
 
 
-# How high `f` stands when its corner is at `at` (where it is now if null).
+# How high `f` stands when its corner is at `at` (where it is now if null):
+# on the top of what it stands on, as far down as that top is bowed there.
 func _lift_m(f: Furniture, at: Variant = null) -> float:
 	if not is_instance_valid(_apt_floor):
 		return 0.0
 	var sup := _apt_floor.support_under(f, at)
-	return _top_m(sup) if sup != null else 0.0
+	if sup == null:
+		return 0.0
+	var corner: Vector2 = f.grid_pos if at == null else at as Vector2
+	var cx := (corner.x - _room_bounds.position.x + f.grid_w * 0.5) * TILE_M
+	var cz := (corner.y - _room_bounds.position.y + f.grid_h * 0.5) * TILE_M
+	return _top_m(sup) - _sag_at(_entry_of(sup), cx, cz)
+
+
+# ── Bowing: a loaded surface sags ───────────────────────────────────────────
+# A table, desk or shelf bows under what stands on it once it is past
+# SAG_FROM of what it can hold, a little more as it fills, and clearly too
+# much (SAG_OVER_M) when a piece being carried over it would break it: the
+# weight limit, shown on the furniture itself rather than as a number. Only
+# the top bends (legs and plinths stay put), deepest in the middle, and
+# whatever stands on it sinks with it. Done by bending a copy of the model's
+# meshes, only when the sag changes.
+const SAG_FROM := 0.6       # share of max_support_weight before anything shows
+const SAG_FULL_M := 0.03    # metres of sag in the middle when exactly full
+const SAG_OVER_M := 0.07    # ... when what is being carried over it would break it
+const SAG_SPAN_M := 1.2     # surfaces at least this long bow fully; shorter ones less
+
+# How far `sup` should sag in the middle. `carried` (being dragged or bought,
+# its corner at `carried_at`) counts on the surface it is over and no longer
+# on the one it was lifted off.
+func _sag_for(sup: Furniture, entry: Dictionary, carried: Furniture = null, carried_at: Variant = null) -> float:
+	if sup.max_support_weight <= 0.0 or not entry.has("mesh") or not (entry["mesh"] as Node).has_meta("model_inst"):
+		return 0.0
+	var load := _apt_floor._surface_load(sup, carried)
+	if carried != null and carried_at != null and _apt_floor.support_under(carried, carried_at) == sup:
+		load += carried.weight
+	var ratio := load / sup.max_support_weight
+	if ratio <= SAG_FROM:
+		return 0.0
+	var size: Vector3 = entry["size"]
+	var span := clampf(maxf(size.x, size.z) / SAG_SPAN_M, 0.4, 1.0)
+	if ratio > 1.0 + 0.0001:
+		return SAG_OVER_M * span
+	var t := (ratio - SAG_FROM) / (1.0 - SAG_FROM)
+	return SAG_FULL_M * span * t * t * (3.0 - 2.0 * t)
+
+
+# Share of the sag at a point (room metres) on a surface: all of it in the
+# middle, none at the edges.
+func _sag_shape(entry: Dictionary, x: float, z: float) -> float:
+	var pos: Vector3 = entry["pos"]
+	var size: Vector3 = entry["size"]
+	var u := (x - pos.x) / maxf(size.x * 0.5, 0.001)
+	var v := (z - pos.z) / maxf(size.z * 0.5, 0.001)
+	return maxf(0.0, 1.0 - u * u) * maxf(0.0, 1.0 - v * v)
+
+
+func _sag_at(entry: Dictionary, x: float, z: float) -> float:
+	if entry.is_empty():
+		return 0.0
+	return (entry.get("sag", 0.0) as float) * _sag_shape(entry, x, z)
+
+
+# Bends the model of a surface piece down by `sag` in the middle (straight
+# again at 0). Each of its meshes keeps its original to bend from.
+func _apply_sag(entry: Dictionary, sag: float) -> void:
+	var mi := entry["mesh"] as MeshInstance3D
+	if not mi.has_meta("model_inst") or not is_instance_valid(mi.get_meta("model_inst")):
+		return
+	var key := [snappedf(sag, 0.0005), mi.transform]
+	if mi.get_meta("sag_key", []) == key:
+		return
+	mi.set_meta("sag_key", key)
+	var size: Vector3 = entry["size"]
+	var bottom := mi.position.y - size.y * 0.5
+	var height := maxf(_drawn_height(mi, size.y), 0.01)
+	var room_inv := build_root.global_transform.affine_inverse()
+	var parts: Array = [mi.get_meta("model_inst")]
+	while not parts.is_empty():
+		var n := parts.pop_back() as Node
+		parts.append_array(n.get_children())
+		if not (n is MeshInstance3D):
+			continue
+		var m := n as MeshInstance3D
+		if not m.has_meta("sag_orig"):
+			if sag <= 0.0 or m.mesh == null:
+				continue
+			m.set_meta("sag_orig", m.mesh)
+		var orig := m.get_meta("sag_orig") as Mesh
+		if sag <= 0.0:
+			m.mesh = orig
+			continue
+		var to_room := room_inv * m.global_transform
+		var down := to_room.basis.inverse() * Vector3.DOWN
+		# These models are low-poly: a tabletop is a slab with vertices only at
+		# its corners, where the sag is nothing. Its top part is cut finer once
+		# (kept for every later bend) so there is something to bend.
+		if not m.has_meta("sag_fine"):
+			m.set_meta("sag_fine", _finer_top(orig, to_room, bottom + height * 0.45))
+		var fine := m.get_meta("sag_fine") as Array   # surface arrays, one per surface
+		var bent := ArrayMesh.new()
+		for i in fine.size():
+			var arrays := (fine[i] as Array).duplicate()
+			var verts: PackedVector3Array = (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).duplicate()
+			for k in verts.size():
+				var p := to_room * verts[k]
+				var up := clampf((p.y - bottom) / height, 0.0, 1.0)
+				var d := sag * _sag_shape(entry, p.x, p.z) * up * up
+				if d > 0.0:
+					verts[k] += down * d
+			arrays[Mesh.ARRAY_VERTEX] = verts
+			bent.add_surface_from_arrays(orig.surface_get_primitive_type(i), arrays)
+			bent.surface_set_material(i, orig.surface_get_material(i))
+		m.mesh = bent
+
+
+const SAG_EDGE_M := 0.07   # edges above the bend line get cut down to about this long
+
+# `mesh`'s surfaces as arrays, with every triangle edge that lies above
+# `above_y` (room metres, through `to_room`) and is longer than SAG_EDGE_M
+# cut in half, again and again, until none is. An edge is cut the same way
+# in every triangle that has it, so the surface stays closed. Surfaces that
+# aren't plain triangles, or that carry bones, are left as they are.
+func _finer_top(mesh: Mesh, to_room: Transform3D, above_y: float) -> Array:
+	var out: Array = []
+	for si in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(si)
+		if mesh.surface_get_primitive_type(si) != Mesh.PRIMITIVE_TRIANGLES or arrays[Mesh.ARRAY_BONES] != null:
+			out.append(arrays)
+			continue
+		# Plain Arrays: the helpers below add to them, and a lambda would only
+		# be adding to its own copy of a packed array.
+		var buf := {
+			"v": Array(arrays[Mesh.ARRAY_VERTEX]),
+			"n": Array(arrays[Mesh.ARRAY_NORMAL]) if arrays[Mesh.ARRAY_NORMAL] != null else [],
+			"t": Array(arrays[Mesh.ARRAY_TANGENT]) if arrays[Mesh.ARRAY_TANGENT] != null else [],
+			"c": Array(arrays[Mesh.ARRAY_COLOR]) if arrays[Mesh.ARRAY_COLOR] != null else [],
+			"uv": Array(arrays[Mesh.ARRAY_TEX_UV]) if arrays[Mesh.ARRAY_TEX_UV] != null else [],
+			"uv2": Array(arrays[Mesh.ARRAY_TEX_UV2]) if arrays[Mesh.ARRAY_TEX_UV2] != null else [],
+		}
+		var vs: Array = buf["v"]
+		var tris: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(vs.size()))
+		var mids: Dictionary = {}   # Vector2i(lo, hi) vertex pair -> the vertex halfway along it
+		var mid_of := func(a: int, b: int) -> int:
+			var key := Vector2i(mini(a, b), maxi(a, b))
+			if mids.has(key):
+				return mids[key]
+			vs.append(((vs[a] as Vector3) + (vs[b] as Vector3)) * 0.5)
+			var ns: Array = buf["n"]
+			if not ns.is_empty():
+				ns.append(((ns[a] as Vector3) + (ns[b] as Vector3)).normalized())
+			var ts: Array = buf["t"]
+			if not ts.is_empty():
+				for c in 4:
+					ts.append(((ts[a * 4 + c] as float) + (ts[b * 4 + c] as float)) * 0.5)
+			var cs: Array = buf["c"]
+			if not cs.is_empty():
+				cs.append((cs[a] as Color).lerp(cs[b] as Color, 0.5))
+			for k in ["uv", "uv2"]:
+				var us: Array = buf[k]
+				if not us.is_empty():
+					us.append(((us[a] as Vector2) + (us[b] as Vector2)) * 0.5)
+			mids[key] = vs.size() - 1
+			return vs.size() - 1
+		var long := func(a: int, b: int) -> bool:
+			var pa := to_room * (vs[a] as Vector3)
+			var pb := to_room * (vs[b] as Vector3)
+			return maxf(pa.y, pb.y) > above_y and pa.distance_to(pb) > SAG_EDGE_M
+		for pass_i in 8:
+			var next := PackedInt32Array()
+			var cut := false
+			for t in range(0, tris.size(), 3):
+				var v := [tris[t], tris[t + 1], tris[t + 2]]
+				var flags := [long.call(v[0], v[1]), long.call(v[1], v[2]), long.call(v[2], v[0])]
+				var n := int(flags[0]) + int(flags[1]) + int(flags[2])
+				if n == 0:
+					next.append_array(v)
+					continue
+				cut = true
+				# Turn the triangle so its cut edges come first: 1 cut -> edge 0;
+				# 2 cuts -> edges 0 and 1.
+				var r := 0
+				if n == 1:
+					r = flags.find(true)
+				elif n == 2:
+					r = [1, 2, 0][flags.find(false)]
+				var a: int = v[r]
+				var b: int = v[(r + 1) % 3]
+				var c: int = v[(r + 2) % 3]
+				var ab: int = mid_of.call(a, b)
+				if n == 1:
+					next.append_array([a, ab, c, ab, b, c])
+					continue
+				var bc: int = mid_of.call(b, c)
+				if n == 2:
+					next.append_array([a, ab, bc, ab, b, bc, a, bc, c])
+					continue
+				var ca: int = mid_of.call(c, a)
+				next.append_array([a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca])
+			tris = next
+			if not cut:
+				break
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(vs)
+		if not (buf["n"] as Array).is_empty(): arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(buf["n"])
+		if not (buf["t"] as Array).is_empty(): arrays[Mesh.ARRAY_TANGENT] = PackedFloat32Array(buf["t"])
+		if not (buf["c"] as Array).is_empty(): arrays[Mesh.ARRAY_COLOR] = PackedColorArray(buf["c"])
+		if not (buf["uv"] as Array).is_empty(): arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(buf["uv"])
+		if not (buf["uv2"] as Array).is_empty(): arrays[Mesh.ARRAY_TEX_UV2] = PackedVector2Array(buf["uv2"])
+		arrays[Mesh.ARRAY_INDEX] = tris
+		out.append(arrays)
+	return out
 
 
 # Redraws a placed piece where and how it now is on the floor (position,
@@ -4804,13 +5019,22 @@ func _sync_entry_to_piece(entry: Dictionary) -> void:
 
 
 # Puts every placed piece at its height: on the floor, or on what it stands
-# on (lowest first, so a lamp on a box on a table lands on the box). The piece
-# in hand is left alone.
-func _settle_stacked() -> void:
+# on (lowest first, so a lamp on a box on a table lands on the box), with
+# every surface bowed by its load. The piece in hand is left alone; while one
+# is carried (`carried`, its corner at `carried_at`) the surface under it
+# bows as if it were already put down there.
+var _sag_preview_key: Array = []
+
+func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> void:
 	if not is_instance_valid(_apt_floor):
 		return
+	_sag_preview_key = [carried, carried_at]
 	var order := _furniture_entries.filter(func(e): return is_instance_valid(e.get("furniture")) and is_instance_valid(e.get("mesh")))
 	order.sort_custom(func(a, b): return _apt_floor.stack_lift(a["furniture"]) < _apt_floor.stack_lift(b["furniture"]))
+	for entry in order:
+		var f := entry["furniture"] as Furniture
+		if f.is_surface:
+			entry["sag"] = _sag_for(f, entry, carried, carried_at)
 	for entry in order:
 		if _dragging_furniture and is_same(entry, _drag_target):
 			continue
@@ -4819,6 +5043,8 @@ func _settle_stacked() -> void:
 		var lift := _lift_m(f)
 		mi.position.y = lift + (entry["size"] as Vector3).y * 0.5
 		entry["pos"] = mi.position
+		if f.is_surface:
+			_apply_sag(entry, entry.get("sag", 0.0) as float)
 		for h in _hitbox_highlights:
 			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 				h.position.y = lift
@@ -4926,6 +5152,7 @@ func touch_cancel_drag() -> void:
 		_hide_reason()
 		_set_grid_overlay_visible(false)
 		_set_hitbox_highlights_visible(false)
+		_settle_stacked()
 	elif _dragging_wall_item:
 		_drag_wall_target["preview_origin"] = _drag_wall_target["origin"]
 		_finish_wall_item_drag()
