@@ -1400,6 +1400,10 @@ func clear_floor_drag_ghost() -> void:
 # table give before putting something too heavy on it.
 const STRAIN_FROM := 0.6
 
+# Set by Main: told about the piece being carried (and its corner), or null
+# when nothing is any more, so boxes can preview their shade and noise.
+static var carry_preview: Callable
+
 # What share of what `support` can hold rests on it. `carried` (being dragged
 # or bought, its corner at `carried_at`) counts on the surface it is over and
 # no longer on the one it was lifted off. Above 1 it would break.
@@ -1425,6 +1429,8 @@ func _update_strain() -> void:
 		var fur := f as Furniture
 		if fur.is_surface and fur != carried:
 			fur.set_strain(strain_of(fur, carried, at))
+	if Floor.carry_preview.is_valid():
+		Floor.carry_preview.call(carried, at)
 
 
 func get_wall_items(edge: String) -> Dictionary:

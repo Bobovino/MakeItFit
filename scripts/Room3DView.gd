@@ -5184,6 +5184,8 @@ func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> v
 	if not is_instance_valid(_apt_floor):
 		return
 	_sag_preview_key = [carried, carried_at]
+	if Floor.carry_preview.is_valid():
+		Floor.carry_preview.call(carried, carried_at)
 	var order := _furniture_entries.filter(func(e): return is_instance_valid(e.get("furniture")) and is_instance_valid(e.get("mesh")))
 	order.sort_custom(func(a, b): return _apt_floor.stack_lift(a["furniture"]) < _apt_floor.stack_lift(b["furniture"]))
 	for entry in order:

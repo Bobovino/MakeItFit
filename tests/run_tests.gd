@@ -567,6 +567,18 @@ func _t_box_on_a_surface() -> void:
 	_current = "noise feedback: the washer shows it is noisy when the box has a bed inside"
 	_ok(washer._noise_making == main._child_has_bed(box.child_level_id), "making %s, bed inside %s" % [washer._noise_making, main._child_has_bed(box.child_level_id)])
 	fl.remove_furniture(washer)
+	main._refresh_functions()
+	# Holding a bookshelf beside the box already shows the shade it would cast.
+	var held_shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	fl.forget_furniture(held_shelf)
+	held_shelf._placement_mode = true
+	fl.set_floor_drag_ghost(held_shelf, 2, 14)
+	var shade_held := box._shade
+	held_shelf._placement_mode = false
+	fl.clear_floor_drag_ghost()
+	_current = "daylight feedback: a bookshelf held beside the box shades it before it is put down"
+	_ok(shade_held < 0.2 and is_equal_approx(box._shade, 1.0), "held %s, after %s" % [shade_held, box._shade])
+	held_shelf.queue_free()
 	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
 	var placed_shelf := fl.can_place(shelf, Vector2(2, 14))
 	fl.place_furniture(shelf, Vector2(2, 14))

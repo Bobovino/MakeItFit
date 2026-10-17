@@ -2225,37 +2225,52 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 # below the box (a chair beside the table, a low cabinet beside the dresser).
 var _shade_by := ""   # what shaded the box _compute_box_occlusion() looked at last ("" = nothing)
 
-func _compute_box_occlusion(box: Furniture) -> float:
+# Every piece with a tile in the one-tile ring around `pos` (gw x gh) on
+# `fl`, other than `exclude`. With `carried` (a piece being dragged or
+# bought, its corner at `carried_at`): as if it already stood there instead
+# of where it is now.
+func _ring_pieces(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture,
+		carried: Furniture = null, carried_at: Variant = null) -> Array:
+	var out: Array = []
+	var x0 := floori(pos.x) - 1
+	var y0 := floori(pos.y) - 1
+	var x1 := x0 + gw + 2
+	var y1 := y0 + gh + 2
+	for x in range(x0, x1):
+		for y in range(y0, y1):
+			if x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1:
+				continue
+			for f in fl._placed_list(Vector2i(x, y)):
+				if f != exclude and f != carried and not (f in out):
+					out.append(f)
+	if carried != null and carried_at != null and carried != exclude \
+			and Rect2(Vector2(x0, y0), Vector2(x1 - x0, y1 - y0)).intersects(Rect2(carried_at as Vector2, Vector2(carried.grid_w, carried.grid_h))):
+		out.append(carried)
+	return out
+
+
+func _compute_box_occlusion(box: Furniture, carried: Furniture = null, carried_at: Variant = null) -> float:
 	_shade_by = ""
 	var fl := box._wall_ref
 	if not is_instance_valid(fl):
 		return 1.0
 	var under := _supports_under(fl, box.grid_pos, box.grid_w, box.grid_h, box)
 	var base := fl.stack_lift(box)
-	var x0 := floori(box.grid_pos.x) - 1
-	var y0 := floori(box.grid_pos.y) - 1
-	var x1 := x0 + box.grid_w + 2
-	var y1 := y0 + box.grid_h + 2
 	var worst := "low"
-	for x in range(x0, x1):
-		for y in range(y0, y1):
-			var tile := Vector2i(x, y)
-			var inside_box := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
-			if inside_box:
-				continue
-			for f in fl._placed_list(tile):
-				var fur := f as Furniture
-				if fur == box or fur in under:
-					continue
-				if base > 0.0 and fl.stack_lift(fur) + fur.body_h <= base:
-					continue
-				if fur.blocks_light():
-					if worst != "tall":
-						_shade_by = fur.furniture_name
-					worst = "tall"
-				elif fur.height_category == "medium" and worst == "low":
-					worst = "medium"
-					_shade_by = fur.furniture_name
+	for f in _ring_pieces(fl, box.grid_pos, box.grid_w, box.grid_h, box, carried, carried_at):
+		var fur := f as Furniture
+		if fur in under:
+			continue
+		var lift := fl.stack_lift(fur, carried_at if fur == carried else null)
+		if base > 0.0 and lift + fur.body_h <= base:
+			continue
+		if fur.blocks_light():
+			if worst != "tall":
+				_shade_by = fur.furniture_name
+			worst = "tall"
+		elif fur.height_category == "medium" and worst == "low":
+			worst = "medium"
+			_shade_by = fur.furniture_name
 	match worst:
 		"tall":   return 0.15
 		"medium": return 0.55
@@ -2311,32 +2326,75 @@ func _supports_under(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furnitu
 var _noisy_by := ""   # the noisy piece _has_noisy_neighbor() found last
 var _noisy_piece: Furniture = null
 
-func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
+func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture,
+		carried: Furniture = null, carried_at: Variant = null) -> bool:
 	_noisy_by = ""
 	_noisy_piece = null
 	if not is_instance_valid(fl):
 		return false
 	for sup in _supports_under(fl, pos, gw, gh, exclude):
-		if (sup as Furniture).is_noisy:
+		if (sup as Furniture).is_noisy and sup != carried:
 			_noisy_by = (sup as Furniture).furniture_name
 			_noisy_piece = sup
 			return true
-	var x0 := floori(pos.x) - 1
-	var y0 := floori(pos.y) - 1
-	var x1 := x0 + gw + 2
-	var y1 := y0 + gh + 2
-	for x in range(x0, x1):
-		for y in range(y0, y1):
-			var inside := x >= x0 + 1 and x < x1 - 1 and y >= y0 + 1 and y < y1 - 1
-			if inside:
-				continue
-			for f in fl._placed_list(Vector2i(x, y)):
-				var fur := f as Furniture
-				if fur != exclude and fur.is_noisy:
-					_noisy_by = fur.furniture_name
-					_noisy_piece = fur
-					return true
+	for f in _ring_pieces(fl, pos, gw, gh, exclude, carried, carried_at):
+		var fur := f as Furniture
+		if fur.is_noisy:
+			_noisy_by = fur.furniture_name
+			_noisy_piece = fur
+			return true
 	return false
+
+
+# While a piece is carried over the plan or in 3D (Floor.carry_preview, with
+# its corner at `at`), every box shows the shade and noise it would get if
+# the piece were put down there: the hatch and dimmed windows, and the sound
+# coming off the piece. `carried` null puts everything back as it really is.
+var _carry_previewing := false
+var _carry_preview_args: Array = []   # [carried, at] while previewing
+
+func _preview_carry(carried: Furniture, at: Variant) -> void:
+	if carried == null or at == null or not is_instance_valid(carried):
+		if _carry_previewing:
+			_carry_previewing = false
+			_carry_preview_args = []
+			_recompute_box_effects()
+		return
+	_carry_previewing = true
+	_carry_preview_args = [carried, at]
+	_apply_carry_preview(carried, at)
+
+
+# The preview itself; also put back on top by _recompute_box_effects(), which
+# moving the piece over the plan sets off and which works out the real state.
+func _apply_carry_preview(carried: Furniture, at: Variant) -> void:
+	var boxes := _collect_nested_boxes()
+	if boxes.is_empty():
+		return
+	var making: Dictionary = {}   # piece -> true while it would keep a box's bed awake
+	for box in boxes:
+		if box == carried or not is_instance_valid(box._wall_ref) or box._wall_ref != carried._wall_ref:
+			continue
+		box._shade = _compute_box_occlusion(box, carried, at)
+		if _child_has_bed(box.child_level_id) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box, carried, at) \
+				and is_instance_valid(_noisy_piece):
+			making[_noisy_piece] = true
+		box.queue_redraw()
+	# Only the noise between pieces and boxes is previewed; a pet's or a noisy
+	# box's own reach stays as it is.
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			var fur := f as Furniture
+			if fur.is_noisy and not fur.is_nested_box and fur.noise_radius <= 0:
+				var now := making.has(fur)
+				if now != fur._noise_making:
+					fur._noise_making = now
+					fur.queue_redraw()
+	if carried.is_noisy and carried._noise_making != making.has(carried):
+		carried._noise_making = making.has(carried)
+		carried.queue_redraw()
+	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
+		_mode3d_view._sync_status_marks()
 
 
 # Everything currently in a child level's floors — the live per-session
@@ -2430,6 +2488,8 @@ func _recompute_box_effects() -> void:
 		# working (see _on_box_entered): the piece making it shows it here too.
 		if is_instance_valid(box._wall_ref) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box) 				and _child_has_bed(box.child_level_id) and is_instance_valid(_noisy_piece):
 			_noisy_piece._noise_making = true
+	if _carry_previewing and _carry_preview_args.size() == 2 and is_instance_valid(_carry_preview_args[0]):
+		_apply_carry_preview(_carry_preview_args[0], _carry_preview_args[1])
 	# A bed that just stopped working because of noise says why, once (a piece
 	# that only now appeared, on loading or stepping into a box, doesn't: the
 	# marks show it, and stepping in already said so).
@@ -2448,6 +2508,7 @@ func _apply_carry_limit() -> void:
 	Floor.carry_limit = ctx.get("carry_limit", -1.0) as float
 	Floor.carry_support_name = ctx.get("carry_support_name", "") as String
 	Floor.carried_weight = _carried_weight
+	Floor.carry_preview = _preview_carry
 
 
 # The limit is static: it must not outlive the game it belongs to (the level
@@ -2455,6 +2516,7 @@ func _apply_carry_limit() -> void:
 func _exit_tree() -> void:
 	Floor.carry_limit = -1.0
 	Floor.carried_weight = Callable()
+	Floor.carry_preview = Callable()
 
 
 # What everything in the current apartment weighs, the way the box outside
