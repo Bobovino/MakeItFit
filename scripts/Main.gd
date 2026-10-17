@@ -428,8 +428,7 @@ func _apply_ui_theme() -> void:
 		_test_btn.name        = "TestBtn"
 		_test_btn.text        = tr("Test Layout")
 		_test_btn.toggle_mode = true
-		_test_btn.add_theme_font_size_override("font_size", 11)
-		_test_btn.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		GameTheme.hud_button(_test_btn)
 		_test_btn.toggled.connect(_on_test_toggled)
 		_test_btn.visible = false   # updated after level load
 		ui_layer.add_child(_test_btn)
@@ -461,19 +460,21 @@ func _apply_ui_theme() -> void:
 			btn.tooltip_text  = spec[2]
 			btn.toggle_mode   = true
 			btn.button_group  = group
-			btn.custom_minimum_size = Vector2(0, 30)   # same height as the undo / redo / menu buttons beside it
+			btn.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)   # same height as the undo / redo / menu buttons beside it
 			btn.button_pressed = (mode == _view_mode)
-			btn.add_theme_font_size_override("font_size", 11)
-			# Segmented-control look: one connected pill, only the outer ends
-			# rounded, with the active segment filled amber.
-			var seg_n := _segment_style(Color(0.175, 0.155, 0.125), GameTheme.C_BORDER, i, specs.size())
-			var seg_h := _segment_style(Color(0.19, 0.24, 0.31), GameTheme.C_BORDER, i, specs.size())
-			var seg_p := _segment_style(Color(0.42, 0.36, 0.13), GameTheme.C_AMBER, i, specs.size())
-			btn.add_theme_stylebox_override("normal",  seg_n)
-			btn.add_theme_stylebox_override("hover",   seg_h)
-			btn.add_theme_stylebox_override("pressed", seg_p)
+			btn.add_theme_font_override("font", GameTheme.font("ui"))
+			btn.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+			# Segmented-control look: one connected row of cards, only the
+			# outer ends rounded, the chosen one filled navy.
+			btn.add_theme_stylebox_override("normal",  GameTheme.segment_style(i, specs.size(), false))
+			btn.add_theme_stylebox_override("hover",   GameTheme.segment_style(i, specs.size(), false, true))
+			btn.add_theme_stylebox_override("pressed", GameTheme.segment_style(i, specs.size(), true))
+			btn.add_theme_stylebox_override("hover_pressed", GameTheme.segment_style(i, specs.size(), true))
 			btn.add_theme_stylebox_override("focus",   StyleBoxEmpty.new())
-			btn.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
+			for c in ["font_color", "font_hover_color", "font_focus_color"]:
+				btn.add_theme_color_override(c, GameTheme.INK)
+			btn.add_theme_color_override("font_pressed_color", GameTheme.CHALK)
+			btn.add_theme_color_override("font_hover_pressed_color", GameTheme.CHALK)
 			btn.pressed.connect(func():
 				Audio.play("click")
 				_set_view_mode(mode))
@@ -491,8 +492,7 @@ func _apply_ui_theme() -> void:
 		# by itself, same as any other icon-only HUD button.
 		_settings_btn.text = "\ueb20"
 		_settings_btn.tooltip_text = tr("Menu — settings, back to projects, quit")
-		_settings_btn.add_theme_font_size_override("font_size", 16)
-		_settings_btn.custom_minimum_size = Vector2(32, 0)
+		GameTheme.hud_button(_settings_btn, true)
 		_settings_btn.pressed.connect(_on_settings_btn_pressed)
 		ui_layer.add_child(_settings_btn)
 
@@ -564,8 +564,7 @@ func _apply_ui_theme() -> void:
 		_undo_btn.name = "UndoBtn"
 		_undo_btn.text = "\ueb77"
 		_undo_btn.tooltip_text = tr("Undo last action (Ctrl+%s)") % OS.get_keycode_string(GameState.undo_keycode)
-		_undo_btn.add_theme_font_size_override("font_size", 16)
-		_undo_btn.custom_minimum_size = Vector2(32, 0)
+		GameTheme.hud_button(_undo_btn, true)
 		_undo_btn.offset_top = TOP_Y + 8.0
 		_undo_btn.pressed.connect(_undo_builder_action)
 		ui_layer.add_child(_undo_btn)
@@ -574,8 +573,7 @@ func _apply_ui_theme() -> void:
 		_redo_btn.name = "RedoBtn"
 		_redo_btn.text = "\ueb78"
 		_redo_btn.tooltip_text = tr("Redo (Ctrl+Shift+%s)") % OS.get_keycode_string(GameState.undo_keycode)
-		_redo_btn.add_theme_font_size_override("font_size", 16)
-		_redo_btn.custom_minimum_size = Vector2(32, 0)
+		GameTheme.hud_button(_redo_btn, true)
 		_redo_btn.offset_top = TOP_Y + 8.0
 		_redo_btn.pressed.connect(_redo_builder_action)
 		ui_layer.add_child(_redo_btn)
@@ -3187,7 +3185,7 @@ func _position_view_mode_box() -> void:
 	_view_mode_box.offset_right  = right_edge
 	_view_mode_box.offset_left   = right_edge - maxf(content.x, 60.0)
 	_view_mode_box.offset_top    = TOP_Y
-	_view_mode_box.offset_bottom = TOP_Y + maxf(content.y, 24.0)
+	_view_mode_box.offset_bottom = TOP_Y + maxf(content.y, GameTheme.TOUCH_SMALL)
 	ui_layer.move_child(_view_mode_box, ui_layer.get_child_count() - 1)
 
 
@@ -3609,8 +3607,12 @@ func _reraise_furniture_menu_nodes() -> void:
 func _update_breadcrumb() -> void:
 	if not is_instance_valid(_breadcrumb_lbl):
 		_breadcrumb_lbl = Label.new()
-		_breadcrumb_lbl.add_theme_font_size_override("font_size", 11)
-		_breadcrumb_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_breadcrumb_lbl.add_theme_font_override("font", GameTheme.font("display"))
+		_breadcrumb_lbl.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+		_breadcrumb_lbl.add_theme_color_override("font_color", GameTheme.CHALK)
+		_breadcrumb_lbl.add_theme_color_override("font_shadow_color", GameTheme.NAVY)
+		_breadcrumb_lbl.add_theme_constant_override("shadow_offset_x", 3)
+		_breadcrumb_lbl.add_theme_constant_override("shadow_offset_y", 3)
 		_breadcrumb_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_breadcrumb_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ui_layer.add_child(_breadcrumb_lbl)
@@ -3618,11 +3620,13 @@ func _update_breadcrumb() -> void:
 	for ctx in _nested_stack:
 		parts.append(_level_display_name((ctx as Dictionary)["parent_level_id"] as String))
 	parts.append(_level_display_name(_current_level_id))
-	_breadcrumb_lbl.text = " > ".join(parts)
-	_breadcrumb_lbl.offset_left   = LEFT_X
-	_breadcrumb_lbl.offset_right  = RIGHT_X
+	_breadcrumb_lbl.text = "  \uea61  ".join(parts).to_upper()
+	var span := _top_free_span()
+	_breadcrumb_lbl.offset_left   = span.x
+	_breadcrumb_lbl.offset_right  = span.y
 	_breadcrumb_lbl.offset_top    = TOP_Y
-	_breadcrumb_lbl.offset_bottom = TOP_Y + 14.0
+	_breadcrumb_lbl.offset_bottom = TOP_Y + 40.0
+	_breadcrumb_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_breadcrumb_lbl.visible = true
 	ui_layer.move_child(_breadcrumb_lbl, ui_layer.get_child_count() - 1)
 	_update_nested_nav()
@@ -3693,18 +3697,33 @@ func _set_mode_hint(text: String) -> void:
 		return
 	if not is_instance_valid(_mode_hint_lbl):
 		_mode_hint_lbl = Label.new()
-		_mode_hint_lbl.add_theme_font_size_override("font_size", 12)
-		_mode_hint_lbl.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		_mode_hint_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		_mode_hint_lbl.add_theme_color_override("font_color", GameTheme.CHALK_SOFT)
 		_mode_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_mode_hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ui_layer.add_child(_mode_hint_lbl)
 	_mode_hint_lbl.text = text
-	_mode_hint_lbl.offset_left   = LEFT_X
-	_mode_hint_lbl.offset_right  = RIGHT_X
-	_mode_hint_lbl.offset_top    = TOP_Y + 14.0
-	_mode_hint_lbl.offset_bottom = TOP_Y + 34.0
+	var span := _top_free_span()
+	_mode_hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mode_hint_lbl.offset_left   = span.x
+	_mode_hint_lbl.offset_right  = span.y
+	_mode_hint_lbl.offset_top    = TOP_Y + 40.0
+	_mode_hint_lbl.offset_bottom = TOP_Y + 84.0
 	_mode_hint_lbl.visible = true
 	ui_layer.move_child(_mode_hint_lbl, ui_layer.get_child_count() - 1)
+
+
+# The stretch of the top edge, centred on the screen, that the title and the
+# hint can use without running under the buttons in the top-right corner:
+# x is its left edge, y its right edge.
+func _top_free_span() -> Vector2:
+	var right := RIGHT_X - 8.0
+	for c in [_view_mode_box, _redo_btn, _undo_btn, _settings_btn]:
+		if is_instance_valid(c) and (c as Control).visible:
+			right = minf(right, (c as Control).offset_left - 16.0)
+	var mid := (LEFT_X + RIGHT_X) * 0.5
+	var half := maxf(minf(mid - LEFT_X - 16.0, right - mid), 120.0)
+	return Vector2(mid - half, mid + half)
 
 
 # Right-click removal of a wall-mounted item dropped directly in the 3D view —

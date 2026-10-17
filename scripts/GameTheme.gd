@@ -90,6 +90,48 @@ static func card_style(bg := CARD, radius := 12, margin := 0, extrude := EXTRUDE
 	return s
 
 
+# Styles a button that sits straight on the HUD (no themed parent): a white
+# card on its navy edge, navy text or icon, navy when pressed. `square` makes
+# it a TOUCH_SMALL square, for icon buttons.
+static func hud_button(b: Button, square := false) -> void:
+	var n := card_style(CARD, 10, 0, Vector2(3, 4))
+	_pad(n, 14, 4)
+	var h := n.duplicate() as StyleBoxFlat
+	h.bg_color = CARD_DIM
+	var pr := n.duplicate() as StyleBoxFlat
+	pr.bg_color = NAVY
+	pr.shadow_offset = Vector2(1, 1)
+	var d := n.duplicate() as StyleBoxFlat
+	d.bg_color = CARD_DIM
+	d.border_color = INK_SOFT.lerp(CARD, 0.5)
+	d.shadow_size = 0
+	for pair in [["normal", n], ["hover", h], ["pressed", pr], ["hover_pressed", pr], ["disabled", d]]:
+		b.add_theme_stylebox_override(pair[0], pair[1])
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	for c in ["font_color", "font_hover_color", "font_focus_color"]:
+		b.add_theme_color_override(c, INK)
+	b.add_theme_color_override("font_pressed_color", CHALK)
+	b.add_theme_color_override("font_hover_pressed_color", CHALK)
+	b.add_theme_color_override("font_disabled_color", INK_SOFT.lerp(CARD, 0.4))
+	b.add_theme_font_override("font", font("ui"))
+	b.add_theme_font_size_override("font_size", FS_LABEL if square else FS_BODY)
+	b.custom_minimum_size = Vector2(TOUCH_SMALL if square else 0.0, TOUCH_SMALL)
+
+
+# One segment of a row of joined buttons (Plano | 3D): only the outer ends
+# are rounded; `on` is the chosen one, filled navy.
+static func segment_style(index: int, count: int, on: bool, hover := false) -> StyleBoxFlat:
+	var s := card_style(NAVY if on else (CARD_DIM if hover else CARD), 0, 0, Vector2(3, 4))
+	_pad(s, 18, 4)
+	var r_left := 10 if index == 0 else 0
+	var r_right := 10 if index == count - 1 else 0
+	s.corner_radius_top_left = r_left
+	s.corner_radius_bottom_left = r_left
+	s.corner_radius_top_right = r_right
+	s.corner_radius_bottom_right = r_right
+	return s
+
+
 # A title in the logo's letter: Anton, upper case.
 static func title_label(text: String, size := FS_TITLE, color := INK) -> Label:
 	var l := Label.new()

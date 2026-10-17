@@ -187,14 +187,14 @@ func _ready() -> void:
 	_walls_btn = Button.new()
 	_walls_btn.name = "WallModeBtn"
 	_walls_btn.focus_mode = Control.FOCUS_NONE   # must never take the keyboard: Q/E/WASD belong to the view
-	_walls_btn.add_theme_font_size_override("font_size", 12)
+	GameTheme.hud_button(_walls_btn)
 	_walls_btn.tooltip_text = tr("How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered")
 	_walls_btn.anchor_left = 1.0
 	_walls_btn.anchor_right = 1.0
-	_walls_btn.offset_left = -152.0
+	_walls_btn.offset_left = -232.0
 	_walls_btn.offset_right = -12.0
-	_walls_btn.offset_top = 52.0
-	_walls_btn.offset_bottom = 82.0
+	_walls_btn.offset_top = 76.0
+	_walls_btn.offset_bottom = 76.0 + GameTheme.TOUCH_SMALL
 	_walls_btn.visible = false   # shown once a room (not a single-item preview) is built
 	_walls_btn.pressed.connect(func(): set_wall_mode((wall_mode + 1) % WallMode.size()))
 	add_child(_walls_btn)
@@ -868,19 +868,17 @@ func _update_scenery_visibility(flat: Vector3) -> void:
 
 # ── The desk ─────────────────────────────────────────────────────────────────
 # A top-level apartment has no bigger apartment around it. It stands on the
-# architect's desk instead, as a scale model: a base board on a green cutting
-# mat, with a pencil, a ruler and a mug lying about, all giant next to it.
-# The plan view has the same desk as its background (DeskBackdrop), so a box
-# sits in a flat and the flat sits on the desk.
+# ajustador's drawing board instead, as a scale model on its base board: the
+# same indigo sheet with a white grid the plan view lies on (DeskBackdrop), so
+# a box sits in a flat and the flat sits on the board.
 const DESK_MAT_Y := -0.20          # top of the mat, under the model's base board
 const DESK_MAT_SIZE := 90.0        # metres; the fog swallows its far edges
 
 func _desk_mat_material(square_m: float = 2.0) -> StandardMaterial3D:
 	const PX := 64
 	var img := Image.create(PX, PX, false, Image.FORMAT_RGB8)
-	# Darker than the plan view's mat: this one is lit by the sun as well.
-	img.fill(Color(0.105, 0.265, 0.235))
-	var line := Color(0.16, 0.34, 0.30)
+	img.fill(GameTheme.INDIGO)
+	var line := GameTheme.INDIGO.lerp(Color.WHITE, 0.16)
 	for i in PX:
 		img.set_pixel(i, 0, line)
 		img.set_pixel(0, i, line)
@@ -889,8 +887,8 @@ func _desk_mat_material(square_m: float = 2.0) -> StandardMaterial3D:
 	mat.albedo_texture = ImageTexture.create_from_image(img)
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mat.uv1_scale = Vector3(_desk_mat_size / square_m, _desk_mat_size / square_m, 1.0)
-	# Unlit and out of the fog: the same green from the model's feet to the
-	# horizon, matching the mat behind the plan view. (Lit, it went nearly
+	# Unlit and out of the fog: the same indigo from the model's feet to the
+	# horizon, matching the board behind the plan view. (Lit, it went nearly
 	# black by the camera and hazy grey further off.)
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.disable_fog = true
@@ -937,45 +935,6 @@ func _add_desk_around(origin: Vector3, w: float, d: float, with_board: bool) -> 
 	mat_mi.material_override = _desk_mat_material(maxf(w, d) * 0.4)
 	mat_mi.position = Vector3(ox + w * 0.5, mat_y, oz + d * 0.5)
 	build_root.add_child(mat_mi)
-
-	var s := maxf(w, d)            # the props scale with the model
-	var props: Array = []
-	# A pencil, lying at an angle beyond the left side.
-	var pencil_len := s * 2.0
-	var pr := s * 0.055
-	var p_center := Vector3(ox - s * 1.35, mat_y + pr, oz + d * 0.2)
-	var p_rot := Vector3(0.0, deg_to_rad(68.0), deg_to_rad(90.0))
-	var body := CylinderMesh.new()
-	body.top_radius = pr; body.bottom_radius = pr; body.height = pencil_len; body.radial_segments = 6
-	props.append(_desk_part(body, Color(0.62, 0.47, 0.12), p_center, p_rot))
-	var axis := (Basis.from_euler(p_rot) * Vector3.UP).normalized()
-	var tip := CylinderMesh.new()
-	tip.top_radius = 0.0; tip.bottom_radius = pr; tip.height = pr * 3.2; tip.radial_segments = 6
-	props.append(_desk_part(tip, Color(0.55, 0.46, 0.34), p_center + axis * (pencil_len * 0.5 + pr * 1.6), p_rot))
-	var rubber := CylinderMesh.new()
-	rubber.top_radius = pr; rubber.bottom_radius = pr; rubber.height = pr * 2.0; rubber.radial_segments = 6
-	props.append(_desk_part(rubber, Color(0.55, 0.32, 0.32), p_center - axis * (pencil_len * 0.5 + pr), p_rot))
-	# A ruler along the back.
-	var ruler := BoxMesh.new()
-	ruler.size = Vector3(s * 3.0, s * 0.02, s * 0.30)
-	props.append(_desk_part(ruler, Color(0.52, 0.46, 0.33), Vector3(ox + w * 0.5 + s * 0.3, mat_y + s * 0.01, oz - s * 1.5), Vector3(0, deg_to_rad(-6.0), 0)))
-	# A mug, off to the back right.
-	var mug_r := s * 0.34
-	var mug_h := s * 0.75
-	var mug_at := Vector3(ox + w + s * 1.7, mat_y + mug_h * 0.5, oz - s * 1.1)
-	var mug := CylinderMesh.new()
-	mug.top_radius = mug_r; mug.bottom_radius = mug_r * 0.92; mug.height = mug_h; mug.radial_segments = 20
-	props.append(_desk_part(mug, Color(0.56, 0.55, 0.53), mug_at))
-	var coffee := CylinderMesh.new()
-	coffee.top_radius = mug_r * 0.88; coffee.bottom_radius = mug_r * 0.88; coffee.height = 0.02; coffee.radial_segments = 20
-	props.append(_desk_part(coffee, Color(0.24, 0.15, 0.09), mug_at + Vector3(0, mug_h * 0.5 + 0.011, 0)))
-	var handle := TorusMesh.new()
-	handle.inner_radius = mug_r * 0.28; handle.outer_radius = mug_r * 0.42; handle.rings = 12; handle.ring_segments = 6
-	props.append(_desk_part(handle, Color(0.56, 0.55, 0.53), mug_at + Vector3(mug_r * 1.12, 0, 0), Vector3(deg_to_rad(90.0), 0, 0)))
-	for p in props:
-		# Hidden when they come between the camera and the model, like the
-		# giant furniture around a box.
-		_scenery_nodes.append({"node": p, "center": (p as MeshInstance3D).position})
 
 
 # The block the room stands on. Presentation only: it sits entirely below the
