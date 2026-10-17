@@ -93,6 +93,33 @@ static func _runs(tiles: Array) -> Array:
 func _draw_carry_hints(font: Font) -> void:
 	if carry_hints.is_empty():
 		return
+	# Where a door swings open: a red quarter circle nothing can stand in.
+	for s in carry_hints.get("doors", []) as Array:
+		var swing := s as Dictionary
+		var hinge := (swing["hinge"] as Vector2) * TILE
+		var d: Vector2 = swing["dir"]
+		var r := (swing["r"] as float) * TILE
+		var a0 := atan2(0.0, d.x)
+		var a1 := atan2(d.y, 0.0)
+		var fan := PackedVector2Array([hinge])
+		for i in 13:
+			var a := lerp_angle(a0, a1, i / 12.0)
+			fan.append(hinge + Vector2(cos(a), sin(a)) * r)
+		draw_colored_polygon(fan, Color(NO_GO.r, NO_GO.g, NO_GO.b, 0.20))
+		draw_polyline(fan.slice(1), Color(NO_GO.r, NO_GO.g, NO_GO.b, 0.7), 1.5, true)
+	# Where others stand in the other moments of the day (unfolded, moved),
+	# with their clearance, named by the moment.
+	for z in carry_hints.get("moments", []) as Array:
+		var zone := z as Dictionary
+		var zr := Rect2((zone["rect"] as Rect2).position * TILE, (zone["rect"] as Rect2).size * TILE)
+		var mc := Color(0.72, 0.56, 0.98)
+		draw_rect(zr, Color(mc.r, mc.g, mc.b, 0.12))
+		var c := [zr.position, Vector2(zr.end.x, zr.position.y), zr.end, Vector2(zr.position.x, zr.end.y), zr.position]
+		for i in 4:
+			draw_dashed_line(c[i], c[i + 1], Color(mc.r, mc.g, mc.b, 0.8), 1.5, 4.0)
+		var text := zone["label"] as String
+		draw_string_outline(font, zr.position + Vector2(3, 10), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, zr.position + Vector2(3, 10), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, mc)
 	for r in carry_hints.get("clearance", []) as Array:
 		var z := Rect2((r as Rect2).position * TILE, (r as Rect2).size * TILE)
 		draw_rect(z, Color(CLEARANCE.r, CLEARANCE.g, CLEARANCE.b, 0.07))

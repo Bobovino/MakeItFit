@@ -332,6 +332,44 @@ func _show_carry_hints(carried: Furniture) -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		build_root.add_child(mi)
 		_hint_nodes.append(mi)
+	# Door swings (a red fan on the floor) and where others stand in other
+	# moments (a violet outline), as on the plan.
+	for s in hints.get("doors", []) as Array:
+		var swing := s as Dictionary
+		var hinge := ((swing["hinge"] as Vector2) - origin) * TILE_M
+		var d: Vector2 = swing["dir"]
+		var r := (swing["r"] as float) * TILE_M
+		var a0 := atan2(0.0, d.x)
+		var a1 := atan2(d.y, 0.0)
+		var fan := PackedVector3Array()
+		var y := HITBOX_Y + 0.003
+		for i in 12:
+			var p0 := Vector2(cos(lerp_angle(a0, a1, i / 12.0)), sin(lerp_angle(a0, a1, i / 12.0))) * r + hinge
+			var p1 := Vector2(cos(lerp_angle(a0, a1, (i + 1) / 12.0)), sin(lerp_angle(a0, a1, (i + 1) / 12.0))) * r + hinge
+			fan.append_array([Vector3(hinge.x, y, hinge.y), Vector3(p0.x, y, p0.y), Vector3(p1.x, y, p1.y)])
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = fan
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.93, 0.30, 0.24, 0.30)
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		build_root.add_child(mi)
+		_hint_nodes.append(mi)
+	for z in hints.get("moments", []) as Array:
+		var zr := (z as Dictionary)["rect"] as Rect2
+		var group := _build_outline_group(zr.size * TILE_M, Color(0.72, 0.56, 0.98, 0.85), HITBOX_Y + 0.004)
+		group.position.x = (zr.position.x - origin.x) * TILE_M
+		group.position.z = (zr.position.y - origin.y) * TILE_M
+		build_root.add_child(group)
+		_hint_nodes.append(group)
 	var loft := hints["loft"] as Dictionary
 	if not loft.is_empty():
 		var lt := loft["tiles"] as Array

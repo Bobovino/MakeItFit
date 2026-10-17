@@ -3055,3 +3055,11 @@ msgstr ""
 #: scripts/RuleOverlay.gd
 msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr ""
+
+#: scripts/Wall.gd
+msgid "In the way of the door"
+msgstr ""
+
+#: scripts/Wall.gd
+msgid "Needs clearance around %s during \"%s\""
+msgstr ""

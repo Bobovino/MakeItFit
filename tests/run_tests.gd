@@ -46,6 +46,8 @@ func _run_all() -> void:
 	_test("pathing: a piece beside open floor is reachable", func(): _t_path_open())
 	_test("pathing: no room to walk means nothing is reachable", func(): _t_path_blocked())
 	_test("pathing: a piece must be reachable from its front", func(): _t_path_front())
+	_test("a swing door keeps the quarter circle it opens through", func(): _t_door_swing())
+	_test("a bed unfolded in another moment keeps its space then", func(): _t_other_moment())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -104,6 +106,60 @@ func _make_furniture(fl: Floor, w: int = 2, h: int = 2) -> Furniture:
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
+
+# A 20 x 20 room (tiles 2..20) with a swing door in its north wall at
+# x 6..16, opening south into the room.
+func _t_door_swing() -> void:
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup({"id": "door_floor", "label": "Door", "grid_w": 24, "grid_h": 24, "floor_tiles": [],
+		"segments": [
+			{"x1": 1, "y1": 1, "x2": 21, "y2": 1, "primary": true, "demolished": false,
+				"has_door": true, "door_pos": 5, "door_side": 1},
+			{"x1": 21, "y1": 1, "x2": 21, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+		]})
+	var f := _make_furniture(fl, 3, 3)
+	var in_swing := fl.can_place(f, Vector2(7, 3))
+	var reason := fl.get_block_reason()
+	var beside := fl.can_place(f, Vector2(17, 3))
+	var past_arc := fl.can_place(f, Vector2(14, 9))
+	_ok(not in_swing and reason == "In the way of the door" and beside and past_arc,
+		"%s (%s), beside %s, past the arc %s" % [in_swing, reason, beside, past_arc])
+	fl.queue_free()
+
+
+# Day and night: a sofa bed folded by day, unfolded at night. By day the
+# floor in front of it is free on screen, but a piece put there would stand
+# where the bed lies at night.
+func _t_other_moment() -> void:
+	var real_ids := Furniture.all_moment_ids
+	var real_labels := Furniture.moment_labels
+	var real_test := Furniture.test_mode_active
+	var real_active := Furniture.active_moment_id
+	Furniture.all_moment_ids = ["day", "night"]
+	Furniture.moment_labels = {"day": "Day", "night": "Night"}
+	Furniture.test_mode_active = true
+	Furniture.active_moment_id = "day"
+	var fl := _make_floor()
+	var bed := load("res://scenes/Furniture.tscn").instantiate() as Furniture
+	fl.add_child(bed)
+	bed.setup({"id": "test_bed", "name": "Test Bed", "size": {"w": 3, "h": 2}, "functions": [],
+		"buy_price": 1, "sell_price": 1, "foldable": true, "extended_add_h": 2}, fl)
+	fl.place_furniture(bed, Vector2(2, 2))
+	bed.moment_fold_state = {"day": false, "night": true}
+	var f := _make_furniture(fl, 2, 1)
+	var where_bed_lies := fl.can_place(f, Vector2(2, 4))
+	var reason := fl.get_block_reason()
+	var clear_of_it := fl.can_place(f, Vector2(6, 5))
+	_ok(not where_bed_lies and reason.contains("Night") and clear_of_it, "%s (%s), clear %s" % [where_bed_lies, reason, clear_of_it])
+	fl.queue_free()
+	Furniture.all_moment_ids = real_ids
+	Furniture.moment_labels = real_labels
+	Furniture.test_mode_active = real_test
+	Furniture.active_moment_id = real_active
+
 
 # The test room's interior is 7 x 5 tiles (x 2..8, y 2..6) and has no door,
 # so the walk starts from its largest stretch of open floor.

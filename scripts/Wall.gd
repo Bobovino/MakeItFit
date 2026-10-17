@@ -1162,7 +1162,111 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Needs clearance around %s") % f.furniture_name
 			return false
 
+	# A swing door needs the quarter circle it opens through (a rug can lie
+	# there; nothing else can stand there).
+	if not furniture.walkable:
+		for swing in door_swings():
+			if _rect_hits_swing(new_rect, swing as Dictionary):
+				_block_reason = tr("In the way of the door")
+				return false
+
+	# Every other moment of the day: the piece is there too (unless it has a
+	# spot of its own in that moment), and so is everything else as it stands
+	# then, unfolded beds and all, each with its clearance.
+	var clash := _moment_clash(furniture, at, under, carried)
+	if clash != "":
+		_block_reason = clash
+		return false
+
 	return true
+
+
+# The quarter circle each swing door of this floor opens through, in tiles:
+# [{hinge: Vector2, dir: Vector2 (the quadrant, ±1 per axis), r: float}],
+# matching how GridDraw draws its arc. Sliding doors don't swing.
+func door_swings() -> Array:
+	var out: Array = []
+	if not _use_new_format:
+		return out
+	for seg in segments:
+		var sd := seg as Dictionary
+		if sd.get("demolished", false) or not (sd.get("has_door", false) as bool) \
+				or (sd.get("door_type", "swing") as String) == "sliding":
+			continue
+		var x1: int = sd["x1"]; var y1: int = sd["y1"]
+		var x2: int = sd["x2"]; var y2: int = sd["y2"]
+		var dp := sd.get("door_pos", 0) as int
+		var side := 1.0 if (sd.get("door_side", 1) as int) > 0 else -1.0
+		if y1 == y2:
+			out.append({"hinge": Vector2(mini(x1, x2) + dp, y1), "dir": Vector2(1.0, side), "r": float(DOOR_SWING_LEN)})
+		else:
+			out.append({"hinge": Vector2(x1, mini(y1, y2) + dp), "dir": Vector2(side, 1.0), "r": float(DOOR_SWING_LEN)})
+	return out
+
+const DOOR_SWING_LEN := 10   # tiles, the door's width (see _partition_tile_set)
+
+
+func _rect_hits_swing(rect: Rect2, swing: Dictionary) -> bool:
+	var h: Vector2 = swing["hinge"]
+	var d: Vector2 = swing["dir"]
+	var r: float = swing["r"]
+	var quad := Rect2(h, d * r).abs()
+	var part := rect.intersection(quad)
+	if part.size.x <= 0.0 or part.size.y <= 0.0:
+		return false
+	var nearest := Vector2(clampf(h.x, part.position.x, part.end.x), clampf(h.y, part.position.y, part.end.y))
+	return nearest.distance_to(h) < r - 0.01
+
+
+# Why `furniture` at `at` can't stay there in some other moment, or "".
+# Pieces it would stand on (`under`) or carry along (`carried`) don't count,
+# as in can_place(). The moment on screen while testing moments is
+# can_place()'s own; without moments there is nothing to check.
+func _moment_clash(furniture: Furniture, at: Vector2, under: Array, carried: Array) -> String:
+	if Furniture.all_moment_ids.size() < 2:
+		return ""
+	for mid in Furniture.all_moment_ids:
+		var m := mid as String
+		if Furniture.test_mode_active and m == Furniture.active_moment_id:
+			continue
+		if furniture.has_own_moment_position() and furniture.moment_positions.has(m):
+			continue   # it stands somewhere of its own then
+		var h := furniture.grid_h
+		if furniture.foldable and furniture.extended_add_h > 0:
+			h = (furniture._base_grid_h + furniture.extended_add_h) if (furniture.moment_fold_state.get(m, false) as bool) else furniture._base_grid_h
+		var rect := Rect2(at, Vector2(furniture.grid_w, h))
+		var label: String = Furniture.moment_labels.get(m, m)
+		for f in get_all_furniture():
+			var other := f as Furniture
+			if other == furniture or other in under or other in carried:
+				continue
+			var r := other.get_moment_rect(m)
+			if rect.intersects(r) and not (furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top):
+				return tr("Would overlap %s during \"%s\"") % [other.furniture_name, label]
+			if other.ghost_radius > 0 and r.grow(float(other.ghost_radius)).intersects(rect):
+				return tr("Needs clearance around %s during \"%s\"") % [other.furniture_name, label]
+	return ""
+
+
+# Where the other pieces stand in moments other than the one on screen, when
+# that differs from now (an unfolded bed at night, a piece moved for the
+# evening), with their clearance: [{rect: Rect2 tiles, label: moment name}].
+func other_moment_zones(exclude: Furniture) -> Array:
+	var out: Array = []
+	if Furniture.all_moment_ids.size() < 2:
+		return out
+	for f in get_all_furniture():
+		var other := f as Furniture
+		if other == exclude:
+			continue
+		var now := Rect2(other.grid_pos, Vector2(other.grid_w, other.grid_h))
+		for mid in Furniture.all_moment_ids:
+			var m := mid as String
+			var r := other.get_moment_rect(m)
+			if r == now:
+				continue
+			out.append({"rect": r.grow(float(other.ghost_radius)), "label": Furniture.moment_labels.get(m, m)})
+	return out
 
 
 # Extra check for a red-tier, non-rail piece — it shares ONE position across
@@ -1426,7 +1530,8 @@ func strain_of(support: Furniture, carried: Furniture = null, carried_at: Varian
 var _hints_for: Furniture = null
 
 func carry_hints(carried: Furniture) -> Dictionary:
-	var out := {"clearance": [], "bad_floor": [], "low_ceiling": [], "loft": {}}
+	var out := {"clearance": [], "bad_floor": [], "low_ceiling": [], "loft": {},
+		"doors": [] if carried.walkable else door_swings(), "moments": other_moment_zones(carried)}
 	for f in get_all_furniture():
 		var fur := f as Furniture
 		if fur == carried or fur.ghost_radius <= 0:

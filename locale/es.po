@@ -3131,3 +3131,11 @@ msgstr "Fuera de su sitio inicial: %s"
 #: scripts/RuleOverlay.gd
 msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr "Altillo: %.0f / %.0f, esto suma %.0f"
+
+#: scripts/Wall.gd
+msgid "In the way of the door"
+msgstr "Estorba a la puerta"
+
+#: scripts/Wall.gd
+msgid "Needs clearance around %s during \"%s\""
+msgstr "Necesita espacio alrededor de %s durante \"%s\""

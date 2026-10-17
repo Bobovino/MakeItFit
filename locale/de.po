@@ -3131,3 +3131,11 @@ msgstr "Nicht an seinem Startplatz: %s"
 #: scripts/RuleOverlay.gd
 msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr "Hochebene: %.0f / %.0f, das hier bringt %.0f dazu"
+
+#: scripts/Wall.gd
+msgid "In the way of the door"
+msgstr "Steht der Tür im Weg"
+
+#: scripts/Wall.gd
+msgid "Needs clearance around %s during \"%s\""
+msgstr "Braucht Platz um %s während \"%s\""
