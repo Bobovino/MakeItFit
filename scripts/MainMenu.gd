@@ -71,17 +71,17 @@ func _ready() -> void:
 	header.add_child(title_stack)
 
 	_title_lbl = _add_label(title_stack, tr("MAKE IT FIT"), 44, GameTheme.C_AMBER.darkened(0.15))
-	_add_label(title_stack, tr("Furnish. Satisfy. Retire."), 13, GameTheme.C_MUTED)
+	_add_label(title_stack, tr("Small spaces"), 13, GameTheme.C_MUTED)
 
 	var rule := HSeparator.new()
 	rule.add_theme_color_override("color", GameTheme.C_BORDER)
 	vbox.add_child(rule)
 
 	var hand := GameTheme.handwriting()
-	var note1 := _add_label(vbox, tr("35 apartments across 10 Berlin districts"), 14, GameTheme.C_MUTED)
+	var note1 := _add_label(vbox, tr("Every request arrives by fax."), 14, GameTheme.C_MUTED)
 	if hand:
 		note1.add_theme_font_override("font", hand)
-	_add_label(vbox, tr("Build your property portfolio. Reach 10 000€/month. Retire."), 12, GameTheme.C_MUTED)
+	_add_label(vbox, tr("Make every tenant fit in their apartment, one piece of furniture at a time."), 12, GameTheme.C_MUTED)
 
 	_spacer(vbox, 8)
 

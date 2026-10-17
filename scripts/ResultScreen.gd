@@ -15,7 +15,7 @@ class_name ResultScreen
 #
 # Plain words throughout: it reports, it doesn't comment.
 
-signal next_level_requested     # back to the projects (also "Retire" at the goal)
+signal next_level_requested     # back to the projects (also "Finish" at the goal)
 signal retry_requested          # start the level over
 signal watch_again_requested    # close this and look around the finished apartment
 signal advance_level_requested  # load the next owned level directly
@@ -101,7 +101,7 @@ func show_success(info: Dictionary) -> void:
 	body.add_child(_progress(float(portfolio) / float(GameState.RETIRE_GOAL)))
 	if retired:
 		var done := Label.new()
-		done.text = tr("Goal reached: your portfolio pays for your retirement.")
+		done.text = tr("Goal reached: your portfolio is complete.")
 		done.add_theme_font_size_override("font_size", 14)
 		done.add_theme_color_override("font_color", GameTheme.C_GOOD)
 		done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -121,7 +121,7 @@ func show_success(info: Dictionary) -> void:
 				retry_requested.emit(), false))
 	_push(bar)
 	if retired:
-		_primary = _button(bar, tr("Retire"), "primary", func():
+		_primary = _button(bar, tr("Finish"), "primary", func():
 			visible = false
 			next_level_requested.emit())
 	elif info.get("has_next", false):

@@ -925,16 +925,16 @@ msgid "MAKE IT FIT"
 msgstr "MAKE IT FIT"
 
 #: scripts/MainMenu.gd:74
-msgid "Furnish. Satisfy. Retire."
-msgstr "Einrichten. Zufriedenstellen. Ruhestand."
+msgid "Small spaces"
+msgstr "Kleine Räume"
 
 #: scripts/MainMenu.gd:81
-msgid "35 apartments across 10 Berlin districts"
-msgstr "35 Wohnungen in 10 Berliner Bezirken"
+msgid "Every request arrives by fax."
+msgstr "Jeder Auftrag kommt per Fax."
 
 #: scripts/MainMenu.gd:84
-msgid "Build your property portfolio. Reach 10 000€/month. Retire."
-msgstr "Bau dein Immobilienportfolio auf. Erreiche 10 000€/Monat. Geh in Rente."
+msgid "Make every tenant fit in their apartment, one piece of furniture at a time."
+msgstr "Bring jeden Mieter in seiner Wohnung unter, Möbelstück für Möbelstück."
 
 #: scripts/MainMenu.gd:89
 msgid "Start Game"
@@ -1122,8 +1122,8 @@ msgid "%s of %s €/month"
 msgstr "%s von %s €/Monat"
 
 #: scripts/ResultScreen.gd:104
-msgid "Goal reached: your portfolio pays for your retirement."
-msgstr "Ziel erreicht: Dein Portfolio finanziert deinen Ruhestand."
+msgid "Goal reached: your portfolio is complete."
+msgstr "Ziel erreicht: Dein Portfolio ist komplett."
 
 #: scripts/ResultScreen.gd:112
 msgid "Projects"
@@ -1147,8 +1147,8 @@ msgid "Start over"
 msgstr "Von vorn beginnen"
 
 #: scripts/ResultScreen.gd:124
-msgid "Retire"
-msgstr "In Rente gehen"
+msgid "Finish"
+msgstr "Abschließen"
 
 #: scripts/ResultScreen.gd:128
 msgid "Next Level →"
@@ -1619,10 +1619,6 @@ msgstr "0€/Monat"
 #: scenes/Main.tscn:176
 msgid "RENTED OUT"
 msgstr "VERMIETET"
-
-#: scenes/Main.tscn:186
-msgid "Retirement: 0€ / 3000€"
-msgstr "Ruhestand: 0€ / 3000€"
 
 #: scenes/Main.tscn:190
 msgid "Next Apartment"

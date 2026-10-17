@@ -917,15 +917,15 @@ msgid "MAKE IT FIT"
 msgstr ""
 
 #: scripts/MainMenu.gd:74
-msgid "Furnish. Satisfy. Retire."
+msgid "Small spaces"
 msgstr ""
 
 #: scripts/MainMenu.gd:81
-msgid "35 apartments across 10 Berlin districts"
+msgid "Every request arrives by fax."
 msgstr ""
 
 #: scripts/MainMenu.gd:84
-msgid "Build your property portfolio. Reach 10 000€/month. Retire."
+msgid "Make every tenant fit in their apartment, one piece of furniture at a time."
 msgstr ""
 
 #: scripts/MainMenu.gd:89
@@ -1114,7 +1114,7 @@ msgid "%s of %s €/month"
 msgstr ""
 
 #: scripts/ResultScreen.gd:104
-msgid "Goal reached: your portfolio pays for your retirement."
+msgid "Goal reached: your portfolio is complete."
 msgstr ""
 
 #: scripts/ResultScreen.gd:112
@@ -1139,7 +1139,7 @@ msgid "Start over"
 msgstr ""
 
 #: scripts/ResultScreen.gd:124
-msgid "Retire"
+msgid "Finish"
 msgstr ""
 
 #: scripts/ResultScreen.gd:128
@@ -1606,10 +1606,6 @@ msgstr ""
 
 #: scenes/Main.tscn:176
 msgid "RENTED OUT"
-msgstr ""
-
-#: scenes/Main.tscn:186
-msgid "Retirement: 0€ / 3000€"
 msgstr ""
 
 #: scenes/Main.tscn:190
