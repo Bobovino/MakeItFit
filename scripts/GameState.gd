@@ -114,12 +114,31 @@ const DEFAULT_OWNED := ["beach_house","three_freezers","day_and_night","the_inhe
 		"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]
 
 
+# Frame rate caps. Uncapped, the game drew as many frames as the screen
+# allows (240 a second on a 240 Hz laptop) for a puzzle where nothing moves
+# faster than a tween: the GPU ran flat out, and with the integrated GPU
+# passing every frame on to the screen, the rest of the computer (typing
+# included) slowed down. Behind other windows it only needs to keep its
+# music and tweens going.
+const FPS_ACTIVE := 60
+const FPS_BACKGROUND := 10
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			Engine.max_fps = FPS_BACKGROUND
+		NOTIFICATION_APPLICATION_FOCUS_IN:
+			Engine.max_fps = FPS_ACTIVE
+
+
 func _ready() -> void:
 	# Every screen fills the window, whatever its shape: the contents are
 	# allowed to extend past the 1280 x 720 design area instead of being
 	# letterboxed, and each screen lays itself out against the real size
 	# (see ScreenFit, Main._fit_to_window, CityMap._on_viewport_resized).
 	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	Engine.max_fps = FPS_ACTIVE
 	_apply_global_font()
 	load_game()
 	Loc.apply(language)
