@@ -14,7 +14,6 @@ const ComfortMeterScript := preload("res://scripts/ComfortMeter.gd")
 @onready var rent_btn:     Button       = $UI/TopBar/RentButton
 @onready var view3d_btn:   Button       = $UI/TopBar/View3DButton
 @onready var result_screen: ResultScreen = $ResultScreen
-@onready var wall_inspector: WallInspector = $UI/WallInspector
 @onready var divider:      ColorRect     = $UI/Divider
 @onready var ui_layer:     CanvasLayer   = $UI
 
@@ -60,9 +59,8 @@ var _mode3d_sell_floor: Floor = null  # which Floor _mode3d_view's sell_requeste
 var _watch_done_btn: Button  = null   # floating "back to results" button shown during free-camera Watch Again
 var _post_win_view: bool = false      # true during Watch Again — level is already rented out, so editing/shortcuts are locked out; only the camera works
 var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
-var _modal_backdrop: ColorRect = null # dims the screen behind WallInspector when it's shown as a modal
 var _furniture_menu_btn: Button = null       # persistent "Furniture" trigger — replaces the old always-docked Inventory sidebar
-var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog, own node so it doesn't cross-wire with _modal_backdrop's WallInspector-specific dismiss callback
+var _furniture_menu_backdrop: ColorRect = null   # dims the screen behind the wheel/catalog
 var _mode_buttons:   Dictionary = {}  # ViewMode -> Button
 var _mode_hint_lbl:  Label = null     # "click a wall" / "drag onto a wall" guidance outside the docked-pane modes
 var _back_btn: Button = null          # "← Back to <parent>" — shown only inside a nested box, see _update_nested_nav()
@@ -249,7 +247,7 @@ func _fit_to_window() -> void:
 		_position_furniture_catalog_modal()
 	_position_budget_label()
 	_position_comfort_meter()
-	for backdrop in [_modal_backdrop, _furniture_menu_backdrop]:
+	for backdrop in [_furniture_menu_backdrop]:
 		if is_instance_valid(backdrop):
 			(backdrop as ColorRect).offset_right = SCREEN_W
 			(backdrop as ColorRect).offset_bottom = BOT_Y
@@ -260,8 +258,6 @@ func _fit_to_window() -> void:
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.offset_right = RIGHT_X
 		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
-	if wall_inspector.is_showing_wall():
-		_position_wall_inspector_modal()
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and _view_mode == ViewMode.TOPDOWN:
 		_fit_floor(fl, true)
@@ -323,10 +319,6 @@ func _ready() -> void:
 		result_screen.watch_again_requested.connect(_on_watch_again_reveal)
 	if not result_screen.advance_level_requested.is_connected(_on_advance_level):
 		result_screen.advance_level_requested.connect(_on_advance_level)
-	if not wall_inspector.wall_closed.is_connected(_on_inspector_visibility_changed):
-		wall_inspector.wall_closed.connect(_on_inspector_visibility_changed)
-	if not wall_inspector.wall_item_placed.is_connected(_on_wall_item_placed):
-		wall_inspector.wall_item_placed.connect(_on_wall_item_placed)
 	divider.mouse_filter = Control.MOUSE_FILTER_STOP
 	divider.mouse_default_cursor_shape = Control.CURSOR_VSPLIT
 	if not divider.gui_input.is_connected(_on_divider_gui_input):
@@ -356,8 +348,6 @@ func _ready() -> void:
 		# (see Main.gd's _on_buy_requested) react to stale floor coordinates
 		# and surface its own rejection (e.g. "Outside the room") even while
 		# the player was clearly placing the item on a wall instead.
-		if wall_inspector.is_showing_wall():
-			return false
 		return pos.x > LEFT_X and pos.x < RIGHT_X and pos.y > TOP_Y and pos.y < _floor_pane_bottom_y()
 	_update_split(_split_y)
 	_apply_ui_theme()
@@ -369,7 +359,6 @@ func _apply_ui_theme() -> void:
 	minimap.theme       = t
 	tenant_card.theme   = t
 	inventory.theme     = t
-	wall_inspector.theme = t
 
 	var ts := StyleBoxFlat.new()
 	ts.bg_color     = Color(0.130, 0.113, 0.095, 0.98)
@@ -831,7 +820,6 @@ func _load_level(level_id: String) -> void:
 	_rent_auto_armed = false
 	_level_completed = false
 	Furniture.read_only     = false
-	WallInspector.read_only = false
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
 	# Stepping into a box, back out of it, or restarting keeps the catalogue
@@ -1035,7 +1023,6 @@ func _load_level(level_id: String) -> void:
 	budget_label.text = "\ueb82 %d €" % gm.budget
 	budget_label.tooltip_text = tr("Budget")
 	budget_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	wall_inspector.setup(gm.furniture_data["furniture"])
 
 	# Start on the first visible floor (skip hidden ones)
 	var first_visible_id := floors_data[0]["id"] as String
@@ -3227,7 +3214,7 @@ func _position_undo_btn() -> void:
 func _set_view_mode(mode: int) -> void:
 	# Switching is still allowed during post-win "View Apartment" — the player
 	# should be able to look at the Floor Plan/Wall view same as 3D, just not
-	# edit anything there. Furniture.read_only/WallInspector.read_only (set
+	# edit anything there. Furniture.read_only (set
 	# alongside _post_win_view) are what actually lock out editing in those
 	# views; this function only ever controls which view is showing.
 	#
@@ -3252,24 +3239,12 @@ func _set_view_mode(mode: int) -> void:
 			_teardown_mode3d_view()
 			room.visible    = true
 			divider.visible = false
-			# `.visible` stays true for the idle placeholder panel too (it's only
-			# ever hidden by its own close button) — is_showing_wall() is the
-			# actual "a wall is open" check, otherwise the modal+backdrop would
-			# cover the top-down plan immediately on switching into this mode.
-			if wall_inspector.is_showing_wall():
-				_position_wall_inspector_modal()
-				_set_mode_hint("")
-			else:
-				wall_inspector.hide()
-				_hide_modal_backdrop()
-				_set_mode_hint(_plan_hint())
+			_set_mode_hint(_plan_hint())
 		ViewMode.VIEW3D:
-			# Wall items are placed/moved directly in the 3D view here (drag onto
-			# a wall) — there's no 2D Wall Inspector panel in this mode at all.
+			# Wall items are placed/moved directly in the 3D view (drag onto
+			# a wall).
 			room.visible    = false
 			divider.visible = false
-			wall_inspector.hide()
-			_hide_modal_backdrop()
 			_ensure_mode3d_view()
 			_set_mode_hint(_view3d_hint())
 
@@ -3405,53 +3380,6 @@ func _teardown_mode3d_view() -> void:
 		_mode3d_view.queue_free()
 	_mode3d_view = null
 	_mode3d_sell_floor = null   # the next _ensure_mode3d_view() builds a brand new node with no connections yet — force a fresh bind regardless of which floor it lands on
-
-
-# TOPDOWN shows the Wall Inspector as a centered modal (with a dismiss-on-tap
-# backdrop) rather than a docked panel — VIEW3D handles walls directly in the
-# 3D pane instead (drag onto a wall), so this modal only ever appears in
-# TOPDOWN mode.
-func _position_wall_inspector_modal() -> void:
-	if not is_instance_valid(_modal_backdrop):
-		_modal_backdrop = ColorRect.new()
-		_modal_backdrop.color = Color(0.0, 0.0, 0.0, 0.55)
-		_modal_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-		_modal_backdrop.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-				wall_inspector.close_btn.pressed.emit())
-		ui_layer.add_child(_modal_backdrop)
-		ui_layer.move_child(_modal_backdrop, wall_inspector.get_index())
-	_modal_backdrop.offset_left   = 0.0
-	_modal_backdrop.offset_top    = 0.0
-	_modal_backdrop.offset_right  = SCREEN_W
-	_modal_backdrop.offset_bottom = BOT_Y
-	_modal_backdrop.visible = true
-
-	# Size the modal to the wall's actual aspect ratio instead of a fixed
-	# 760x480 box — a fixed box left tall, empty letterboxing on whichever
-	# side didn't match the wall's proportions, and dominated the screen even
-	# for a small wall, hiding the top-down plan behind it for no reason.
-	const MAX_MW := 720.0
-	const MAX_MH := 420.0
-	const MIN_MW := 380.0
-	const MIN_MH := 220.0
-	const PAD := 40.0   # room for title bar + panel margins
-	var content_w: float = wall_inspector._wall_w() * WallInspector.TILE_SIZE
-	var content_h: float = WallInspector.WALL_HEIGHT * WallInspector.TILE_SIZE
-	var fit := minf((MAX_MW - PAD) / content_w, (MAX_MH - PAD) / content_h)
-	fit = minf(fit, 2.0)   # never blow up a tiny wall to fill the whole box either
-	var MW := clampf(content_w * fit + PAD, MIN_MW, MAX_MW)
-	var MH := clampf(content_h * fit + PAD, MIN_MH, MAX_MH)
-	var center_x := (LEFT_X + RIGHT_X) * 0.5
-	wall_inspector.offset_left   = center_x - MW * 0.5
-	wall_inspector.offset_bottom = BOT_Y - 20.0
-	wall_inspector.offset_right  = center_x + MW * 0.5
-	wall_inspector.offset_top    = BOT_Y - 20.0 - MH
-
-
-func _hide_modal_backdrop() -> void:
-	if is_instance_valid(_modal_backdrop):
-		_modal_backdrop.visible = false
 
 
 # ── Sims-style furniture menu: wheel (categories) → Inventory (catalog) ────
@@ -3746,12 +3674,11 @@ func _floor_pane_bottom_y() -> float:
 
 
 # Any full-screen modal that should freeze zoom/pan everywhere while it's up:
-# the "NEW MECHANIC" intro card, the Wall Inspector's modal backdrop (Top-Down
-# mode), and the win/fail result screen.
+# the "NEW MECHANIC" intro card, the application fax, the catalogue's backdrop
+# and the win/fail result screen.
 func _blocking_modal_open() -> bool:
 	return _intro_modal_open \
 		or is_instance_valid(_application_fax) \
-		or (is_instance_valid(_modal_backdrop) and _modal_backdrop.visible) \
 		or (is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible) \
 		or result_screen.visible
 
@@ -3796,8 +3723,8 @@ func _zoom_floor(delta: float, cursor_pos: Vector2) -> void:
 # now — drag a piece onto a wall — so the plan no longer offers it: the
 # floor's wall_edge_clicked signal is left unconnected and the hover
 # highlight that advertised it is switched off. The inspector's own code
-# (_on_wall_edge_clicked and friends, WallInspector.gd) is still here but
-# nothing reaches it.
+# (the 2D Wall Inspector it opened is gone; _on_wall_edge_clicked now just
+# switches to 3D).
 func _disable_plan_wall_select(fl: Floor) -> void:
 	if is_instance_valid(fl) and is_instance_valid(fl.grid_draw):
 		fl.grid_draw.wall_select_enabled = false
@@ -3866,26 +3793,6 @@ func _reopen_last_wall() -> void:
 	if not apt_floor:
 		return
 	_on_wall_edge_clicked(last["edge"] as String, last["span_lo"] as int, last["span_hi"] as int, apt_floor)
-
-
-func _on_inspector_visibility_changed() -> void:
-	if not wall_inspector.visible:
-		for fid in _floors:
-			(_floors[fid] as Floor).set_active_wall_edge("")
-		_hide_modal_backdrop()
-		if _view_mode == ViewMode.TOPDOWN:
-			_set_mode_hint(_plan_hint())
-
-
-func _on_wall_item_placed(furniture_id: String) -> void:
-	gm.buy_furniture(furniture_id)
-	_autosave_soon()
-	# The wall placement won — cancel the parallel floor-placement ghost so it
-	# doesn't linger following the mouse (and can't be placed a second time for free).
-	if is_instance_valid(_pending_floor_ghost):
-		_pending_floor_ghost.cancel_placement()
-	_pending_floor_ghost = null
-	_refresh_functions()
 
 
 # ── Moving furniture between an apartment and the boxes inside it ────────────
@@ -4393,7 +4300,6 @@ func _on_buy_requested(furniture_id: String) -> void:
 		f.placement_confirmed.connect(func():
 			_settle_placement(furniture_id, owned)
 			_pending_floor_ghost = null
-			wall_inspector.cancel_selection()
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
 			_refresh_functions()
@@ -4403,15 +4309,6 @@ func _on_buy_requested(furniture_id: String) -> void:
 			_refresh_functions())
 		f.begin_placement(apt_floor, get_viewport().get_mouse_position())
 		_pending_floor_ghost = f
-		# wall_flush_required items (the balcony window) always place through
-		# THIS floor-ghost path — Wall.can_place() itself enforces the "must
-		# be flush against a wall" rule — never Wall Inspector's separate
-		# "hang decoration on a wall" system, which stores a plain
-		# {edge, origin, fid} record with no Furniture node behind it and so
-		# no fold/toggle support at all (confirmed: that's the very thing
-		# that made a placed balcony window impossible to open/close).
-		if wall_inspector.is_showing_wall() and not f.wall_flush_required:
-			wall_inspector.select_item(furniture_id)
 
 	_refresh_functions()
 
@@ -4859,7 +4756,6 @@ func _on_watch_again_reveal() -> void:
 	if tenant_layer:
 		tenant_layer.stop()
 	Furniture.read_only     = true
-	WallInspector.read_only = true
 	_set_view_mode(ViewMode.VIEW3D)
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = true

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://main01"]
+[gd_scene load_steps=8 format=3 uid="uid://main01"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/GameManager.gd" id="2"]
@@ -6,7 +6,6 @@
 [ext_resource type="Script" path="res://scripts/TenantCard.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/Inventory.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/ResultScreen.gd" id="6"]
-[ext_resource type="Script" path="res://scripts/WallInspector.gd" id="7"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -67,47 +66,6 @@ offset_top = 457.0
 offset_right = 1150.0
 offset_bottom = 463.0
 color = Color(0.20, 0.26, 0.34, 1)
-
-[node name="WallInspector" type="PanelContainer" parent="UI"]
-offset_left = 210.0
-offset_top = 463.0
-offset_right = 1150.0
-offset_bottom = 720.0
-script = ExtResource("7")
-
-[node name="VBox" type="VBoxContainer" parent="UI/WallInspector"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 6.0
-offset_top = 6.0
-offset_right = -6.0
-offset_bottom = -6.0
-
-[node name="TitleRow" type="HBoxContainer" parent="UI/WallInspector/VBox"]
-
-[node name="Title" type="Label" parent="UI/WallInspector/VBox/TitleRow"]
-text = "Wall Inspector"
-theme_override_font_sizes/font_size = 14
-size_flags_horizontal = 3
-
-[node name="CloseBtn" type="Button" parent="UI/WallInspector/VBox/TitleRow"]
-text = "✕"
-custom_minimum_size = Vector2(30, 0)
-
-[node name="HintLabel" type="Label" parent="UI/WallInspector/VBox"]
-text = "Click a highlighted wall edge to inspect it."
-autowrap_mode = 3
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
-
-[node name="Scroll" type="ScrollContainer" parent="UI/WallInspector/VBox"]
-size_flags_vertical = 3
-
-[node name="DrawArea" type="Control" parent="UI/WallInspector/VBox/Scroll"]
-visible = false
-custom_minimum_size = Vector2(512, 192)
-
-[node name="WallItems" type="HBoxContainer" parent="UI/WallInspector/VBox"]
-visible = false
 
 [node name="Inventory" type="PanelContainer" parent="UI"]
 offset_left = 0.0
