@@ -1068,6 +1068,14 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Too heavy for this loft (%.0f / %.0f)") % [projected_load, mezzanine_max_load]
 			return false
 
+	# Inside a box that stands on a table: a new piece is weight on that table
+	# too, shrunk (see Main._apply_carry_limit()). Moving what is already in
+	# here weighs nothing more.
+	if Floor.carry_limit >= 0.0 and Floor.carried_weight.is_valid() and not is_registered(furniture):
+		if (Floor.carried_weight.call() as float) + furniture._base_weight > Floor.carry_limit:
+			_block_reason = tr("Too heavy: what this box stands on would break (%s)") % Floor.carry_support_name
+			return false
+
 	var stacked_on := _surface_support_at(target_tiles, furniture)
 	if furniture.requires_surface and stacked_on == null:
 		_block_reason = tr("Needs a table or shelf underneath")
@@ -1771,6 +1779,30 @@ func move_with_riders(support: Furniture, at: Vector2) -> bool:
 	return ok
 
 
+# After `support` was turned a quarter (Furniture._rotate(): one rot_step,
+# counter-clockwise on the plan) from `old_pos`, `old_w` tiles wide: turns
+# `riders` (riders_of() taken before the turn) with it, each keeping its spot
+# on the surface as the surface turns under it. Everything stays inside the
+# turned footprint, so nothing is left hanging off the edge.
+func turn_riders(support: Furniture, riders: Array, old_pos: Vector2, old_w: int) -> void:
+	if riders.is_empty():
+		return
+	begin_batch()
+	var offsets: Dictionary = {}
+	for r in riders:
+		offsets[r] = (r as Furniture).grid_pos - old_pos
+		_remove_from_grid(r as Furniture)
+	for r in riders:
+		var rf := r as Furniture
+		var off: Vector2 = offsets[rf]
+		var rw := rf.grid_w
+		rf.set_rot_steps(rf.rot_steps + 1)   # not registered right now, so this only turns it
+		place_furniture(rf, support.grid_pos + Vector2(off.y, old_w - off.x - rw))
+		if rf.has_own_moment_position() and Furniture.test_mode_active:
+			rf.moment_positions[Furniture.active_moment_id] = rf.grid_pos
+	end_batch()
+
+
 # Combined weight of everything already resting on `support` (any piece
 # stacked there, not just requires_surface-flagged ones — see can_place()'s
 # generalized stacking check, and whatever rests on those in turn), excluding
@@ -1922,6 +1954,14 @@ func _ground_piece(f: Furniture) -> Furniture:
 # the older "one free tile beside it" rule, so the game's blocked-piece
 # marker, the win condition and the level validator all follow it.
 static var pathing_enabled := false
+
+# Set by Main while the player is inside a box that stands on a table or
+# shelf: how much (in this apartment's own, unshrunk weight) everything in it
+# may add up to before that table outside would break, what weighs in here
+# now, and the table's name. carry_limit < 0: no such limit.
+static var carry_limit := -1.0
+static var carried_weight: Callable
+static var carry_support_name := ""
 const WALK_WIDTH := 4            # tiles (40 cm): the narrowest gap a person fits through
 const HEAD_HEIGHT := 18.0        # tiles: anything starting above this is walked under
 

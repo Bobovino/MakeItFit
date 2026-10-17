@@ -1459,6 +1459,10 @@ msgstr ""
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr ""
 
+#: scripts/Wall.gd:1076
+msgid "Too heavy: what this box stands on would break (%s)"
+msgstr ""
+
 #: scripts/Wall.gd:1143
 msgid "Needs clearance around %s"
 msgstr ""

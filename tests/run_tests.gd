@@ -606,6 +606,77 @@ func _t_box_on_a_surface() -> void:
 		var moved := fl.can_place(dresser, dresser.grid_pos + Vector2(1, 1)) and fl.move_with_riders(dresser, dresser.grid_pos + Vector2(1, 1))
 		_ok(moved and box.grid_pos == Vector2(11, 15) and fl.support_under(box) == dresser, "%s %s" % [moved, box.grid_pos])
 
+		# A quarter turn takes the box round with the dresser (11x7 at 11,15,
+		# box in its top-left corner): it ends up bottom-left, turned too.
+		dresser._rotate(true)
+		_current = "surface box: turning the dresser turns the box with it"
+		_ok(box.grid_pos == Vector2(11, 22) and box.rot_steps == 1 and fl.support_under(box) == dresser,
+			"%s r%d on %s" % [box.grid_pos, box.rot_steps, fl.support_under(box)])
+		for i in 3:
+			dresser._rotate(true)
+		_current = "surface box: four turns put it back where it was"
+		_ok(box.grid_pos == Vector2(11, 15) and box.rot_steps == 0 and dresser.grid_pos == Vector2(11, 15))
+
+	# A box comes weighed with what is inside it, from the moment it exists.
+	var family: Furniture = main._spawn_furniture("rental_family", fl, 2, 22)
+	_current = "surface box: a family carton weighs its contents at once (too much for a dresser)"
+	_ok(family.weight > 15.0, str(family.weight))
+	var editor = load("res://scripts/LevelEditor.gd").new()
+	editor._furn_catalog = main.gm.furniture_data["furniture"]
+	var preview := load("res://scenes/Furniture.tscn").instantiate() as Furniture
+	add_child(preview)
+	preview.setup(main.gm.get_furniture_by_id("rental_family"), null)
+	editor._weigh_preview_box(preview)
+	_current = "surface box: the level editor weighs a box the same as the game"
+	_ok(is_equal_approx(preview.weight, family.weight), "%s vs %s" % [preview.weight, family.weight])
+	preview.queue_free()
+	editor.free()
+	fl.remove_furniture(family)
+
+	# Inside the capsule on the desk: furnishing it stops where the desk would break.
+	var capsule: Furniture = null
+	for b in main._collect_nested_boxes():
+		var under := fl.support_under(b)
+		if under != null and under.furniture_id == "desk":
+			capsule = b
+	var desk := fl.support_under(capsule) if capsule else null
+	main._on_box_entered(capsule)
+	for i in 5:
+		await get_tree().process_frame
+	var inner: Floor = main._floors[main._current_floor_id]
+	var refusal := ""
+	for n in 30:
+		var piece: Furniture = main._spawn_furniture("normal_bed", inner, 0, 0)
+		inner.forget_furniture(piece)   # a piece being bought isn't on the floor yet
+		var put := false
+		var rb := inner.get_room_bounds()
+		for y in range(rb.position.y, rb.end.y):
+			for x in range(rb.position.x, rb.end.x):
+				if not put and inner.can_place(piece, Vector2(x, y)):
+					inner.place_furniture(piece, Vector2(x, y))
+					put = true
+				elif not put and refusal == "" and inner.get_block_reason().begins_with("Too heavy: what this box"):
+					refusal = inner.get_block_reason()
+		if not put:
+			piece.queue_free()
+			break
+	main._refresh_functions()
+	_current = "surface box: inside a box on a desk, new pieces stop where the desk would break"
+	_ok(refusal != "", "never refused for weight")
+	main._exit_nested_level_to(0)
+	for i in 5:
+		await get_tree().process_frame
+	fl = main._floors[main._current_floor_id]
+	capsule = null
+	for b in main._collect_nested_boxes():
+		var under := fl.support_under(b)
+		if under != null and under.furniture_id == "desk":
+			capsule = b
+	desk = fl.support_under(capsule) if capsule else null
+	_current = "surface box: back out, the desk still holds the furnished capsule"
+	_ok(capsule != null and capsule.weight <= desk.max_support_weight - fl._surface_load(desk, capsule) + 0.001,
+		"%s on %s" % [capsule.weight if capsule else -1.0, desk.max_support_weight if desk else -1.0])
+
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:

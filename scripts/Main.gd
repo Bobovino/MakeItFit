@@ -1451,6 +1451,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	# A level can author a piece already turned ("rot_steps": quarter turns).
 	var authored_rot := rail_data.get("rot_steps", 0) as int
 	if authored_rot != 0:
@@ -1515,6 +1516,16 @@ func _on_box_entered(box: Furniture) -> void:
 	var factor := _compute_box_occlusion(box)
 	var noisy_outside := _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box)
 	var wall_side := _closest_wall_side(box._wall_ref, box)
+	# Standing on a table, the box can only get as heavy as the table allows:
+	# what that leaves for its contents, in their own (unshrunk) weight.
+	var carry_limit := -1.0
+	var carry_name := ""
+	var sup := box._wall_ref.support_under(box) if is_instance_valid(box._wall_ref) else null
+	if sup != null:
+		var spare := sup.max_support_weight - box._wall_ref._surface_load(sup, box) - box._base_weight
+		var shrink := _box_shrink(box)
+		carry_limit = maxf(spare, 0.0) / shrink if shrink > 0.0 else INF
+		carry_name = sup.furniture_name
 	var wall_override: Dictionary = (gm.external_restrictions.get("by_wall", {}) as Dictionary).get(wall_side, {}) as Dictionary
 	_remember_level_state()
 	# Remembers whether the level being left was in post-win "Watch Again"
@@ -1536,6 +1547,8 @@ func _on_box_entered(box: Furniture) -> void:
 		"was_post_win_view": was_showcasing,
 		"box_floor_id": box_floor_id,
 		"box_rect": Rect2(box.grid_pos, Vector2(box.grid_w, box.grid_h)),
+		"carry_limit": carry_limit,
+		"carry_support_name": carry_name,
 	})
 	_current_nested_daylight_factor = factor
 	_current_nested_noisy_from_outside = noisy_outside
@@ -2050,17 +2063,7 @@ func _level_floor_area_m2(level_id: String) -> float:
 	var level := _lookup_level_dict(level_id)
 	if level.is_empty():
 		return 0.0
-	var apt := level.get("apartment", {}) as Dictionary
-	var gw := apt.get("grid_w", 0) as int
-	var gh := apt.get("grid_h", 0) as int
-	var total_tiles := 0
-	for fd in apt.get("floors", []) as Array:
-		var fdata := fd as Dictionary
-		if fdata.get("type", "floor") as String not in ["floor", "loft"]:
-			continue
-		var tiles := fdata.get("floor_tiles", []) as Array
-		total_tiles += tiles.size() if not tiles.is_empty() else gw * gh
-	return total_tiles * TILE_M2
+	return Furniture.level_floor_tiles(level) * TILE_M2
 
 
 # Pops the stack all the way down to (and including) _nested_stack[index],
@@ -2334,8 +2337,7 @@ func _compute_child_interior_weight(child_level_id: String) -> float:
 		var fdata := gm.get_furniture_by_id((item as Dictionary).get("id", "") as String)
 		if fdata.is_empty():
 			continue
-		var sz := fdata.get("size", {}) as Dictionary
-		total += fdata.get("weight", float((sz.get("w", 4) as int) * (sz.get("h", 4) as int))) as float
+		total += Furniture.catalog_weight(fdata)
 	return total
 
 
@@ -2356,6 +2358,7 @@ func _compute_child_is_noisy(child_level_id: String) -> bool:
 # mutes behind on furniture that's since moved away or was never really its
 # fault to begin with).
 func _recompute_box_effects() -> void:
+	_apply_carry_limit()
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
 			(f as Furniture)._noise_muted = false
@@ -2380,14 +2383,44 @@ func _recompute_box_effects() -> void:
 			_mute_quiet_neighbors(box._wall_ref, box)
 
 
+# Inside a box that stands on a table, nothing new can go in that would make
+# the box too heavy for that table (Floor.carry_limit); anywhere else, no limit.
+func _apply_carry_limit() -> void:
+	var ctx: Dictionary = _nested_stack[-1] if not _nested_stack.is_empty() else {}
+	Floor.carry_limit = ctx.get("carry_limit", -1.0) as float
+	Floor.carry_support_name = ctx.get("carry_support_name", "") as String
+	Floor.carried_weight = _carried_weight
+
+
+# The limit is static: it must not outlive the game it belongs to (the level
+# editor's floors and the tests share it).
+func _exit_tree() -> void:
+	Floor.carry_limit = -1.0
+	Floor.carried_weight = Callable()
+
+
+# What everything in the current apartment weighs, the way the box outside
+# counts it (catalogue weights, see _compute_child_interior_weight()).
+func _carried_weight() -> float:
+	var total := 0.0
+	for fid in _floors:
+		for f in (_floors[fid] as Floor).get_all_furniture():
+			total += (f as Furniture)._base_weight
+	return total
+
+
+# A box weighs what is in it from the moment it exists, not only from the
+# next refresh: a box being bought onto a table has to be weighed full.
+func _weigh_box(f: Furniture) -> void:
+	if f.is_nested_box and not f.child_level_id.is_empty():
+		f.apply_interior_weight(_compute_child_interior_weight(f.child_level_id), _box_shrink(f))
+
+
 # How much the fax shrank the apartment in `box`: the box's footprint over
 # that apartment's floor, both in tiles. What is inside weighs that much less
 # out here (see Furniture.apply_interior_weight()).
 func _box_shrink(box: Furniture) -> float:
-	var inner_tiles := _level_floor_area_m2(box.child_level_id) / TILE_M2
-	if inner_tiles <= 0.0:
-		return 1.0
-	return clampf(float(box.grid_w * box.grid_h) / inner_tiles, 0.0, 1.0)
+	return Furniture.box_shrink(box.grid_w, box.grid_h, _lookup_level_dict(box.child_level_id))
 
 
 func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:
@@ -4000,6 +4033,7 @@ func _on_buy_requested(furniture_id: String) -> void:
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
@@ -5200,6 +5234,7 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
+	_weigh_box(f)
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	# home_x/home_y (see _snapshot_all_furniture()) is the level's true
 	# authored starting position — fall back to (gx,gy) only for snapshots

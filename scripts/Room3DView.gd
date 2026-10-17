@@ -1072,7 +1072,15 @@ func _rotate_dragged_furniture() -> void:
 	var mesh: MeshInstance3D = _drag_target["mesh"]
 	var box := mesh.mesh as BoxMesh
 	var height_m: float = box.size.y
+	var riders: Array = _apt_floor.riders_of(f) if is_instance_valid(_apt_floor) else []
 	f._rotate()
+	# What stands on it turned with it (Floor.turn_riders), where it stands.
+	for r in riders:
+		var re := _entry_of(r as Furniture)
+		if not re.is_empty():
+			_sync_entry_to_piece(re)
+	if not riders.is_empty():
+		_settle_stacked()
 	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
 	box.size = new_size
 	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
@@ -4766,6 +4774,33 @@ func _lift_m(f: Furniture, at: Variant = null) -> float:
 		return 0.0
 	var sup := _apt_floor.support_under(f, at)
 	return _top_m(sup) if sup != null else 0.0
+
+
+# Redraws a placed piece where and how it now is on the floor (position,
+# turn, footprint), after something other than the player's own drag moved it.
+func _sync_entry_to_piece(entry: Dictionary) -> void:
+	var f := entry["furniture"] as Furniture
+	var mesh := entry["mesh"] as MeshInstance3D
+	var height_m: float = (entry["size"] as Vector3).y
+	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
+	(mesh.mesh as BoxMesh).size = new_size
+	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
+	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	if fdata.get("animated_fold", false):
+		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
+	else:
+		_refit_item_model(mesh, Vector3(new_size.z, new_size.y, new_size.x) if f.rot_steps % 2 == 1 else new_size)
+	mesh.position.x = (f.grid_pos.x - _room_bounds.position.x) * TILE_M + new_size.x * 0.5
+	mesh.position.z = (f.grid_pos.y - _room_bounds.position.y) * TILE_M + new_size.z * 0.5
+	entry["size"] = new_size
+	entry["pos"] = mesh.position
+	for i in range(_hitbox_highlights.size() - 1, -1, -1):
+		var h = _hitbox_highlights[i]
+		if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+			h.queue_free()
+			_hitbox_highlights.remove_at(i)
+	_add_hitbox_highlight(Vector3(mesh.position.x, 0.0, mesh.position.z), Vector2(new_size.x, new_size.z), f)
+	(_hitbox_highlights[-1] as Node3D).visible = _dragging_furniture   # shown alongside the others mid-drag
 
 
 # Puts every placed piece at its height: on the floor, or on what it stands

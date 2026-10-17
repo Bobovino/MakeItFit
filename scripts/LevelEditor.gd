@@ -3386,6 +3386,7 @@ func _update_placed_furniture_overlay() -> void:
 		var f: Furniture = FurnitureScene.instantiate() as Furniture
 		_room.add_child(f)
 		f.setup(merged, null)
+		_weigh_preview_box(f)
 		f.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
 		# Disable all processing so preview nodes don't react to input
 		f.process_mode = Node.PROCESS_MODE_DISABLED
@@ -3402,6 +3403,37 @@ func _update_placed_furniture_overlay() -> void:
 	if is_instance_valid(_ov):
 		_ov.set("placed_furniture", [])
 		_ov.queue_redraw()
+
+
+# A box weighs what its interior holds (shrunk), as it will in the game
+# (Main._weigh_box()), so a box too full for the desk it is put on is warned
+# about here and not only once someone tries to play it.
+var _levels_cache: Dictionary = {}   # level id -> level dict, from levels.json
+var _levels_cache_time := -1
+
+func _weigh_preview_box(f: Furniture) -> void:
+	if not f.is_nested_box or f.child_level_id.is_empty():
+		return
+	var mtime := FileAccess.get_modified_time("res://data/levels.json")
+	if mtime != _levels_cache_time:
+		_levels_cache.clear()
+		_levels_cache_time = mtime
+		var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/levels.json"))
+		if data is Dictionary:
+			for lv in (data as Dictionary).get("levels", []) as Array:
+				_levels_cache[(lv as Dictionary).get("id", "")] = lv
+	var level := _levels_cache.get(f.child_level_id, {}) as Dictionary
+	if level.is_empty():
+		return
+	var items: Array = (level.get("starting_furniture", []) as Array).duplicate()
+	for fd in (level.get("apartment", {}) as Dictionary).get("floors", []) as Array:
+		items.append_array((fd as Dictionary).get("starting_furniture", []) as Array)
+	var inside := 0.0
+	for it in items:
+		var fdata := _furn_data_by_id((it as Dictionary).get("id", "") as String)
+		if not fdata.is_empty():
+			inside += Furniture.catalog_weight(fdata)
+	f.apply_interior_weight(inside, Furniture.box_shrink(f.grid_w, f.grid_h, level))
 
 
 func _confirm_clear_all() -> void:

@@ -195,6 +195,39 @@ func apply_interior_weight(w: float, shrink: float = 1.0) -> void:
 	else:
 		mobility_tier = _base_mobility_tier
 
+# A catalogue piece's weight: its own "weight", else its footprint in tiles
+# (the same default setup() gives `weight`).
+static func catalog_weight(fdata: Dictionary) -> float:
+	var sz := fdata.get("size", {}) as Dictionary
+	return fdata.get("weight", float((sz.get("w", 4) as int) * (sz.get("h", 4) as int))) as float
+
+
+# How many floor tiles a level's apartment has, over its floors and lofts
+# (a floor with no painted tiles counts its whole grid).
+static func level_floor_tiles(level: Dictionary) -> int:
+	var apt := level.get("apartment", {}) as Dictionary
+	var gw := apt.get("grid_w", 0) as int
+	var gh := apt.get("grid_h", 0) as int
+	var total := 0
+	for fd in apt.get("floors", []) as Array:
+		var fdata := fd as Dictionary
+		if fdata.get("type", "floor") as String not in ["floor", "loft"]:
+			continue
+		var tiles := fdata.get("floor_tiles", []) as Array
+		total += tiles.size() if not tiles.is_empty() else gw * gh
+	return total
+
+
+# How much the fax shrank `level` to fit a box `box_w` x `box_h` tiles: the
+# box's footprint over the apartment's floor. What is inside weighs that much
+# less out here (see apply_interior_weight()).
+static func box_shrink(box_w: int, box_h: int, level: Dictionary) -> float:
+	var inner := level_floor_tiles(level)
+	if inner <= 0:
+		return 1.0
+	return clampf(float(box_w * box_h) / inner, 0.0, 1.0)
+
+
 # Rail: constrains dragging to one axis within a defined extent. rail_axis
 # itself is LIVE (Ctrl-drag clears it to detach) — _home_rail_* is the
 # catalog's original value, kept around forever so a detached piece can
@@ -1685,10 +1718,17 @@ func _rotate(quiet: bool = false) -> void:
 	if _wall_ref and _wall_ref.is_registered(self):
 		var cx := clampf(grid_pos.x, 0.0, float(_wall_ref.grid_w - new_w))
 		var cy := clampf(grid_pos.y, 0.0, float(_wall_ref.grid_h - new_h))
+		# What stands on it turns with it (Floor.turn_riders).
+		var riders := _wall_ref.riders_of(self) if is_surface else []
+		var old_pos := grid_pos
+		var old_w := grid_w
+		_wall_ref.begin_batch()
 		grid_w = new_w
 		grid_h = new_h
 		rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
 		_wall_ref.place_furniture(self, Vector2(cx, cy))
+		_wall_ref.turn_riders(self, riders, old_pos, old_w)
+		_wall_ref.end_batch()
 	else:
 		grid_w = new_w
 		grid_h = new_h

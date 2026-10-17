@@ -1471,6 +1471,10 @@ msgstr "Braucht einen Tisch oder ein Regal darunter"
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr "Zu schwer für %s — es würde brechen (%.0f / %.0f)"
 
+#: scripts/Wall.gd:1076
+msgid "Too heavy: what this box stands on would break (%s)"
+msgstr "Zu schwer: was unter dieser Kiste steht, würde brechen (%s)"
+
 #: scripts/Wall.gd:1143
 msgid "Needs clearance around %s"
 msgstr "Braucht Platz um %s herum"
