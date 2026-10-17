@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Make it fit"
-config/description="Furnish apartments. Satisfy tenants. Retire."
+config/description="Furnish apartments. Satisfy tenants."
 run/main_scene="res://scenes/CityMap.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -41,7 +41,6 @@ window/stretch/mode="canvas_items"
 [internationalization]
 
 locale/translations=PackedStringArray("res://locale/de.po", "res://locale/es.po")
-locale/fallback="en"
 
 [rendering]
 
