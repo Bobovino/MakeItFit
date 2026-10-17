@@ -23,7 +23,6 @@ func _draw() -> void:
 
 
 func _ready() -> void:
-	Audio.play_music("map")
 	theme = GameTheme.make()
 
 	var bg := ColorRect.new()

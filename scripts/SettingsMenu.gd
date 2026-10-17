@@ -106,11 +106,6 @@ func _audio(page: VBoxContainer) -> void:
 	sfx._slider.drag_ended.connect(func(_c: bool):
 		if audio:
 			audio.play("click"))
-	sliders.append(_add(page, SettingRow.slider(tr("Music Volume"), tr("The background music."),
-		audio.music_volume if audio else 0.7, 0.0, 1.0, 0.05, func(v: float):
-			if audio:
-				audio.set_music_volume(v)
-			GameState.save_game(), pct)))
 	# While muted the volumes do nothing, and say so.
 	var show_muted := func(on: bool) -> void:
 		for s in sliders:
@@ -219,7 +214,6 @@ func _reset_page() -> void:
 			if audio:
 				audio.set_master_volume(1.0)
 				audio.set_sfx_volume(1.0)
-				audio.set_music_volume(0.7)
 				audio.set_muted(false)
 			GameState.save_game()
 		2:

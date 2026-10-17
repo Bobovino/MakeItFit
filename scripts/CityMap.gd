@@ -94,7 +94,6 @@ var _stars_label:   Label
 
 
 func _ready() -> void:
-	Audio.play_music("map")
 	_levels_data = Loc.localize_levels(_load_json("res://data/levels.json"))
 	_load_furniture_catalog()
 	_build_ui()
