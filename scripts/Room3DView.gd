@@ -428,6 +428,7 @@ func _build_home_outlines() -> void:
 		cost.outline_size = 10
 		cost.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
 		cost.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+		_flat_labels.append(cost)
 		cost.position = Vector3(group.position.x + size.x * 0.5, HITBOX_Y + 0.004, group.position.z + size.y * 0.5)
 		build_root.add_child(cost)
 		_home_outlines.append(cost)
@@ -475,6 +476,7 @@ func _build_outside_signs() -> void:
 		plate3d.outline_size = 12
 		plate3d.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
 		plate3d.rotation_degrees = Vector3(-90.0, turn, 0.0)
+		_flat_labels.append(plate3d)
 		plate3d.double_sided = true
 		plate3d.position = at
 		build_root.add_child(plate3d)
@@ -1025,6 +1027,7 @@ func _process(delta: float) -> void:
 		_yaw += delta * 18.0
 		_update_camera()
 	_update_wall_fade(delta)
+	_update_doors(delta)
 	_update_extras(delta)
 	_status_t -= delta
 	if _status_t <= 0.0:
@@ -3290,7 +3293,7 @@ func _apply_moment_to_scene(moment_id: String) -> void:
 # fraction; _update_wall_fade eases toward it every frame so a wall crossing
 # the threshold shrinks smoothly instead of popping instantly.
 const WALL_FADE_SPEED := 6.0     # height-fraction units/sec
-const STUB_HEIGHT_M   := 0.25    # low "wall's still there" brick line when it would otherwise block the view
+const STUB_HEIGHT_M   := 0.02    # a lowered wall: a line painted on the floor where it stands (a 25 cm step read as a kerb)
 
 func _update_wall_visibility(cam_offset: Vector3) -> void:
 	var flat := Vector3(cam_offset.x, 0.0, cam_offset.z)
@@ -3298,13 +3301,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 		return
 	flat = flat.normalized()
 	_cam_flat_dir = flat
-	# For the cutaway: the patch of floor the camera is centred on, how far
-	# behind itself a full-height wall hides floor at this camera pitch, and
-	# how wide a patch has to be kept clear (wider when zoomed out).
-	var focus := Vector2(_center.x, _center.z)
-	var toward_cam := Vector2(flat.x, flat.z)
-	var hide_reach := WALL_H_M / maxf(tan(deg_to_rad(-_pitch)), 0.2)
-	var clear_radius := clampf(_dist * 0.22, 0.9, 2.2)
+	_turn_flat_labels(flat)
 	for wd in _wall_data:
 		if wd.get("force_hidden", false):
 			continue   # a balcony window replaced this wall outright — never fade it back in
@@ -3316,15 +3313,11 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 				target = 0.0
 			_:
 				if wd.get("interior", false):
-					# An interior wall has no "outside": it is in the way only
-					# if it stands between the camera and where the player is
-					# looking. Pan into a room and the walls in front of that
-					# room drop; the rest of the apartment keeps its walls.
-					var a2 := Vector2((wd["a"] as Vector3).x, (wd["a"] as Vector3).z)
-					var b2 := Vector2((wd["b"] as Vector3).x, (wd["b"] as Vector3).z)
-					var near := Geometry2D.get_closest_points_between_segments(
-						a2, b2, focus + toward_cam * 0.15, focus + toward_cam * (hide_reach + clear_radius))
-					target = 0.0 if near[0].distance_to(near[1]) < clear_radius else 1.0
+					# Interior walls are always down in the cutaway, drawn on
+					# the floor with their doors: deciding them by where the
+					# camera was centred made them come and go as it panned,
+					# which read as random. Only the far outside walls stand.
+					target = 0.0
 				else:
 					# A perimeter wall is in the way when the camera is on its
 					# outside, looking in.
@@ -3631,6 +3624,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_hover_furniture = null
 	_furniture_entries.clear()
 	_wall_item_entries.clear()
+	_doors.clear()
+	_hover_door = null
 	_dragging_furniture = false
 	_dragging_wall_item = false
 	_drag_target = {}
@@ -4319,6 +4314,7 @@ var _hover_highlight: Node3D = null
 var _hover_furniture: Furniture = null
 
 func _update_hover(vp_pos: Vector2) -> void:
+	_hover_door = _door_under(vp_pos) if not (_dragging_furniture or _buying_furniture != null) else null
 	var hit := _pick_furniture(vp_pos)
 	if hit.is_empty():
 		_hide_hover_highlight()
@@ -5015,12 +5011,136 @@ func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, wall_h: float) ->
 			var x1 := x0 + DOOR_LEN_TILES * TILE_M
 			var y1 := minf(DOOR_H_M, wall_h - 0.06)
 			const JAMB := 0.05
-			parts.append(_wall_part(wall, x0, x1, 0.0, y1, z, z + out * 0.02, StyleController.ROLE_TRIM))
 			parts.append(_wall_part(wall, x0 - JAMB, x0, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
 			parts.append(_wall_part(wall, x1, x1 + JAMB, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
 			parts.append(_wall_part(wall, x0 - JAMB, x1 + JAMB, y1, y1 + JAMB, z, z + out * 0.04, StyleController.ROLE_FLOOR))
-			parts.append(_wall_part(wall, x1 - 0.14, x1 - 0.10, 0.95, 1.07, z, z + out * 0.05, StyleController.ROLE_ACCENT))   # handle
+			if out == _door_out(seg):
+				# The face it opens towards: the leaf, hinged at the doorway's
+				# start (as on the plan), swings out of the wall into the room.
+				var pivot := Node3D.new()
+				pivot.name = "DoorLeaf"
+				pivot.position = Vector3(x0, 0.0, z)
+				wall.add_child(pivot)
+				var leaf := _wall_part(wall, x0, x1, 0.0, y1, z, z + out * 0.03, StyleController.ROLE_TRIM)
+				var knob := _wall_part(wall, x1 - 0.14, x1 - 0.10, 0.95, 1.07, z + out * 0.03, z + out * 0.06, StyleController.ROLE_ACCENT)
+				for p in [leaf, knob]:
+					var keep := (p as Node3D).position - pivot.position
+					wall.remove_child(p)
+					pivot.add_child(p)
+					(p as Node3D).position = keep
+				parts.append(pivot)
+				_doors.append({"wall": wall, "pivot": pivot, "open_deg": -90.0 * out,
+					"center_local": Vector3((x0 + x1) * 0.5, 1.0, WALL_THICK * 0.5), "t": 0.0, "back": []})
+			else:
+				# The other face: the back of the door, which goes when it opens.
+				var back := _wall_part(wall, x0, x1, 0.0, y1, z, z + out * 0.02, StyleController.ROLE_TRIM)
+				parts.append(back)
+				_pending_door_backs.append(back)
+	if seg.get("has_door", false) and not _doors.is_empty() and (_doors[-1] as Dictionary)["wall"] == wall:
+		var door := _doors[-1] as Dictionary
+		door["back"] = _pending_door_backs.duplicate()
+		# The doorway behind the leaf: dark, so the open door shows a way through.
+		var x0d := (seg.get("door_pos", 0) as float) * TILE_M
+		var y1d := minf(DOOR_H_M, wall_h - 0.06)
+		var hole := MeshInstance3D.new()
+		var hb := BoxMesh.new()
+		hb.size = Vector3(DOOR_LEN_TILES * TILE_M, y1d, WALL_THICK + 0.01)
+		hole.mesh = hb
+		var dark := StandardMaterial3D.new()
+		dark.albedo_color = Color(0.10, 0.09, 0.08)
+		dark.roughness = 1.0
+		hole.material_override = dark
+		hole.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		build_root.add_child(hole)
+		hole.transform = wall.transform * Transform3D(Basis.IDENTITY, Vector3(x0d + DOOR_LEN_TILES * TILE_M * 0.5, y1d * 0.5, WALL_THICK * 0.5))
+		parts.append(hole)
+	_pending_door_backs.clear()
 	return parts
+
+
+# Text lying on the floor (a moved piece's old spot, an outside wall's name)
+# is turned to read the right way up from wherever the camera is: fixed, it
+# was upside down or mirrored from half the angles.
+var _flat_labels: Array = []
+
+func _turn_flat_labels(flat: Vector3) -> void:
+	var yaw := atan2(flat.x, flat.z)
+	for i in range(_flat_labels.size() - 1, -1, -1):
+		var l = _flat_labels[i]
+		if not is_instance_valid(l):
+			_flat_labels.remove_at(i)
+			continue
+		(l as Node3D).rotation = Vector3(-PI * 0.5, yaw, 0.0)
+
+
+# Doors that open (Room3DView builds one per swing door): each swings open
+# while a resident is next to it or the pointer is over it, and shuts after.
+# [{wall, pivot, open_deg, center_local, t (0 shut .. 1 open), back: [parts]}]
+var _doors: Array = []
+var _pending_door_backs: Array = []
+var _hover_door: Variant = null
+const DOOR_SWING_SPEED := 2.5   # of a full swing, per second
+const DOOR_NEAR_M := 0.75       # a resident this close to the doorway opens it
+
+# Which face of the wall the door opens towards (+1: the wall's own +z face).
+# door_side is +1 for south / east on the plan; a horizontal wall's +z is
+# south, a vertical one's +z is west (it is turned -90°).
+func _door_out(seg: Dictionary) -> float:
+	var side := 1.0 if (seg.get("door_side", 1) as int) > 0 else -1.0
+	if (seg.get("door_type", "swing") as String) == "sliding":
+		return 0.0   # a sliding door has no leaf to swing
+	return side if (seg["y1"] == seg["y2"]) else -side
+
+
+func _update_doors(delta: float) -> void:
+	if _doors.is_empty():
+		return
+	var tenants := build_root.get_parent().get_node_or_null("Tenants") if is_instance_valid(build_root) else null
+	for d in _doors:
+		var door := d as Dictionary
+		var wall := door["wall"] as MeshInstance3D
+		var pivot := door["pivot"] as Node3D
+		if not is_instance_valid(wall) or not is_instance_valid(pivot):
+			continue
+		var center: Vector3 = wall.transform * (door["center_local"] as Vector3)
+		var want := 1.0 if is_same(_hover_door, door) else 0.0
+		if want == 0.0 and tenants != null:
+			for p in tenants.get_children():
+				var at := build_root.to_local((p as Node3D).global_position)
+				if Vector2(at.x - center.x, at.z - center.z).length() < DOOR_NEAR_M:
+					want = 1.0
+					break
+		var t := move_toward(door["t"] as float, want, delta * DOOR_SWING_SPEED)
+		if is_equal_approx(t, door["t"] as float) and t == want:
+			continue
+		door["t"] = t
+		var eased := t * t * (3.0 - 2.0 * t)
+		pivot.rotation.y = deg_to_rad((door["open_deg"] as float) * eased)
+		for b in door["back"] as Array:
+			if is_instance_valid(b):
+				(b as Node3D).visible = t < 0.05 and wall.scale.y > 0.6
+
+
+# The door under the pointer, if any (only while nothing is being carried).
+func _door_under(vp_pos: Vector2) -> Variant:
+	var from := cam.project_ray_origin(vp_pos)
+	var dir := cam.project_ray_normal(vp_pos)
+	from = build_root.to_local(from)
+	dir = build_root.global_transform.basis.inverse() * dir
+	var best: Variant = null
+	var best_t := INF
+	for d in _doors:
+		var door := d as Dictionary
+		var wall := door["wall"] as MeshInstance3D
+		if not is_instance_valid(wall) or wall.scale.y < 0.6:
+			continue
+		var c: Vector3 = wall.transform * (door["center_local"] as Vector3)
+		var half := Vector3(0.55, 1.0, 0.55)
+		var t := _ray_box_t(from, dir, c - half, c + half)
+		if t < best_t:
+			best_t = t
+			best = door
+	return best
 
 
 # When a wall is lowered to a stub its window and door are hidden, which
@@ -5048,11 +5168,46 @@ func _add_stub_marks(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> vo
 		marks.append(_wall_part(wall, x0 - 0.03, x0, wall_h, wall_h + band * 1.5, z0, z1, StyleController.ROLE_FURNITURE))
 		marks.append(_wall_part(wall, x1, x1 + 0.03, wall_h, wall_h + band * 1.5, z0, z1, StyleController.ROLE_FURNITURE))
 	if seg.get("has_door", false):
+		# Drawn on the floor as on the plan: the doorway's threshold, and for
+		# a swing door its open leaf and the arc it sweeps; for a sliding one
+		# its track. Flat on the floor, so the wall being squashed doesn't
+		# change it.
 		var x0 := (seg.get("door_pos", 0) as float) * TILE_M
 		var x1 := x0 + DOOR_LEN_TILES * TILE_M
-		marks.append(_wall_part(wall, x0, x1, wall_h, wall_h + band, z0, z1, StyleController.ROLE_FURNITURE))
-		marks.append(_wall_part(wall, x0 - 0.05, x0, wall_h, wall_h + band * 1.6, z0, z1, StyleController.ROLE_ACCENT))
-		marks.append(_wall_part(wall, x1, x1 + 0.05, wall_h, wall_h + band * 1.6, z0, z1, StyleController.ROLE_ACCENT))
+		# 5 mm over the floor once the wall is squashed down (they are its children).
+		var y := 0.005 * wall_h / STUB_HEIGHT_M
+		# A gap in the painted wall line, as on a plan: floor laid over the
+		# lowered wall where the doorway is.
+		marks.append(_wall_part(wall, x0, x1, wall_h, wall_h + 0.003 * wall_h / STUB_HEIGHT_M, z0, z1, StyleController.ROLE_FLOOR))
+		var out := _door_out(seg)
+		if out != 0.0:
+			var zf := WALL_THICK if out > 0.0 else 0.0
+			var r := DOOR_LEN_TILES * TILE_M
+			marks.append(_wall_part(wall, x0, x0 + 0.03, 0.0, y, zf, zf + out * r, StyleController.ROLE_WALL))   # the leaf, open
+			var verts := PackedVector3Array()
+			for i in 16:
+				var a0 := PI * 0.5 * i / 16.0
+				var a1 := PI * 0.5 * (i + 1) / 16.0
+				var p0 := Vector3(x0 + cos(a0) * r, y, zf + out * sin(a0) * r)
+				var p1 := Vector3(x0 + cos(a1) * r, y, zf + out * sin(a1) * r)
+				var q0 := Vector3(x0 + cos(a0) * (r - 0.02), y, zf + out * sin(a0) * (r - 0.02))
+				var q1 := Vector3(x0 + cos(a1) * (r - 0.02), y, zf + out * sin(a1) * (r - 0.02))
+				verts.append_array([p0, p1, q1, p0, q1, q0])
+			var arrays := []
+			arrays.resize(Mesh.ARRAY_MAX)
+			arrays[Mesh.ARRAY_VERTEX] = verts
+			var arc_mesh := ArrayMesh.new()
+			arc_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			var arc := MeshInstance3D.new()
+			arc.mesh = arc_mesh
+			arc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			wall.add_child(arc)
+			_style_node(arc, StyleController.ROLE_WALL)
+			arc.add_to_group("style_" + String(StyleController.ROLE_WALL))
+			marks.append(arc)
+		else:
+			# A sliding door: its leaf, half across the gap, beside the wall.
+			marks.append(_wall_part(wall, x0, x1 * 0.5 + x0 * 0.5, 0.0, y * 2.0, z0 - 0.07, z0 - 0.04, StyleController.ROLE_WALL))
 	for m in marks:
 		(m as Node3D).visible = false
 	wall.set_meta("stub_marks", marks)
