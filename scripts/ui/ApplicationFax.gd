@@ -14,8 +14,8 @@ class_name ApplicationFax
 
 signal closed
 
-const WIDTH := 470.0
-const LINE_FONT_SIZE := 22
+const WIDTH := 540.0
+const LINE_FONT_SIZE := GameTheme.FS_BODY
 # The whole sheet prints in this long, however many lines it has: each line
 # gets an equal share (plus one share each for the header and the footer),
 # split between feeding the paper, typing the line and a short pause.
@@ -80,7 +80,7 @@ func _build() -> void:
 
 	# Dims the plan but not the needs bar, which is where the stamps land.
 	var dim := ColorRect.new()
-	dim.color = Color(0.03, 0.05, 0.09, 0.72)
+	dim.color = Color(GameTheme.NAVY, 0.72)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dim.position = Vector2.ZERO
 	dim.size = Vector2(view.x, _bar_top())
@@ -101,10 +101,7 @@ func _build() -> void:
 	var mrow := HBoxContainer.new()
 	mrow.add_theme_constant_override("separation", 10)
 	machine.add_child(mrow)
-	var mtitle := Label.new()
-	mtitle.text = tr("RENTAL APPLICATION")
-	mtitle.add_theme_font_size_override("font_size", 12)
-	mtitle.add_theme_color_override("font_color", Color(0.80, 0.82, 0.84))
+	var mtitle := GameTheme.title_label(tr("RENTAL APPLICATION"), GameTheme.FS_LABEL, GameTheme.CHALK)
 	mtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	mrow.add_child(mtitle)
 	_lcd = FaxStyle.lcd(tr("READY"))
@@ -112,10 +109,10 @@ func _build() -> void:
 	_lcd.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mrow.add_child(_lcd)
 	_key = Button.new()
-	_key.custom_minimum_size = Vector2(96, 34)
-	_key.add_theme_font_size_override("font_size", 13)
+	_key.custom_minimum_size = Vector2(110, GameTheme.TOUCH_SMALL)
+	_key.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 	_key.focus_mode = Control.FOCUS_NONE
-	FaxStyle.key(_key, FaxStyle.KEY_GREEN, Color(0.94, 1.0, 0.95))
+	FaxStyle.key(_key, FaxStyle.KEY_GREEN, GameTheme.CHALK)
 	_key.pressed.connect(_on_key)
 	mrow.add_child(_key)
 
@@ -147,7 +144,8 @@ func _build() -> void:
 
 	var head := Label.new()
 	head.text = tr("FAX  ·  RE: RENTAL APPLICATION  ·  PAGE 1/1")
-	head.add_theme_font_size_override("font_size", 9)
+	head.add_theme_font_override("font", GameTheme.font("mono"))
+	head.add_theme_font_size_override("font_size", 13)
 	head.add_theme_color_override("font_color", FaxStyle.INK_SOFT)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(head)
@@ -156,7 +154,7 @@ func _build() -> void:
 	vb.add_child(rule)
 	var who := Label.new()
 	who.text = tr_n("Applicant: %s", "Applicants: %s", _app.residents.size()) % _app.signatories()
-	who.add_theme_font_size_override("font_size", 14)
+	who.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
 	who.add_theme_color_override("font_color", FaxStyle.INK)
 	who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(who)
@@ -170,14 +168,14 @@ func _build() -> void:
 		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		vb.add_child(row)
 		var text_col := VBoxContainer.new()
-		text_col.add_theme_constant_override("separation", -4)
+		text_col.add_theme_constant_override("separation", -2)
 		text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(text_col)
 		var lbl := Label.new()
 		lbl.text = tr(line.text)
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.add_theme_font_override("font", hand)
+		lbl.add_theme_font_override("font", GameTheme.font("body"))
 		lbl.add_theme_font_size_override("font_size", LINE_FONT_SIZE)
 		lbl.add_theme_color_override("font_color", FaxStyle.INK)
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -185,13 +183,14 @@ func _build() -> void:
 		if many and line.speaker != &"":
 			var by := Label.new()
 			by.text = "— " + _app.speaker_name(line)
-			by.add_theme_font_size_override("font_size", 10)
+			by.add_theme_font_override("font", hand)
+			by.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
 			by.add_theme_color_override("font_color", FaxStyle.INK_SOFT)
 			by.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			text_col.add_child(by)
 		# The requirement's icon, stamped at the end of its line.
 		var icon_box := CenterContainer.new()
-		icon_box.custom_minimum_size = Vector2(34, 34)
+		icon_box.custom_minimum_size = Vector2(44, 44)
 		icon_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		icon_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var ring := PanelContainer.new()
@@ -199,11 +198,11 @@ func _build() -> void:
 		ring_sb.bg_color = Color(0, 0, 0, 0)
 		ring_sb.border_color = FaxStyle.STAMP_INK
 		ring_sb.set_border_width_all(2)
-		ring_sb.set_corner_radius_all(17)
-		ring_sb.set_content_margin_all(4)
+		ring_sb.set_corner_radius_all(22)
+		ring_sb.set_content_margin_all(7)
 		ring.add_theme_stylebox_override("panel", ring_sb)
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ring.add_child(Requirements.make_icon(line.requirement, 17))
+		ring.add_child(Requirements.make_icon(line.requirement, GameTheme.FS_LABEL))
 		icon_box.add_child(ring)
 		row.add_child(icon_box)
 		row.gui_input.connect(_on_row_input.bind(_rows.size()))
@@ -217,8 +216,8 @@ func _build() -> void:
 	var sign := Label.new()
 	sign.text = _app.signatories()
 	sign.add_theme_font_override("font", hand)
-	sign.add_theme_font_size_override("font_size", 26)
-	sign.add_theme_color_override("font_color", Color(0.15, 0.22, 0.45))
+	sign.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+	sign.add_theme_color_override("font_color", GameTheme.NAVY)
 	sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_footer.add_child(sign)
 
