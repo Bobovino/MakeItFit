@@ -3219,6 +3219,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		_add_ghost_floor(below_floor, bounds)
 
 	_apply_moment_lighting()
+	if _style != null:
+		build_root.add_child(RoomLighting.new(self))   # sun through the windows, lamps at night
 
 
 # ── Ghost reference layer (floor directly below a loft) ────────────────────
@@ -4464,6 +4466,7 @@ func _wall_part(wall: MeshInstance3D, x0: float, x1: float, y0: float, y1: float
 	part.mesh = box
 	part.position = Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5)
 	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	part.set_meta("wall_part_role", role)   # RoomLighting finds the windows by it
 	wall.add_child(part)
 	_style_node(part, role)
 	return part

@@ -5,15 +5,22 @@
 [resource]
 script = ExtResource("1")
 display_name = "Slate"
-floor_color = Color(0.902, 0.9176, 0.9412, 1)
-wall_color = Color(0.749, 0.7961, 0.8588, 1)
+floor_color = Color(0.6, 0.47, 0.35, 1)
+wall_color = Color(0.93, 0.92, 0.89, 1)
 furniture_color = Color(0.2471, 0.3725, 0.5255, 1)
 accent_color = Color(0.8784, 0.5686, 0.2275, 1)
-light_color = Color(1, 0.9412, 0.8392, 1)
-ambient_color = Color(0.6157, 0.698, 0.8, 1)
-shadow_tint = Color(0.1216, 0.2, 0.3216, 1)
+light_color = Color(1, 0.88, 0.7, 1)
+ambient_color = Color(0.95, 0.9, 0.84, 1)
+shadow_tint = Color(0.24, 0.21, 0.26, 1)
 background_top = Color(0.498, 0.6157, 0.749, 1)
 background_bottom = Color(0.8353, 0.8706, 0.9098, 1)
 fog_color = Color(0.7686, 0.8196, 0.8784, 1)
 glow_color = Color(1, 0.9059, 0.6902, 1)
 vignette_color = Color(0.0902, 0.1647, 0.2706, 1)
+floor_pattern = 0.1
+material_contrast = 0.85
+light_energy = 3.2
+ambient_energy = 0.3
+shadow_fill = 0.3
+brightness = 1.0
+fog_strength = 0.06

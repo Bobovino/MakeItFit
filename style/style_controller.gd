@@ -45,7 +45,7 @@ const BACKDROP_DISTANCE := 400.0   # metres behind the camera plane; capped by t
 
 # Night look: what `night = 1` blends the palette's light toward.
 const NIGHT_SUN_COLOR      := Color(0.55, 0.62, 0.85)
-const NIGHT_SUN_SCALE      := 0.3
+const NIGHT_SUN_SCALE      := 0.1   # faint moonlight through the windows; the lamps light the room
 const NIGHT_AMBIENT        := Color(0.10, 0.11, 0.20)
 const NIGHT_AMBIENT_ENERGY := 0.6
 
@@ -104,7 +104,7 @@ signal applied(palette: LevelPalette)
 @export var flat_shading: bool = true
 ## How much of its own modelled colour a furniture piece keeps (0 = every piece
 ## takes the palette's single furniture colour, 1 = exactly as modelled).
-@export_range(0.0, 1.0, 0.01) var furniture_own_color: float = 0.7
+@export_range(0.0, 1.0, 0.01) var furniture_own_color: float = 0.95
 ## How much bigger than this level the scenery around it is drawn (a nested
 ## box's parent apartment). Scales the scenery floor's boards to match, which
 ## is most of what sells the size.
@@ -352,7 +352,7 @@ func _configure_material(entry: Dictionary) -> void:
 		palette.floor_pattern if (role == ROLE_FLOOR or role == ROLE_SCENERY_FLOOR) else 0.0)
 	mat.set_shader_parameter("plank_width", 0.2 * (scenery_scale if role == ROLE_SCENERY_FLOOR else 1.0))
 	# Walls show a light, flat cut face on top.
-	mat.set_shader_parameter("top_tint", palette.floor_color)
+	mat.set_shader_parameter("top_tint", palette.cut_color)
 	mat.set_shader_parameter("top_tint_amount", 1.0 if (role == ROLE_WALL or role == ROLE_PARTITION or role == ROLE_GLASS_WALL) else 0.0)
 	if role == ROLE_GLOW:
 		mat.set_shader_parameter("emission", palette.glow_color)

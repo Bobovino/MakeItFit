@@ -21,6 +21,8 @@ extends Resource
 @export var furniture_color: Color = Color(0.37, 0.56, 0.55)
 ## Contrasting colour, reserved for small, important objects.
 @export var accent_color: Color = Color(0.88, 0.45, 0.29)
+## The flat face on top of a wall, where it is cut open for the view.
+@export var cut_color: Color = Color(0.97, 0.96, 0.94)
 ## How much darker surfaces get toward the floor (0 = flat paper).
 @export_range(0.0, 0.6, 0.01) var gradient_strength: float = 0.28
 ## Tone variation between floorboards (0 = plain floor). Keep it subtle.
