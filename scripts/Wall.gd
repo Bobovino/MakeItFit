@@ -87,8 +87,12 @@ var _drag_active:      bool    = false
 func _placed_list(tile: Vector2i) -> Array:
 	return _placed.get(tile, []) as Array
 
+# Whether anything stands on this tile; a skylight overhead doesn't.
 func _placed_any_at(tile: Vector2i) -> bool:
-	return not _placed_list(tile).is_empty()
+	for f in _placed_list(tile):
+		if not (f as Furniture).overhead:
+			return true
+	return false
 
 func _placed_overlapping_z(tile: Vector2i, z0: float, z1: float, exclude: Furniture = null) -> Furniture:
 	for item in _placed_list(tile):
@@ -457,6 +461,18 @@ func _compute_light_map() -> void:
 					_light_map[tile] = external_daylight_factor
 					queue.append(tile)
 
+	# Skylights light their own footprint straight from above: whatever stands
+	# under one is lit, and nothing on the floor can shade it.
+	for item in _get_all_placed_unique():
+		var sky := item as Furniture
+		if not sky.overhead:
+			continue
+		for tile in _rect_tiles(sky.grid_pos, sky.grid_w, sky.grid_h):
+			if is_floor_tile(tile) and tile not in blocked:
+				if tile not in _light_map:
+					queue.append(tile)
+				_light_map[tile] = external_daylight_factor
+
 	# BFS — propagate maximum intensity, skip already-higher tiles
 	var head := 0
 	while head < queue.size():
@@ -472,7 +488,7 @@ func _compute_light_map() -> void:
 			if next in blocked:
 				continue
 			var decay := 0.05
-			var _lm := _placed_list(next)
+			var _lm := _placed_list(next).filter(func(p): return not (p as Furniture).overhead)
 			if not _lm.is_empty():
 				var f := _lm[0] as Furniture
 				if f.blocks_light():
@@ -1181,8 +1197,9 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Overlaps %s") % f.furniture_name
 			return false
 
-	# Sloped ceiling: any furniture taller than the local ceiling height is blocked
-	if not sloped_ceiling.is_empty():
+	# Sloped ceiling: any furniture taller than the local ceiling height is
+	# blocked (a skylight is set into the ceiling itself, whatever its height)
+	if not sloped_ceiling.is_empty() and not furniture.overhead:
 		var sc       := sloped_ceiling
 		var axis     := sc.get("axis", "x") as String
 		var low_s    := sc.get("low_start", 0) as int
@@ -1966,6 +1983,8 @@ func _mezzanine_load(exclude: Furniture = null) -> float:
 # surfaces are themselves stacked (a nightstand on a kitchen island), the
 # highest one is the one actually underneath.
 func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
+	if exclude != null and exclude.overhead:
+		return null   # a skylight is up in the ceiling, never resting on a table
 	var best: Furniture = null
 	var best_top := -1.0
 	for f in get_all_furniture():
@@ -2152,6 +2171,8 @@ func count_free_tiles_for_moment(moment_id: String) -> int:
 	var occupied: Dictionary = {}
 	for item in get_all_furniture():
 		var f := item as Furniture
+		if f.overhead:
+			continue   # a skylight takes no floor
 		for t in f.get_occupied_tiles_for_moment(moment_id):
 			occupied[t] = true
 
@@ -2183,6 +2204,8 @@ func count_free_window_tiles_for_moment(moment_id: String, light_threshold: floa
 	var occupied: Dictionary = {}
 	for item in get_all_furniture():
 		var f := item as Furniture
+		if f.overhead:
+			continue   # a skylight takes no floor
 		for t in f.get_occupied_tiles_for_moment(moment_id):
 			occupied[t] = true
 
@@ -2218,6 +2241,8 @@ func get_inaccessible_furniture() -> Array:
 		return get_unreachable_furniture()
 	var result: Array = []
 	for f in get_all_furniture():
+		if (f as Furniture).overhead:
+			continue   # nobody needs to reach a skylight
 		if not _has_adjacent_free(_ground_piece(f)):
 			result.append(f)
 	return result

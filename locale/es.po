@@ -2978,6 +2978,22 @@ msgstr "Cortina"
 msgid "Bird Cage"
 msgstr "Jaula de pájaro"
 
+#: data/furniture.json:sleeping_pod
+msgid "Sleeping Pod"
+msgstr "Cápsula para dormir"
+
+#: data/furniture.json:wall_gym
+msgid "Fold-Away Wall Gym"
+msgstr "Gimnasio de pared plegable"
+
+#: data/furniture.json:skylight
+msgid "Skylight"
+msgstr "Claraboya"
+
+#: data/furniture.json:magnetic_wall
+msgid "Magnetic Wall"
+msgstr "Pared magnética"
+
 #: data/furniture.json:painted_bed
 msgid "Custom Bed"
 msgstr "Cama a medida"
