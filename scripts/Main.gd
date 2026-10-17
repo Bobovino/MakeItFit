@@ -699,7 +699,10 @@ func _show_moved_from_home() -> void:
 				continue
 			_moved_names.append(f.furniture_name)
 			var mark := {"home": f._home_grid_pos, "size": Vector2(f.grid_w, f.grid_h), "at": at,
-				"cost": tr("−%d%%") % roundi(gm.COMFORT_COST_PER_ITEM)}
+				# A bare "−25%" on the plan read as nothing in particular: it says
+				# what the spot is and what the percentage is of.
+				"cost": tr("Started here") + "
+" + tr("Comfort −%d%%") % roundi(gm.COMFORT_COST_PER_ITEM)}
 			marks.append(mark)
 			if fid == _current_floor_id:
 				all_marks.append(mark)

@@ -3063,3 +3063,11 @@ msgstr ""
 #: scripts/Wall.gd
 msgid "Needs clearance around %s during \"%s\""
 msgstr ""
+
+#: scripts/Main.gd
+msgid "Started here"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Comfort −%d%%"
+msgstr ""

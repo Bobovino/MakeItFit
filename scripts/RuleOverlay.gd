@@ -179,11 +179,14 @@ func _draw_home_marks(font: Font) -> void:
 			draw_dashed_line(c[i], c[i + 1], faint, 1.5, 4.0)
 		draw_dashed_line(now.get_center(), home.get_center(), Color(0.04, 0.08, 0.14, 0.6), 4.0, 6.0)
 		draw_dashed_line(now.get_center(), home.get_center(), faint, 1.8, 6.0)
-		var cost := mark["cost"] as String
-		var tw := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-		var at := home.get_center() + Vector2(-tw * 0.5, 4)
-		draw_string_outline(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
-		draw_string(font, at, cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, HOME_COLOR)
+		var lines := (mark["cost"] as String).split("
+")
+		for li in lines.size():
+			var line := lines[li]
+			var tw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+			var at := home.get_center() + Vector2(-tw * 0.5, 4 + (li - (lines.size() - 1) * 0.5) * 11)
+			draw_string_outline(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, 3, Color(0.04, 0.08, 0.14, 0.85))
+			draw_string(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, HOME_COLOR)
 
 
 # Outside walls with rules for the boxes nearest them: a plate just outside

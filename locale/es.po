@@ -3139,3 +3139,11 @@ msgstr "Estorba a la puerta"
 #: scripts/Wall.gd
 msgid "Needs clearance around %s during \"%s\""
 msgstr "Necesita espacio alrededor de %s durante \"%s\""
+
+#: scripts/Main.gd
+msgid "Started here"
+msgstr "Estaba aquí"
+
+#: scripts/Main.gd
+msgid "Comfort −%d%%"
+msgstr "Comodidad −%d%%"

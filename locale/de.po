@@ -3139,3 +3139,11 @@ msgstr "Steht der Tür im Weg"
 #: scripts/Wall.gd
 msgid "Needs clearance around %s during \"%s\""
 msgstr "Braucht Platz um %s während \"%s\""
+
+#: scripts/Main.gd
+msgid "Started here"
+msgstr "Stand hier"
+
+#: scripts/Main.gd
+msgid "Comfort −%d%%"
+msgstr "Komfort −%d%%"
