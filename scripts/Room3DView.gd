@@ -281,6 +281,79 @@ func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
 
 
+# While a piece is carried: where it can't go, on the floor (Floor.carry_hints()):
+# other pieces' clearance as amber outlines, flooring it can't stand on and a
+# ceiling too low for it as a red tint, and the loft's load as a label.
+var _hints_for: Furniture = null
+var _hint_nodes: Array = []
+
+func _show_carry_hints(carried: Furniture) -> void:
+	_hints_for = carried
+	for n in _hint_nodes:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_hint_nodes.clear()
+	if carried == null or not is_instance_valid(_apt_floor) or not is_instance_valid(build_root):
+		return
+	var hints := _apt_floor.carry_hints(carried)
+	var origin := Vector2(_room_bounds.position)
+	for r in hints["clearance"] as Array:
+		var z := r as Rect2
+		var group := _build_outline_group(z.size * TILE_M, Color(0.98, 0.78, 0.30, 0.7), HITBOX_Y + 0.003)
+		group.position.x = (z.position.x - origin.x) * TILE_M
+		group.position.z = (z.position.y - origin.y) * TILE_M
+		build_root.add_child(group)
+		_hint_nodes.append(group)
+	var tiles: Array = (hints["bad_floor"] as Array) + (hints["low_ceiling"] as Array)
+	if not tiles.is_empty():
+		var verts := PackedVector3Array()
+		for rr in RuleOverlay._runs(tiles):
+			var px := rr as Rect2   # plan pixels: TILE per tile
+			var x0 := (px.position.x / RuleOverlay.TILE - origin.x) * TILE_M
+			var z0 := (px.position.y / RuleOverlay.TILE - origin.y) * TILE_M
+			var x1 := x0 + px.size.x / RuleOverlay.TILE * TILE_M
+			var z1 := z0 + px.size.y / RuleOverlay.TILE * TILE_M
+			var y := HITBOX_Y + 0.002
+			verts.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
+				Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.93, 0.30, 0.24, 0.28)
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		build_root.add_child(mi)
+		_hint_nodes.append(mi)
+	var loft := hints["loft"] as Dictionary
+	if not loft.is_empty():
+		var lt := loft["tiles"] as Array
+		var c := Vector2.ZERO
+		for t in lt:
+			c += Vector2(t as Vector2i)
+		c = c / lt.size() + Vector2(0.5, 0.5)
+		var over := (loft["load"] as float) + (loft["weight"] as float) > (loft["max"] as float)
+		var label := Label3D.new()
+		label.text = tr("Loft: %.0f / %.0f, this adds %.0f") % [loft["load"], loft["max"], loft["weight"]]
+		label.font_size = 36
+		label.pixel_size = 0.003 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		label.modulate = Color(0.93, 0.30, 0.24) if over else Color(0.98, 0.78, 0.30)
+		label.outline_size = 10
+		label.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = true
+		label.position = Vector3((c.x - origin.x) * TILE_M, WALL_H_M * 0.6, (c.y - origin.y) * TILE_M)
+		build_root.add_child(label)
+		_hint_nodes.append(label)
+
+
 # Pieces moved away from where they started (Main._show_moved_from_home()):
 # a faint outline on the floor of each one's old spot.
 var _home_marks: Array = []
@@ -5320,6 +5393,8 @@ func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> v
 	_sag_preview_key = [carried, carried_at]
 	if Floor.carry_preview.is_valid():
 		Floor.carry_preview.call(carried, carried_at)
+	if carried != _hints_for:
+		_show_carry_hints(carried)
 	var order := _furniture_entries.filter(func(e): return is_instance_valid(e.get("furniture")) and is_instance_valid(e.get("mesh")))
 	order.sort_custom(func(a, b): return _apt_floor.stack_lift(a["furniture"]) < _apt_floor.stack_lift(b["furniture"]))
 	for entry in order:

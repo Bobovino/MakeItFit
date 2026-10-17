@@ -50,6 +50,83 @@ func set_lines(status: Array) -> void:
 	queue_redraw()
 
 
+# While a piece is carried: where it can't go (Floor.carry_hints()). Other
+# pieces' clearance as soft amber zones, flooring it can't stand on and a
+# ceiling too low for it as red hatching, and the loft's load with what the
+# piece would add.
+const NO_GO := Color(0.93, 0.30, 0.24)
+const CLEARANCE := Color(0.98, 0.78, 0.30)
+var carry_hints: Dictionary = {}
+var _no_go_runs: Array = []     # [Rect2] in pixels, tile runs merged per row
+var _low_runs: Array = []
+
+func set_carry_hints(hints: Dictionary) -> void:
+	carry_hints = hints
+	_no_go_runs = _runs(hints.get("bad_floor", []) as Array)
+	_low_runs = _runs(hints.get("low_ceiling", []) as Array)
+	queue_redraw()
+
+
+# Tiles as one rect per unbroken run along a row, in pixels.
+static func _runs(tiles: Array) -> Array:
+	var by_row: Dictionary = {}
+	for t in tiles:
+		var tv := t as Vector2i
+		if not by_row.has(tv.y):
+			by_row[tv.y] = []
+		(by_row[tv.y] as Array).append(tv.x)
+	var out: Array = []
+	for y in by_row:
+		var xs := by_row[y] as Array
+		xs.sort()
+		var start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size() + 1):
+			var x: int = xs[i] if i < xs.size() else prev + 2
+			if x != prev + 1:
+				out.append(Rect2(Vector2(start, y) * TILE, Vector2(prev - start + 1, 1) * TILE))
+				start = x
+			prev = x
+	return out
+
+
+func _draw_carry_hints(font: Font) -> void:
+	if carry_hints.is_empty():
+		return
+	for r in carry_hints.get("clearance", []) as Array:
+		var z := Rect2((r as Rect2).position * TILE, (r as Rect2).size * TILE)
+		draw_rect(z, Color(CLEARANCE.r, CLEARANCE.g, CLEARANCE.b, 0.07))
+		var c := [z.position, Vector2(z.end.x, z.position.y), z.end, Vector2(z.position.x, z.end.y), z.position]
+		for i in 4:
+			draw_dashed_line(c[i], c[i + 1], Color(CLEARANCE.r, CLEARANCE.g, CLEARANCE.b, 0.55), 1.2, 3.0)
+	for runs in [_no_go_runs, _low_runs]:
+		for r in runs:
+			draw_rect(r as Rect2, Color(NO_GO.r, NO_GO.g, NO_GO.b, 0.16))
+	if not _low_runs.is_empty():
+		var area := _low_runs[0] as Rect2
+		for r in _low_runs:
+			area = area.merge(r as Rect2)
+		var text := tr("Ceiling too low here")
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := area.get_center() + Vector2(-tw * 0.5, 4)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, NO_GO)
+	var loft := carry_hints.get("loft", {}) as Dictionary
+	if not loft.is_empty():
+		var tiles := loft["tiles"] as Array
+		var area := Rect2(Vector2(tiles[0] as Vector2i) * TILE, Vector2.ONE * TILE)
+		for t in tiles:
+			area = area.merge(Rect2(Vector2(t as Vector2i) * TILE, Vector2.ONE * TILE))
+		var over := (loft["load"] as float) + (loft["weight"] as float) > (loft["max"] as float)
+		var col := NO_GO if over else CLEARANCE
+		draw_rect(area, col, false, 1.5)
+		var text := tr("Loft: %.0f / %.0f, this adds %.0f") % [loft["load"], loft["max"], loft["weight"]]
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var at := Vector2(area.get_center().x - tw * 0.5, area.position.y + 12)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0.04, 0.08, 0.14, 0.85))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+
+
 # Pieces moved away from where they started, costing comfort: a faint dashed
 # outline on the old spot, a dashed line from the piece back to it, and what
 # it costs, written on the old spot.
@@ -149,6 +226,7 @@ func _center(tile: Vector2i) -> Vector2:
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
+	_draw_carry_hints(font)
 	_draw_home_marks(font)
 	_draw_outside(font)
 	# Zone name plates: what each zone holds, and a warning on one that

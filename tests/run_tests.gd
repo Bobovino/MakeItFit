@@ -30,6 +30,7 @@ func _ready() -> void:
 	await _t_outside_walls()
 	await _t_unreachable_shown()
 	await _t_moved_from_home()
+	await _t_carry_hints()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -847,6 +848,39 @@ func _t_moved_from_home() -> void:
 	_ok(ov.home_marks.is_empty() and said.contains("back"), said)
 	main.queue_free()
 	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+
+
+# ── While a piece is carried, the plan shows where it can't go ─────────────
+# A stool carried in Debug: Furniture Stacking sees the desk's clearance; a
+# wardrobe carried in Debug: Sloped Ceiling sees where the ceiling is too low
+# for it. Put down, the hints go.
+func _t_carry_hints() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_hints_save.json"
+	for case in [["debug:_stacking", "stool", "clearance"], ["debug:_sloped_ceiling", "wardrobe", "low_ceiling"]]:
+		GameState.pending_level_id = case[0]
+		GameState.pending_resume = false
+		var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+		add_child(main)
+		for i in 10:
+			await get_tree().process_frame
+		var fl: Floor = main._floors[main._current_floor_id]
+		var held: Furniture = main._spawn_furniture(case[1], fl, 0, 0)
+		fl.forget_furniture(held)
+		held._placement_mode = true
+		var b := fl.get_room_bounds()
+		fl.set_floor_drag_ghost(held, b.position.x + 2, b.position.y + 2)
+		var shown: Array = fl._rule_overlay.carry_hints.get(case[2], []) if fl._rule_overlay else []
+		held._placement_mode = false
+		fl.clear_floor_drag_ghost()
+		_current = "carry hints: a %s carried in %s shows %s" % [case[1], case[0], case[2]]
+		_ok(not shown.is_empty() and fl._rule_overlay.carry_hints.is_empty(), "%d shown" % shown.size())
+		held.queue_free()
+		main.queue_free()
+		await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path

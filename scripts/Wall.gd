@@ -1416,6 +1416,48 @@ func strain_of(support: Furniture, carried: Furniture = null, carried_at: Varian
 	return load / support.max_support_weight
 
 
+# Where `carried` couldn't go, worked out once when it is picked up, so the
+# plan and the 3D view can show it while it is carried instead of only
+# saying so after a drop (the same rules as can_place()):
+#   clearance:   [Rect2] other pieces' clearance zones, in tiles
+#   bad_floor:   [Vector2i] tiles whose flooring it can't stand on
+#   low_ceiling: [Vector2i] tiles where the sloped ceiling is too low for it
+#   loft:        {} or {tiles: [Vector2i], load, max, weight}: the loft's load
+var _hints_for: Furniture = null
+
+func carry_hints(carried: Furniture) -> Dictionary:
+	var out := {"clearance": [], "bad_floor": [], "low_ceiling": [], "loft": {}}
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		if fur == carried or fur.ghost_radius <= 0:
+			continue
+		out["clearance"].append(Rect2(fur.grid_pos, Vector2(fur.grid_w, fur.grid_h)).grow(float(fur.ghost_radius)))
+	var b := get_room_bounds()
+	var check_floor := not carried.is_nested_box and (carried.floor_category != "any" or has_floor_kind("balcony"))
+	var height_m := carried.z_top / 10.0
+	var sc := sloped_ceiling
+	for x in range(b.position.x, b.end.x):
+		for y in range(b.position.y, b.end.y):
+			var t := Vector2i(x, y)
+			if not is_floor_tile(t):
+				continue
+			if check_floor and not _floor_category_ok(carried.floor_category, get_tile_kind(t)):
+				out["bad_floor"].append(t)
+			if not sc.is_empty():
+				var low_s := sc.get("low_start", 0) as int
+				var high_e := sc.get("high_end", 0) as int
+				var span := float(high_e - low_s)
+				var coord := t.x if (sc.get("axis", "x") as String) == "x" else t.y
+				if span > 0 and coord >= low_s and coord <= high_e:
+					var ceil_h := (sc.get("min_h", 1.8) as float) + (coord - low_s) / span * ((sc.get("max_h", 2.4) as float) - (sc.get("min_h", 1.8) as float))
+					if ceil_h < height_m:
+						out["low_ceiling"].append(t)
+	if not mezzanine_mask.is_empty() and mezzanine_max_load > 0.0:
+		out["loft"] = {"tiles": mezzanine_mask.keys(), "load": _mezzanine_load(carried),
+			"max": mezzanine_max_load, "weight": carried.weight}
+	return out
+
+
 # Hands every surface its current strain, counting the piece being dragged
 # or bought on the plan (the drag ghost) where it is now.
 func _update_strain() -> void:
@@ -1431,6 +1473,14 @@ func _update_strain() -> void:
 			fur.set_strain(strain_of(fur, carried, at))
 	if Floor.carry_preview.is_valid():
 		Floor.carry_preview.call(carried, at)
+	if carried != _hints_for:
+		_hints_for = carried
+		if _rule_overlay == null and carried != null:
+			_rule_overlay = RuleOverlay.new()
+			_rule_overlay.z_index = 20
+			add_child(_rule_overlay)
+		if _rule_overlay != null:
+			_rule_overlay.set_carry_hints(carry_hints(carried) if carried != null else {})
 
 
 func get_wall_items(edge: String) -> Dictionary:

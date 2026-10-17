@@ -3124,3 +3124,7 @@ msgstr "−%d%%"
 #: scripts/Main.gd
 msgid "Away from where it started: %s"
 msgstr "Fuera de su sitio inicial: %s"
+
+#: scripts/RuleOverlay.gd
+msgid "Loft: %.0f / %.0f, this adds %.0f"
+msgstr "Altillo: %.0f / %.0f, esto suma %.0f"

@@ -3049,3 +3049,7 @@ msgstr ""
 #: scripts/Main.gd
 msgid "Away from where it started: %s"
 msgstr ""
+
+#: scripts/RuleOverlay.gd
+msgid "Loft: %.0f / %.0f, this adds %.0f"
+msgstr ""
