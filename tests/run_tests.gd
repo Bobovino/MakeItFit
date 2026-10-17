@@ -590,6 +590,19 @@ func _t_box_on_a_surface() -> void:
 		"%s on %s" % [box, dresser])
 
 	if box and dresser:
+		# On the plan: a stool held over the dresser strains it past what it
+		# holds; letting go of it puts it back to what really rests there.
+		var held: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+		fl.forget_furniture(held)
+		held._placement_mode = true
+		fl.set_floor_drag_ghost(held, dresser.grid_pos.x + 6, dresser.grid_pos.y)
+		var held_strain := dresser._strain
+		held._placement_mode = false
+		fl.clear_floor_drag_ghost()
+		_current = "surface box: on the plan, a dresser shows the strain of what is held over it"
+		_ok(held_strain > Floor.STRAIN_FROM and is_equal_approx(dresser._strain, fl.strain_of(dresser)),
+			"held %s, after %s" % [held_strain, dresser._strain])
+		held.queue_free()
 		main._set_view_mode(main.ViewMode.VIEW3D)
 		for i in 5:
 			await get_tree().process_frame

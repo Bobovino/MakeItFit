@@ -4800,7 +4800,7 @@ func _lift_m(f: Furniture, at: Variant = null) -> float:
 # the top bends (legs and plinths stay put), deepest in the middle, and
 # whatever stands on it sinks with it. Done by bending a copy of the model's
 # meshes, only when the sag changes.
-const SAG_FROM := 0.6       # share of max_support_weight before anything shows
+const SAG_FROM := Floor.STRAIN_FROM   # share of max_support_weight before anything shows
 const SAG_FULL_M := 0.03    # metres of sag in the middle when exactly full
 const SAG_OVER_M := 0.07    # ... when what is being carried over it would break it
 const SAG_SPAN_M := 1.2     # surfaces at least this long bow fully; shorter ones less
@@ -4811,10 +4811,7 @@ const SAG_SPAN_M := 1.2     # surfaces at least this long bow fully; shorter one
 func _sag_for(sup: Furniture, entry: Dictionary, carried: Furniture = null, carried_at: Variant = null) -> float:
 	if sup.max_support_weight <= 0.0 or not entry.has("mesh") or not (entry["mesh"] as Node).has_meta("model_inst"):
 		return 0.0
-	var load := _apt_floor._surface_load(sup, carried)
-	if carried != null and carried_at != null and _apt_floor.support_under(carried, carried_at) == sup:
-		load += carried.weight
-	var ratio := load / sup.max_support_weight
+	var ratio := _apt_floor.strain_of(sup, carried, carried_at)
 	if ratio <= SAG_FROM:
 		return 0.0
 	var size: Vector3 = entry["size"]

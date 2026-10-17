@@ -99,6 +99,9 @@ var body_h: float = 8.0
 # How many surfaces this piece stands on top of (0 = the floor); the plan
 # draws it that far up so it shows over its table. Floor keeps it current.
 var stack_z: int = 0
+# How loaded this surface is (Floor.strain_of(), a share of
+# max_support_weight; over 1 = what is being carried over it would break it).
+var _strain: float = 0.0
 var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
 # A screen hides what is behind it without darkening the room: reeded glass,
 # a curtain. It stops a line of sight and divides zones like tall storage
@@ -587,6 +590,8 @@ func _draw() -> void:
 	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
 	# only the fill/hatch/symbol need to actually spin.
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if is_surface:
+		_draw_strain(float(w), float(h))
 
 	# Name label: dark ink with a light halo. The piece's own ink colour is
 	# close to its fill and to the white of its symbol, which left names like
@@ -1541,6 +1546,45 @@ func _rider_covers(screen_pos: Vector2) -> bool:
 	return false
 
 
+func set_strain(ratio: float) -> void:
+	if not is_equal_approx(ratio, _strain):
+		_strain = ratio
+		queue_redraw()
+
+
+# A surface under strain, on the plan: its long edges pull in toward the
+# middle like a beam drawn under load, amber as it fills, red with a crack
+# when what is being carried over it would break it. (In 3D it bows instead.)
+func _draw_strain(w: float, h: float) -> void:
+	if _strain <= Floor.STRAIN_FROM:
+		return
+	var over := _strain > 1.0 + 0.0001
+	var t := clampf((_strain - Floor.STRAIN_FROM) / (1.0 - Floor.STRAIN_FROM), 0.0, 1.0)
+	var col := Color(0.98, 0.72, 0.22).lerp(Color(0.93, 0.26, 0.18), t)
+	var along_x := w >= h
+	var span := w if along_x else h
+	var across := h if along_x else w
+	var depth := across * (0.28 if over else lerpf(0.05, 0.16, t))
+	for side in [0.0, 1.0]:
+		var pts := PackedVector2Array()
+		for i in 13:
+			var u := i / 12.0
+			var pull: float = depth * 4.0 * u * (1.0 - u) * (1.0 - 2.0 * side)
+			var a := u * span
+			var b: float = side * across + pull
+			pts.append(Vector2(a, b) if along_x else Vector2(b, a))
+		draw_polyline(pts, col, 2.5 if over else 2.0, true)
+		if over:
+			# A crack where the edge gives, pointing into the piece.
+			var dir: float = 1.0 - 2.0 * side
+			var crack := PackedVector2Array()
+			for k in 4:
+				var a2 := span * 0.5 + (2.5 if k % 2 == 0 else -2.5)
+				var b2: float = side * across + (depth + 1.0 + k * 3.0) * dir
+				crack.append(Vector2(a2, b2) if along_x else Vector2(b2, a2))
+			draw_polyline(crack, col, 1.5, true)
+
+
 func _is_mouse_over() -> bool:
 	var local_mouse := get_local_mouse_position()
 	var sz := Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
@@ -1860,6 +1904,7 @@ func cancel_placement() -> void:
 		_wall_ref.grid_draw.queue_redraw()
 	placement_cancelled.emit()
 	if _wall_ref:
+		_wall_ref.clear_floor_drag_ghost()   # a table it was held over stops showing its weight
 		_wall_ref.forget_furniture(self)   # never leave a freed node on the floor's books
 	queue_free()
 

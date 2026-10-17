@@ -1243,6 +1243,7 @@ func _layout_changed() -> void:
 		_batch_dirty = true
 		return
 	_update_stack_order()
+	_update_strain()
 	_compute_light_map()
 	_recalculate_zones()
 	furniture_changed.emit()
@@ -1376,7 +1377,10 @@ func clear_wall_drag_ghost() -> void:
 
 
 func set_floor_drag_ghost(furniture: Furniture, gx: float, gy: float) -> void:
+	var moved: bool = _floor_drag_ghost.get("furniture") != furniture 		or _floor_drag_ghost.get("gx") != gx or _floor_drag_ghost.get("gy") != gy
 	_floor_drag_ghost = {"furniture": furniture, "gx": gx, "gy": gy}
+	if moved:
+		_update_strain()   # only when it is over another tile: this runs on every mouse move
 	furniture_changed.emit()
 
 
@@ -1384,7 +1388,43 @@ func clear_floor_drag_ghost() -> void:
 	if _floor_drag_ghost.is_empty():
 		return
 	_floor_drag_ghost = {}
+	_update_strain()
 	furniture_changed.emit()
+
+
+# ── Strain: how loaded a surface is ─────────────────────────────────────────
+# Shown on the furniture itself rather than as a number: past STRAIN_FROM of
+# what it holds a surface starts to show it (bowing in 3D, see Room3DView;
+# its long edges pulled in on the plan, see Furniture._draw_strain), and a
+# piece being carried over it counts as already there, so the player sees a
+# table give before putting something too heavy on it.
+const STRAIN_FROM := 0.6
+
+# What share of what `support` can hold rests on it. `carried` (being dragged
+# or bought, its corner at `carried_at`) counts on the surface it is over and
+# no longer on the one it was lifted off. Above 1 it would break.
+func strain_of(support: Furniture, carried: Furniture = null, carried_at: Variant = null) -> float:
+	if support.max_support_weight <= 0.0:
+		return 0.0
+	var load := _surface_load(support, carried)
+	if carried != null and carried_at != null and support_under(carried, carried_at) == support:
+		load += carried.weight
+	return load / support.max_support_weight
+
+
+# Hands every surface its current strain, counting the piece being dragged
+# or bought on the plan (the drag ghost) where it is now.
+func _update_strain() -> void:
+	var carried: Furniture = null
+	var at: Variant = null
+	var ghost: Variant = _floor_drag_ghost.get("furniture")
+	if is_instance_valid(ghost) and ((ghost as Furniture)._dragging or (ghost as Furniture)._placement_mode):
+		carried = ghost as Furniture
+		at = Vector2(_floor_drag_ghost["gx"] as float, _floor_drag_ghost["gy"] as float)
+	for f in get_all_furniture():
+		var fur := f as Furniture
+		if fur.is_surface and fur != carried:
+			fur.set_strain(strain_of(fur, carried, at))
 
 
 func get_wall_items(edge: String) -> Dictionary:
