@@ -267,7 +267,31 @@ func _place_pawns(animate: bool) -> void:
 	_pawn_root.transform = _view3d.build_root.transform
 	for rid in _pawns:
 		if _tiles.has(rid):
-			(_pawns[rid] as TenantPawn3D).place(_tile_to_3d(_tiles[rid] + Vector2(PATCH, PATCH) * 0.5), animate)
+			var pawn := _pawns[rid] as TenantPawn3D
+			pawn.place(_tile_to_3d(_tiles[rid] + Vector2(PATCH, PATCH) * 0.5), animate)
+			pawn.look_toward(_idle_look_target(_tiles[rid] as Vector2))
+
+
+# What someone standing at `tile` looks at: the nearest piece they'd use
+# (anything with a function), else the nearest piece at all, else the middle
+# of the room.
+func _idle_look_target(tile: Vector2) -> Vector3:
+	var here := tile + Vector2(PATCH, PATCH) * 0.5
+	var best: Furniture = null
+	var best_d := INF
+	for entry in _floor.get_all_furniture():
+		var f := entry as Furniture
+		var d := _center(f).distance_to(here) + (0.0 if not f.functions.is_empty() else 1000.0)
+		if d < best_d:
+			best_d = d
+			best = f
+	if best:
+		return _tile_to_3d(_center(best))
+	return _tile_to_3d(Vector2(_floor.get_room_bounds().get_center()))
+
+
+func _piece_3d(f: Furniture) -> Vector3:
+	return _tile_to_3d(_center(f)) if f and is_instance_valid(f) else Vector3.INF
 
 
 func _tile_to_3d(t: Vector2) -> Vector3:
@@ -376,7 +400,7 @@ func _react(req: String, cause: Furniture) -> void:
 		token.react(req, TenantBubble.Mood.ANNOYED)
 	var pawn := _pawns.get(rid) as TenantPawn3D
 	if pawn:
-		pawn.react(req, TenantBubble.Mood.ANNOYED)
+		pawn.react(req, TenantBubble.Mood.ANNOYED, _piece_3d(cause))
 	card.flash_requirement(req)
 	if cause and is_instance_valid(cause):
 		if token:
@@ -504,11 +528,11 @@ func _run_errand(pick: Array = []) -> void:
 		var on := _center(piece) * Floor.TILE_SIZE if piece else Vector2.INF
 		act = token.perform(plan["kind"], req, on)
 		if pawn:
-			pawn.perform(plan["kind"], req, _use_in_3d(piece, plan["kind"]))
+			pawn.perform(plan["kind"], req, _use_in_3d(piece, plan["kind"]), _piece_3d(piece))
 	else:
 		act = token.shrug(req)
 		if pawn:
-			pawn.shrug(req)
+			pawn.shrug(req, _piece_3d(plan.get("furniture") as Furniture))
 	await act.finished
 	if gen != _errand_gen:
 		return

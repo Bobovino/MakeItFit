@@ -5,9 +5,11 @@ class_name TenantPawn3D
 # post-win showcase (TenantMii: a body of their own age and look, with its
 # baked Idle/Walk/Sit/Lie clips), or a simple oval for an animal, which has
 # no Mii. Hops, squash, a shake when annoyed and a bounce when happy are
-# tweens on top. Faces the camera while standing about, the way it's going
-# while walking, and the furniture while using it. Not part of the room's
-# build: it lives beside it and the room never sees it.
+# tweens on top. Faces the way it's going while walking, the furniture while
+# using it, what bothered it when annoyed, and otherwise whatever the tenant
+# layer gave it to look at (the piece it stands by), never the camera: a
+# household staring at the player all day looked like a photo, not a home.
+# Not part of the room's build: it lives beside it and the room never sees it.
 
 const HEIGHT := {"adult": 1.6, "teen": 1.45, "child": 1.1, "animal": 0.32}
 const TenantMiiScript := preload("res://scripts/TenantMii.gd")
@@ -22,7 +24,9 @@ var _bubble_sprite: Sprite3D
 var _move_tween: Tween
 var _mood_tween: Tween
 var _shown := false
-var _heading := NAN          # set while walking or using something: the way to face instead of the camera
+var _heading := NAN          # set while walking or using something: the way to face right now
+var _facing := NAN           # the rest of the time: where it looks while standing about
+const TURN_RATE := 10.0      # how quickly it turns towards where it means to look
 
 
 func setup(r: TenantResident, tint: Color, camera: Camera3D) -> void:
@@ -61,18 +65,40 @@ func setup(r: TenantResident, tint: Color, camera: Camera3D) -> void:
 		_figure.add_child(eye)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	var want := _heading if not is_nan(_heading) else _facing
+	if is_nan(want):
+		return
+	if GameState.reduce_motion:
+		rotation.y = want
+	else:
+		rotation.y = lerp_angle(rotation.y, want, 1.0 - exp(-TURN_RATE * delta))
+
+
+# Looks at `point` (in the same space as `position`) while standing about.
+func look_toward(point: Vector3) -> void:
+	var d := point - position
+	if Vector2(d.x, d.z).length() > 0.01:
+		_facing = atan2(d.x, d.z)
+
+
+# Whatever way it was going or using, it keeps looking that way.
+func _settle() -> void:
 	if not is_nan(_heading):
-		rotation.y = _heading
-	elif is_instance_valid(cam):
-		var to := cam.global_position - global_position
-		rotation.y = atan2(to.x, to.z)
+		_facing = _heading
+	_heading = NAN
+
+
+# Straight round, no turning: for getting into a pose on a bed or a seat.
+func _turn_now(angle: float) -> void:
+	_heading = angle
+	rotation.y = angle
 
 
 func place(at: Vector3, animate: bool) -> void:
 	if _move_tween and _move_tween.is_valid():
 		_move_tween.kill()
-	_heading = NAN
+	_settle()
 	if _mii:
 		_mii.set_walking(false)
 	var from := position
@@ -125,7 +151,7 @@ func walk(points: Array, step_time: float) -> Tween:
 			_figure.position.y = sin(k * PI) * bob, 0.0, 1.0, step_time)
 		from = b
 	_move_tween.tween_callback(func():
-		_heading = NAN
+		_settle()
 		if _mii:
 			_mii.set_walking(false))
 	return _move_tween
@@ -133,9 +159,13 @@ func walk(points: Array, step_time: float) -> Tween:
 
 # A need met. With `use` ({pos, rot_y, pose} from Room3DView's
 # _tenant_anchor_for(), in the room's own space) the Mii gets on the bed or
-# into the seat and does it for real, then steps back to where it stood.
-func perform(kind: String, req_id: String, use: Dictionary = {}) -> Tween:
+# into the seat and does it for real, then steps back to where it stood and
+# looks back at it. `target` (the piece's centre, Vector3.INF for none) is
+# what it faces otherwise.
+func perform(kind: String, req_id: String, use: Dictionary = {}, target := Vector3.INF) -> Tween:
 	_show_bubble(req_id, TenantBubble.Mood.HAPPY)
+	if target != Vector3.INF:
+		look_toward(target)
 	_mood_tween = create_tween()
 	if GameState.reduce_motion:
 		_mood_tween.tween_interval(1.2)
@@ -146,14 +176,16 @@ func perform(kind: String, req_id: String, use: Dictionary = {}) -> Tween:
 		_mood_tween.tween_callback(func(): _heading = atan2(spot.x - home.x, spot.z - home.z))
 		_mood_tween.tween_property(self, "position", spot, 0.3).set_trans(Tween.TRANS_SINE)
 		_mood_tween.tween_callback(func():
-			_heading = use["rot_y"]
+			_turn_now(use["rot_y"])
 			_mii.set_pose(use["pose"], false))
 		_mood_tween.tween_interval(1.8)
 		_mood_tween.tween_callback(func(): _mii.set_pose("stand", false))
 		_mood_tween.tween_interval(0.5)
 		_mood_tween.tween_callback(func(): _heading = atan2(home.x - spot.x, home.z - spot.z))
 		_mood_tween.tween_property(self, "position", home, 0.3).set_trans(Tween.TRANS_SINE)
-		_mood_tween.tween_callback(func(): _heading = NAN)
+		_mood_tween.tween_callback(func():
+			_heading = NAN
+			look_toward(spot))
 		return _mood_tween
 	match kind:
 		"lie":
@@ -175,8 +207,10 @@ func perform(kind: String, req_id: String, use: Dictionary = {}) -> Tween:
 	return _mood_tween
 
 
-func shrug(req_id: String) -> Tween:
+func shrug(req_id: String, target := Vector3.INF) -> Tween:
 	_show_bubble(req_id, TenantBubble.Mood.UNSURE)
+	if target != Vector3.INF:
+		look_toward(target)
 	_mood_tween = create_tween()
 	if GameState.reduce_motion:
 		_mood_tween.tween_interval(1.2)
@@ -190,8 +224,11 @@ func shrug(req_id: String) -> Tween:
 	return _mood_tween
 
 
-func react(req_id: String, mood: int) -> void:
+# `target`: what it's reacting to (Vector3.INF for nothing in particular).
+func react(req_id: String, mood: int, target := Vector3.INF) -> void:
 	_show_bubble(req_id, mood)
+	if target != Vector3.INF:
+		look_toward(target)
 	if GameState.reduce_motion:
 		return
 	_mood_tween = create_tween()
@@ -207,7 +244,7 @@ func react(req_id: String, mood: int) -> void:
 func stop_moving() -> void:
 	if _move_tween and _move_tween.is_valid():
 		_move_tween.kill()
-	_heading = NAN
+	_settle()
 	if _mii:
 		_mii.set_walking(false)
 	if _figure:
@@ -220,7 +257,7 @@ func clear_reaction() -> void:
 		_mood_tween.kill()
 	if _mii:
 		_mii.set_pose("stand", true)
-	_heading = NAN
+	_settle()
 	if _figure:
 		_figure.rotation_degrees = Vector3.ZERO
 		_figure.position = Vector3.ZERO
