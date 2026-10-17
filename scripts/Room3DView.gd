@@ -281,6 +281,54 @@ func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
 
 
+# Outside walls whose rules pass into a box nearest them (Main._show_outside_walls):
+# each gets its name and what it does lettered on the ground just outside it,
+# like a street name on the pavement (standing up, it hid the room).
+var _outside_walls: Array = []
+var _outside_signs: Array = []
+
+func set_outside_walls(walls: Array) -> void:
+	if walls == _outside_walls:
+		return
+	_outside_walls = walls
+	_build_outside_signs()
+
+
+func _build_outside_signs() -> void:
+	for n in _outside_signs:
+		if is_instance_valid(n):
+			(n as Node).queue_free()
+	_outside_signs.clear()
+	if _room_w_m <= 0.0 or not is_instance_valid(build_root):
+		return
+	for wl in _outside_walls:
+		var wall := wl as Dictionary
+		var ground := DESK_MAT_Y + 0.01 if _parent_scenery.is_empty() else -0.05
+		var at := Vector3(_room_w_m * 0.5, ground, _room_d_m * 0.5)
+		var turn := 0.0
+		match wall["side"]:
+			"north": at.z = -0.45
+			"south": at.z = _room_d_m + 0.45
+			"east":
+				at.x = _room_w_m + 0.45
+				turn = 90.0
+			"west":
+				at.x = -0.45
+				turn = -90.0
+		var plate3d := Label3D.new()
+		plate3d.text = "%s\n%s" % [wall["name"], wall["rules"]]
+		plate3d.font_size = 40
+		plate3d.pixel_size = 0.0035 * clampf(maxf(_room_w_m, _room_d_m) / 2.5, 1.0, 3.0)
+		plate3d.modulate = Color(0.98, 0.78, 0.36)
+		plate3d.outline_size = 12
+		plate3d.outline_modulate = Color(0.04, 0.08, 0.14, 0.9)
+		plate3d.rotation_degrees = Vector3(-90.0, turn, 0.0)
+		plate3d.double_sided = true
+		plate3d.position = at
+		build_root.add_child(plate3d)
+		_outside_signs.append(plate3d)
+
+
 # How much daylight reaches this room, 0..1: less inside a box that stands in
 # the shadow of something in the flat around it (Main._compute_box_occlusion).
 var _daylight := 1.0
@@ -3451,6 +3499,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		return
 
 	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
+	_outside_signs.clear()   # freed with the rest of build_root's children
+	_build_outside_signs()
 	_add_columns(bounds)
 	_add_window_door_overlays(bounds)
 	_add_rails(bounds)

@@ -2969,3 +2969,51 @@ msgstr ""
 #: scripts/Main.gd
 msgid "%s can't be slept in: the %s is too noisy."
 msgstr ""
+
+#: scripts/Main.gd
+msgid "No %s"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "%s at least %.1f m from the wall"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "North side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "East side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "South side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "West side"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "boxes here: %s"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "nothing extra for boxes here"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "This box stands by the %s: %s."
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Busy street"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Quiet courtyard"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "Bins alley"
+msgstr ""

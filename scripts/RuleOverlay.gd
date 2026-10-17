@@ -50,12 +50,74 @@ func set_lines(status: Array) -> void:
 	queue_redraw()
 
 
+# Outside walls with rules for the boxes nearest them: a plate just outside
+# each such wall with its name and what it does, and a dashed line from each
+# box to the wall it takes those rules from.
+const OUTSIDE_COLOR := Color(0.98, 0.78, 0.36)
+var outside_walls: Array = []   # [{side, name, rules}]
+var box_links: Array = []       # [{from: Vector2 tiles, side, held}]
+var room: Rect2i = Rect2i()
+
+func set_outside(walls: Array, links: Array, bounds: Rect2i) -> void:
+	if walls == outside_walls and links == box_links and bounds == room:
+		return
+	outside_walls = walls
+	box_links = links
+	room = bounds
+	queue_redraw()
+
+
+# Middle of a wall of the room, in plan pixels, and which way is out.
+func _wall_mid(side: String) -> Array:
+	var r := Rect2(Vector2(room.position) * TILE, Vector2(room.size) * TILE)
+	match side:
+		"north": return [Vector2(r.get_center().x, r.position.y), Vector2.UP]
+		"south": return [Vector2(r.get_center().x, r.end.y), Vector2.DOWN]
+		"east":  return [Vector2(r.end.x, r.get_center().y), Vector2.RIGHT]
+	return [Vector2(r.position.x, r.get_center().y), Vector2.LEFT]
+
+
+func _draw_outside(font: Font) -> void:
+	var r := Rect2(Vector2(room.position) * TILE, Vector2(room.size) * TILE)
+	for l in box_links:
+		var link := l as Dictionary
+		var from := (link["from"] as Vector2) * TILE
+		var side := link["side"] as String
+		var to := Vector2(from.x, r.position.y) if side == "north" else Vector2(from.x, r.end.y) if side == "south" \
+			else Vector2(r.end.x, from.y) if side == "east" else Vector2(r.position.x, from.y)
+		var w := 2.5 if link["held"] else 1.5
+		draw_dashed_line(from, to, Color(0.04, 0.08, 0.14, 0.7), w + 2.5, 6.0)
+		draw_dashed_line(from, to, OUTSIDE_COLOR, w, 6.0)
+		draw_circle(to, 3.5, OUTSIDE_COLOR)
+	for wl in outside_walls:
+		var wall := wl as Dictionary
+		var mid: Array = _wall_mid(wall["side"] as String)
+		var at: Vector2 = mid[0]
+		var out: Vector2 = mid[1]
+		var title := wall["name"] as String
+		var rules := wall["rules"] as String
+		var tw := maxf(font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x,
+			font.get_string_size(rules, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+		# Turned along a side wall, so it lies alongside it like the others.
+		var angle := 0.0 if out.y != 0.0 else (-PI * 0.5 if out.x < 0.0 else PI * 0.5)
+		# Just inside the wall: outside it, the plan's edges and the screen's
+		# bars cut it off.
+		draw_set_transform(at - out * 15.0, angle, Vector2.ONE)
+		var plate := Rect2(Vector2(-tw * 0.5 - 4, -11), Vector2(tw + 8, 22))
+		draw_rect(plate, Color(0.04, 0.08, 0.14, 0.62))
+		draw_rect(plate, Color(OUTSIDE_COLOR.r, OUTSIDE_COLOR.g, OUTSIDE_COLOR.b, 0.7), false, 1.0)
+		draw_string(font, Vector2(-tw * 0.5, -1), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, OUTSIDE_COLOR)
+		draw_string(font, Vector2(-tw * 0.5, 8), rules, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(0.92, 0.94, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _center(tile: Vector2i) -> Vector2:
 	return (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
 
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
+	_draw_outside(font)
 	# Zone name plates: what each zone holds, and a warning on one that
 	# holds two things that must be apart.
 	for zi in mini(zones.size(), zone_status.size()):

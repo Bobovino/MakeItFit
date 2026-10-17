@@ -1575,6 +1575,8 @@ func _on_box_entered(box: Furniture) -> void:
 		news.append(tr("Little daylight gets in here: the %s outside stands in front of the box.") % shade_by)
 	if noisy_outside and noisy_by != "":
 		news.append(tr("Noisy in here: the %s right outside the box keeps anyone from sleeping.") % noisy_by)
+	if not wall_override.is_empty() and _wall_rules_text(wall_override) != "":
+		news.append(tr("This box stands by the %s: %s.") % [_wall_side_name(wall_side, wall_override), _wall_rules_text(wall_override)])
 	if not news.is_empty():
 		_toast("\n".join(news))
 	_nested_transition_busy = false
@@ -2292,10 +2294,72 @@ func _compute_box_occlusion(box: Furniture, carried: Furniture = null, carried_a
 # specific WALLS, not a uniform ring around the whole apartment the way
 # light/noise occlusion are, so this measures against one side at a time
 # rather than reusing the ring-scan shape those two use.
-func _closest_wall_side(fl: Floor, box: Furniture) -> String:
+# What an outside-wall profile (external_zone.by_wall[side]) does to a box
+# standing nearest that wall, in words: "Sleep at least 0.8 m from the wall
+# · No Work". "" when it does nothing.
+func _wall_rules_text(profile: Dictionary) -> String:
+	var parts: Array = []
+	for fn in profile.get("forbidden_functions", []) as Array:
+		parts.append(tr("No %s") % Loc.need_name(fn as String))
+	var dist := profile.get("min_boundary_distance", {}) as Dictionary
+	for fn in dist:
+		parts.append(tr("%s at least %.1f m from the wall") % [Loc.need_name(fn as String), (dist[fn] as float) * 0.1])
+	return " · ".join(parts)
+
+
+# The name a wall's outside goes by: its profile's label ("Busy street"), or
+# which side of the flat it is.
+func _wall_side_name(side: String, profile: Dictionary) -> String:
+	var label := profile.get("label", "") as String
+	if label != "":
+		return tr(label)
+	match side:
+		"north": return tr("North side")
+		"east":  return tr("East side")
+		"south": return tr("South side")
+	return tr("West side")
+
+
+# Shows every outside wall that has a profile, on the plan (a plate outside
+# it) and in 3D (a sign outside it), and links each box to the wall whose
+# rules it takes inside: a dashed line on the plan, following a box that is
+# being carried (`carried`, its corner at `at`).
+var _outside_walls: Array = []   # what _show_outside_walls() last showed, for a 3D view built later
+
+func _show_outside_walls(carried: Furniture = null, at: Variant = null) -> void:
+	var by_wall := gm.external_restrictions.get("by_wall", {}) as Dictionary
+	var walls: Array = []
+	for side in ["north", "east", "south", "west"]:
+		if not by_wall.has(side):
+			continue
+		var p := by_wall[side] as Dictionary
+		var rules := _wall_rules_text(p)
+		walls.append({"side": side, "name": _wall_side_name(side, p),
+			"rules": tr("boxes here: %s") % rules if rules != "" else tr("nothing extra for boxes here")})
+	for fid in _floors:
+		var fl := _floors[fid] as Floor
+		var links: Array = []
+		if not walls.is_empty():
+			for box in _collect_nested_boxes():
+				if box._wall_ref != fl:
+					continue
+				var held := box == carried and at != null
+				var side := _closest_wall_side(fl, box, at if held else null)
+				if not by_wall.has(side):
+					continue
+				var corner: Vector2 = at as Vector2 if held else box.grid_pos
+				links.append({"from": corner + Vector2(box.grid_w, box.grid_h) * 0.5, "side": side, "held": held})
+		fl.set_outside_walls(walls, links)
+	_outside_walls = walls
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.set_outside_walls(walls)
+
+
+func _closest_wall_side(fl: Floor, box: Furniture, at: Variant = null) -> String:
 	var b := fl.get_room_bounds()
-	var cx := box.grid_pos.x + box.grid_w * 0.5
-	var cy := box.grid_pos.y + box.grid_h * 0.5
+	var corner: Vector2 = box.grid_pos if at == null else at as Vector2
+	var cx := corner.x + box.grid_w * 0.5
+	var cy := corner.y + box.grid_h * 0.5
 	var d_west  := cx - b.position.x
 	var d_east  := (b.position.x + b.size.x) - cx
 	var d_north := cy - b.position.y
@@ -2368,6 +2432,8 @@ func _preview_carry(carried: Furniture, at: Variant) -> void:
 # The preview itself; also put back on top by _recompute_box_effects(), which
 # moving the piece over the plan sets off and which works out the real state.
 func _apply_carry_preview(carried: Furniture, at: Variant) -> void:
+	if carried.is_nested_box:
+		_show_outside_walls(carried, at)
 	var boxes := _collect_nested_boxes()
 	if boxes.is_empty():
 		return
@@ -2488,6 +2554,7 @@ func _recompute_box_effects() -> void:
 		# working (see _on_box_entered): the piece making it shows it here too.
 		if is_instance_valid(box._wall_ref) and _has_noisy_neighbor(box._wall_ref, box.grid_pos, box.grid_w, box.grid_h, box) 				and _child_has_bed(box.child_level_id) and is_instance_valid(_noisy_piece):
 			_noisy_piece._noise_making = true
+	_show_outside_walls()
 	if _carry_previewing and _carry_preview_args.size() == 2 and is_instance_valid(_carry_preview_args[0]):
 		_apply_carry_preview(_carry_preview_args[0], _carry_preview_args[1])
 	# A bed that just stopped working because of noise says why, once (a piece
@@ -3201,6 +3268,7 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
 	_mode3d_view.set_daylight(_current_nested_daylight_factor if not _nested_stack.is_empty() else 1.0)
+	_mode3d_view._outside_walls = _outside_walls   # signs built with the room
 	_mode3d_view.household_of = _household_of
 	# Hand the rule overlays over before the build, so a view created (or
 	# rebuilt) after the last refresh still shows them.

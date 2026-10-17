@@ -27,6 +27,7 @@ func _ready() -> void:
 	await _t_progress_round_trip()
 	await _t_project_needs_every_apartment()
 	await _t_box_on_a_surface()
+	await _t_outside_walls()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -727,6 +728,45 @@ func _t_box_on_a_surface() -> void:
 	GameState.save_path = real_path
 	GameState.completed = real_completed
 	GameState.progress = real_progress
+	GameState.reduce_motion = real_motion
+
+
+# ── Each outside wall says what it passes into the boxes nearest it ─────────
+# Debug: All Mechanics has a street, a courtyard and an alley side; its
+# shoebox stands nearest the alley. Carrying it towards the street moves the
+# link there before it is put down.
+func _t_outside_walls() -> void:
+	var real_path := GameState.save_path
+	var real_motion := GameState.reduce_motion
+	GameState.save_path = "user://test_walls_save.json"
+	GameState.reduce_motion = true
+	GameState.pending_level_id = "debug:_all_mechanics"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var box: Furniture = main._collect_nested_boxes()[0]
+	var ov: RuleOverlay = fl._rule_overlay
+	_current = "outside walls: the plan names every wall with rules, and links the box to its own"
+	_ok(ov != null and ov.outside_walls.size() == 3 and ov.box_links.size() == 1 and ov.box_links[0]["side"] == "south",
+		"%s / %s" % [ov.outside_walls if ov else null, ov.box_links if ov else null])
+	box._dragging = true
+	fl.set_floor_drag_ghost(box, 25, 14)
+	var held_side: String = ov.box_links[0]["side"] if ov and not ov.box_links.is_empty() else ""
+	box._dragging = false
+	fl.clear_floor_drag_ghost()
+	_current = "outside walls: carrying the box to the street side moves its link there first"
+	_ok(held_side == "east" and ov.box_links[0]["side"] == "south", "%s, then %s" % [held_side, ov.box_links[0]["side"]])
+	_current = "outside walls: the alley's rule reads as words"
+	_ok(main._wall_rules_text(main.gm.external_restrictions["by_wall"]["south"]) == "Sleep at least 0.8 m from the wall",
+		main._wall_rules_text(main.gm.external_restrictions["by_wall"]["south"]))
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
 	GameState.reduce_motion = real_motion
 
 

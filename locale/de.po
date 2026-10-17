@@ -3044,3 +3044,51 @@ msgstr "Hier ist es laut: %s direkt vor der Kiste lässt niemanden schlafen."
 #: scripts/Main.gd
 msgid "%s can't be slept in: the %s is too noisy."
 msgstr "In %s kann niemand schlafen: %s ist zu laut."
+
+#: scripts/Main.gd
+msgid "No %s"
+msgstr "Kein %s"
+
+#: scripts/Main.gd
+msgid "%s at least %.1f m from the wall"
+msgstr "%s mindestens %.1f m von der Wand"
+
+#: scripts/Main.gd
+msgid "North side"
+msgstr "Nordseite"
+
+#: scripts/Main.gd
+msgid "East side"
+msgstr "Ostseite"
+
+#: scripts/Main.gd
+msgid "South side"
+msgstr "Südseite"
+
+#: scripts/Main.gd
+msgid "West side"
+msgstr "Westseite"
+
+#: scripts/Main.gd
+msgid "boxes here: %s"
+msgstr "Kisten hier: %s"
+
+#: scripts/Main.gd
+msgid "nothing extra for boxes here"
+msgstr "nichts Besonderes für Kisten hier"
+
+#: scripts/Main.gd
+msgid "This box stands by the %s: %s."
+msgstr "Diese Kiste steht an der Seite %s: %s."
+
+#: scripts/Main.gd
+msgid "Busy street"
+msgstr "Belebte Straße"
+
+#: scripts/Main.gd
+msgid "Quiet courtyard"
+msgstr "Ruhiger Innenhof"
+
+#: scripts/Main.gd
+msgid "Bins alley"
+msgstr "Mülltonnengasse"

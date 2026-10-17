@@ -102,6 +102,11 @@ var _ext_forbidden: Dictionary = {
 var _ext_min_dist: Dictionary = {
 	"sleep": 0, "sit": 0, "work": 0, "cook": 0, "storage": 0, "dine": 0, "dress": 0
 }
+# Per outside wall: what a box standing nearest that wall passes into the
+# apartment inside it ({label, forbidden_functions, min_boundary_distance};
+# see Main._closest_wall_side()). Edited one wall at a time in the modal.
+var _ext_by_wall: Dictionary = {}   # "north"|"east"|"south"|"west" -> profile
+var _ext_wall_side := "north"
 # Single sightline requirement — a real level could want several, but one is
 # enough to author the mechanic without a full repeating-row-list widget.
 # See GameManager.gd's sightline_requirements / Wall.has_sightline().
@@ -720,6 +725,52 @@ func _open_external_zone_modal() -> void:
 	for fn: String in _ext_min_dist.keys():
 		var sb := _spinbox(vb, fn, _ext_min_dist.get(fn, 0) as int, 0, 20, 1)
 		sb.value_changed.connect(func(v: float): _ext_min_dist[fn] = int(v))
+
+	_sect(vb, "PER OUTSIDE WALL (for boxes nearest it)")
+	var hint_w := Label.new()
+	hint_w.text = "A box passes the rules of the outer wall it stands closest to into the apartment inside it: a busy street on one side, a quiet courtyard on another. The plan and the 3D view show the wall's name and rules."
+	hint_w.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint_w.add_theme_font_size_override("font_size", 9)
+	hint_w.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(hint_w)
+	var side_pick := OptionButton.new()
+	for sd in ["north", "east", "south", "west"]:
+		side_pick.add_item(sd)
+	side_pick.select(["north", "east", "south", "west"].find(_ext_wall_side))
+	vb.add_child(side_pick)
+	var side_vb := VBoxContainer.new()
+	vb.add_child(side_vb)
+	var fill_side := func(side: String) -> void:
+		for c in side_vb.get_children():
+			c.queue_free()
+		if not _ext_by_wall.has(side):
+			_ext_by_wall[side] = {"label": "", "forbidden_functions": [], "min_boundary_distance": {}}
+		var prof := _ext_by_wall[side] as Dictionary
+		var name_edit := LineEdit.new()
+		name_edit.placeholder_text = "Name outside, e.g. Busy street"
+		name_edit.text = prof.get("label", "") as String
+		name_edit.text_changed.connect(func(t: String): prof["label"] = t)
+		side_vb.add_child(name_edit)
+		for fn: String in _ext_forbidden.keys():
+			var cb := CheckBox.new()
+			cb.text = "no " + fn
+			cb.button_pressed = fn in (prof["forbidden_functions"] as Array)
+			cb.add_theme_font_size_override("font_size", 11)
+			cb.toggled.connect(func(on: bool):
+				var ff := prof["forbidden_functions"] as Array
+				if on and not (fn in ff): ff.append(fn)
+				elif not on: ff.erase(fn))
+			side_vb.add_child(cb)
+		for fn: String in _ext_min_dist.keys():
+			var sb := _spinbox(side_vb, fn + " from wall", (prof["min_boundary_distance"] as Dictionary).get(fn, 0) as int, 0, 20, 1)
+			sb.value_changed.connect(func(v: float):
+				var md := prof["min_boundary_distance"] as Dictionary
+				if int(v) > 0: md[fn] = int(v)
+				else: md.erase(fn))
+	fill_side.call(_ext_wall_side)
+	side_pick.item_selected.connect(func(i: int):
+		_ext_wall_side = ["north", "east", "south", "west"][i]
+		fill_side.call(_ext_wall_side))
 
 	_sect(vb, "SIGHTLINE REQUIREMENT")
 	var hint3 := Label.new()
@@ -3992,6 +4043,15 @@ func _build_dict() -> Dictionary:
 			var ez: Dictionary = {}
 			if not forb.is_empty(): ez["forbidden_functions"] = forb
 			if not dist.is_empty(): ez["min_boundary_distance"] = dist
+			var walls: Dictionary = {}
+			for side in _ext_by_wall:
+				var prof := _ext_by_wall[side] as Dictionary
+				var keep: Dictionary = {}
+				if (prof.get("label", "") as String) != "": keep["label"] = prof["label"]
+				if not (prof.get("forbidden_functions", []) as Array).is_empty(): keep["forbidden_functions"] = (prof["forbidden_functions"] as Array).duplicate()
+				if not (prof.get("min_boundary_distance", {}) as Dictionary).is_empty(): keep["min_boundary_distance"] = (prof["min_boundary_distance"] as Dictionary).duplicate()
+				if not keep.is_empty(): walls[side] = keep
+			if not walls.is_empty(): ez["by_wall"] = walls
 			return ez).call(),
 		"allowed_furniture":   _allowed_furniture.duplicate(),
 		"starting_inventory":  _starting_inventory.duplicate(true),
@@ -4627,6 +4687,13 @@ func _load_from_dict(d: Dictionary) -> void:
 	var dist := ext_zone.get("min_boundary_distance", {}) as Dictionary
 	for fn: String in _ext_min_dist:
 		_ext_min_dist[fn] = dist.get(fn, 0) as int
+	_ext_by_wall = {}
+	var by_wall := ext_zone.get("by_wall", {}) as Dictionary
+	for side in by_wall:
+		var prof := (by_wall[side] as Dictionary).duplicate(true)
+		if not prof.has("forbidden_functions"): prof["forbidden_functions"] = []
+		if not prof.has("min_boundary_distance"): prof["min_boundary_distance"] = {}
+		_ext_by_wall[side] = prof
 
 	# Inline widgets are now modal-only — update summary label instead
 	_refresh_level_summary()

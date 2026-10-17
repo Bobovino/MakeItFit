@@ -1684,6 +1684,18 @@ func set_zone_status(status: Array) -> void:
 		_rule_overlay.set_zones(zones, status)
 
 
+# The flat's outside walls that pass rules into boxes, and which wall each box
+# takes them from (see Main._show_outside_walls()).
+func set_outside_walls(walls: Array, links: Array) -> void:
+	if _rule_overlay == null:
+		if walls.is_empty():
+			return
+		_rule_overlay = RuleOverlay.new()
+		_rule_overlay.z_index = 20
+		add_child(_rule_overlay)
+	_rule_overlay.set_outside(walls, links, get_room_bounds())
+
+
 func set_sight_lines(status: Array) -> void:
 	if _rule_overlay == null:
 		if status.is_empty():
