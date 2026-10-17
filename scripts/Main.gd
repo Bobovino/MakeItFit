@@ -1632,8 +1632,23 @@ func _furniture_preview_rects_for(level_id: String, ld: Dictionary) -> Array:
 			"x": d.get("x", 0) as float, "y": d.get("y", 0) as float,
 			"w": float(sz.get("w", 4) as int), "h": float(sz.get("h", 4) as int),
 			"color": Color("#" + (fdata.get("color", "888888") as String)),
+			"surface": fdata.get("is_surface", false) as bool,
 		})
-	return out
+	# Drawn in order: what stands on a table (a box, a lamp) after the table,
+	# so the thumbnail shows it on top rather than hidden underneath.
+	var depth := func(r: Dictionary) -> int:
+		var rect := Rect2(r["x"], r["y"], r["w"], r["h"])
+		var n := 0
+		for o in out:
+			if not is_same(o, r) and o["surface"] and Rect2(o["x"], o["y"], o["w"], o["h"]).encloses(rect):
+				n += 1
+		return n
+	for r in out:
+		r["depth"] = depth.call(r)
+	var by_depth: Array = []
+	for level in range(4):
+		by_depth.append_array(out.filter(func(r): return mini(r["depth"], 3) == level))
+	return by_depth
 
 
 # Inside a box, the 3D view can draw the apartment the box sits in around the
@@ -2188,10 +2203,16 @@ func _apply_level_state_snapshot(snapshot: Dictionary) -> void:
 # nearby piece: a "tall" neighbor blocks most of the light (this is a closed
 # box after all, blocked doubly so), "medium" dims it partway, otherwise the
 # box gets full daylight.
+#
+# A box standing on a table or shelf takes its light from where it really is:
+# what it stands on doesn't shade it, and neither does anything whose top is
+# below the box (a chair beside the table, a low cabinet beside the dresser).
 func _compute_box_occlusion(box: Furniture) -> float:
 	var fl := box._wall_ref
 	if not is_instance_valid(fl):
 		return 1.0
+	var under := _supports_under(fl, box.grid_pos, box.grid_w, box.grid_h, box)
+	var base := fl.stack_lift(box)
 	var x0 := floori(box.grid_pos.x) - 1
 	var y0 := floori(box.grid_pos.y) - 1
 	var x1 := x0 + box.grid_w + 2
@@ -2205,7 +2226,9 @@ func _compute_box_occlusion(box: Furniture) -> float:
 				continue
 			for f in fl._placed_list(tile):
 				var fur := f as Furniture
-				if fur == box:
+				if fur == box or fur in under:
+					continue
+				if base > 0.0 and fl.stack_lift(fur) + fur.body_h <= base:
 					continue
 				if fur.blocks_light():
 					worst = "tall"
@@ -2250,9 +2273,25 @@ func _closest_wall_side(fl: Floor, box: Furniture) -> String:
 	return "south"
 
 
+# What a footprint at `pos` would stand on: the surface under it, the one
+# under that, and so on down to the floor (empty on the floor).
+func _supports_under(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> Array:
+	var out: Array = []
+	var cur := fl._surface_support_at(fl._rect_tiles(pos, gw, gh), exclude)
+	while cur != null and cur not in out:
+		out.append(cur)
+		cur = fl.support_under(cur)
+	return out
+
+
+# A box standing on something noisy hears it as well as one beside it, even
+# when that table is no bigger than the box and so not in the ring.
 func _has_noisy_neighbor(fl: Floor, pos: Vector2, gw: int, gh: int, exclude: Furniture) -> bool:
 	if not is_instance_valid(fl):
 		return false
+	for sup in _supports_under(fl, pos, gw, gh, exclude):
+		if (sup as Furniture).is_noisy:
+			return true
 	var x0 := floori(pos.x) - 1
 	var y0 := floori(pos.y) - 1
 	var x1 := x0 + gw + 2
@@ -2335,10 +2374,20 @@ func _recompute_box_effects() -> void:
 	for box in _collect_nested_boxes():
 		if box.child_level_id.is_empty():
 			continue
-		box.apply_interior_weight(_compute_child_interior_weight(box.child_level_id))
+		box.apply_interior_weight(_compute_child_interior_weight(box.child_level_id), _box_shrink(box))
 		box.is_noisy = _compute_child_is_noisy(box.child_level_id)
 		if box.is_noisy and is_instance_valid(box._wall_ref):
 			_mute_quiet_neighbors(box._wall_ref, box)
+
+
+# How much the fax shrank the apartment in `box`: the box's footprint over
+# that apartment's floor, both in tiles. What is inside weighs that much less
+# out here (see Furniture.apply_interior_weight()).
+func _box_shrink(box: Furniture) -> float:
+	var inner_tiles := _level_floor_area_m2(box.child_level_id) / TILE_M2
+	if inner_tiles <= 0.0:
+		return 1.0
+	return clampf(float(box.grid_w * box.grid_h) / inner_tiles, 0.0, 1.0)
 
 
 func _mute_quiet_neighbors(fl: Floor, box: Furniture) -> void:

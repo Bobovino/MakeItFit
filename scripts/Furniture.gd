@@ -93,6 +93,12 @@ var weight: float = 1.0
 var is_surface: bool = false
 var max_support_weight: float = 0.0
 var requires_surface: bool = false
+# Height of the piece in tiles (the catalogue's wall_h, what the 3D view
+# draws): how high whatever is stacked on it stands. See Floor.stack_lift().
+var body_h: float = 8.0
+# How many surfaces this piece stands on top of (0 = the floor); the plan
+# draws it that far up so it shows over its table. Floor keeps it current.
+var stack_z: int = 0
 var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
 # A screen hides what is behind it without darkening the room: reeded glass,
 # a curtain. It stops a line of sight and divides zones like tall storage
@@ -172,10 +178,14 @@ var _noise_muted: bool = false
 # OWN catalog weight for anything that reads `weight` (stacking capacity,
 # mezzanine load), and escalates mobility_tier as interior weight climbs
 # past the thresholds above. Only meaningful for is_nested_box pieces;
-# harmless no-op otherwise.
-func apply_interior_weight(w: float) -> void:
+# harmless no-op otherwise. `shrink` is how much the fax shrank what is
+# inside (the box's footprint over the apartment's floor, see
+# Main._box_shrink()): the furniture in there weighs that much less out here,
+# so a furnished box still fits on a sturdy table but not on a flimsy one.
+# The mobility thresholds keep reading the full interior weight.
+func apply_interior_weight(w: float, shrink: float = 1.0) -> void:
 	interior_weight = w
-	weight = _base_weight + w
+	weight = _base_weight + w * shrink
 	if not is_nested_box:
 		return
 	if w >= BOX_WEIGHT_RED_MIN:
@@ -316,6 +326,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	is_surface            = data.get("is_surface",        false)    as bool
 	max_support_weight    = data.get("max_support_weight", 0.0)     as float
 	requires_surface      = data.get("requires_surface",  false)    as bool
+	body_h                = data.get("wall_h",            8.0)      as float
 	walkable              = data.get("walkable",          false)    as bool
 	screen                = data.get("screen",            false)    as bool
 	screen_when           = data.get("screen_when",       "always") as String
@@ -1439,7 +1450,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_R and _is_mouse_over():
+		if event.keycode == KEY_R and _is_mouse_over() and not _rider_covers(get_viewport().get_mouse_position()):
 			_rotate()
 			get_viewport().set_input_as_handled()
 
@@ -1447,7 +1458,7 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			# The press's own position, not the live pointer: a finger has no
 			# hover, so the pointer is still wherever the last touch left it.
-			if event.pressed and _contains_screen_point(event.position):
+			if event.pressed and _contains_screen_point(event.position) and not _rider_covers(event.position):
 				_press_pos = event.position
 				_press_ms = Time.get_ticks_msec()
 				_press_moved = false
@@ -1457,7 +1468,7 @@ func _input(event: InputEvent) -> void:
 				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
 				if was_click and foldable:
 					_dragging = false
-					z_index = 0
+					z_index = stack_z
 					if _wall_ref:
 						_wall_ref.grid_draw.show_grid = false
 						_wall_ref.grid_draw.queue_redraw()
@@ -1467,7 +1478,7 @@ func _input(event: InputEvent) -> void:
 				else:
 					_end_drag(event.position)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if _is_mouse_over():
+			if _is_mouse_over() and not _rider_covers(event.position):
 				sell_requested.emit(self)
 				get_viewport().set_input_as_handled()
 
@@ -1483,6 +1494,18 @@ func _input(event: InputEvent) -> void:
 func _contains_screen_point(screen_pos: Vector2) -> bool:
 	var local := get_global_transform_with_canvas().affine_inverse() * screen_pos
 	return Rect2(Vector2.ZERO, Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)).has_point(local)
+
+
+# Whether something standing on this piece (a lamp, a box on a table) is
+# under that point: every piece hears every click, so the table lets the one
+# on top of it take it instead of being picked up, sold or turned as well.
+func _rider_covers(screen_pos: Vector2) -> bool:
+	if not is_surface or not _wall_ref or not _wall_ref.is_registered(self):
+		return false
+	for r in _wall_ref.riders_of(self):
+		if is_instance_valid(r) and (r as Furniture)._contains_screen_point(screen_pos):
+			return true
+	return false
 
 
 func _is_mouse_over() -> bool:
@@ -1675,7 +1698,7 @@ func _rotate(quiet: bool = false) -> void:
 
 func _end_drag(_mouse_pos: Vector2) -> void:
 	_dragging = false
-	z_index = 0
+	z_index = stack_z
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
@@ -1698,8 +1721,10 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 			and Furniture.all_moment_ids.size() > 1:
 		ok = _wall_ref.can_place_across_moments(self, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
 
+	# Whatever stands on it comes along; if any of that can't land, nothing moves.
+	if ok and not _wall_ref.move_with_riders(self, snap_pos):
+		ok = false
 	if ok:
-		_wall_ref.place_furniture(self, snap_pos)
 		if has_own_moment_position() and Furniture.test_mode_active:
 			moment_positions[Furniture.active_moment_id] = grid_pos
 		elif mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
@@ -1775,7 +1800,7 @@ func cancel_drag() -> void:
 	if not _dragging or _placement_mode:
 		return
 	_dragging = false
-	z_index = 0
+	z_index = stack_z
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()

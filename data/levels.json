@@ -80162,6 +80162,11 @@
 					"y": 3
 				},
 				{
+					"id": "rental_capsule",
+					"x": 7,
+					"y": 4
+				},
+				{
 					"id": "nightstand",
 					"x": 18,
 					"y": 3

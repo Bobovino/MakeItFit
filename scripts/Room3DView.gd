@@ -335,6 +335,81 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		lo = box.position - Vector2(20, 20)
 		hi = box.end + Vector2(20, 20)
 
+	# The parent's furniture, built first because the box may stand on some of
+	# it: a box on a table has that table under the room, and the parent's
+	# floor a table's height further down. Each piece stands on the floor or
+	# on the surface under it (as Floor.support_under() decides in the game),
+	# at the height that surface is drawn.
+	var placed: Array = []   # [{rect, fdata, mi, height}] in the order they were stacked up
+	var items: Array = []
+	for it in data.get("items", []) as Array:
+		var item := it as Dictionary
+		var fdata := item.get("fdata", {}) as Dictionary
+		var size_t := fdata.get("size", {}) as Dictionary
+		var rot: int = item.get("rot_steps", 0) as int
+		var tw := (size_t.get("w", 4) as float)
+		var th := (size_t.get("h", 4) as float)
+		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
+		items.append({"item": item, "fdata": fdata, "rot": rot, "tw": tw, "th": th, "foot": foot,
+			"rect": Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot)})
+	var support_of := func(rect: Rect2, self_i: int) -> int:
+		var best := -1
+		for j in items.size():
+			var o := items[j] as Dictionary
+			if j != self_i and (o["fdata"] as Dictionary).get("is_surface", false) and (o["rect"] as Rect2).encloses(rect) 					and (best < 0 or (o["rect"] as Rect2).get_area() < (items[best]["rect"] as Rect2).get_area()):
+				best = j
+		return best
+	var depth_of := func(i: int) -> int:
+		var n := 0
+		var cur := i
+		while n < 6:
+			cur = support_of.call(items[cur]["rect"], cur)
+			if cur < 0:
+				break
+			n += 1
+		return n
+	var box_support: int = support_of.call(box, -1)
+	var order: Array = range(items.size())
+	order.sort_custom(func(a, b): return depth_of.call(a) < depth_of.call(b))
+	var top_rel: Dictionary = {}   # item index -> its top above the parent's floor, as drawn
+	for i in order:
+		var e := items[i] as Dictionary
+		var rect: Rect2 = e["rect"]
+		var under_box := false
+		var cur := box_support
+		while cur >= 0 and not under_box:
+			under_box = cur == i
+			cur = support_of.call(items[cur]["rect"], cur)
+		if rect.intersects(box) and not under_box:
+			continue   # the box itself, and anything sharing its tiles
+		var fdata := e["fdata"] as Dictionary
+		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
+		var canon := Vector3((e["tw"] as float) * TILE_M * s, height, (e["th"] as float) * TILE_M * s)
+		var sup: int = support_of.call(rect, i)
+		var lift: float = top_rel.get(sup, 0.0) if sup >= 0 else 0.0
+		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
+		var mi := _box(canon, Vector3(c.x, lift + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		mi.rotation.y = deg_to_rad((e["rot"] as int) * 90.0)
+		mi.set_meta("style_role", _item_role(fdata))
+		_apply_item_model(mi, _active_model_path(fdata, (e["item"] as Dictionary).get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
+		_style_if_bare(mi)
+		_no_shadows(mi)
+		top_rel[i] = lift + _drawn_height(mi, height)
+		placed.append({"mi": mi, "c": c, "height": height, "lift": lift, "e": e})
+	# The room's floor rests on the box's table: the parent's floor is that far down.
+	if box_support >= 0 and top_rel.has(box_support):
+		floor_y -= top_rel[box_support]
+	for p in placed:
+		var mi := p["mi"] as MeshInstance3D
+		var c: Vector3 = p["c"]
+		var e := p["e"] as Dictionary
+		var height: float = p["height"]
+		mi.position.y += floor_y
+		_scenery_nodes.append({"node": mi, "center": c})
+		pieces.append({"pos": mi.position, "mesh": mi, "rot_steps": e["rot"], "floor_y": floor_y + (p["lift"] as float),
+			"size": Vector3((e["foot"] as Vector2).x * TILE_M * s, height, (e["foot"] as Vector2).y * TILE_M * s),
+			"functions": (e["fdata"] as Dictionary).get("functions", [])})
+
 	var f0: Vector3 = to_view.call(lo.x, lo.y)
 	var f1: Vector3 = to_view.call(hi.x, hi.y)
 	var slab := _box(Vector3(f1.x - f0.x, 0.5, f1.z - f0.z),
@@ -367,29 +442,6 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 		_no_shadows(wall)
 		_scenery_nodes.append({"node": wall, "center": mid})
 
-	for it in data.get("items", []) as Array:
-		var item := it as Dictionary
-		var fdata := item.get("fdata", {}) as Dictionary
-		var size_t := fdata.get("size", {}) as Dictionary
-		var rot: int = item.get("rot_steps", 0) as int
-		var tw := (size_t.get("w", 4) as float)
-		var th := (size_t.get("h", 4) as float)
-		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
-		var rect := Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot)
-		if rect.intersects(box):
-			continue   # the box itself, and anything sharing its tiles
-		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
-		var canon := Vector3(tw * TILE_M * s, height, th * TILE_M * s)
-		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
-		var mi := _box(canon, Vector3(c.x, floor_y + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
-		mi.rotation.y = deg_to_rad(rot * 90.0)
-		mi.set_meta("style_role", _item_role(fdata))
-		_apply_item_model(mi, _active_model_path(fdata, item.get("is_extended", false) as bool), canon, fdata.get("hide_nodes", []) as Array)
-		_style_if_bare(mi)
-		_no_shadows(mi)
-		_scenery_nodes.append({"node": mi, "center": c})
-		pieces.append({"pos": Vector3(c.x, floor_y + height * 0.5, c.z), "mesh": mi, "rot_steps": rot, "floor_y": floor_y,
-			"size": Vector3(foot.x * TILE_M * s, height, foot.y * TILE_M * s), "functions": fdata.get("functions", [])})
 	if first:
 		_add_parent_household(data.get("level_id", "") as String, s, pieces, wall_lines,
 			Rect2(f0.x, f0.z, f1.x - f0.x, f1.z - f0.z), Rect2(x0, z0, w, d), floor_y)
@@ -993,8 +1045,13 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		_flash_rail(mesh, Vector2(item_size.x, item_size.z), rail_attached)
 	mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+	# Up onto a table or shelf when it is over one.
+	var lift := _lift_m(f, tile)
+	mesh.position.y = lift + item_size.y * 0.5
 	_drag_target["pos"] = mesh.position
 	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
+	if is_instance_valid(_drag_highlight):
+		_drag_highlight.position.y = lift
 
 	if Furniture.transfer_hover != 0:
 		_hide_reason()     # Main's tag by the pointer says what will happen
@@ -1154,7 +1211,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 		var height_m := maxf((_buying_fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 		box.size = Vector3(iw * TILE_M, height_m, _buying_furniture.grid_h * TILE_M)
 		_buying_mesh.position.x = (tile.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5
-		_buying_mesh.position.y = box.size.y * 0.5
+		var buy_lift := _lift_m(_buying_furniture, tile) if _apt_floor else 0.0
+		_buying_mesh.position.y = buy_lift + box.size.y * 0.5
 		_buying_mesh.position.z = (tile.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5
 		_buying_mesh.rotation.y = deg_to_rad(_buying_furniture.rot_steps * 90.0)
 		# Fit the model into its CANONICAL (pre-rotation) box, same reasoning as
@@ -1188,6 +1246,8 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 			_hide_reason()
 			_show_drag_highlight(Vector2(box.size.x, box.size.z))
 			_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
+		if is_instance_valid(_drag_highlight):
+			_drag_highlight.position.y = buy_lift
 
 
 func _confirm_buy(vp_pos: Vector2) -> void:
@@ -1254,6 +1314,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	_buying_furniture = null
 	_buying_fdata     = {}
 	_buying_mesh      = null
+	_settle_stacked()
 	_set_grid_overlay_visible(false)
 	_set_hitbox_highlights_visible(false)
 	_hide_drag_highlight()
@@ -1743,8 +1804,24 @@ func _finish_furniture_drag() -> void:
 	if ok and f.mobility_tier == "red" and f.rail_axis == "" and Furniture.test_mode_active \
 			and Furniture.all_moment_ids.size() > 1:
 		ok = _apt_floor.can_place_across_moments(f, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+	# Whatever stands on it comes along (Floor.move_with_riders); if any of it
+	# can't land, nothing moves.
+	var riders: Array = _apt_floor.riders_of(f) if ok else []
+	if ok and not _apt_floor.move_with_riders(f, snap_pos):
+		ok = false
 	if ok:
-		_apt_floor.place_furniture(f, snap_pos)
+		for r in riders:
+			var re := _entry_of(r as Furniture)
+			if re.is_empty():
+				continue
+			var rsize: Vector3 = re["size"]
+			var rmesh := re["mesh"] as MeshInstance3D
+			rmesh.position.x = ((r as Furniture).grid_pos.x - _room_bounds.position.x) * TILE_M + rsize.x * 0.5
+			rmesh.position.z = ((r as Furniture).grid_pos.y - _room_bounds.position.y) * TILE_M + rsize.z * 0.5
+			for h in _hitbox_highlights:
+				if is_instance_valid(h) and h.get_meta("furniture", null) == r:
+					h.position.x = rmesh.position.x - rsize.x * 0.5
+					h.position.z = rmesh.position.z - rsize.z * 0.5
 		# Without this, moving a piece in the 3D view moved it for every
 		# moment at once instead of just the one currently being tested,
 		# since set_moment_view() only ever restores a position it finds
@@ -1757,6 +1834,7 @@ func _finish_furniture_drag() -> void:
 			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 				h.position.x = mesh.position.x - item_size.x * 0.5
 				h.position.z = mesh.position.z - item_size.z * 0.5
+		_settle_stacked()
 		Audio.play("place")
 		furniture_moved.emit(f)
 		_hide_reason()
@@ -1844,6 +1922,7 @@ func _resize_furniture_entry(entry: Dictionary) -> void:
 		_apply_item_model(mesh, _active_model_path(fdata, f.is_extended), box_size, fdata.get("hide_nodes", []) as Array)
 	entry["size"] = box_size
 	entry["pos"]  = pos
+	_settle_stacked()
 
 
 # Items whose two fold states are really one continuous mechanical motion
@@ -3207,6 +3286,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	for item in apt_floor.get_all_furniture():
 		_add_piece_rail(item as Furniture, bounds)
 		_add_furniture_box(item as Furniture, bounds, catalog)
+	_settle_stacked()
 	_rule_root = null   # freed with the rest of build_root's children
 	_rebuild_rule_overlays()
 
@@ -4646,6 +4726,67 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				"a": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z),
 				"b": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z + length)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
+
+
+# ── Stacking: pieces standing on tables and shelves ─────────────────────────
+# Floor.support_under() says which surface a piece rests on; here it is lifted
+# onto the top of that surface as drawn (the model's own height, which can be
+# a little off the catalogue's wall_h, see _refit_item_model), so it sits on
+# the table rather than inside it.
+
+func _entry_of(f: Furniture) -> Dictionary:
+	for entry in _furniture_entries:
+		if entry.get("furniture") == f:
+			return entry
+	return {}
+
+
+# Height of the piece as drawn: its model's, or its box's if it has none.
+func _drawn_height(mi: MeshInstance3D, box_h: float) -> float:
+	if mi.has_meta("model_inst") and mi.has_meta("model_native"):
+		var inst := mi.get_meta("model_inst") as Node3D
+		if is_instance_valid(inst):
+			return (mi.get_meta("model_native") as AABB).size.y * inst.scale.y
+	return box_h
+
+
+# Where the top of `f` is in the view, in metres above the floor.
+func _top_m(f: Furniture) -> float:
+	var entry := _entry_of(f)
+	if entry.is_empty() or not is_instance_valid(entry.get("mesh")):
+		return (_apt_floor.stack_lift(f) + f.body_h) * TILE_M
+	var mi := entry["mesh"] as MeshInstance3D
+	var box_h := (entry["size"] as Vector3).y
+	return mi.position.y - box_h * 0.5 + _drawn_height(mi, box_h)
+
+
+# How high `f` stands when its corner is at `at` (where it is now if null).
+func _lift_m(f: Furniture, at: Variant = null) -> float:
+	if not is_instance_valid(_apt_floor):
+		return 0.0
+	var sup := _apt_floor.support_under(f, at)
+	return _top_m(sup) if sup != null else 0.0
+
+
+# Puts every placed piece at its height: on the floor, or on what it stands
+# on (lowest first, so a lamp on a box on a table lands on the box). The piece
+# in hand is left alone.
+func _settle_stacked() -> void:
+	if not is_instance_valid(_apt_floor):
+		return
+	var order := _furniture_entries.filter(func(e): return is_instance_valid(e.get("furniture")) and is_instance_valid(e.get("mesh")))
+	order.sort_custom(func(a, b): return _apt_floor.stack_lift(a["furniture"]) < _apt_floor.stack_lift(b["furniture"]))
+	for entry in order:
+		if _dragging_furniture and is_same(entry, _drag_target):
+			continue
+		var f := entry["furniture"] as Furniture
+		var mi := entry["mesh"] as MeshInstance3D
+		var lift := _lift_m(f)
+		mi.position.y = lift + (entry["size"] as Vector3).y * 0.5
+		entry["pos"] = mi.position
+		for h in _hitbox_highlights:
+			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
+				h.position.y = lift
 
 
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:

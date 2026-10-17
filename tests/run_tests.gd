@@ -26,6 +26,7 @@ func _ready() -> void:
 	await _t_tenants_are_cosmetic()
 	await _t_progress_round_trip()
 	await _t_project_needs_every_apartment()
+	await _t_box_on_a_surface()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -492,6 +493,121 @@ func _t_project_needs_every_apartment() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+	GameState.completed = real_completed
+	GameState.progress = real_progress
+	GameState.reduce_motion = real_motion
+
+
+# ── A box can stand on a table or shelf ──────────────────────────────────────
+# Debug: Furniture Stacking starts with a capsule on its desk. A dresser is
+# added and a second rental box goes on it through the ordinary stacking
+# rules; its light and noise come from where it really is, it is entered and
+# left like any box, and it comes back still on the dresser, drawn on top of
+# it in 3D.
+func _t_box_on_a_surface() -> void:
+	var real_path := GameState.save_path
+	var real_completed := GameState.completed.duplicate(true)
+	var real_progress := GameState.progress.duplicate(true)
+	var real_motion := GameState.reduce_motion
+	GameState.save_path = "user://test_box_surface_save.json"
+	GameState.reduce_motion = true
+	GameState.pending_level_id = "debug:_stacking"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var level_box: Furniture = null
+	for b in main._collect_nested_boxes():
+		level_box = b
+	_current = "surface box: the level's own capsule starts on its desk"
+	_ok(level_box != null and fl.support_under(level_box) != null and fl.support_under(level_box).furniture_id == "desk"
+		and level_box.stack_z == 1, str(level_box))
+
+	var dresser: Furniture = main._spawn_furniture("dresser", fl, 0, 0)
+	var placed_dresser := fl.can_place(dresser, Vector2(10, 14))
+	fl.place_furniture(dresser, Vector2(10, 14))
+	var box: Furniture = main._spawn_furniture("rental_capsule", fl, 0, 0)
+	_current = "surface box: a box fits on a dresser"
+	_ok(placed_dresser and fl.can_place(box, Vector2(10, 14)), fl.get_block_reason())
+	fl.place_furniture(box, Vector2(10, 14))
+	main._refresh_functions()
+	_current = "surface box: it stands on the dresser, at the dresser's height, drawn over it"
+	_ok(fl.support_under(box) == dresser and is_equal_approx(fl.stack_lift(box), dresser.body_h) and box.stack_z == 1,
+		"%s lift %s z %d" % [fl.support_under(box), fl.stack_lift(box), box.stack_z])
+	_current = "surface box: what is inside weighs as much as it does shrunk"
+	_ok(box.weight < dresser.max_support_weight and box.interior_weight > box.weight,
+		"weight %s interior %s" % [box.weight, box.interior_weight])
+	_current = "surface box: half off the dresser is not on it"
+	_ok(not fl.can_place(box, Vector2(8, 14)))
+	_current = "surface box: a box too full for the dresser would break it"
+	var real_interior := box.interior_weight
+	box.apply_interior_weight(100000.0, main._box_shrink(box))
+	_ok(not fl.can_place(box, Vector2(11, 15)) and fl.get_block_reason().begins_with("Too heavy"), fl.get_block_reason())
+	box.apply_interior_weight(real_interior, main._box_shrink(box))
+	_current = "surface box: as reachable as the dresser, even away from its edge"
+	fl.place_furniture(box, Vector2(13, 16))
+	var blocked: Array = fl.get_inaccessible_furniture()
+	_ok(fl.can_place(box, Vector2(13, 16)) and (box in blocked) == (dresser in blocked), str(blocked))
+	fl.place_furniture(box, Vector2(10, 14))
+
+	_current = "surface box: the dresser under it doesn't shade it"
+	_ok(is_equal_approx(main._compute_box_occlusion(box), 1.0), str(main._compute_box_occlusion(box)))
+	var washer: Furniture = main._spawn_furniture("washer", fl, 0, 0)
+	var placed_washer := fl.can_place(washer, Vector2(3, 14))
+	fl.place_furniture(washer, Vector2(3, 14))
+	_current = "surface box: a washer below it is heard but doesn't shade it"
+	_ok(placed_washer and main._has_noisy_neighbor(fl, box.grid_pos, box.grid_w, box.grid_h, box)
+		and is_equal_approx(main._compute_box_occlusion(box), 1.0), fl.get_block_reason())
+	fl.remove_furniture(washer)
+	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	var placed_shelf := fl.can_place(shelf, Vector2(2, 14))
+	fl.place_furniture(shelf, Vector2(2, 14))
+	main._refresh_functions()
+	_current = "surface box: a bookshelf taller than the dresser does shade it"
+	_ok(placed_shelf and main._compute_box_occlusion(box) < 0.2, str(main._compute_box_occlusion(box)))
+
+	main._on_box_entered(box)
+	for i in 5:
+		await get_tree().process_frame
+	_current = "surface box: stepping in takes the light from where it stands"
+	_ok(main._current_level_id == "rental:capsule" and main._current_nested_daylight_factor < 0.2,
+		"%s %s" % [main._current_level_id, main._current_nested_daylight_factor])
+	main._exit_nested_level_to(0)
+	for i in 5:
+		await get_tree().process_frame
+	fl = main._floors[main._current_floor_id]
+	var boxes: Array = main._collect_nested_boxes()
+	boxes = boxes.filter(func(b): return b.grid_pos == Vector2(10, 14))
+	box = boxes[0] if boxes.size() == 1 else null
+	dresser = fl.support_under(box) if box else null
+	_current = "surface box: back out, the box is still on the dresser"
+	_ok(box != null and box.grid_pos == Vector2(10, 14) and dresser != null and dresser.furniture_id == "dresser",
+		"%s on %s" % [box, dresser])
+
+	if box and dresser:
+		main._set_view_mode(main.ViewMode.VIEW3D)
+		for i in 5:
+			await get_tree().process_frame
+		var view = main._mode3d_view
+		var entry: Dictionary = view._entry_of(box)
+		var bottom := -1.0
+		if not entry.is_empty():
+			bottom = (entry["mesh"] as Node3D).position.y - (entry["size"] as Vector3).y * 0.5
+		_current = "surface box: in 3D it stands on top of the dresser"
+		_ok(bottom > 0.5 and is_equal_approx(bottom, view._top_m(dresser)), "bottom %s top %s" % [bottom, view._top_m(dresser)])
+		main._set_view_mode(main.ViewMode.TOPDOWN)
+
+		_current = "surface box: moving the dresser takes the box along"
+		var moved := fl.can_place(dresser, dresser.grid_pos + Vector2(1, 1)) and fl.move_with_riders(dresser, dresser.grid_pos + Vector2(1, 1))
+		_ok(moved and box.grid_pos == Vector2(11, 15) and fl.support_under(box) == dresser, "%s %s" % [moved, box.grid_pos])
+
+	main.queue_free()
+	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path
