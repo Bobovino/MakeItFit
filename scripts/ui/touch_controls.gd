@@ -34,12 +34,7 @@ var _wall_hit: Dictionary = {}
 func _ready() -> void:
 	layer = 15
 	_bar = PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.10, 0.16, 0.92)
-	sb.border_color = Color(0.62, 0.82, 0.98, 0.7)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(14)
-	sb.set_content_margin_all(8)
+	var sb := GameTheme.card_style(GameTheme.CARD, 14, 8)
 	_bar.add_theme_stylebox_override("panel", sb)
 	_bar.visible = false
 	add_child(_bar)
@@ -127,11 +122,11 @@ func _rebuild() -> void:
 		c.queue_free()
 	match _state:
 		"placing":
-			_add_button("⟳  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_placing())
+			_add_button("\ueb13  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_placing())
 			_add_button("\uea5e  " + tr("Place"), FaxStyle.KEY_GREEN, func(): main.touch_confirm_placing())
 			_add_button("\ueb55  " + tr("Cancel"), Color(0.62, 0.26, 0.24), func(): main.touch_cancel_placing())
 		"piece":
-			_add_button("⟳  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_piece(_piece))
+			_add_button("\ueb13  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_piece(_piece))
 			if _piece.foldable:
 				_add_button("\ued56  " + tr("Fold"), FaxStyle.KEY_GREY, func(): main.touch_fold_piece(_piece))
 			if not _piece.keepsake:
@@ -153,10 +148,20 @@ func _rebuild() -> void:
 func _add_button(text: String, face: Color, action: Callable) -> void:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(64, 56)   # a fingertip, on a phone
-	b.add_theme_font_size_override("font_size", 20)
 	b.focus_mode = Control.FOCUS_NONE
-	FaxStyle.key(b, face, Color(0.96, 0.97, 0.98))
+	# Grey keys are plain white cards; a coloured one (Place, Sell, Cancel)
+	# keeps its meaning: navy to confirm, red for what can't be undone.
+	GameTheme.hud_button(b)
+	b.custom_minimum_size = Vector2(GameTheme.TOUCH, GameTheme.TOUCH)   # a fingertip, on a phone
+	b.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	if face != FaxStyle.KEY_GREY:
+		var fill := GameTheme.NAVY if face == FaxStyle.KEY_GREEN else GameTheme.RED
+		for state in ["normal", "hover", "pressed", "hover_pressed"]:
+			var s := (b.get_theme_stylebox(state) as StyleBoxFlat).duplicate() as StyleBoxFlat
+			s.bg_color = fill if state == "normal" else fill.darkened(0.15)
+			b.add_theme_stylebox_override(state, s)
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+			b.add_theme_color_override(c, GameTheme.CHALK)
 	b.pressed.connect(action)
 	_row.add_child(b)
 

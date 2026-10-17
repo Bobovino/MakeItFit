@@ -95,8 +95,7 @@ func _ensure_filter_box() -> void:
 		return
 	remove_child(scroll)
 	var paper := StyleBoxFlat.new()
-	paper.bg_color = TenantCard.BP_BG.darkened(0.18)
-	paper.bg_color.a = 0.97
+	paper.bg_color = GameTheme.CARD_DIM
 	paper.set_content_margin(SIDE_LEFT, 12)
 	paper.set_content_margin(SIDE_RIGHT, 12)
 	paper.set_content_margin(SIDE_TOP, 8)
@@ -120,18 +119,9 @@ func _ensure_filter_box() -> void:
 		b.text = "%s %s" % [spec[1], _view_label(id)]
 		b.toggle_mode = true
 		b.button_group = group
-		b.custom_minimum_size = Vector2(0, 28)
-		b.add_theme_font_size_override("font_size", 12)
-		var sp := StyleBoxFlat.new()
-		sp.bg_color = Color(0.42, 0.36, 0.13)
-		sp.border_color = GameTheme.C_AMBER
-		sp.set_border_width_all(1)
-		sp.set_corner_radius_all(7)
-		sp.set_content_margin(SIDE_LEFT, 8)
-		sp.set_content_margin(SIDE_RIGHT, 8)
-		sp.anti_aliasing = true
-		b.add_theme_stylebox_override("pressed", sp)
-		b.add_theme_color_override("font_pressed_color", Color(1.0, 0.95, 0.70))
+		GameTheme.hud_button(b)
+		b.custom_minimum_size.y = 44
+		b.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 		b.pressed.connect(_set_view.bind(id))
 		if id == VIEW_NEEDED:
 			b.custom_minimum_size.x = 112   # room for its "(3)" count
@@ -143,8 +133,19 @@ func _ensure_filter_box() -> void:
 	_search = LineEdit.new()
 	_search.placeholder_text = tr("Search…")
 	_search.clear_button_enabled = true
-	_search.custom_minimum_size = Vector2(200, 28)
-	_search.add_theme_font_size_override("font_size", 12)
+	_search.custom_minimum_size = Vector2(200, 44)
+	_search.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	var field := GameTheme.card_style(GameTheme.CARD, 8, 0, Vector2.ZERO)
+	field.content_margin_left = 12
+	field.content_margin_right = 8
+	_search.add_theme_stylebox_override("normal", field)
+	var field_on := field.duplicate() as StyleBoxFlat
+	field_on.border_color = GameTheme.RED
+	_search.add_theme_stylebox_override("focus", field_on)
+	_search.add_theme_color_override("font_color", GameTheme.INK)
+	_search.add_theme_color_override("font_placeholder_color", GameTheme.INK_SOFT)
+	_search.add_theme_color_override("caret_color", GameTheme.INK)
+	_search.add_theme_color_override("clear_button_color", GameTheme.INK_SOFT)
 	_search.text_changed.connect(func(_t: String):
 		_need_filter = ""
 		_sync_filter_buttons()
@@ -440,13 +441,14 @@ func _add_heading(glyph: String, text: String) -> void:
 	var g := Label.new()
 	g.text = glyph
 	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	g.add_theme_font_size_override("font_size", 22)
+	g.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
+	g.add_theme_color_override("font_color", GameTheme.INK)
 	box.add_child(g)
 	var l := Label.new()
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	l.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	l.add_theme_color_override("font_color", GameTheme.INK)
 	box.add_child(l)
 	_row.add_child(box)
 
@@ -454,8 +456,8 @@ func _add_heading(glyph: String, text: String) -> void:
 func _add_note(text: String) -> void:
 	var note := Label.new()
 	note.text = text
-	note.add_theme_font_size_override("font_size", 12)
-	note.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	note.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	note.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	note.custom_minimum_size = Vector2(260, 0)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -644,9 +646,9 @@ class ItemCell extends PanelContainer:
 	func _init(fdata: Dictionary, owner_inv: Control) -> void:
 		_fdata = fdata
 		_owner_inv = owner_inv
-		custom_minimum_size = Vector2(116, 132)
+		custom_minimum_size = Vector2(124, 140)
 		mouse_filter = Control.MOUSE_FILTER_STOP
-		var style := GameTheme.make_card_stylebox(Color(0.105, 0.185, 0.290), Color(0.30, 0.44, 0.60), 8)
+		var style := GameTheme.card_style(GameTheme.CARD, 10, 6, Vector2(3, 4))
 		add_theme_stylebox_override("panel", style)
 
 		_hover_timer = Timer.new()
@@ -676,9 +678,9 @@ class ItemCell extends PanelContainer:
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_lbl.max_lines_visible = 2
-		name_lbl.custom_minimum_size = Vector2(106, 28)
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+		name_lbl.custom_minimum_size = Vector2(112, 34)
+		name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		name_lbl.add_theme_color_override("font_color", GameTheme.INK)
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(name_lbl)
 
@@ -694,8 +696,8 @@ class ItemCell extends PanelContainer:
 		gives.text = (" ".join(marks) + "  " + size_text) if not marks.is_empty() else size_text
 		gives.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		gives.custom_minimum_size.y = 15
-		gives.add_theme_font_size_override("font_size", 10)
-		gives.add_theme_color_override("font_color", GameTheme.C_MUTED)
+		gives.add_theme_font_size_override("font_size", 13)
+		gives.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		gives.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(gives)
 
@@ -707,17 +709,20 @@ class ItemCell extends PanelContainer:
 			if fn in missing:
 				covers += 1
 		if covers >= 2:
-			var gold := GameTheme.make_card_stylebox(Color(0.20, 0.23, 0.22), GameTheme.C_AMBER, 8)
-			add_theme_stylebox_override("panel", gold)
+			var mark := GameTheme.card_style(GameTheme.CARD, 10, 6, Vector2(3, 4))
+			mark.border_color = GameTheme.RED
+			mark.set_border_width_all(3)
+			add_theme_stylebox_override("panel", mark)
 			name_lbl.text = "\uf6a6 " + name_lbl.text
-			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.62))
+			name_lbl.add_theme_color_override("font_color", GameTheme.RED)
 			set_meta("covers", covers)
 
 		var price_lbl := Label.new()
 		price_lbl.text = Inventory.price_text(fdata.get("buy_price", 0) as int)
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		price_lbl.add_theme_font_size_override("font_size", 12)
-		price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
+		price_lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		price_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		price_lbl.add_theme_color_override("font_color", GameTheme.INK)
 		price_lbl.set_meta("price", fdata.get("buy_price", 0) as int)
 		price_lbl.name = "PriceLabel"
 		vb.add_child(price_lbl)
@@ -793,7 +798,7 @@ func _mark_affordability(cell: Control, budget: int) -> void:
 	var price := price_lbl.get_meta("price", 0) as int
 	var can_afford := budget >= price
 	cell.modulate = Color(1, 1, 1, 1.0) if can_afford else Color(1, 1, 1, 0.5)
-	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64) if can_afford else Color(0.95, 0.45, 0.38))
+	price_lbl.add_theme_color_override("font_color", GameTheme.INK if can_afford else GameTheme.RED)
 	cell.tooltip_text = "" if can_afford else tr("Costs %d€ — you have %d€") % [price, budget]
 
 
@@ -824,14 +829,7 @@ func _ensure_tooltip() -> void:
 	_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tooltip.z_index = 100
 	_tooltip.visible = false
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.070, 0.150, 0.260, 0.97)
-	style.border_color = GameTheme.C_AMBER
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(10)
-	style.shadow_color = Color(0, 0, 0, 0.4)
-	style.shadow_size = 8
+	var style := GameTheme.card_style(GameTheme.CARD, 10, 12)
 	_tooltip.add_theme_stylebox_override("panel", style)
 	add_child(_tooltip)
 
@@ -848,15 +846,16 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 
 	var name_lbl := Label.new()
 	name_lbl.text = f.get("name", "?") as String
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+	name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	name_lbl.add_theme_color_override("font_color", GameTheme.INK)
 	vb.add_child(name_lbl)
 
 	var sz := f.get("size", {}) as Dictionary
 	var dims := Label.new()
 	dims.text = "%.1f × %.1f m" % [(sz.get("w", 0) as int) / 10.0, (sz.get("h", 0) as int) / 10.0]
-	dims.add_theme_font_size_override("font_size", 10)
-	dims.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	dims.add_theme_font_override("font", GameTheme.font("mono"))
+	dims.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	dims.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(dims)
 
 	# Mobility tier — how hard the tenant finds this piece to reposition (see
@@ -869,22 +868,22 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	match tier:
 		"green":
 			tier_lbl.text = tr("\uee8b Light — freely movable")
-			tier_lbl.add_theme_color_override("font_color", GameTheme.C_GOOD)
+			tier_lbl.add_theme_color_override("font_color", GameTheme.OK)
 		"yellow":
 			tier_lbl.text = tr("\uee8b\uee8b Medium — uncomfortable to move")
-			tier_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+			tier_lbl.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		_:
 			tier_lbl.text = tr("\uee8b\uee8b\uee8b Heavy — fixed in place")
-			tier_lbl.add_theme_color_override("font_color", GameTheme.C_BAD)
-	tier_lbl.add_theme_font_size_override("font_size", 10)
+			tier_lbl.add_theme_color_override("font_color", GameTheme.RED)
+	tier_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	vb.add_child(tier_lbl)
 
 	var funcs := f.get("functions", []) as Array
 	if not funcs.is_empty():
 		var func_lbl := Label.new()
 		func_lbl.text = tr("Satisfies: %s") % ", ".join(funcs.map(Loc.need_name))
-		func_lbl.add_theme_font_size_override("font_size", 10)
-		func_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
+		func_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		func_lbl.add_theme_color_override("font_color", GameTheme.INK)
 		func_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		func_lbl.custom_minimum_size.x = 180
 		vb.add_child(func_lbl)
@@ -903,8 +902,8 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	if not tags.is_empty():
 		var tag_lbl := Label.new()
 		tag_lbl.text = " · ".join(tags)
-		tag_lbl.add_theme_font_size_override("font_size", 9)
-		tag_lbl.add_theme_color_override("font_color", GameTheme.C_AMBER)
+		tag_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		tag_lbl.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		tag_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		tag_lbl.custom_minimum_size.x = 180
 		vb.add_child(tag_lbl)
@@ -915,8 +914,9 @@ func _show_tooltip(f: Dictionary, cell: Control) -> void:
 	var price_lbl := Label.new()
 	var hover_price := f.get("buy_price", 0) as int
 	price_lbl.text = (tr("Rent: +%d€ — a tenant pays you for the space") % -hover_price) if hover_price < 0 else (tr("Buy: %d€") % hover_price)
-	price_lbl.add_theme_font_size_override("font_size", 11)
-	price_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.64))
+	price_lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	price_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	price_lbl.add_theme_color_override("font_color", GameTheme.INK)
 	vb.add_child(price_lbl)
 
 	# Floor Plan / Wall View chips — real orthographic renders of the item's
