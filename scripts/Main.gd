@@ -4276,6 +4276,12 @@ func _on_buy_requested(furniture_id: String) -> void:
 	if is_instance_valid(_pending_floor_ghost) and _pending_floor_ghost._placement_mode:
 		_pending_floor_ghost.cancel_placement()
 	_pending_floor_ghost = null
+	# Same in 3D, and before the new purchase's handlers are connected below:
+	# Room3DView.start_buying() would cancel the old one itself, but its
+	# buy_cancelled signal would then reach the NEW handlers too, which free
+	# the new piece at once, so the second click seemed to do nothing.
+	if is_instance_valid(_mode3d_view) and _mode3d_view._buying_furniture != null:
+		_mode3d_view._cancel_buy()
 	_pending_purchase = {"fid": furniture_id, "owned": owned}
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if not apt_floor:
