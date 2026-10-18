@@ -110,7 +110,7 @@ func set_debug_mode(v: bool) -> void:
 const DEFAULT_OWNED := ["beach_house","three_freezers","day_and_night","the_inheritance","sneeze_girl",
 		"the_tower","overprotective","border_house",
 		"tut_basics","debug_moments","debug_rails","debug:_rail_moments","debug:_balcony",
-		"debug:_sloped_ceiling","debug:_demolition","tut_builder_basics","tut_verticality",
+		"debug:_sloped_ceiling","debug:_attic","debug:_split_level","debug:_demolition","tut_builder_basics","tut_verticality",
 		"twitch","calle_mayor","el_estudio_de_ana","la_pareja","el_pasillo_de_javi","zona_privada",
 		"muchos_electrodomésticos",
 		"mif_M","mif_A","mif_K","mif_E","mif_I1","mif_T1","mif_F","mif_I2","mif_T2"]

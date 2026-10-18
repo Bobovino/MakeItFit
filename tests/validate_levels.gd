@@ -13,13 +13,14 @@ extends Node
 # warnings too.
 #
 # ERRORS are layouts no player could have produced (overlap, outside the
-# room, blocked by a wall, wrong flooring). WARNINGS are layouts the game
+# room, blocked by a wall, wrong flooring, across a step or on one, a raised
+# or sunken level no steps lead onto). WARNINGS are layouts the game
 # would refuse as a drop but that can be a deliberate starting puzzle
 # (too little clearance, ceiling too low). The last line printed is
 # "RESULT: OK" or "RESULT: FAIL".
 
 const ERROR_PREFIXES := ["Overlaps", "Outside the room", "Blocked by a wall", "Needs bathroom flooring",
-	"Needs balcony flooring", "Must be placed against a wall"]
+	"Needs balcony flooring", "Must be placed against a wall", "Keep the steps clear", "Can't stand across a step"]
 
 
 func _ready() -> void:
@@ -84,6 +85,21 @@ func _ready() -> void:
 					warnings += 1
 				lines.append("    %s  %s at (%d, %d) on %s: %s" % ["ERROR" if is_error else "warn ",
 					f.furniture_name, int(f.grid_pos.x), int(f.grid_pos.y), fid, reason])
+		# Split levels: every raised or sunken stretch has to be reachable
+		# over steps, whatever the walking-paths setting (tenants walk there).
+		for fid in main._floors:
+			var sfl: Floor = main._floors[fid]
+			if not sfl.has_split_levels():
+				continue
+			var reached := sfl.get_reachable_floor()
+			for region in sfl.level_regions():
+				var rd := region as Dictionary
+				if (rd["size"] as int) < Floor.WALK_WIDTH * Floor.WALK_WIDTH:
+					continue   # a sliver too small to stand on is a ledge, not a level
+				if not (rd["tiles"] as Array).any(func(t): return reached.has(t)):
+					errors += 1
+					lines.append("    ERROR  the %+d cm level around (%d, %d) on %s: no steps lead onto it" % [
+						(rd["level"] as int) * 10, int((rd["center"] as Vector2).x), int((rd["center"] as Vector2).y), fid])
 		# With the walking-paths rule on (--pathing, or the saved setting),
 		# a starting piece the tenant can't walk to is an error too.
 		if Floor.pathing_enabled:

@@ -153,6 +153,7 @@ func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
 	draw_line(Vector2(0,  0),  Vector2(0,  rh), WALL_COLOR, WALL_THICK)
 	draw_line(Vector2(rw, 0),  Vector2(rw, rh), WALL_COLOR, WALL_THICK)
 
+	_draw_split_levels(parent)
 	_draw_sloped_ceiling(parent)
 	_draw_partitions(parent)
 	_draw_columns(parent)
@@ -584,6 +585,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	_draw_columns(parent)
 	_draw_segments(parent)
+	_draw_split_levels(parent)
 	_draw_sloped_ceiling(parent)
 
 	# ── 5. Blueprint annotations: dimension lines ─────────────────────────────
@@ -1120,58 +1122,126 @@ func _draw_wall_feature(wall_def: Dictionary, w: int, h: int) -> void:
 
 
 func _draw_sloped_ceiling(parent: Floor) -> void:
-	# sloped_ceiling: {axis, low_start, high_end, min_h, max_h}
-	# axis: "x" → slope runs left→right, "y" → top→bottom
-	# Draws height contour lines as thin dashed blue-grey lines at each step change
-	var sc: Dictionary = parent.sloped_ceiling
-	if sc.is_empty():
+	# Contour lines every 20 cm of ceiling height, drawn along the tile edges
+	# where the ceiling crosses one, so any mix of ramps (a gable, a dormer)
+	# reads the same way. Where it is under 2 m the floor is tinted.
+	if not parent.has_sloped_ceiling():
 		return
-
-	var axis: String  = sc.get("axis", "x") as String
-	var low_s: int    = sc.get("low_start", 0) as int   # tile coord where low ceiling starts
-	var high_e: int   = sc.get("high_end",  0) as int   # tile coord where it reaches full height
-	var min_h: float  = sc.get("min_h", 1.8) as float   # metres at low end
-	var max_h: float  = sc.get("max_h", 2.4) as float   # metres at high end
-
-	const CONTOUR_STEP := 0.2   # draw a line every 20cm height change
-	const CONTOUR_COL  := Color(0.42, 0.52, 0.68, 0.55)
-
+	const CONTOUR_STEP := 0.2
+	const CONTOUR_COL  := Color(0.50, 0.66, 0.95, 0.85)   # reads on the paper plan and the blueprint
 	var bounds := parent.get_room_bounds()
+	var band := func(t: Vector2i) -> int:
+		return floori(parent.ceiling_height_at(Vector2(t)) / CONTOUR_STEP + 0.0001)
+	var labelled: Dictionary = {}
+	for x in range(bounds.position.x, bounds.end.x):
+		for y in range(bounds.position.y, bounds.end.y):
+			var t := Vector2i(x, y)
+			if not parent.is_floor_tile(t):
+				continue
+			var h := parent.ceiling_height_at(Vector2(t))
+			if h < 2.0:
+				draw_rect(Rect2(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE), Color(0.50, 0.62, 0.95, 0.10))
+			var b: int = band.call(t)
+			for n in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var o: Vector2i = t + n
+				if not parent.is_floor_tile(o) or band.call(o) == b:
+					continue
+				var a := Vector2((x + n.x) * TILE_SIZE, (y + n.y) * TILE_SIZE)
+				var e := a + (Vector2(0, TILE_SIZE) if n.x == 1 else Vector2(TILE_SIZE, 0))
+				draw_line(a, e, CONTOUR_COL, 1.0)
+				var hb := maxi(b, band.call(o))
+				if hb % 2 == 0 and not labelled.has(hb):
+					labelled[hb] = true
+					draw_string(ThemeDB.fallback_font, a + Vector2(2, 12), "%.1fm" % (hb * CONTOUR_STEP),
+						HORIZONTAL_ALIGNMENT_LEFT, 32, 9, CONTOUR_COL)
+
 	var room_x0 := bounds.position.x * TILE_SIZE
 	var room_y0 := bounds.position.y * TILE_SIZE
-	var room_x1 := (bounds.position.x + bounds.size.x) * TILE_SIZE
-	var room_y1 := (bounds.position.y + bounds.size.y) * TILE_SIZE
-	var span := high_e - low_s
-	if span <= 0:
+	var room_x1 := bounds.end.x * TILE_SIZE
+	var room_y1 := bounds.end.y * TILE_SIZE
+	if parent.ceiling_ramps.size() == 1:
+		var sc := parent.ceiling_ramps[0] as Dictionary
+		var low_s := sc.get("low_start", 0) as int
+		var high_e := sc.get("high_end", 0) as int
+		_draw_slope_info(sc.get("axis", "x") as String, low_s, high_e, sc.get("min_h", 1.8) as float,
+			sc.get("max_h", 2.4) as float, absi(high_e - low_s), room_x0, room_y0, room_x1, room_y1)
+	else:
+		var lo := INF
+		var hi := -INF
+		for x in range(bounds.position.x, bounds.end.x):
+			for y in range(bounds.position.y, bounds.end.y):
+				if parent.is_floor_tile(Vector2i(x, y)):
+					var h := parent.ceiling_height_at(Vector2(x, y))
+					lo = minf(lo, h)
+					hi = maxf(hi, h)
+		draw_rect(Rect2(room_x0, room_y0 - 16, room_x1 - room_x0, 15), Color(0.93, 0.93, 0.90, 0.85))
+		draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 4, room_y0 - 5),
+			tr("Sloped ceiling: %.2fm to %.2fm") % [lo, hi], HORIZONTAL_ALIGNMENT_LEFT, room_x1 - room_x0 - 8, 11,
+			Color(0.15, 0.15, 0.18, 1.0))
+
+
+# Raised platforms and sunken areas: each level tinted (lighter up, darker
+# down) with a firm line where two levels meet, its height written in the
+# middle, and the steps drawn as treads.
+func _draw_split_levels(parent: Floor) -> void:
+	if not parent.has_split_levels():
 		return
-
-	var steps := int((max_h - min_h) / CONTOUR_STEP)
-	for si in range(1, steps + 1):
-		var h_at := min_h + si * CONTOUR_STEP
-		var frac := (h_at - min_h) / (max_h - min_h)
-		var tile_pos := low_s + int(frac * span)
-		var px := tile_pos * TILE_SIZE
-		if axis == "x":
-			draw_dashed_line(Vector2(px, room_y0), Vector2(px, room_y1), CONTOUR_COL, 0.8, 5.0)
-			if si % 2 == 0:
-				draw_string(ThemeDB.fallback_font, Vector2(px + 2, room_y0 + 12), "%.1fm" % h_at,
-					HORIZONTAL_ALIGNMENT_LEFT, 32, 9, CONTOUR_COL)
-		else:
-			draw_dashed_line(Vector2(room_x0, px), Vector2(room_x1, px), CONTOUR_COL, 0.8, 5.0)
-			if si % 2 == 0:
-				draw_string(ThemeDB.fallback_font, Vector2(room_x0 + 2, px - 2), "%.1fm" % h_at,
-					HORIZONTAL_ALIGNMENT_LEFT, 32, 9, CONTOUR_COL)
-
-	# Low-ceiling blocked zone overlay (min_h < 2.0 m blocks tall furniture)
-	if min_h < 2.0:
-		var frac_2m := (2.0 - min_h) / (max_h - min_h)
-		var px_2m := int((low_s + frac_2m * span) * TILE_SIZE)
-		if axis == "x":
-			draw_rect(Rect2(room_x0, room_y0, px_2m - room_x0, room_y1 - room_y0), Color(0.25, 0.30, 0.50, 0.07))
-		else:
-			draw_rect(Rect2(room_x0, room_y0, room_x1 - room_x0, px_2m - room_y0), Color(0.25, 0.30, 0.50, 0.07))
-
-	_draw_slope_info(axis, low_s, high_e, min_h, max_h, span, room_x0, room_y0, room_x1, room_y1)
+	const EDGE_COL := Color(0.22, 0.20, 0.18, 0.85)
+	const TREAD_COL := Color(0.22, 0.20, 0.18, 0.45)
+	var bounds := parent.get_room_bounds()
+	for x in range(bounds.position.x, bounds.end.x):
+		for y in range(bounds.position.y, bounds.end.y):
+			var t := Vector2i(x, y)
+			if not parent.is_floor_tile(t):
+				continue
+			var r := Rect2(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+			var l := parent.level_at(t)
+			if parent.is_step(t):
+				draw_rect(r, Color(0.96, 0.92, 0.84, 0.55))
+				var horizontal := parent.level_at(t + Vector2i(0, 1)) != parent.level_at(t + Vector2i(0, -1))
+				if horizontal:
+					draw_line(r.position + Vector2(0, TILE_SIZE * 0.5), r.position + Vector2(TILE_SIZE, TILE_SIZE * 0.5), TREAD_COL, 1.0)
+				else:
+					draw_line(r.position + Vector2(TILE_SIZE * 0.5, 0), r.position + Vector2(TILE_SIZE * 0.5, TILE_SIZE), TREAD_COL, 1.0)
+			elif l > 0:
+				draw_rect(r, Color(1.0, 0.97, 0.88, clampf(0.10 + l * 0.01, 0.12, 0.35)))
+			elif l < 0:
+				draw_rect(r, Color(0.0, 0.0, 0.05, clampf(0.10 - l * 0.02, 0.12, 0.35)))
+			for n in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var o: Vector2i = t + n
+				if not parent.is_floor_tile(o) or parent.is_step(o) or parent.is_step(t) or parent.level_at(o) == l:
+					continue
+				var a := Vector2((x + n.x) * TILE_SIZE, (y + n.y) * TILE_SIZE)
+				var e := a + (Vector2(0, TILE_SIZE) if n.x == 1 else Vector2(TILE_SIZE, 0))
+				draw_line(a, e, EDGE_COL, 2.0)
+	# The height each flight of steps leads to, written on the steps (nothing
+	# stands there, so it is never hidden under a piece).
+	var seen: Dictionary = {}
+	for t0 in parent.step_mask:
+		if seen.has(t0):
+			continue
+		var queue: Array = [t0]
+		seen[t0] = true
+		var head := 0
+		var lead := 0
+		var sum := Vector2.ZERO
+		while head < queue.size():
+			var t: Vector2i = queue[head]
+			head += 1
+			sum += Vector2(t) + Vector2(0.5, 0.5)
+			for n in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var o: Vector2i = t + n
+				if parent.step_mask.has(o):
+					if not seen.has(o):
+						seen[o] = true
+						queue.append(o)
+				elif parent.is_floor_tile(o) and absi(parent.level_at(o)) > absi(lead):
+					lead = parent.level_at(o)
+		if lead == 0:
+			continue
+		var c := sum / queue.size() * TILE_SIZE
+		draw_string(ThemeDB.fallback_font, c + Vector2(-24, 4), "%+d cm" % (lead * 10),
+			HORIZONTAL_ALIGNMENT_CENTER, 48, 10, EDGE_COL)
 
 
 func _draw_slope_info(axis: String, low_s: int, high_e: int, min_h: float,

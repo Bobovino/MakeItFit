@@ -39,9 +39,11 @@ mechanics they activate:
 - **Magnetic wall**, **retractable courtyard roof**, **climbing wall / ladder to a play loft** —
   lower priority.
 
-Not furniture, and a separate and much larger decision: **sloped ceilings** and **split-level
-floors**, both of which are recurring devices in the source material and would be level geometry
-rather than props.
+Not furniture: **sloped ceilings** and **split-level floors** are now level geometry (per-floor
+`ceiling_ramps`, `floor_levels` and `step_tiles`, authored in the level editor; see
+`debug:_attic` and `debug:_split_level`). Still open: lofts don't lose headroom under a slope,
+the two levels sit in the Debug district rather than on the city map, and real ceilings on
+their own floor tab (the ramps are plain per-floor data, ready to move there).
 
 ## Modular furniture kits from MakeItFit_GameAssets/furniture
 

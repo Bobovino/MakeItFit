@@ -3133,3 +3133,15 @@ msgstr ""
 #: scripts/TenantCard.gd
 msgid "Click to see the pieces that count"
 msgstr ""
+
+#: scripts/Wall.gd
+msgid "Keep the steps clear"
+msgstr ""
+
+#: scripts/Wall.gd
+msgid "Can't stand across a step"
+msgstr ""
+
+#: scripts/GridDraw.gd
+msgid "Sloped ceiling: %.2fm to %.2fm"
+msgstr ""

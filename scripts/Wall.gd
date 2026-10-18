@@ -26,7 +26,23 @@ var grid_h: int = 6
 var wall_definitions: Array = []
 var partitions: Array = []       # [{x1,y1,x2,y2,load_bearing,demolished}]
 var columns: Array = []          # [{x,y}] — permanent structural obstacles
-var sloped_ceiling: Dictionary = {}   # {axis, low_start, high_end, min_h, max_h}
+# Ceiling and floor heights: level geometry, not props (see ceiling_height_at()
+# and level_at()). A flat ceiling stands at ceiling_h; each ramp in
+# ceiling_ramps lowers it over part of the room, the lowest one winning, so
+# two ramps make a gable and a ramp with a "rect" makes a dormer:
+#   {axis:"x"|"y", low_start, high_end, min_h, max_h, rect?:[x, y, w, h]}
+# (tiles along `axis`, absolute; low_start may be past high_end for a ramp
+# that falls the other way; metres). Kept per floor and serialised as plain
+# data so a ceiling layer of its own can own it later.
+const CEILING_H_M := 2.4
+var ceiling_h: float = CEILING_H_M
+var ceiling_ramps: Array = []
+# Split levels inside one floor: a raised platform or a sunken area is a set
+# of tiles whose floor stands floor_level[tile] tiles (10 cm each) above (+)
+# or below (-) the rest. People only change level over step tiles, and
+# nothing can stand on a step or across two levels.
+var floor_level: Dictionary = {}   # Vector2i -> int; absent = 0
+var step_mask:   Dictionary = {}   # Vector2i -> true
 var connection_points: Dictionary = {}  # {water:[{x,y}], power:[{x,y}]}
 var pipe_routes: Array = []     # [{type:"water"|"power", tiles:[Vector2i]}]  player-drawn
 var duct_routes: Array = []     # reserved for HVAC (ceiling layer)
@@ -155,6 +171,118 @@ func _unregister_stair(furniture: Furniture) -> void:
 	stairs_data = kept
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── Ceiling and floor heights ──────────────────────────────────────────────
+
+func has_sloped_ceiling() -> bool:
+	return not ceiling_ramps.is_empty()
+
+
+func has_split_levels() -> bool:
+	return not floor_level.is_empty() or not step_mask.is_empty()
+
+
+# How high one ramp's ceiling is at `p` (tiles, absolute), or INF where the
+# ramp doesn't reach: outside its rect, or outside its own low..high run (a
+# separate room on a multi-room floor keeps its full height).
+static func ramp_height_at(r: Dictionary, p: Vector2) -> float:
+	if r.has("rect"):
+		var rc := r["rect"] as Array
+		if p.x < (rc[0] as float) or p.y < (rc[1] as float) 				or p.x > (rc[0] as float) + (rc[2] as float) or p.y > (rc[1] as float) + (rc[3] as float):
+			return INF
+	var low := r.get("low_start", 0) as float
+	var high := r.get("high_end", 0) as float
+	var c := p.x if (r.get("axis", "x") as String) == "x" else p.y
+	if high == low or c < minf(low, high) or c > maxf(low, high):
+		return INF
+	var min_h := r.get("min_h", 1.8) as float
+	return min_h + (c - low) / (high - low) * ((r.get("max_h", CEILING_H_M) as float) - min_h)
+
+
+# Ceiling height in metres above the floor's base level at `p` (tiles,
+# absolute; a tile's own coordinate stands for that tile).
+func ceiling_height_at(p: Vector2) -> float:
+	var best := INF
+	for r in ceiling_ramps:
+		best = minf(best, ramp_height_at(r as Dictionary, p))
+	return best if best < INF else ceiling_h
+
+
+# How far this tile's floor stands above (+) or below (-) the base, in tiles.
+func level_at(tile: Vector2i) -> int:
+	return floor_level.get(tile, 0) as int
+
+
+func level_m_at(tile: Vector2i) -> float:
+	return level_at(tile) * 0.1
+
+
+func is_step(tile: Vector2i) -> bool:
+	return step_mask.has(tile)
+
+
+# The level a piece with its corner at `at` stands on (its first tile's).
+func level_under(at: Vector2, w: int, h: int) -> int:
+	if floor_level.is_empty():
+		return 0
+	var tiles := _rect_tiles(at, w, h)
+	return level_at(tiles[0]) if not tiles.is_empty() else 0
+
+
+# The clear height over a tile, from its own floor to the ceiling, in metres.
+func headroom_at(tile: Vector2i) -> float:
+	return ceiling_height_at(Vector2(tile)) - level_m_at(tile)
+
+
+# Whether a person can stand on the size x size patch at `top_left`: steps
+# go with either level, but everything else under them is one level.
+func patch_level_ok(top_left: Vector2i, size: int) -> bool:
+	if floor_level.is_empty():
+		return true
+	var lvl := 0
+	var found := false
+	for dy in size:
+		for dx in size:
+			var t := Vector2i(top_left.x + dx, top_left.y + dy)
+			if step_mask.has(t):
+				continue
+			var l := level_at(t)
+			if not found:
+				lvl = l
+				found = true
+			elif l != lvl:
+				return false
+	return true
+
+
+# Connected stretches of one level, steps left out:
+# [{level, center: Vector2 (tiles), size, tiles: Array[Vector2i]}].
+func level_regions() -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	var bounds := get_room_bounds()
+	for x in range(bounds.position.x, bounds.end.x):
+		for y in range(bounds.position.y, bounds.end.y):
+			var t0 := Vector2i(x, y)
+			if seen.has(t0) or not is_floor_tile(t0) or is_step(t0):
+				continue
+			var lvl := level_at(t0)
+			var queue: Array[Vector2i] = [t0]
+			seen[t0] = true
+			var sum := Vector2.ZERO
+			var head := 0
+			while head < queue.size():
+				var t := queue[head]
+				head += 1
+				sum += Vector2(t) + Vector2(0.5, 0.5)
+				for n in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var o: Vector2i = t + n
+					if not seen.has(o) and is_floor_tile(o) and not is_step(o) and level_at(o) == lvl:
+						seen[o] = true
+						queue.append(o)
+			out.append({"level": lvl, "center": sum / queue.size(), "size": queue.size(), "tiles": queue})
+	return out
+
 
 func get_tile_kind(tile: Vector2i) -> String:
 	return floor_kind.get(tile, "normal") as String
@@ -504,7 +632,21 @@ func setup(floor_data: Dictionary) -> void:
 	parent_id   = floor_data.get("parent_id", "") as String
 	grid_w      = floor_data["grid_w"]
 	grid_h      = floor_data["grid_h"]
-	sloped_ceiling    = floor_data.get("sloped_ceiling", {})
+	ceiling_h = floor_data.get("ceiling_h", CEILING_H_M) as float
+	ceiling_ramps = []
+	for r in floor_data.get("ceiling_ramps", []) as Array:
+		ceiling_ramps.append((r as Dictionary).duplicate(true))
+	# Older levels carry one ramp as "sloped_ceiling".
+	var legacy_slope := floor_data.get("sloped_ceiling", {}) as Dictionary
+	if ceiling_ramps.is_empty() and not legacy_slope.is_empty():
+		ceiling_ramps.append(legacy_slope.duplicate(true))
+	floor_level.clear()
+	for t in floor_data.get("floor_levels", []) as Array:
+		if (t[2] as int) != 0:
+			floor_level[Vector2i(t[0] as int, t[1] as int)] = t[2] as int
+	step_mask.clear()
+	for t in floor_data.get("step_tiles", []) as Array:
+		step_mask[Vector2i(t[0] as int, t[1] as int)] = true
 	connection_points = floor_data.get("connection_points", {})
 	columns           = floor_data.get("columns", [])
 	pipe_routes       = []
@@ -1181,31 +1323,24 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Overlaps %s") % f.furniture_name
 			return false
 
-	# Sloped ceiling: any furniture taller than the local ceiling height is blocked
-	if not sloped_ceiling.is_empty():
-		var sc       := sloped_ceiling
-		var axis     := sc.get("axis", "x") as String
-		var low_s    := sc.get("low_start", 0) as int
-		var high_e   := sc.get("high_end",  0) as int
-		var min_h    := sc.get("min_h", 1.8) as float
-		var max_h    := sc.get("max_h", 2.4) as float
-		var span     := float(high_e - low_s)
-		var furn_h_m := furniture.z_top / 10.0   # 10 tiles per meter (see FLOOR_HEIGHT_TILES)
-		if span > 0:
-			for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
-				var coord := tile.x if axis == "x" else tile.y
-				# Outside the slope's own [low_start, high_end] run — e.g. a
-				# separate room on a multi-room floor that just happens to
-				# share this floor's sloped_ceiling record — isn't part of
-				# the raked ceiling at all, so it must read as full height,
-				# not get clamped to the slope's lowest point.
-				var ceil_h := max_h
-				if coord >= low_s and coord <= high_e:
-					var frac := (coord - low_s) / span
-					ceil_h = min_h + frac * (max_h - min_h)
-				if ceil_h < furn_h_m:
-					_block_reason = tr("Ceiling too low here")
-					return false
+	# Split levels: a piece stands on one level, and never on the steps.
+	if has_split_levels():
+		var lvl := level_at(target_tiles[0])
+		for tile in target_tiles:
+			if step_mask.has(tile):
+				_block_reason = tr("Keep the steps clear")
+				return false
+			if level_at(tile) != lvl:
+				_block_reason = tr("Can't stand across a step")
+				return false
+
+	# Ceiling: the floor it stands on, whatever it stands on and the piece
+	# itself all have to fit under the ceiling over every tile it covers.
+	var need_tiles := stack_lift(furniture, at) + furniture.body_h
+	for tile in target_tiles:
+		if (need_tiles + level_at(tile)) * 0.1 > ceiling_height_at(Vector2(tile)) + 0.001:
+			_block_reason = tr("Ceiling too low here")
+			return false
 
 	# Ghost zone: can't place inside another furniture's interaction clearance
 	# — except the piece THIS one is legitimately stacked on top of (already
@@ -1607,8 +1742,7 @@ func carry_hints(carried: Furniture) -> Dictionary:
 		out["clearance"].append(Rect2(fur.grid_pos, Vector2(fur.grid_w, fur.grid_h)).grow(float(fur.ghost_radius)))
 	var b := get_room_bounds()
 	var check_floor := not carried.is_nested_box and (carried.floor_category != "any" or has_floor_kind("balcony"))
-	var height_m := carried.z_top / 10.0
-	var sc := sloped_ceiling
+	var height_m := carried.body_h * 0.1
 	for x in range(b.position.x, b.end.x):
 		for y in range(b.position.y, b.end.y):
 			var t := Vector2i(x, y)
@@ -1616,15 +1750,10 @@ func carry_hints(carried: Furniture) -> Dictionary:
 				continue
 			if check_floor and not _floor_category_ok(carried.floor_category, get_tile_kind(t)):
 				out["bad_floor"].append(t)
-			if not sc.is_empty():
-				var low_s := sc.get("low_start", 0) as int
-				var high_e := sc.get("high_end", 0) as int
-				var span := float(high_e - low_s)
-				var coord := t.x if (sc.get("axis", "x") as String) == "x" else t.y
-				if span > 0 and coord >= low_s and coord <= high_e:
-					var ceil_h := (sc.get("min_h", 1.8) as float) + (coord - low_s) / span * ((sc.get("max_h", 2.4) as float) - (sc.get("min_h", 1.8) as float))
-					if ceil_h < height_m:
-						out["low_ceiling"].append(t)
+			elif step_mask.has(t):
+				out["bad_floor"].append(t)   # nothing stands on the steps
+			if headroom_at(t) + 0.001 < height_m:
+				out["low_ceiling"].append(t)
 	if not carried.walkable and carried.body_h > LOFT_HEADROOM:
 		for t in mezzanine_mask:
 			out["low_ceiling"].append(t)   # too tall to go under the loft
@@ -2273,7 +2402,7 @@ func blocks_walking(f: Furniture) -> bool:
 # The floor tiles a person can stand on having walked in from the door.
 # Cached until the layout changes.
 func get_reachable_floor() -> Dictionary:
-	var parts: Array = [segments.size(), columns.size(), floor_mask.size()]
+	var parts: Array = [segments.size(), columns.size(), floor_mask.size(), hash(floor_level), hash(step_mask)]
 	for s in segments:
 		parts.append((s as Dictionary).get("demolished", false))
 		parts.append((s as Dictionary).get("door_pos", -1))
@@ -2339,6 +2468,14 @@ func _compute_reachable_floor() -> Dictionary:
 			var total := sums[(y + WALK_WIDTH) * sw + x + WALK_WIDTH] - sums[y * sw + x + WALK_WIDTH] \
 				- sums[(y + WALK_WIDTH) * sw + x] + sums[y * sw + x]
 			clear[y * aw + x] = 1 if total == 0 else 0
+	# Split levels: a patch straddling two levels is a ledge, not floor. Two
+	# levels meet only through a band of steps at least WALK_WIDTH - 1 deep,
+	# so one patch can stand half on each side of it.
+	if not floor_level.is_empty():
+		for y in ah:
+			for x in aw:
+				if clear[y * aw + x] == 1 and not patch_level_ok(Vector2i(x0 + x, y0 + y), WALK_WIDTH):
+					clear[y * aw + x] = 0
 
 	# Start at the entrance: every clear patch that touches a door in an
 	# outer wall.
@@ -2437,20 +2574,25 @@ func is_reachable(f: Furniture) -> bool:
 	var reached := get_reachable_floor()
 	var fx := floori(f.grid_pos.x)
 	var fy := floori(f.grid_pos.y)
+	# On split levels the tenant has to stand on the piece's own level (or
+	# its steps): a bed on a platform isn't used from the floor below it.
+	var lvl := level_under(f.grid_pos, f.grid_w, f.grid_h)
+	var ok := func(t: Vector2i) -> bool:
+		return reached.has(t) and (floor_level.is_empty() or step_mask.has(t) or level_at(t) == lvl)
 	for side in _front_sides(f):
 		match side:
 			0:
 				for x in range(fx, fx + f.grid_w):
-					if reached.has(Vector2i(x, fy - 1)): return true
+					if ok.call(Vector2i(x, fy - 1)): return true
 			2:
 				for x in range(fx, fx + f.grid_w):
-					if reached.has(Vector2i(x, fy + f.grid_h)): return true
+					if ok.call(Vector2i(x, fy + f.grid_h)): return true
 			1:
 				for y in range(fy, fy + f.grid_h):
-					if reached.has(Vector2i(fx + f.grid_w, y)): return true
+					if ok.call(Vector2i(fx + f.grid_w, y)): return true
 			3:
 				for y in range(fy, fy + f.grid_h):
-					if reached.has(Vector2i(fx - 1, y)): return true
+					if ok.call(Vector2i(fx - 1, y)): return true
 	return false
 
 
