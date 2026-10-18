@@ -76,6 +76,12 @@ var starting_furniture:  Array = []  # [{id, x, y}] items pre-placed in the apar
 func _ready() -> void:
 	add_to_group("game_manager")
 	furniture_data = Loc.localize_furniture(_load_json("res://data/furniture.json"))
+	# A kit's entry is its default run; its footprint, price and functions
+	# always come from the modules, never from hand-kept numbers.
+	var catalog := furniture_data.get("furniture", []) as Array
+	for i in catalog.size():
+		if Kits.kit_of(catalog[i]) != "":
+			catalog[i] = Kits.compose(catalog[i])
 	levels_data = Loc.localize_levels(_load_json("res://data/levels.json"))
 
 
@@ -177,7 +183,12 @@ func get_furniture_by_id(furniture_id: String) -> Dictionary:
 
 
 func buy_furniture(furniture_id: String) -> bool:
-	var f := get_furniture_by_id(furniture_id)
+	return buy_entry(get_furniture_by_id(furniture_id))
+
+
+# Pays for one piece as described by `f` — a catalogue entry, or a kit run
+# composed for this purchase (its own price and functions).
+func buy_entry(f: Dictionary) -> bool:
 	if f.is_empty() or budget < f["buy_price"]:
 		return false
 	var forbidden := external_restrictions.get("forbidden_functions", []) as Array

@@ -3467,6 +3467,49 @@
       "needs_daylight": true,
       "model": "res://assets/models/furniture/makeitfit/bird_cage.glb",
       "mobility_tier": "green"
+    },
+    {
+      "id": "kit_wall",
+      "name": "Modular Storage Wall",
+      "kit": "wall",
+      "placement": "floor",
+      "color": "c8b48a",
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "red",
+      "modules": [
+        {"m": "Drawer_2x1", "c": 0, "r": 0}, {"m": "Drawer_2x1", "c": 2, "r": 0},
+        {"m": "Door_2x1", "c": 0, "r": 1}, {"m": "Door_2x1", "c": 2, "r": 1},
+        {"m": "Cube_2x2", "c": 0, "r": 2}, {"m": "Books_1x1", "c": 2, "r": 2},
+        {"m": "Bin_1x1", "c": 3, "r": 2}, {"m": "Cube_1x1", "c": 2, "r": 3},
+        {"m": "WineRack_1x1", "c": 3, "r": 3}, {"m": "FlapUp_2x1", "c": 0, "r": 4},
+        {"m": "FlapUp_2x1", "c": 2, "r": 4}, {"m": "Plinth"}, {"m": "Cap"}
+      ],
+      "size": {"w": 16, "h": 3},
+      "functions": ["storage"],
+      "buy_price": 730,
+      "sell_price": 292,
+      "wall_h": 22,
+      "z_top": 22,
+      "height_category": "tall",
+      "model": "kit:wall:[{\"c\":0,\"m\":\"Drawer_2x1\",\"r\":0},{\"c\":2,\"m\":\"Drawer_2x1\",\"r\":0},{\"c\":0,\"m\":\"Door_2x1\",\"r\":1},{\"c\":2,\"m\":\"Door_2x1\",\"r\":1},{\"c\":0,\"m\":\"Cube_2x2\",\"r\":2},{\"c\":2,\"m\":\"Books_1x1\",\"r\":2},{\"c\":3,\"m\":\"Bin_1x1\",\"r\":2},{\"c\":2,\"m\":\"Cube_1x1\",\"r\":3},{\"c\":3,\"m\":\"WineRack_1x1\",\"r\":3},{\"c\":0,\"m\":\"FlapUp_2x1\",\"r\":4},{\"c\":2,\"m\":\"FlapUp_2x1\",\"r\":4},{\"m\":\"Plinth\"},{\"m\":\"Cap\"}]"
+    },
+    {
+      "id": "kit_sofa",
+      "name": "Modular Sectional Sofa",
+      "kit": "sofa",
+      "placement": "floor",
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "modules": [{"m": "Arm_1"}, {"m": "Seat_1"}, {"m": "Seat_1"}, {"m": "Arm_1"}],
+      "size": {"w": 22, "h": 9},
+      "functions": ["sit"],
+      "buy_price": 300,
+      "sell_price": 120,
+      "wall_h": 9,
+      "z_top": 9,
+      "model": "kit:sofa:[{\"m\":\"Arm_1\"},{\"m\":\"Seat_1\"},{\"m\":\"Seat_1\"},{\"m\":\"Arm_1\"}]"
     }
   ],
   "paintable": [

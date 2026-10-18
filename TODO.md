@@ -43,23 +43,26 @@ Not furniture, and a separate and much larger decision: **sloped ceilings** and 
 floors**, both of which are recurring devices in the source material and would be level geometry
 rather than props.
 
-## Modular furniture kits from MakeItFit_GameAssets/furniture
+## Modular furniture kits — follow-ups
 
-The external asset pack (`C:\Users\rodry\Documents\MakeItFit_GameAssets\furniture`) ships two
-grid-composable kits that are NOT single-footprint props like the rest of the catalog, so they
-were not imported along with the single-piece items:
+The storage wall (`wall_system/`, 0.40 m cells) and the sectional sofa (`modular_sofa/`, 0.90 m
+cells) are in as `kit_wall` and `kit_sofa` (scripts/Kits.gd, scripts/ui/kit_composer.gd). Buying
+one opens a composer; the run is then one ordinary piece whose `modules` list rides along in
+saves, undo and level files the way `child_level_id` does, and its footprint, height, price
+(sum of modules) and functions (union) are derived from that list. Clicking a placed run (or
+Edit in the touch bar) reopens it in the composer. Left open:
 
-- `godot_glb/wall_system/` — 27 tiling modules (0.40m cells) for building custom storage walls
-  piece by piece, instead of placing one fixed prop.
-- `godot_glb/modular_sofa/` — 7 modules (0.90m cells) for composing a sectional sofa.
-
-Bringing these in needs real design work, not just an asset copy:
-- A new placement mode (module-by-module grid snapping along a run, distinct from the existing
-  drag-a-rectangle furniture placement).
-- A new save/serialize shape for a composed run (list of modules + positions, not one `grid_pos`).
-- UI for picking/placing individual modules and previewing a run.
-- Decide whether this is its own build tool or an extension of the existing Inventory/CategoryWheel
-  flow.
+- **Footprints are rectangles.** A chaise makes the whole run 1.80 m deep, and `Corner_1` only
+  turns the end of a straight run: there is no L-shaped sectional, because every placement,
+  collision and pathing check in the game works on one `grid_w × grid_h` rectangle.
+- **The wall is floor-standing.** A run with empty bottom rows still occupies the floor below
+  them; a wall-hung run would need `z_bottom` honoured by Floor's overlap checks.
+- **Runs can't be sent to another apartment** (refused with a message): the owned list in other
+  apartments is `{id, count}` and would drop the modules.
+- **The composer's 3D preview is slow on first open**: it waits its turn behind the catalogue
+  card renders in ThumbnailRenderer's single queue (several seconds on a cold start).
+- Module animations (drawers, doors, the ottoman lid) are not played; runs aren't foldable.
+- Prices and functions per module are a first pass (Kits.WALL_MODULES / SOFA_MODULES).
 
 Also deferred, for the same "not a single footprint prop" reason:
 - `godot_glb/stairs/` (11 space-saving staircases) — the existing `stair_n/s/e/w` catalog entries

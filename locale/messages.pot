@@ -3133,3 +3133,191 @@ msgstr ""
 #: scripts/TenantCard.gd
 msgid "Click to see the pieces that count"
 msgstr ""
+
+#: data/furniture.json:kit_wall
+msgid "Modular Storage Wall"
+msgstr ""
+
+#: data/furniture.json:kit_sofa
+msgid "Modular Sectional Sofa"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Pick a module, then tap where it goes. Tap a module in the drawing to take it out."
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Plinth"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Cornice"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "End filler"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Clear"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "nothing the tenant needs"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "%.2f m wide, %.2f m deep, %.2f m tall. Gives: %s"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Buy · %d€"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Update · %d€"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Open cube"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Books"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Fabric bin"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Wine rack"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Corner shelf"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Double door"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Glass door"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Lift-up flap"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Drawer"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Pull-out basket"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Shoe rack"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Shallow shelf"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Coat hooks"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Hanging rail"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "TV bay"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Fold-down desk"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Armrest"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Seat"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Corner seat"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Chaise"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Storage ottoman"
+msgstr ""
+
+#: scripts/ui/kit_composer.gd
+msgid "Side table"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Unknown module"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Doesn't fit in the wall"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Only on the floor row"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Only on the second row, at desk height"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Something is already there"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "The sofa is as long as it gets"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "A corner only goes at an end"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "Add at least one module"
+msgstr ""
+
+#: scripts/Kits.gd
+msgid "A sofa needs at least one seat"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "A modular run is built to fit here: it can't move to another apartment"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "The new run doesn't fit here: %s"
+msgstr ""
+
+#: scripts/Main.gd
+msgid "The new run doesn't fit here"
+msgstr ""
+
+#: scripts/Inventory.gd
+msgid "from %d€"
+msgstr ""
+
+#: scripts/ui/touch_controls.gd
+msgid "Edit"
+msgstr ""

@@ -2,7 +2,8 @@ extends RefCounted
 class_name LevelProgress
 
 # A level as the player left it, exactly: every piece (position, rotation,
-# fold state, its own position and fold state per moment, the starting spot
+# fold state, its own position and fold state per moment, the modules of a
+# run built from a kit, the starting spot
 # comfort is measured from), things hung on walls, walls/floors/pipes built,
 # made-to-measure pieces painted, the budget, what is waiting under "Owned",
 # the moment on screen and which moments have already been met.
@@ -36,6 +37,8 @@ static func capture(main: Node) -> Dictionary:
 				p["child_level_id"] = f.child_level_id
 			if f.keepsake:
 				p["keepsake"] = true
+			if f.kit != "":
+				p["modules"] = f.kit_modules.duplicate(true)
 			pieces.append(p)
 		var paint := {}
 		var painted: Dictionary = main._paint_pieces.get(fid, {})
@@ -127,7 +130,7 @@ static func apply(main: Node, data: Dictionary) -> void:
 
 static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> void:
 	var overrides := {}
-	for key in ["child_level_id", "keepsake"]:
+	for key in ["child_level_id", "keepsake", "modules"]:
 		if p.has(key):
 			overrides[key] = p[key]
 	var pos: Vector2 = p.get("pos", Vector2.ZERO)

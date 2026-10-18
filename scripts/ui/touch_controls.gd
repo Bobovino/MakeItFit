@@ -10,7 +10,7 @@ class_name TouchControls
 #     where twisting them also turns the view. A second finger landing calls
 #     off whatever the first had started (a piece picked up, a pan).
 #   - Long-press a piece: a bar of big buttons to rotate, fold or sell it
-#     (sell only, for something hung on a wall).
+#     (sell only, for something hung on a wall), or to edit a kit run.
 #   - Buying: the finger moves the piece about without putting it down;
 #     the bar has Rotate, Place and Cancel.
 #
@@ -129,6 +129,11 @@ func _rebuild() -> void:
 			_add_button("\ueb13  " + tr("Rotate"), FaxStyle.KEY_GREY, func(): main.touch_rotate_piece(_piece))
 			if _piece.foldable:
 				_add_button("\ued56  " + tr("Fold"), FaxStyle.KEY_GREY, func(): main.touch_fold_piece(_piece))
+			if _piece.kit != "":
+				_add_button("\uea98  " + tr("Edit"), FaxStyle.KEY_GREY, func():
+					var f := _piece
+					close_actions()
+					main.touch_edit_piece(f))
 			if not _piece.keepsake:
 				_add_button("€  " + tr("Sell"), Color(0.62, 0.26, 0.24), func():
 					var f := _piece

@@ -3219,3 +3219,191 @@ msgstr "Hace directos doce horas al día y compra pizza congelada por palés. Ne
 #: scripts/TenantCard.gd
 msgid "Click to see the pieces that count"
 msgstr "Haz clic para ver las piezas que cuentan"
+
+#: data/furniture.json:kit_wall
+msgid "Modular Storage Wall"
+msgstr "Pared de almacenaje modular"
+
+#: data/furniture.json:kit_sofa
+msgid "Modular Sectional Sofa"
+msgstr "Sofá modular por módulos"
+
+#: scripts/ui/kit_composer.gd
+msgid "Pick a module, then tap where it goes. Tap a module in the drawing to take it out."
+msgstr "Elige un módulo y toca dónde va. Toca un módulo del dibujo para quitarlo."
+
+#: scripts/ui/kit_composer.gd
+msgid "Plinth"
+msgstr "Zócalo"
+
+#: scripts/ui/kit_composer.gd
+msgid "Cornice"
+msgstr "Cornisa"
+
+#: scripts/ui/kit_composer.gd
+msgid "End filler"
+msgstr "Remate lateral"
+
+#: scripts/ui/kit_composer.gd
+msgid "Clear"
+msgstr "Vaciar"
+
+#: scripts/ui/kit_composer.gd
+msgid "nothing the tenant needs"
+msgstr "nada que necesite el inquilino"
+
+#: scripts/ui/kit_composer.gd
+msgid "%.2f m wide, %.2f m deep, %.2f m tall. Gives: %s"
+msgstr "%.2f m de ancho, %.2f m de fondo, %.2f m de alto. Da: %s"
+
+#: scripts/ui/kit_composer.gd
+msgid "Buy · %d€"
+msgstr "Comprar · %d€"
+
+#: scripts/ui/kit_composer.gd
+msgid "Update · %d€"
+msgstr "Actualizar · %d€"
+
+#: scripts/ui/kit_composer.gd
+msgid "Open cube"
+msgstr "Cubo abierto"
+
+#: scripts/ui/kit_composer.gd
+msgid "Books"
+msgstr "Libros"
+
+#: scripts/ui/kit_composer.gd
+msgid "Fabric bin"
+msgstr "Caja de tela"
+
+#: scripts/ui/kit_composer.gd
+msgid "Wine rack"
+msgstr "Botellero"
+
+#: scripts/ui/kit_composer.gd
+msgid "Corner shelf"
+msgstr "Estante de esquina"
+
+#: scripts/ui/kit_composer.gd
+msgid "Double door"
+msgstr "Puerta doble"
+
+#: scripts/ui/kit_composer.gd
+msgid "Glass door"
+msgstr "Puerta de cristal"
+
+#: scripts/ui/kit_composer.gd
+msgid "Lift-up flap"
+msgstr "Puerta abatible"
+
+#: scripts/ui/kit_composer.gd
+msgid "Drawer"
+msgstr "Cajón"
+
+#: scripts/ui/kit_composer.gd
+msgid "Pull-out basket"
+msgstr "Cesta extraíble"
+
+#: scripts/ui/kit_composer.gd
+msgid "Shoe rack"
+msgstr "Zapatero"
+
+#: scripts/ui/kit_composer.gd
+msgid "Shallow shelf"
+msgstr "Estante poco profundo"
+
+#: scripts/ui/kit_composer.gd
+msgid "Coat hooks"
+msgstr "Perchero de pared"
+
+#: scripts/ui/kit_composer.gd
+msgid "Hanging rail"
+msgstr "Barra de colgar"
+
+#: scripts/ui/kit_composer.gd
+msgid "TV bay"
+msgstr "Hueco para la tele"
+
+#: scripts/ui/kit_composer.gd
+msgid "Fold-down desk"
+msgstr "Escritorio abatible"
+
+#: scripts/ui/kit_composer.gd
+msgid "Armrest"
+msgstr "Brazo"
+
+#: scripts/ui/kit_composer.gd
+msgid "Seat"
+msgstr "Asiento"
+
+#: scripts/ui/kit_composer.gd
+msgid "Corner seat"
+msgstr "Asiento de esquina"
+
+#: scripts/ui/kit_composer.gd
+msgid "Chaise"
+msgstr "Chaise longue"
+
+#: scripts/ui/kit_composer.gd
+msgid "Storage ottoman"
+msgstr "Puf con almacenaje"
+
+#: scripts/ui/kit_composer.gd
+msgid "Side table"
+msgstr "Mesita auxiliar"
+
+#: scripts/Kits.gd
+msgid "Unknown module"
+msgstr "Módulo desconocido"
+
+#: scripts/Kits.gd
+msgid "Doesn't fit in the wall"
+msgstr "No cabe en la pared"
+
+#: scripts/Kits.gd
+msgid "Only on the floor row"
+msgstr "Solo en la fila del suelo"
+
+#: scripts/Kits.gd
+msgid "Only on the second row, at desk height"
+msgstr "Solo en la segunda fila, a la altura de un escritorio"
+
+#: scripts/Kits.gd
+msgid "Something is already there"
+msgstr "Ahí ya hay algo"
+
+#: scripts/Kits.gd
+msgid "The sofa is as long as it gets"
+msgstr "El sofá ya no puede ser más largo"
+
+#: scripts/Kits.gd
+msgid "A corner only goes at an end"
+msgstr "Una esquina solo va en un extremo"
+
+#: scripts/Kits.gd
+msgid "Add at least one module"
+msgstr "Añade al menos un módulo"
+
+#: scripts/Kits.gd
+msgid "A sofa needs at least one seat"
+msgstr "Un sofá necesita al menos un asiento"
+
+#: scripts/Main.gd
+msgid "A modular run is built to fit here: it can't move to another apartment"
+msgstr "Un mueble modular está hecho a medida de este piso: no puede ir a otro apartamento"
+
+#: scripts/Main.gd
+msgid "The new run doesn't fit here: %s"
+msgstr "La nueva composición no cabe aquí: %s"
+
+#: scripts/Main.gd
+msgid "The new run doesn't fit here"
+msgstr "La nueva composición no cabe aquí"
+
+#: scripts/Inventory.gd
+msgid "from %d€"
+msgstr "desde %d€"
+
+#: scripts/ui/touch_controls.gd
+msgid "Edit"
+msgstr "Editar"

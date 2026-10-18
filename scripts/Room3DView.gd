@@ -1480,7 +1480,7 @@ func _rotate_dragged_furniture() -> void:
 	box.size = new_size
 	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
 	var canon := Vector3(new_size.z, new_size.y, new_size.x) if f.rot_steps % 2 == 1 else new_size
-	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	var fdata := _fdata_of(f)
 	if fdata.get("animated_fold", false):
 		# _refit_item_model assumes the normal exact-fit-scaled model setup
 		# (a "model_native" meta key _apply_item_model always sets) — this
@@ -1570,7 +1570,9 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 	# plain {edge, origin, fid} data record with no Furniture node behind
 	# it at all, and therefore no fold/toggle support whatsoever. Dragging
 	# this item over a wall surface must NOT arm that path.
-	if hit["mode"] == "wall" and not _buying_furniture.wall_flush_required:
+	# A kit run is the same: its modules live on the Furniture node, which a
+	# wall item doesn't have.
+	if hit["mode"] == "wall" and not _buying_furniture.wall_flush_required and _buying_furniture.kit == "":
 		_buying_on_wall = true
 		if not _sag_preview_key.is_empty() and _sag_preview_key[0] != null:
 			_settle_stacked()   # off the floor: no surface is carrying it
@@ -2080,7 +2082,7 @@ func _wall_floor_occludes(edge: String, at: Vector2i, iw: int, ih: int) -> bool:
 	for entry in _apt_floor.get_adjacent_furniture(edge):
 		var f: Furniture = entry["furniture"]
 		var wx: int = entry["wall_x"] as int
-		var fdata := _find_furniture_data(_catalog, f.furniture_id)
+		var fdata := _fdata_of(f)
 		if fdata.is_empty():
 			continue
 		var item_w: int = (f.grid_w if edge in ["north", "south"] else f.grid_h)
@@ -2255,7 +2257,7 @@ func _finish_furniture_drag() -> void:
 	# when picked up — cut a fresh one at wherever it actually landed
 	# (its new spot on success, or back at its original spot if the drop
 	# was rejected and it snapped back).
-	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	var fdata := _fdata_of(f)
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 	_drag_target["pos"] = mesh.position
@@ -2300,6 +2302,8 @@ func _click_furniture_no_drag() -> void:
 	var f: Furniture = entry["furniture"]
 	if f.foldable and f.toggle_fold():
 		_resize_furniture_entry(entry)
+	elif f.kit != "":
+		f.edit_requested.emit(f)   # a click on a kit run opens it in the composer
 
 
 # Re-derives box size/position from a placed Furniture's current grid_w/h
@@ -2308,7 +2312,7 @@ func _click_furniture_no_drag() -> void:
 func _resize_furniture_entry(entry: Dictionary) -> void:
 	var f: Furniture = entry["furniture"]
 	var mesh: MeshInstance3D = entry["mesh"]
-	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	var fdata := _fdata_of(f)
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var fw := f.grid_w * TILE_M
 	var fd := f.grid_h * TILE_M
@@ -2349,12 +2353,7 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 		ap = mi.get_meta("model_anim_player") as AnimationPlayer
 		inst = mi.get_meta("model_inst") as Node3D
 	else:
-		if model_path.is_empty() or not ResourceLoader.exists(model_path):
-			return
-		var packed := load(model_path) as PackedScene
-		if not packed:
-			return
-		inst = packed.instantiate() as Node3D
+		inst = Kits.instantiate_model(model_path)
 		if not inst:
 			return
 		var mat := mi.material_override as StandardMaterial3D
@@ -3950,6 +3949,14 @@ func _find_furniture_data(catalog: Array, fid: String) -> Dictionary:
 	return {}
 
 
+# A placed piece's own entry: a run composed from a kit carries its own
+# footprint, height and model (see Kits.gd); anything else is its catalogue entry.
+func _fdata_of(f: Furniture, catalog: Array = _catalog) -> Dictionary:
+	if not f.kit_fdata.is_empty():
+		return f.kit_fdata
+	return _find_furniture_data(catalog, f.furniture_id)
+
+
 # `role` (a StyleController.ROLE_*) restyles the box with the level palette.
 # Left empty for furniture placeholders, whose own material doubles as the
 # switch that hides them once a model is applied.
@@ -3987,12 +3994,7 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 	# _active_model_path() marks "show this model unfolded" with a suffix.
 	var open_pose := model_path.ends_with(OPEN_POSE_SUFFIX)
 	model_path = model_path.trim_suffix(OPEN_POSE_SUFFIX)
-	if model_path.is_empty() or not ResourceLoader.exists(model_path):
-		return
-	var packed := load(model_path) as PackedScene
-	if not packed:
-		return
-	var inst := packed.instantiate() as Node3D
+	var inst := Kits.instantiate_model(model_path)
 	if not inst:
 		return
 	# A foldable piece is shown unfolded by posing the model at the end of
@@ -5611,7 +5613,7 @@ func _sync_entry_to_piece(entry: Dictionary) -> void:
 	var new_size := Vector3(f.grid_w * TILE_M, height_m, f.grid_h * TILE_M)
 	(mesh.mesh as BoxMesh).size = new_size
 	mesh.rotation.y = deg_to_rad(f.rot_steps * 90.0)
-	var fdata := _find_furniture_data(_catalog, f.furniture_id)
+	var fdata := _fdata_of(f)
 	if fdata.get("animated_fold", false):
 		_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended)
 	else:
@@ -5666,7 +5668,7 @@ func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> v
 
 
 func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
-	var fdata := _find_furniture_data(catalog, f.furniture_id)
+	var fdata := _fdata_of(f, catalog)
 	var height_m := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2)
 	var fw := f.grid_w * TILE_M
 	var fd := f.grid_h * TILE_M
@@ -5759,7 +5761,7 @@ func touch_cancel_drag() -> void:
 		var mesh: MeshInstance3D = _drag_target["mesh"]
 		_dragging_furniture = false
 		mesh.position = _drag_orig_pos
-		var fdata := _find_furniture_data(_catalog, f.furniture_id)
+		var fdata := _fdata_of(f)
 		if fdata.get("animated_fold", false):
 			_apply_animated_item_model(mesh, fdata.get("model", "") as String, f.is_extended, f, true)
 		_drag_target = {}

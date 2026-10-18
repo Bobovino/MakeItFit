@@ -301,7 +301,18 @@ static func provides(f: Dictionary) -> Array:
 		for fn in f.get(key, []) as Array:
 			if fn not in out:
 				out.append(fn)
+	# A kit can be composed to give whatever any of its modules gives.
+	for fn in Kits.all_functions(Kits.kit_of(f)):
+		if fn not in out:
+			out.append(fn)
 	return out
+
+
+# What it takes to buy one: a kit's cheapest run, else its price.
+static func entry_price(f: Dictionary) -> int:
+	if Kits.kit_of(f) != "":
+		return Kits.min_price(Kits.kit_of(f))
+	return f.get("buy_price", 0) as int
 
 
 func _set_builder_tool(tool_id: String) -> void:
@@ -630,7 +641,7 @@ class OrthoIconChip extends Control:
 		_trect.offset_right = -6; _trect.offset_bottom = -6
 		add_child(_trect)
 
-		var cached := Thumb.get_cached_ortho(_mode, fdata.get("id", "") as String)
+		var cached := Thumb.get_cached_ortho(_mode, Thumb.cache_id(fdata))
 		if cached:
 			_trect.texture = cached
 		else:
@@ -744,11 +755,14 @@ class ItemCell extends PanelContainer:
 
 		var price_lbl := Label.new()
 		price_lbl.text = Inventory.price_text(fdata.get("buy_price", 0) as int)
+		# A kit is priced by what goes into it; the card says where it starts.
+		if Kits.kit_of(fdata) != "":
+			price_lbl.text = TranslationServer.translate("from %d€") % Kits.min_price(Kits.kit_of(fdata))
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		price_lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
 		price_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 		price_lbl.add_theme_color_override("font_color", GameTheme.INK)
-		price_lbl.set_meta("price", fdata.get("buy_price", 0) as int)
+		price_lbl.set_meta("price", Inventory.entry_price(fdata))
 		price_lbl.name = "PriceLabel"
 		vb.add_child(price_lbl)
 
@@ -828,7 +842,7 @@ func _mark_affordability(cell: Control, budget: int) -> void:
 
 
 func _on_cell_clicked(f: Dictionary) -> void:
-	var price := f.get("buy_price", 0) as int
+	var price := Inventory.entry_price(f)
 	if _gm != null and _gm.budget < price:
 		Audio.play("error")
 		return

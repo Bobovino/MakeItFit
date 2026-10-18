@@ -6,6 +6,7 @@ signal sell_requested(furniture_node: Furniture)
 signal fold_toggled
 signal placement_confirmed
 signal placement_cancelled
+signal edit_requested(furniture_node: Furniture)   # a kit run was clicked: open it in the composer
 
 const TILE_SIZE := 8
 
@@ -82,6 +83,11 @@ var floor_category: String = "any"   # "any" | "balcony" | "bathroom" — which 
 var wall_flush_required: bool = false   # must end up snapped flush against a wall — see Wall.can_place()
 var is_stair:     bool = false
 var stair_direction: String = ""   # "north" | "south" | "east" | "west"
+# A run composed from a modular kit (see Kits.gd): which kit, its modules, and
+# the full entry Kits.compose() made of them (its own size, price, model...).
+var kit: String = ""
+var kit_modules: Array = []
+var kit_fdata: Dictionary = {}
 
 # Weight & support — see Wall.can_place()'s mezzanine load check. Defaults to
 # footprint area (a bigger piece is assumed heavier) so every catalog item
@@ -391,6 +397,9 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	child_level_id        = data.get("child_level_id",    "")       as String
 	is_noisy              = data.get("is_noisy",          false)    as bool
 	needs_quiet           = data.get("needs_quiet",       false)    as bool
+	kit                   = data.get("kit",               "")       as String
+	kit_modules           = (data.get("modules", []) as Array).duplicate(true) if kit != "" else []
+	kit_fdata             = data if kit != "" else {}
 	_base_weight          = weight
 	_base_mobility_tier   = mobility_tier
 	_base_grid_h          = grid_h
@@ -405,7 +414,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 
 
 func _fetch_topdown_icon(data: Dictionary) -> void:
-	var cached := Thumb.get_cached_ortho("top", furniture_id)
+	var cached := Thumb.get_cached_ortho("top", Thumb.cache_id(data))
 	if cached:
 		_topdown_icon = cached
 		queue_redraw()
@@ -1535,7 +1544,7 @@ func _input(event: InputEvent) -> void:
 			elif _dragging and not event.pressed:
 				var release_pos: Vector2 = (event as InputEventMouseButton).position
 				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
-				if was_click and foldable:
+				if was_click and (foldable or kit != ""):
 					_dragging = false
 					z_index = stack_z
 					if _wall_ref:
@@ -1543,7 +1552,10 @@ func _input(event: InputEvent) -> void:
 						_wall_ref.grid_draw.queue_redraw()
 					position = _original_pos
 					queue_redraw()
-					toggle_fold()
+					if foldable:
+						toggle_fold()
+					else:
+						edit_requested.emit(self)
 				else:
 					_end_drag(event.position)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
