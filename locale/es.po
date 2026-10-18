@@ -3220,190 +3220,142 @@ msgstr "Hace directos doce horas al día y compra pizza congelada por palés. Ne
 msgid "Click to see the pieces that count"
 msgstr "Haz clic para ver las piezas que cuentan"
 
-#: data/furniture.json:kit_wall
-msgid "Modular Storage Wall"
-msgstr "Pared de almacenaje modular"
+#: data/furniture.json:wallkit_cube_1x1
+msgid "Wall module: Open cube 1×1"
+msgstr "Módulo de pared: Cubo abierto 1×1"
 
-#: data/furniture.json:kit_sofa
-msgid "Modular Sectional Sofa"
-msgstr "Sofá modular por módulos"
+#: data/furniture.json:wallkit_cube_2x1
+msgid "Wall module: Open cube 2×1"
+msgstr "Módulo de pared: Cubo abierto 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Pick a module, then tap where it goes. Tap a module in the drawing to take it out."
-msgstr "Elige un módulo y toca dónde va. Toca un módulo del dibujo para quitarlo."
+#: data/furniture.json:wallkit_cube_3x1
+msgid "Wall module: Open cube 3×1"
+msgstr "Módulo de pared: Cubo abierto 3×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Plinth"
-msgstr "Zócalo"
+#: data/furniture.json:wallkit_cube_1x2
+msgid "Wall module: Open cube 1×2"
+msgstr "Módulo de pared: Cubo abierto 1×2"
 
-#: scripts/ui/kit_composer.gd
-msgid "Cornice"
-msgstr "Cornisa"
+#: data/furniture.json:wallkit_cube_1x3
+msgid "Wall module: Open cube 1×3"
+msgstr "Módulo de pared: Cubo abierto 1×3"
 
-#: scripts/ui/kit_composer.gd
-msgid "End filler"
-msgstr "Remate lateral"
+#: data/furniture.json:wallkit_cube_2x2
+msgid "Wall module: Open cube 2×2"
+msgstr "Módulo de pared: Cubo abierto 2×2"
 
-#: scripts/ui/kit_composer.gd
-msgid "Clear"
-msgstr "Vaciar"
+#: data/furniture.json:wallkit_books_1x1
+msgid "Wall module: Books 1×1"
+msgstr "Módulo de pared: Libros 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "nothing the tenant needs"
-msgstr "nada que necesite el inquilino"
+#: data/furniture.json:wallkit_bin_1x1
+msgid "Wall module: Fabric bin 1×1"
+msgstr "Módulo de pared: Caja de tela 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "%.2f m wide, %.2f m deep, %.2f m tall. Gives: %s"
-msgstr "%.2f m de ancho, %.2f m de fondo, %.2f m de alto. Da: %s"
+#: data/furniture.json:wallkit_winerack_1x1
+msgid "Wall module: Wine rack 1×1"
+msgstr "Módulo de pared: Botellero 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Buy · %d€"
-msgstr "Comprar · %d€"
+#: data/furniture.json:wallkit_corner_1x1
+msgid "Wall module: Corner shelf 1×1"
+msgstr "Módulo de pared: Estante de esquina 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Update · %d€"
-msgstr "Actualizar · %d€"
+#: data/furniture.json:wallkit_door_1x1
+msgid "Wall module: Door 1×1"
+msgstr "Módulo de pared: Puerta 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Open cube"
-msgstr "Cubo abierto"
+#: data/furniture.json:wallkit_door_2x1
+msgid "Wall module: Double door 2×1"
+msgstr "Módulo de pared: Puerta doble 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Books"
-msgstr "Libros"
+#: data/furniture.json:wallkit_glassdoor_1x2
+msgid "Wall module: Glass door 1×2"
+msgstr "Módulo de pared: Puerta de cristal 1×2"
 
-#: scripts/ui/kit_composer.gd
-msgid "Fabric bin"
-msgstr "Caja de tela"
+#: data/furniture.json:wallkit_flapup_2x1
+msgid "Wall module: Lift-up flap 2×1"
+msgstr "Módulo de pared: Puerta abatible 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Wine rack"
-msgstr "Botellero"
+#: data/furniture.json:wallkit_drawer_1x1
+msgid "Wall module: Drawer 1×1"
+msgstr "Módulo de pared: Cajón 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Corner shelf"
-msgstr "Estante de esquina"
+#: data/furniture.json:wallkit_drawer_2x1
+msgid "Wall module: Drawer 2×1"
+msgstr "Módulo de pared: Cajón 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Double door"
-msgstr "Puerta doble"
+#: data/furniture.json:wallkit_basket_1x1
+msgid "Wall module: Pull-out basket 1×1"
+msgstr "Módulo de pared: Cesta extraíble 1×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Glass door"
-msgstr "Puerta de cristal"
+#: data/furniture.json:wallkit_shoerack_2x1
+msgid "Wall module: Shoe rack 2×1"
+msgstr "Módulo de pared: Zapatero 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Lift-up flap"
-msgstr "Puerta abatible"
+#: data/furniture.json:wallkit_shallow_2x2
+msgid "Wall module: Shallow shelf 2×2"
+msgstr "Módulo de pared: Estante poco profundo 2×2"
 
-#: scripts/ui/kit_composer.gd
-msgid "Drawer"
-msgstr "Cajón"
+#: data/furniture.json:wallkit_hooks_2x1
+msgid "Wall module: Coat hooks 2×1"
+msgstr "Módulo de pared: Perchero de pared 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Pull-out basket"
-msgstr "Cesta extraíble"
+#: data/furniture.json:wallkit_rail_2x3
+msgid "Wall module: Hanging rail 2×3"
+msgstr "Módulo de pared: Barra de colgar 2×3"
 
-#: scripts/ui/kit_composer.gd
-msgid "Shoe rack"
-msgstr "Zapatero"
+#: data/furniture.json:wallkit_media_2x2
+msgid "Wall module: TV bay 2×2"
+msgstr "Módulo de pared: Hueco para la tele 2×2"
 
-#: scripts/ui/kit_composer.gd
-msgid "Shallow shelf"
-msgstr "Estante poco profundo"
+#: data/furniture.json:wallkit_desk_2x1
+msgid "Wall module: Fold-down desk 2×1"
+msgstr "Módulo de pared: Escritorio abatible 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Coat hooks"
-msgstr "Perchero de pared"
+#: data/furniture.json:wallkit_bench_2x1
+msgid "Wall module: Bench 2×1"
+msgstr "Módulo de pared: Banco 2×1"
 
-#: scripts/ui/kit_composer.gd
-msgid "Hanging rail"
-msgstr "Barra de colgar"
+#: data/furniture.json:wallkit_plinth_2
+msgid "Wall module: Plinth"
+msgstr "Módulo de pared: Zócalo"
 
-#: scripts/ui/kit_composer.gd
-msgid "TV bay"
-msgstr "Hueco para la tele"
+#: data/furniture.json:wallkit_cap_2
+msgid "Wall module: Cornice"
+msgstr "Módulo de pared: Cornisa"
 
-#: scripts/ui/kit_composer.gd
-msgid "Fold-down desk"
-msgstr "Escritorio abatible"
+#: data/furniture.json:wallkit_filler_half
+msgid "Wall module: Filler strip"
+msgstr "Módulo de pared: Remate"
 
-#: scripts/ui/kit_composer.gd
-msgid "Armrest"
-msgstr "Brazo"
+#: data/furniture.json:sofakit_seat_1
+msgid "Sofa module: Seat"
+msgstr "Módulo de sofá: Asiento"
 
-#: scripts/ui/kit_composer.gd
-msgid "Seat"
-msgstr "Asiento"
+#: data/furniture.json:sofakit_corner_1
+msgid "Sofa module: Corner seat"
+msgstr "Módulo de sofá: Asiento de esquina"
 
-#: scripts/ui/kit_composer.gd
-msgid "Corner seat"
-msgstr "Asiento de esquina"
+#: data/furniture.json:sofakit_chaise_1
+msgid "Sofa module: Chaise"
+msgstr "Módulo de sofá: Chaise longue"
 
-#: scripts/ui/kit_composer.gd
-msgid "Chaise"
-msgstr "Chaise longue"
+#: data/furniture.json:sofakit_ottoman_1
+msgid "Sofa module: Ottoman"
+msgstr "Módulo de sofá: Otomana"
 
-#: scripts/ui/kit_composer.gd
-msgid "Storage ottoman"
-msgstr "Puf con almacenaje"
+#: data/furniture.json:sofakit_storage_1
+msgid "Sofa module: Storage ottoman"
+msgstr "Módulo de sofá: Puf con almacenaje"
 
-#: scripts/ui/kit_composer.gd
-msgid "Side table"
-msgstr "Mesita auxiliar"
+#: data/furniture.json:sofakit_arm_1
+msgid "Sofa module: Armrest"
+msgstr "Módulo de sofá: Brazo"
 
-#: scripts/Kits.gd
-msgid "Unknown module"
-msgstr "Módulo desconocido"
-
-#: scripts/Kits.gd
-msgid "Doesn't fit in the wall"
-msgstr "No cabe en la pared"
-
-#: scripts/Kits.gd
-msgid "Only on the floor row"
-msgstr "Solo en la fila del suelo"
-
-#: scripts/Kits.gd
-msgid "Only on the second row, at desk height"
-msgstr "Solo en la segunda fila, a la altura de un escritorio"
-
-#: scripts/Kits.gd
-msgid "Something is already there"
-msgstr "Ahí ya hay algo"
-
-#: scripts/Kits.gd
-msgid "The sofa is as long as it gets"
-msgstr "El sofá ya no puede ser más largo"
-
-#: scripts/Kits.gd
-msgid "A corner only goes at an end"
-msgstr "Una esquina solo va en un extremo"
-
-#: scripts/Kits.gd
-msgid "Add at least one module"
-msgstr "Añade al menos un módulo"
-
-#: scripts/Kits.gd
-msgid "A sofa needs at least one seat"
-msgstr "Un sofá necesita al menos un asiento"
-
-#: scripts/Main.gd
-msgid "A modular run is built to fit here: it can't move to another apartment"
-msgstr "Un mueble modular está hecho a medida de este piso: no puede ir a otro apartamento"
-
-#: scripts/Main.gd
-msgid "The new run doesn't fit here: %s"
-msgstr "La nueva composición no cabe aquí: %s"
-
-#: scripts/Main.gd
-msgid "The new run doesn't fit here"
-msgstr "La nueva composición no cabe aquí"
+#: data/furniture.json:sofakit_console_1
+msgid "Sofa module: Side table"
+msgstr "Módulo de sofá: Mesita auxiliar"
 
 #: scripts/Inventory.gd
-msgid "from %d€"
-msgstr "desde %d€"
-
-#: scripts/ui/touch_controls.gd
-msgid "Edit"
-msgstr "Editar"
+msgid "Modular"
+msgstr "Modular"

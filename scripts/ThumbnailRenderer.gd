@@ -74,9 +74,9 @@ func get_icon_async(fdata: Dictionary) -> Texture2D:
 	if fid == "":
 		return null
 	var model_path := fdata.get("model", "") as String
-	if not Kits.model_exists(model_path):
+	if model_path.is_empty() or not ResourceLoader.exists(model_path):
 		return null
-	return await _dispatch("cat:" + cache_id(fdata), "cat", model_path)
+	return await _dispatch("cat:" + fid, "cat", model_path)
 
 
 # Real orthographic top-down render of the model, framed to the item's actual
@@ -86,12 +86,12 @@ func get_icon_async(fdata: Dictionary) -> Texture2D:
 func get_topdown_icon_async(fdata: Dictionary) -> Texture2D:
 	var fid := fdata.get("id", "") as String
 	var model_path := fdata.get("model", "") as String
-	if fid == "" or not Kits.model_exists(model_path):
+	if fid == "" or model_path.is_empty() or not ResourceLoader.exists(model_path):
 		return null
 	var sz := fdata.get("size", {}) as Dictionary
 	var span_x := (sz.get("w", 4) as int) * TILE_M
 	var span_z := (sz.get("h", 4) as int) * TILE_M
-	return await _dispatch("top:" + cache_id(fdata), "top", model_path, span_x, span_z)
+	return await _dispatch("top:" + fid, "top", model_path, span_x, span_z)
 
 
 # Real orthographic front-elevation render, framed to the item's actual
@@ -100,20 +100,12 @@ func get_topdown_icon_async(fdata: Dictionary) -> Texture2D:
 func get_elevation_icon_async(fdata: Dictionary) -> Texture2D:
 	var fid := fdata.get("id", "") as String
 	var model_path := fdata.get("model", "") as String
-	if fid == "" or not Kits.model_exists(model_path):
+	if fid == "" or model_path.is_empty() or not ResourceLoader.exists(model_path):
 		return null
 	var sz := fdata.get("size", {}) as Dictionary
 	var span_x := (sz.get("w", 4) as int) * TILE_M
 	var span_y := (fdata.get("wall_h", 8) as int) * TILE_M
-	return await _dispatch("front:" + cache_id(fdata), "front", model_path, span_x, span_y)
-
-
-# What a render is cached under: the piece's id, plus, for a run composed
-# from a kit, which modules it is made of (every run shares the kit's id).
-static func cache_id(fdata: Dictionary) -> String:
-	var fid := fdata.get("id", "") as String
-	var model_path := fdata.get("model", "") as String
-	return fid + "#" + str(model_path.hash()) if Kits.is_kit_model(model_path) else fid
+	return await _dispatch("front:" + fid, "front", model_path, span_x, span_y)
 
 
 # Shared concurrency-safe cache/queue: requests for the same key share one
@@ -154,7 +146,10 @@ func _dispatch(cache_key: String, kind: String, model_path: String, span_a: floa
 
 
 func _render(model_path: String) -> Texture2D:
-	var inst := Kits.instantiate_model(model_path)
+	var packed := load(model_path) as PackedScene
+	if not packed:
+		return null
+	var inst := packed.instantiate() as Node3D
 	if not inst:
 		return null
 	_holder.add_child(inst)
@@ -195,7 +190,10 @@ func _render(model_path: String) -> Texture2D:
 # aspect matches span_a:span_b exactly, so it composites at true scale
 # instead of being squashed into a fixed square.
 func _render_ortho(model_path: String, mode: String, span_a: float, span_b: float) -> Texture2D:
-	var inst := Kits.instantiate_model(model_path)
+	var packed := load(model_path) as PackedScene
+	if not packed:
+		return null
+	var inst := packed.instantiate() as Node3D
 	if not inst:
 		return null
 	_holder.add_child(inst)

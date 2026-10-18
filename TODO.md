@@ -46,23 +46,20 @@ rather than props.
 ## Modular furniture kits — follow-ups
 
 The storage wall (`wall_system/`, 0.40 m cells) and the sectional sofa (`modular_sofa/`, 0.90 m
-cells) are in as `kit_wall` and `kit_sofa` (scripts/Kits.gd, scripts/ui/kit_composer.gd). Buying
-one opens a composer; the run is then one ordinary piece whose `modules` list rides along in
-saves, undo and level files the way `child_level_id` does, and its footprint, height, price
-(sum of modules) and functions (union) are derived from that list. Clicking a placed run (or
-Edit in the touch bar) reopens it in the composer. Left open:
+cells) are in the ordinary shop, one piece per module (`wallkit_*`, `sofakit_*`, all under the
+Modular tab and on the category wheel). Each is bought and placed like any piece; wall modules
+are surfaces, so a wall is built by stacking modules on one another. Left open:
 
-- **Footprints are rectangles.** A chaise makes the whole run 1.80 m deep, and `Corner_1` only
-  turns the end of a straight run: there is no L-shaped sectional, because every placement,
-  collision and pathing check in the game works on one `grid_w × grid_h` rectangle.
-- **The wall is floor-standing.** A run with empty bottom rows still occupies the floor below
-  them; a wall-hung run would need `z_bottom` honoured by Floor's overlap checks.
-- **Runs can't be sent to another apartment** (refused with a message): the owned list in other
-  apartments is `{id, count}` and would drop the modules.
-- **The composer's 3D preview is slow on first open**: it waits its turn behind the catalogue
-  card renders in ThumbnailRenderer's single queue (several seconds on a cold start).
-- Module animations (drawers, doors, the ottoman lid) are not played; runs aren't foldable.
-- Prices and functions per module are a first pass (Kits.WALL_MODULES / SOFA_MODULES).
+- **Stacking needs full support.** A module only stands on one piece that covers its whole
+  footprint, so a two-wide module can't bridge two one-wide cubes (the game's surface rule).
+- **A stacked wall is a pile of low pieces** as far as light, sightlines and loft headroom are
+  concerned: each module is judged by its own height, not the height of the stack.
+- **Nothing keeps the desk or bench module at a sensible height**: a fold-down desk on the floor
+  still counts for work.
+- `Corner_1` (sofa) has its second back on its right only; there is no mirrored version, so a
+  corner on the left end is the same piece turned.
+- Module animations (drawers, doors, the ottoman lid) are not played.
+- Prices and functions per module are a first pass.
 
 Also deferred, for the same "not a single footprint prop" reason:
 - `godot_glb/stairs/` (11 space-saving staircases) — the existing `stair_n/s/e/w` catalog entries

@@ -16,7 +16,7 @@ enum Category { FURNITURE, BUILDER }
 
 # Sub-categories within the Furniture tab — icon-grid browsing instead of one
 # long scrolling list, most valuable once the catalog is 40-60+ pieces.
-const SUB_CATEGORIES := ["All", "Bedroom", "Bathroom", "Kitchen", "Living", "Storage", "Transformable", "Rentals"]
+const SUB_CATEGORIES := ["All", "Bedroom", "Bathroom", "Kitchen", "Living", "Storage", "Modular", "Transformable", "Rentals"]
 
 # Icon-only filter tabs — same glyph language as TenantCard's need chips, so
 # the sub-category row reads as a compact row of pictograms instead of a wall
@@ -28,6 +28,7 @@ const SUB_CATEGORY_GLYPH := {
 	"Kitchen":       "\ueeff",
 	"Living":        "\uefaf",
 	"Storage":       "\uea45",
+	"Modular":       "\ueef7",
 	"Transformable": "\ued56",
 	"Rentals":       "\ueb82",
 }
@@ -69,7 +70,8 @@ const VIEW_BUILDER := "Builder"
 const VIEWS := [
 	["Needed", "\uf6a6", "Needed"], ["All", "\uedba", "All"], ["Bedroom", "\ueb5c", "Bedroom"],
 	["Bathroom", "\uef48", "Bathroom"], ["Kitchen", "\ueeff", "Kitchen"], ["Living", "\uefaf", "Living"],
-	["Storage", "\uea45", "Storage"], ["Transformable", "\ued56", "Folding"], ["Rentals", "\ueb82", "Rentals"],
+	["Storage", "\uea45", "Storage"], ["Modular", "\ueef7", "Modular"], ["Transformable", "\ued56", "Folding"],
+	["Rentals", "\ueb82", "Rentals"],
 	["Builder", "\ueb40", "Build"],
 ]
 var _builder_tool_buttons: Array = []
@@ -156,6 +158,7 @@ func _ensure_filter_box() -> void:
 	# Enter hands the keyboard back to the game (R to rotate, Q/E, WASD).
 	_search.text_submitted.connect(func(_t: String): _search.release_focus())
 	top.add_child(_search)
+	resized.connect(_fit_tabs)
 	root.add_child(scroll)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,6 +268,30 @@ func _sync_filter_buttons() -> void:
 		b.button_pressed = (id == view) and not searching
 		if id == VIEW_NEEDED:
 			b.text = "\uf6a6 %s" % _view_label(id) + ((" (%d)" % needed) if needed > 0 else "")
+	_fit_tabs.call_deferred()
+
+
+# Nine tabs and the search box don't fit across a phone, nor in German at
+# the design width: when they don't, the tabs other than the current one show
+# only their icon (the name is in the tooltip).
+func _fit_tabs() -> void:
+	if not is_instance_valid(_filter_box):
+		return
+	var view := _current_view()
+	for spec in VIEWS:
+		var b := _sub_filter_buttons.get(spec[0]) as Button
+		if b and spec[0] != VIEW_NEEDED:
+			b.text = "%s %s" % [spec[1], _view_label(spec[0])]
+			b.tooltip_text = ""
+	# The strip grows to fit what is in it, so the screen is the measure.
+	var room := get_viewport_rect().size.x - maxf(global_position.x, 0.0) * 2.0 - 24.0
+	if _filter_box.get_combined_minimum_size().x <= room:
+		return
+	for spec in VIEWS:
+		var b := _sub_filter_buttons.get(spec[0]) as Button
+		if b and spec[0] != VIEW_NEEDED and spec[0] != view:
+			b.text = spec[1]
+			b.tooltip_text = _view_label(spec[0])
 
 
 # What the tenant still lacks: every need the level asks for (in any moment)
@@ -301,18 +328,7 @@ static func provides(f: Dictionary) -> Array:
 		for fn in f.get(key, []) as Array:
 			if fn not in out:
 				out.append(fn)
-	# A kit can be composed to give whatever any of its modules gives.
-	for fn in Kits.all_functions(Kits.kit_of(f)):
-		if fn not in out:
-			out.append(fn)
 	return out
-
-
-# What it takes to buy one: a kit's cheapest run, else its price.
-static func entry_price(f: Dictionary) -> int:
-	if Kits.kit_of(f) != "":
-		return Kits.min_price(Kits.kit_of(f))
-	return f.get("buy_price", 0) as int
 
 
 func _set_builder_tool(tool_id: String) -> void:
@@ -340,6 +356,7 @@ func _view_label(id: String) -> String:
 		"Kitchen":       return tr("Kitchen")
 		"Living":        return tr("Living")
 		"Storage":       return tr("Storage")
+		"Modular":       return tr("Modular")
 		"Transformable": return tr("Folding")
 		"Rentals":       return tr("Rentals")
 		"Builder":       return tr("Build")
@@ -353,6 +370,10 @@ func _view_label(id: String) -> String:
 func _sub_category_of(f: Dictionary) -> String:
 	if f.get("rental", false) as bool:
 		return "Rentals"
+	# The storage-wall and sofa modules, bought one by one and put together in
+	# the room, are kept together rather than spread over Storage and Living.
+	if (f.get("kit", "") as String) != "":
+		return "Modular"
 	if (f.get("foldable", false) as bool) or (f.get("rail_axis", "") as String) != "":
 		return "Transformable"
 	var functions := f.get("functions", []) as Array
@@ -390,6 +411,12 @@ func _render() -> void:
 	# invited clicking the first card; what a piece costs in floor is the
 	# decision here, and the card shows it.
 	var by_size := func(a, b):
+		# Modules come after whole pieces (there are 34 of them: they would
+		# crowd out everything else under a need), each kit together.
+		var ka := a.get("kit", "") as String
+		var kb := b.get("kit", "") as String
+		if ka != kb:
+			return ka < kb
 		var sa := a.get("size", {}) as Dictionary
 		var sb := b.get("size", {}) as Dictionary
 		var aa := (sa.get("w", 0) as int) * (sa.get("h", 0) as int)
@@ -641,7 +668,7 @@ class OrthoIconChip extends Control:
 		_trect.offset_right = -6; _trect.offset_bottom = -6
 		add_child(_trect)
 
-		var cached := Thumb.get_cached_ortho(_mode, Thumb.cache_id(fdata))
+		var cached := Thumb.get_cached_ortho(_mode, fdata.get("id", "") as String)
 		if cached:
 			_trect.texture = cached
 		else:
@@ -755,14 +782,11 @@ class ItemCell extends PanelContainer:
 
 		var price_lbl := Label.new()
 		price_lbl.text = Inventory.price_text(fdata.get("buy_price", 0) as int)
-		# A kit is priced by what goes into it; the card says where it starts.
-		if Kits.kit_of(fdata) != "":
-			price_lbl.text = TranslationServer.translate("from %d€") % Kits.min_price(Kits.kit_of(fdata))
 		price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		price_lbl.add_theme_font_override("font", GameTheme.font("mono_bold"))
 		price_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 		price_lbl.add_theme_color_override("font_color", GameTheme.INK)
-		price_lbl.set_meta("price", Inventory.entry_price(fdata))
+		price_lbl.set_meta("price", fdata.get("buy_price", 0) as int)
 		price_lbl.name = "PriceLabel"
 		vb.add_child(price_lbl)
 
@@ -842,7 +866,7 @@ func _mark_affordability(cell: Control, budget: int) -> void:
 
 
 func _on_cell_clicked(f: Dictionary) -> void:
-	var price := Inventory.entry_price(f)
+	var price := f.get("buy_price", 0) as int
 	if _gm != null and _gm.budget < price:
 		Audio.play("error")
 		return

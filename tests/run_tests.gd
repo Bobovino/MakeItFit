@@ -32,7 +32,7 @@ func _ready() -> void:
 	await _t_moved_from_home()
 	await _t_carry_hints()
 	await _t_three_freezers()
-	await _t_kit_runs_in_a_level()
+	await _t_kit_modules_in_a_level()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -52,10 +52,7 @@ func _run_all() -> void:
 	_test("a swing door keeps the quarter circle it opens through", func(): _t_door_swing())
 	_test("a bed unfolded in another moment keeps its space then", func(): _t_other_moment())
 	_test("under a loft only what is low enough; nothing in a window", func(): _t_loft_and_window())
-	_test("kits: the catalogue's numbers are what the default run composes to", func(): _t_kit_catalogue())
-	_test("kits: wall cells can't overlap, and benches and desks keep to their rows", func(): _t_kit_wall_rules())
-	_test("kits: a sofa's corner only goes at an end, and it needs a seat", func(): _t_kit_sofa_rules())
-	_test("kits: a run's 3D model is assembled to exactly its footprint", func(): _t_kit_model())
+	_test("kit modules: every module is in the shop, with its model", func(): _t_kit_modules_catalogue())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -415,69 +412,33 @@ func _t_tenants_are_cosmetic() -> void:
 	await get_tree().process_frame
 
 
-# ── Modular kits ─────────────────────────────────────────────────────────────
-func _t_kit_catalogue() -> void:
+# ── Modular kits: storage-wall and sofa modules, one piece each ──────────────
+func _t_kit_modules_catalogue() -> void:
 	var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/furniture.json"))
-	var kits := 0
+	var wall := 0
+	var sofa := 0
+	var missing: Array = []
+	var inv := Inventory.new()
+	var wrong_tab: Array = []
 	for e in data["furniture"]:
-		if Kits.kit_of(e) == "":
-			continue
-		kits += 1
-		var c := Kits.compose(e)
-		for key in ["size", "functions", "buy_price", "sell_price", "wall_h", "model"]:
-			# Through JSON both ways, so 16 and 16.0 compare equal.
-			_eq(JSON.stringify(e[key]), JSON.stringify(JSON.parse_string(JSON.stringify(c[key]))), "%s.%s" % [e["id"], key])
-		_eq(Kits.run_reason(Kits.kit_of(e), e["modules"]), "", "%s default run" % e["id"])
-	_eq(kits, 2, "kit entries")
+		match e.get("kit", ""):
+			"wall": wall += 1
+			"sofa": sofa += 1
+			_: continue
+		if not ResourceLoader.exists(e["model"]):
+			missing.append(e["id"])
+		if inv._sub_category_of(e) != "Modular":
+			wrong_tab.append(e["id"])
+	inv.free()
+	_eq([wall, sofa], [27, 7], "wall and sofa modules")
+	_eq(missing, [], "modules without their model")
+	_eq(wrong_tab, [], "modules outside the Modular tab")
 
 
-func _t_kit_wall_rules() -> void:
-	var run := [{"m": "Drawer_2x1", "c": 0, "r": 0}]
-	_ok(Kits.wall_fit_reason(run, "Cube_1x1", 1, 0) != "", "a cube inside the drawer's cells")
-	_eq(Kits.wall_fit_reason(run, "Cube_1x1", 2, 0), "", "a cube beside the drawer")
-	_ok(Kits.wall_fit_reason(run, "Bench_2x1", 0, 2) != "", "a bench up the wall")
-	_eq(Kits.wall_fit_reason([], "Bench_2x1", 0, 0), "", "a bench on the floor")
-	_ok(Kits.wall_fit_reason([], "Desk_2x1", 0, 0) != "", "a desk on the floor row")
-	_eq(Kits.wall_fit_reason([], "Desk_2x1", 0, 1), "", "a desk at the second row")
-	_ok(Kits.wall_fit_reason([], "Rail_2x3", 0, 4) != "", "a rail through the top")
-	# 2 columns with a half-cell filler: 1.00 m on the 10 cm grid; 3 rows on a plinth.
-	var mods := [{"m": "Cube_2x1", "c": 3, "r": 0}, {"m": "Cube_1x1", "c": 3, "r": 2}, {"m": "Filler"}, {"m": "Plinth"}]
-	var fd := Kits.compose({"id": "t", "kit": "wall", "name": "t"}, mods)
-	_eq(fd["size"], {"w": 10, "h": Kits.WALL_DEPTH_TILES}, "wall footprint")
-	_eq(fd["wall_h"], 13, "wall height in tiles (0.10 + 3 x 0.40)")
-	_eq(int(fd["modules"][0]["c"]), 0, "the run is shifted to start at column 0")
-	_eq(fd["buy_price"], 40 + 25 + 10 * 3 + 15 * 2, "modules, a filler per row, a plinth per 0.80 m")
-
-
-func _t_kit_sofa_rules() -> void:
-	var run := [{"m": "Seat_1"}, {"m": "Seat_1"}]
-	_eq(Kits.sofa_fit_reason(run, "Corner_1", 2), "", "a corner at the end")
-	_ok(Kits.sofa_fit_reason(run, "Corner_1", 1) != "", "a corner in the middle")
-	_ok(Kits.sofa_fit_reason(run + [{"m": "Corner_1"}], "Seat_1", 3) != "", "past an end corner")
-	_ok(Kits.run_reason("sofa", [{"m": "Arm_1"}, {"m": "Console_1"}]) != "", "no seat")
-	var fd := Kits.compose({"id": "t", "kit": "sofa", "name": "t"}, [{"m": "Arm_1"}, {"m": "Seat_1"}, {"m": "Chaise_1"}])
-	_eq(fd["size"], {"w": 20, "h": 18}, "a chaise makes the run 1.80 m deep")
-	_eq(fd["functions"], ["sit"], "sofa functions")
-
-
-func _t_kit_model() -> void:
-	var mods := [{"m": "Cube_2x2", "c": 0, "r": 0}, {"m": "Door_1x1", "c": 2, "r": 1}, {"m": "Cap"}]
-	var node := Kits.instantiate_model(Kits.model_path("wall", mods))
-	_ok(node != null, "a kit model path builds a node")
-	if node == null:
-		return
-	var marker := node.get_node("KitBounds") as MeshInstance3D
-	_ok((marker.mesh as BoxMesh).size.is_equal_approx(Vector3(1.2, 0.84, 0.3)), "bounds %s" % (marker.mesh as BoxMesh).size)
-	_eq(node.get_child_count(), 2 + 2 + 1, "two modules, two cornice lengths, the bounds")
-	node.free()
-	var sofa := Kits.build_node("sofa", [{"m": "Corner_1"}, {"m": "Seat_1"}])
-	_eq((sofa.get_child(0) as Node3D).scale.x, -1.0, "a corner that starts the run is mirrored")
-	sofa.free()
-
-
-# A storage wall with a desk in it and a sofa with a storage ottoman, in a real
-# level: they count for the tenant, and their modules survive undo and a save.
-func _t_kit_runs_in_a_level() -> void:
+# Modules are stacked into a wall one by one with the ordinary placement: a
+# cube goes on a drawer, a wider piece doesn't hang off a narrower one, and a
+# desk module and a sofa seat count for the tenant like any desk and seat.
+func _t_kit_modules_in_a_level() -> void:
 	var real_path := GameState.save_path
 	GameState.save_path = "user://test_kits_save.json"
 	GameState.pending_level_id = "day_and_night"
@@ -488,127 +449,48 @@ func _t_kit_runs_in_a_level() -> void:
 		await get_tree().process_frame
 	var fl: Floor = main._floors[main._current_floor_id]
 	var gm: GameManager = main.gm
-	var wall_mods := [{"m": "Drawer_2x1", "c": 0, "r": 0}, {"m": "Desk_2x1", "c": 0, "r": 1}, {"m": "Cube_2x1", "c": 0, "r": 2}]
-	var wall := _place_kit(main, fl, "kit_wall", wall_mods)
-	var sofa := _place_kit(main, fl, "kit_sofa", [{"m": "Seat_1"}, {"m": "Storage_1"}])
+	var drawer := _place_somewhere(main, fl, "wallkit_drawer_2x1")
+	_current = "kit modules: a drawer module stands against a wall"
+	_ok(drawer != null and fl.is_registered(drawer) and fl.support_under(drawer) == null)
+	var cube: Furniture = main._spawn_furniture("wallkit_cube_1x1", fl, 0, 0)
+	var on_drawer := fl.can_place(cube, drawer.grid_pos)
+	fl.place_furniture(cube, drawer.grid_pos)
+	_current = "kit modules: a cube stacks on the drawer, 0.40 m up"
+	_ok(on_drawer and fl.support_under(cube) == drawer and is_equal_approx(fl.stack_lift(cube), 4.0),
+		"%s %s %s" % [on_drawer, fl.support_under(cube), fl.stack_lift(cube)])
+	var desk: Furniture = main._spawn_furniture("wallkit_desk_2x1", fl, 0, 0)
+	_current = "kit modules: a two-wide module doesn't hang off a one-wide cube"
+	_ok(not fl.can_place(desk, cube.grid_pos))
+	fl.remove_furniture(cube)
+	var desk_on := fl.can_place(desk, drawer.grid_pos)
+	fl.place_furniture(desk, drawer.grid_pos)
+	var seat := _place_somewhere(main, fl, "sofakit_seat_1")
 	main._refresh_functions()
-	_current = "kits: a composed wall and sofa can be put down in a level"
-	_ok(wall != null and sofa != null)
-	if wall == null or sofa == null:
-		main.queue_free()
-		GameState.save_path = real_path
-		return
-	_current = "kits: a run's footprint, price and functions come from its modules"
-	_ok(wall.grid_w * wall.grid_h == 8 * 3 and wall.functions.has("work") and wall.functions.has("storage")
-		and wall.buy_price == 85 + 140 + 40 and sofa.functions.has("storage"), "%s %s %s" % [wall.grid_w, wall.functions, wall.buy_price])
-	_current = "kits: they count for the tenant's needs like normal furniture"
-	_ok(gm.fulfilled_functions.has("work") and gm.fulfilled_functions.has("sit"), str(gm.fulfilled_functions))
-
-	# Undo: a snapshot taken with the runs restores them module for module.
-	var before := _kit_signature(fl)
-	var snap: Dictionary = main._snapshot_all_furniture()
-	main._restore_furniture_snapshot(snap)
-	_current = "kits: undo keeps each run's modules"
-	_ok(_kit_signature(fl) == before and before.contains("Desk_2x1") and before.contains("Storage_1"), _kit_signature(fl))
-
-	# Save and load.
+	_current = "kit modules: a desk module and a sofa seat count for work and sit"
+	_ok(desk_on and seat != null and fl.is_registered(seat) and gm.fulfilled_functions.has("work")
+		and gm.fulfilled_functions.has("sit"), "%s %s" % [desk_on, gm.fulfilled_functions])
+	var before := _level_state_string(main)
 	var data := LevelProgress.capture(main)
 	main._load_level("day_and_night")
 	for i in 5:
 		await get_tree().process_frame
 	LevelProgress.apply(main, data)
+	_current = "kit modules: a stacked wall and a sofa module load back as they were"
+	_ok(_level_state_string(main) == before, "\n  before %s\n  after  %s" % [before, _level_state_string(main)])
 	fl = main._floors[main._current_floor_id]
-	_current = "kits: a saved level loads with the same runs"
-	_ok(_kit_signature(fl) == before, "\n  before %s\n  after  %s" % [before, _kit_signature(fl)])
-	# The other save shape, kept for apartments visited this session.
-	var state: Dictionary = main._snapshot_level_state()
-	main._load_level("day_and_night")
-	for i in 5:
-		await get_tree().process_frame
-	main._apply_level_state_snapshot(state)
-	fl = main._floors[main._current_floor_id]
-	_current = "kits: a level left and come back to keeps its runs"
-	_ok(_kit_signature(fl) == before, "\n  before %s\n  after  %s" % [before, _kit_signature(fl)])
-
-	# Buying a composed run pays its own price; selling it gives that back.
-	var funds := gm.budget
-	var bought := _place_kit(main, fl, "kit_sofa", [{"m": "Ottoman_1"}])
-	main._settle_placement("kit_sofa", false, bought.kit_fdata)
-	_current = "kits: a run is bought at the price of its modules"
-	_eq(gm.budget, funds - 60)
-	main._on_sell_pressed(bought, fl)
-	_current = "kits: selling a run gives its price back"
-	_eq(gm.budget, funds)
-
-	# Editing a placed run in place: same spot, the new modules, the difference paid.
-	var w2: Furniture = null
+	var top: Furniture = null
 	for entry in fl.get_all_furniture():
-		if (entry as Furniture).furniture_id == "kit_wall":
-			w2 = entry
-	var pos := w2.grid_pos
-	funds = gm.budget
-	main._apply_kit_edit(w2, [{"m": "Drawer_2x1", "c": 0, "r": 0}, {"m": "Rail_2x3", "c": 0, "r": 1}])
-	var edited: Furniture = null
-	for entry in fl.get_all_furniture():
-		if (entry as Furniture).furniture_id == "kit_wall":
-			edited = entry
-	_current = "kits: an edited run replaces the old one where it stood, paying the difference"
-	_ok(edited != null and edited != w2 and edited.grid_pos == pos and edited.functions.has("dress")
-		and gm.budget == funds - (85 + 150 - (85 + 140 + 40)), "%s %s" % [edited.grid_pos if edited else null, gm.budget - funds])
-
-	# The way a player does it: the catalogue opens the composer, and what is
-	# composed there goes on the pointer to be put down.
-	main._on_buy_requested("kit_sofa")
-	var comp: KitComposer = main._kit_composer
-	_current = "kits: buying a kit opens the composer first, and the room keeps still"
-	_ok(is_instance_valid(comp) and Furniture.read_only and main._blocking_modal_open())
-	if is_instance_valid(comp):
-		comp._modules = [{"m": "Seat_1"}]
-		comp._changed()
-		comp._confirm()
-	var ghost: Furniture = main._pending_floor_ghost
-	if not is_instance_valid(ghost) and is_instance_valid(main._mode3d_view):
-		ghost = main._mode3d_view._buying_furniture
-	_current = "kits: the composed run goes on the pointer to be placed"
-	_ok(is_instance_valid(ghost) and ghost.kit == "sofa" and ghost.kit_modules.size() == 1 and ghost.buy_price == 120
-		and not Furniture.read_only)
-	if is_instance_valid(ghost) and ghost == main._pending_floor_ghost:
-		ghost.cancel_placement()
-	elif is_instance_valid(main._mode3d_view):
-		main._mode3d_view.cancel_buying()
-	main.touch_edit_piece(edited)
-	_current = "kits: a long-press Edit opens a placed run in the composer"
-	_ok(is_instance_valid(main._kit_composer) and main._kit_composer._editing
-		and JSON.stringify(main._kit_composer._modules) == JSON.stringify(edited.kit_modules))
-	if is_instance_valid(main._kit_composer):
-		main._kit_composer._cancel()
+		if (entry as Furniture).furniture_id == "wallkit_desk_2x1":
+			top = entry
+	var under := fl.support_under(top) if top else null
+	_current = "kit modules: of two same-size modules, the one put down second is still on top after loading"
+	_ok(under != null and under.furniture_id == "wallkit_drawer_2x1" and fl.support_under(under) == null
+		and is_equal_approx(fl.stack_lift(top), 4.0), "%s" % under)
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path
-
-
-func _place_kit(main: Node, fl: Floor, id: String, mods: Array) -> Furniture:
-	var f: Furniture = main._spawn_furniture(id, fl, 0, 0, {"modules": mods})
-	var b := fl.get_room_bounds()
-	for y in range(b.position.y, b.end.y):
-		for x in range(b.position.x, b.end.x):
-			if fl.can_place(f, Vector2(x, y)):
-				fl.place_furniture(f, Vector2(x, y))
-				return f
-	fl.remove_furniture(f)
-	return null
-
-
-func _kit_signature(fl: Floor) -> String:
-	var out: Array = []
-	for entry in fl.get_all_furniture():
-		var f := entry as Furniture
-		if f.kit != "":
-			out.append("%s@%s %s" % [f.furniture_id, f.grid_pos, JSON.stringify(f.kit_modules)])
-	out.sort()
-	return " | ".join(out)
 
 
 func _puzzle_state(main: Node, fl: Floor) -> String:

@@ -3469,47 +3469,841 @@
       "mobility_tier": "green"
     },
     {
-      "id": "kit_wall",
-      "name": "Modular Storage Wall",
+      "id": "wallkit_cube_1x1",
+      "name": "Wall module: Open cube 1×1",
       "kit": "wall",
       "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 25,
+      "sell_price": 10,
       "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
       "wall_flush_required": true,
       "front": "long",
-      "mobility_tier": "red",
-      "modules": [
-        {"m": "Drawer_2x1", "c": 0, "r": 0}, {"m": "Drawer_2x1", "c": 2, "r": 0},
-        {"m": "Door_2x1", "c": 0, "r": 1}, {"m": "Door_2x1", "c": 2, "r": 1},
-        {"m": "Cube_2x2", "c": 0, "r": 2}, {"m": "Books_1x1", "c": 2, "r": 2},
-        {"m": "Bin_1x1", "c": 3, "r": 2}, {"m": "Cube_1x1", "c": 2, "r": 3},
-        {"m": "WineRack_1x1", "c": 3, "r": 3}, {"m": "FlapUp_2x1", "c": 0, "r": 4},
-        {"m": "FlapUp_2x1", "c": 2, "r": 4}, {"m": "Plinth"}, {"m": "Cap"}
-      ],
-      "size": {"w": 16, "h": 3},
-      "functions": ["storage"],
-      "buy_price": 730,
-      "sell_price": 292,
-      "wall_h": 22,
-      "z_top": 22,
-      "height_category": "tall",
-      "model": "kit:wall:[{\"c\":0,\"m\":\"Drawer_2x1\",\"r\":0},{\"c\":2,\"m\":\"Drawer_2x1\",\"r\":0},{\"c\":0,\"m\":\"Door_2x1\",\"r\":1},{\"c\":2,\"m\":\"Door_2x1\",\"r\":1},{\"c\":0,\"m\":\"Cube_2x2\",\"r\":2},{\"c\":2,\"m\":\"Books_1x1\",\"r\":2},{\"c\":3,\"m\":\"Bin_1x1\",\"r\":2},{\"c\":2,\"m\":\"Cube_1x1\",\"r\":3},{\"c\":3,\"m\":\"WineRack_1x1\",\"r\":3},{\"c\":0,\"m\":\"FlapUp_2x1\",\"r\":4},{\"c\":2,\"m\":\"FlapUp_2x1\",\"r\":4},{\"m\":\"Plinth\"},{\"m\":\"Cap\"}]"
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_1x1.glb"
     },
     {
-      "id": "kit_sofa",
-      "name": "Modular Sectional Sofa",
+      "id": "wallkit_cube_2x1",
+      "name": "Wall module: Open cube 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 40,
+      "sell_price": 16,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_2x1.glb"
+    },
+    {
+      "id": "wallkit_cube_3x1",
+      "name": "Wall module: Open cube 3×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 55,
+      "sell_price": 22,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 3,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_3x1.glb"
+    },
+    {
+      "id": "wallkit_cube_1x2",
+      "name": "Wall module: Open cube 1×2",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 8,
+      "z_top": 8,
+      "height_category": "medium",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 40,
+      "sell_price": 16,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_1x2.glb"
+    },
+    {
+      "id": "wallkit_cube_1x3",
+      "name": "Wall module: Open cube 1×3",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 12,
+      "z_top": 12,
+      "height_category": "medium",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 55,
+      "sell_price": 22,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 3,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_1x3.glb"
+    },
+    {
+      "id": "wallkit_cube_2x2",
+      "name": "Wall module: Open cube 2×2",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 8,
+      "z_top": 8,
+      "height_category": "medium",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 70,
+      "sell_price": 28,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 4,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cube_2x2.glb"
+    },
+    {
+      "id": "wallkit_books_1x1",
+      "name": "Wall module: Books 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 30,
+      "sell_price": 12,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Books_1x1.glb"
+    },
+    {
+      "id": "wallkit_bin_1x1",
+      "name": "Wall module: Fabric bin 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 30,
+      "sell_price": 12,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Bin_1x1.glb"
+    },
+    {
+      "id": "wallkit_winerack_1x1",
+      "name": "Wall module: Wine rack 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 35,
+      "sell_price": 14,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/WineRack_1x1.glb"
+    },
+    {
+      "id": "wallkit_corner_1x1",
+      "name": "Wall module: Corner shelf 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 25,
+      "sell_price": 10,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Corner_1x1.glb"
+    },
+    {
+      "id": "wallkit_door_1x1",
+      "name": "Wall module: Door 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 45,
+      "sell_price": 18,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Door_1x1.glb"
+    },
+    {
+      "id": "wallkit_door_2x1",
+      "name": "Wall module: Double door 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 75,
+      "sell_price": 30,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Door_2x1.glb"
+    },
+    {
+      "id": "wallkit_glassdoor_1x2",
+      "name": "Wall module: Glass door 1×2",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 8,
+      "z_top": 8,
+      "height_category": "medium",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 80,
+      "sell_price": 32,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/GlassDoor_1x2.glb"
+    },
+    {
+      "id": "wallkit_flapup_2x1",
+      "name": "Wall module: Lift-up flap 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 80,
+      "sell_price": 32,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/FlapUp_2x1.glb"
+    },
+    {
+      "id": "wallkit_drawer_1x1",
+      "name": "Wall module: Drawer 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 50,
+      "sell_price": 20,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Drawer_1x1.glb"
+    },
+    {
+      "id": "wallkit_drawer_2x1",
+      "name": "Wall module: Drawer 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 85,
+      "sell_price": 34,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Drawer_2x1.glb"
+    },
+    {
+      "id": "wallkit_basket_1x1",
+      "name": "Wall module: Pull-out basket 1×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 4,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 45,
+      "sell_price": 18,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Basket_1x1.glb"
+    },
+    {
+      "id": "wallkit_shoerack_2x1",
+      "name": "Wall module: Shoe rack 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 50,
+      "sell_price": 20,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/ShoeRack_2x1.glb"
+    },
+    {
+      "id": "wallkit_shallow_2x2",
+      "name": "Wall module: Shallow shelf 2×2",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 8,
+      "z_top": 8,
+      "height_category": "medium",
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 60,
+      "sell_price": 24,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 4,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Shallow_2x2.glb"
+    },
+    {
+      "id": "wallkit_hooks_2x1",
+      "name": "Wall module: Coat hooks 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "dress"
+      ],
+      "buy_price": 35,
+      "sell_price": 14,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Hooks_2x1.glb"
+    },
+    {
+      "id": "wallkit_rail_2x3",
+      "name": "Wall module: Hanging rail 2×3",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 12,
+      "z_top": 12,
+      "height_category": "medium",
+      "functions": [
+        "dress",
+        "storage"
+      ],
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 6,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Rail_2x3.glb"
+    },
+    {
+      "id": "wallkit_media_2x2",
+      "name": "Wall module: TV bay 2×2",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 8,
+      "z_top": 8,
+      "height_category": "medium",
+      "functions": [],
+      "buy_price": 120,
+      "sell_price": 48,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 4,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Media_2x2.glb"
+    },
+    {
+      "id": "wallkit_desk_2x1",
+      "name": "Wall module: Fold-down desk 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "work"
+      ],
+      "buy_price": 140,
+      "sell_price": 56,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Desk_2x1.glb"
+    },
+    {
+      "id": "wallkit_bench_2x1",
+      "name": "Wall module: Bench 2×1",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [
+        "sit",
+        "storage"
+      ],
+      "buy_price": 90,
+      "sell_price": 36,
+      "color": "c8b48a",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 2,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Bench_2x1.glb"
+    },
+    {
+      "id": "wallkit_plinth_2",
+      "name": "Wall module: Plinth",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 1,
+      "z_top": 1,
+      "height_category": "low",
+      "functions": [],
+      "buy_price": 15,
+      "sell_price": 6,
+      "color": "8a7a5c",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Plinth_2.glb"
+    },
+    {
+      "id": "wallkit_cap_2",
+      "name": "Wall module: Cornice",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 3
+      },
+      "wall_h": 1,
+      "z_top": 1,
+      "height_category": "low",
+      "functions": [],
+      "buy_price": 15,
+      "sell_price": 6,
+      "color": "8a7a5c",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Cap_2.glb"
+    },
+    {
+      "id": "wallkit_filler_half",
+      "name": "Wall module: Filler strip",
+      "kit": "wall",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 3
+      },
+      "wall_h": 4,
+      "z_top": 4,
+      "height_category": "low",
+      "functions": [],
+      "buy_price": 10,
+      "sell_price": 4,
+      "color": "8a7a5c",
+      "is_surface": true,
+      "max_support_weight": 12,
+      "weight": 1,
+      "wall_flush_required": true,
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/wall_system/Filler_Half.glb"
+    },
+    {
+      "id": "sofakit_seat_1",
+      "name": "Sofa module: Seat",
       "kit": "sofa",
       "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 9
+      },
+      "wall_h": 9,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 120,
+      "sell_price": 48,
       "color": "7d93a8",
       "front": "long",
       "mobility_tier": "yellow",
-      "modules": [{"m": "Arm_1"}, {"m": "Seat_1"}, {"m": "Seat_1"}, {"m": "Arm_1"}],
-      "size": {"w": 22, "h": 9},
-      "functions": ["sit"],
-      "buy_price": 300,
-      "sell_price": 120,
+      "model": "res://assets/models/furniture/kits/modular_sofa/Seat_1.glb"
+    },
+    {
+      "id": "sofakit_corner_1",
+      "name": "Sofa module: Corner seat",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 9
+      },
       "wall_h": 9,
-      "z_top": 9,
-      "model": "kit:sofa:[{\"m\":\"Arm_1\"},{\"m\":\"Seat_1\"},{\"m\":\"Seat_1\"},{\"m\":\"Arm_1\"}]"
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 150,
+      "sell_price": 60,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Corner_1.glb"
+    },
+    {
+      "id": "sofakit_chaise_1",
+      "name": "Sofa module: Chaise",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 18
+      },
+      "wall_h": 9,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 220,
+      "sell_price": 88,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Chaise_1.glb"
+    },
+    {
+      "id": "sofakit_ottoman_1",
+      "name": "Sofa module: Ottoman",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 9
+      },
+      "wall_h": 5,
+      "functions": [
+        "sit"
+      ],
+      "buy_price": 60,
+      "sell_price": 24,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Ottoman_1.glb",
+      "height_category": "low"
+    },
+    {
+      "id": "sofakit_storage_1",
+      "name": "Sofa module: Storage ottoman",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 9,
+        "h": 9
+      },
+      "wall_h": 5,
+      "functions": [
+        "sit",
+        "storage"
+      ],
+      "buy_price": 110,
+      "sell_price": 44,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Storage_1.glb",
+      "height_category": "low"
+    },
+    {
+      "id": "sofakit_arm_1",
+      "name": "Sofa module: Armrest",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 9
+      },
+      "wall_h": 7,
+      "functions": [],
+      "buy_price": 30,
+      "sell_price": 12,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Arm_1.glb"
+    },
+    {
+      "id": "sofakit_console_1",
+      "name": "Sofa module: Side table",
+      "kit": "sofa",
+      "placement": "floor",
+      "size": {
+        "w": 2,
+        "h": 9
+      },
+      "wall_h": 8,
+      "functions": [],
+      "buy_price": 40,
+      "sell_price": 16,
+      "color": "7d93a8",
+      "front": "long",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/kits/modular_sofa/Console_1.glb",
+      "is_surface": true,
+      "max_support_weight": 5
     }
   ],
   "paintable": [

@@ -8,8 +8,8 @@ makeitfit/      One model per catalogue entry (data/furniture.json), named
 architecture/   The fold-out balcony window, still used by balcony_window.
 kits/           The two modular kits, copied unchanged from godot_glb/wall_system and
                 godot_glb/modular_sofa: one .glb per module, origin at the module's
-                back-left-bottom corner, so a run is assembled by offsetting modules
-                (scripts/Kits.gd). The _Demo*.glb compositions are not used.
+                back-left-bottom corner. Each module is its own catalogue entry
+                (wallkit_*, sofakit_*). The _Demo*.glb compositions are not copied.
 old/            The Space-Saving Furniture Kit models the catalogue used
                 before. Nothing in the catalogue points at them now; the
                 style test room (style/test/style_test.gd) still uses a few.

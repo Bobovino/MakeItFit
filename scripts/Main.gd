@@ -1475,7 +1475,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 		return null
 	# Apply per-instance overrides set by the level editor (rail axis/extents,
 	# or which level a nested/parabox box's interior points at).
-	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id", "keepsake", "modules"]
+	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id", "keepsake"]
 	for key in rail_keys:
 		if rail_data.has(key):
 			fdata = fdata.duplicate()
@@ -1483,12 +1483,9 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 	for key in rail_keys:
 		if rail_data.has(key):
 			fdata[key] = rail_data[key]
-	# A kit run's own modules (or the kit's default run) make its entry.
-	fdata = Kits.compose(fdata)
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
-	f.edit_requested.connect(_open_kit_composer.bind(""))
 	_weigh_box(f)
 	# A level can author a piece already turned ("rot_steps": quarter turns).
 	var authored_rot := rail_data.get("rot_steps", 0) as int
@@ -2197,8 +2194,6 @@ func _snapshot_level_state() -> Dictionary:
 				item["child_level_id"] = fur.child_level_id
 			if fur.keepsake:
 				item["keepsake"] = true   # per-instance, like child_level_id above
-			if fur.kit != "":
-				item["modules"] = fur.kit_modules.duplicate(true)   # a kit run's own make-up
 			items.append(item)
 		floors_snap[fid] = items
 	return {"budget": gm.budget, "floors": floors_snap, "owned": gm.starting_inventory.duplicate(true)}
@@ -2955,12 +2950,6 @@ func touch_rotate_piece(f: Furniture) -> void:
 		_ensure_mode3d_view()
 
 
-func touch_edit_piece(f: Furniture) -> void:
-	if not is_instance_valid(f) or Furniture.read_only:
-		return
-	_open_kit_composer(f, "")
-
-
 func touch_fold_piece(f: Furniture) -> void:
 	if not is_instance_valid(f) or Furniture.read_only:
 		return
@@ -3704,7 +3693,6 @@ func _floor_pane_bottom_y() -> float:
 # and the win/fail result screen.
 func _blocking_modal_open() -> bool:
 	return _intro_modal_open \
-		or is_instance_valid(_kit_composer) \
 		or is_instance_valid(_application_fax) \
 		or (is_instance_valid(_furniture_menu_backdrop) and _furniture_menu_backdrop.visible) \
 		or result_screen.visible
@@ -4070,8 +4058,6 @@ func _transfer_refusal(f: Furniture) -> String:
 		return tr("A box can't go inside another apartment")
 	if f.is_stair:
 		return tr("Stairs can't move to another apartment")
-	if f.kit != "":
-		return tr("A modular run is built to fit here: it can't move to another apartment")
 	return ""
 
 
@@ -4274,107 +4260,15 @@ func _on_place_owned_requested(furniture_id: String) -> void:
 
 # Settles a placement: an owned piece comes off the owned list, anything
 # else is paid for.
-func _settle_placement(furniture_id: String, owned: bool, fdata: Dictionary = {}) -> void:
+func _settle_placement(furniture_id: String, owned: bool) -> void:
 	if owned:
 		gm.consume_starting_item(furniture_id)
 		_refresh_owned_ui()
-	elif not fdata.is_empty():
-		gm.buy_entry(fdata)   # a kit run: its own price
 	else:
 		gm.buy_furniture(furniture_id)
 
 
-# ── Modular kits ─────────────────────────────────────────────────────────────
-# A kit (storage wall, sectional sofa) is composed in KitComposer before it is
-# bought; clicking a placed run opens it there again to change it.
-var _kit_composer: KitComposer = null
-var _kit_read_only_before := false
-
-# `editing` is the placed run being changed, or null to buy a new run of
-# the kit `furniture_id`.
-func _open_kit_composer(editing: Furniture, furniture_id: String) -> void:
-	if is_instance_valid(_kit_composer) or _post_win_view or Furniture.read_only:
-		return
-	if is_instance_valid(editing):
-		furniture_id = editing.furniture_id
-	var base := gm.get_furniture_by_id(furniture_id)
-	if Kits.kit_of(base) == "":
-		return
-	var modules: Array = editing.kit_modules if is_instance_valid(editing) else base.get("modules", [])
-	var budget := gm.budget + (editing.buy_price if is_instance_valid(editing) else 0)
-	# The pieces in the room read the mouse themselves; they sit still while
-	# the composer is up.
-	_kit_read_only_before = Furniture.read_only
-	Furniture.read_only = true
-	touch_cancel_pointer()   # the click that opened it must not go on to drag the run
-	_kit_composer = KitComposer.open(self, base, modules, budget, is_instance_valid(editing))
-	var done := func():
-		Furniture.read_only = _kit_read_only_before
-		_kit_composer = null
-	_kit_composer.cancelled.connect(done)
-	_kit_composer.confirmed.connect(func(mods: Array):
-		done.call()
-		if is_instance_valid(editing):
-			_apply_kit_edit(editing, mods)
-		else:
-			_on_buy_requested(furniture_id, mods))
-
-
-# Swaps a placed run for its edited version, in the same spot and turn, and
-# settles the difference in price. Refused (and nothing changes) when the new
-# run doesn't fit there.
-func _apply_kit_edit(old: Furniture, modules: Array) -> void:
-	if not is_instance_valid(old) or old._wall_ref == null:
-		return
-	var fl := old._wall_ref as Floor
-	var fdata := Kits.compose(gm.get_furniture_by_id(old.furniture_id), modules)
-	var diff := (fdata["buy_price"] as int) - old.buy_price
-	if diff > gm.budget:
-		Audio.play("error")
-		_set_mode_hint(tr("Costs %d€ — you have %d€") % [diff, gm.budget])
-		return
-	var pos := old.grid_pos
-	var f: Furniture = FurnitureScene.instantiate() as Furniture
-	fl.add_child(f)
-	f.setup(fdata, fl)
-	_weigh_box(f)
-	if old.rot_steps != 0:
-		f.set_rot_steps(old.rot_steps)
-	fl.forget_furniture(old)
-	var at := fl.snap_to_wall(f, pos) if f.wall_flush_required else pos
-	if not fl.can_place(f, at):
-		var why := fl.get_block_reason()
-		fl.place_furniture(old, pos)
-		f.queue_free()
-		Audio.play("error")
-		_set_mode_hint(tr("The new run doesn't fit here: %s") % why if why != "" else tr("The new run doesn't fit here"))
-		return
-	f._home_grid_pos = old._home_grid_pos
-	f.moment_positions = old.moment_positions.duplicate()
-	f.sell_requested.connect(_on_sell_pressed.bind(fl))
-	f.edit_requested.connect(_open_kit_composer.bind(""))
-	f.fold_toggled.connect(_refresh_functions)
-	f.fold_toggled.connect(_on_furniture_action_changed)
-	f.placed.connect(func(_n): _on_furniture_action_changed())
-	if f.has_own_moment_position():
-		f.placed.connect(func(_n): _refresh_functions())
-	if is_instance_valid(_mode3d_view):
-		_mode3d_view.remove_furniture_entry(old)
-	fl.remove_furniture(old)
-	fl.place_furniture(f, at)
-	gm.spend(diff)
-	Audio.play("place")
-	_refresh_functions()
-	_on_furniture_action_changed()
-	if _view_mode == ViewMode.VIEW3D and is_instance_valid(_mode3d_view):
-		_ensure_mode3d_view()
-
-
-func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
-	# A kit is composed first; the run then comes back here with its modules.
-	if Kits.kit_of(gm.get_furniture_by_id(furniture_id)) != "" and modules.is_empty() and not _place_owned_next:
-		_open_kit_composer(null, furniture_id)
-		return
+func _on_buy_requested(furniture_id: String) -> void:
 	# The catalogue strip stays open: buy, place, buy the next one.
 	var owned := _place_owned_next
 	# Clicking another piece while one is still being placed swaps it: the
@@ -4395,8 +4289,6 @@ func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
 	var fdata := gm.get_furniture_by_id(furniture_id)
 	if fdata.is_empty():
 		return
-	if not modules.is_empty():
-		fdata = Kits.compose(fdata, modules)
 	if not owned and gm.budget < (fdata.get("buy_price", 0) as int):
 		return
 	# Each rental box is one particular tenant's home, so an apartment takes
@@ -4420,7 +4312,6 @@ func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
 	f.setup(fdata, apt_floor)
 	_weigh_box(f)
 	f.sell_requested.connect(_on_sell_pressed.bind(apt_floor))
-	f.edit_requested.connect(_open_kit_composer.bind(""))
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
 	f.placed.connect(func(_n): _on_furniture_action_changed())   # repositioning-drag commits
@@ -4451,7 +4342,7 @@ func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
 		h["confirmed"] = func(_f: Furniture):
 			_mode3d_view.buy_confirmed_wall.disconnect(h["wall_confirmed"])
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
-			_settle_placement(furniture_id, owned, fdata if not modules.is_empty() else {})
+			_settle_placement(furniture_id, owned)
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
 			_refresh_functions()
@@ -4461,7 +4352,7 @@ func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
 			_mode3d_view.buy_cancelled.disconnect(h["cancelled"])
 			apt_floor.forget_furniture(f)   # never leave a freed node on the floor's books
 			f.queue_free()   # the floor ghost was never used — it landed on a wall instead
-			_settle_placement(furniture_id, owned, fdata if not modules.is_empty() else {})
+			_settle_placement(furniture_id, owned)
 			_refresh_functions()
 			_on_furniture_action_changed()
 		h["cancelled"] = func(_f: Furniture):
@@ -4476,7 +4367,7 @@ func _on_buy_requested(furniture_id: String, modules: Array = []) -> void:
 		_mode3d_view.start_buying(f, fdata)
 	else:
 		f.placement_confirmed.connect(func():
-			_settle_placement(furniture_id, owned, fdata if not modules.is_empty() else {})
+			_settle_placement(furniture_id, owned)
 			_pending_floor_ghost = null
 			if fdata.get("creates_loft", false):
 				_promote_to_loft(f, apt_floor)
@@ -4505,10 +4396,7 @@ func _on_sell_pressed(furniture: Furniture, apt_floor: Floor) -> void:
 			furniture.furniture_name, -furniture.buy_price, gm.budget])
 		return
 	Audio.play("sell")
-	if furniture.kit != "":
-		gm.spend(-furniture.buy_price)   # a kit run gives back what it cost, like any piece
-	else:
-		gm.sell_furniture(furniture.furniture_id)
+	gm.sell_furniture(furniture.furniture_id)
 	apt_floor.remove_furniture(furniture)
 	# This handler also runs for a sale initiated in 3D itself (Room3DView's
 	# own sell_requested), where it's already dropped from _furniture_entries —
@@ -5510,8 +5398,6 @@ func _snapshot_all_furniture() -> Dictionary:
 				entry["child_level_id"] = f.child_level_id
 			if f.keepsake:
 				entry["keepsake"] = true
-			if f.kit != "":
-				entry["modules"] = f.kit_modules.duplicate(true)
 			# _home_grid_pos is the level's TRUE authored starting position,
 			# not whatever (x,y) this particular undo step happens to restore
 			# to — capture it explicitly so comfort scoring (which compares
@@ -5590,8 +5476,6 @@ func _floor_matches_furniture_snapshot(fl: Floor, fd: Dictionary) -> bool:
 		var entry := {"id": f.furniture_id, "x": f.grid_pos.x, "y": f.grid_pos.y, "extended": f.is_extended}
 		if f.is_nested_box:
 			entry["child_level_id"] = f.child_level_id
-		if f.kit != "":
-			entry["modules"] = f.kit_modules
 		furn.append(entry)
 	return furn == (fd["furniture"] as Array) and (fl.wall_items as Dictionary) == (fd["wall_items"] as Dictionary)
 
@@ -5613,14 +5497,9 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	if override_data.get("keepsake", false):
 		fdata = fdata.duplicate()
 		fdata["keepsake"] = true
-	if override_data.has("modules"):
-		fdata = fdata.duplicate()
-		fdata["modules"] = override_data["modules"]
-	fdata = Kits.compose(fdata)
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)
-	f.edit_requested.connect(_open_kit_composer.bind(""))
 	_weigh_box(f)
 	apt_floor.place_furniture(f, Vector2i(gx, gy))
 	# home_x/home_y (see _snapshot_all_furniture()) is the level's true
