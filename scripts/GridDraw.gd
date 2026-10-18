@@ -584,6 +584,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	_draw_columns(parent)
 	_draw_segments(parent)
+	GridDraw.draw_loop_seams(self, parent.loop, parent.get_room_bounds(), TILE_SIZE)
 	_draw_sloped_ceiling(parent)
 
 	# ── 5. Blueprint annotations: dimension lines ─────────────────────────────
@@ -593,6 +594,64 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# information doesn't appear twice, and it no longer visually collides
 	# with the floor-tab stack for multi-floor levels.
 	_draw_dimensions(parent, ww, hh)
+
+
+# Looped flats (LoopSeams): each opening that leads back into the flat is a
+# gap in the wall, tinted in its pair's colour, with arrows pointing out
+# through it and the pair's letter outside, the same letter at both ends.
+# Static so the level preview cards (BlueprintPreview) draw them the same
+# way; `ts` is pixels per tile on `ci`.
+const SEAM_COLORS := [Color(0.42, 0.82, 1.0), Color(1.0, 0.72, 0.30), Color(0.78, 0.58, 1.0), Color(0.46, 0.94, 0.62)]
+
+static func seam_color(pair: int) -> Color:
+	return SEAM_COLORS[pair % SEAM_COLORS.size()]
+
+
+static func draw_loop_seams(ci: CanvasItem, loop: LoopSeams, b: Rect2i, ts: float, with_labels := true) -> void:
+	if loop == null:
+		return
+	var font := ThemeDB.fallback_font
+	for o in loop.openings():
+		var side := o["side"] as String
+		var f0 := float(o["from"] as int) * ts
+		var f1 := float(o["to"] as int) * ts
+		var col := seam_color(o["pair"] as int)
+		var r: Rect2
+		var out_dir: Vector2
+		match side:
+			"west":
+				r = Rect2(b.position.x * ts, f0, ts, f1 - f0); out_dir = Vector2.LEFT
+			"east":
+				r = Rect2(b.end.x * ts, f0, ts, f1 - f0); out_dir = Vector2.RIGHT
+			"north":
+				r = Rect2(f0, b.position.y * ts, f1 - f0, ts); out_dir = Vector2.UP
+			_:
+				r = Rect2(f0, b.end.y * ts, f1 - f0, ts); out_dir = Vector2.DOWN
+		# The wall is open here.
+		ci.draw_rect(r, BP_FLOOR)
+		ci.draw_rect(r, Color(col.r, col.g, col.b, 0.35))
+		var along := Vector2(out_dir.y, -out_dir.x).abs()
+		var inner := r.get_center() - out_dir * r.size.dot(out_dir.abs()) * 0.5
+		var outer := r.get_center() + out_dir * r.size.dot(out_dir.abs()) * 0.5
+		var half := along * r.size.dot(along) * 0.5
+		ci.draw_dashed_line(inner - half, inner + half, col, maxf(1.0, ts * 0.2), ts * 0.6)
+		ci.draw_line(outer - half, outer + half, col, maxf(1.5, ts * 0.3))
+		# Arrows out through the opening, about one a metre.
+		var n := maxi(1, int(round(r.size.dot(along) / (ts * 10.0))))
+		var arrow := ts * 0.9
+		for i in n:
+			var c := r.get_center() - half + along * r.size.dot(along) * (i + 0.5) / n
+			ci.draw_line(c - out_dir * arrow * 0.5 - along * arrow * 0.6, c + out_dir * arrow * 0.5, col, maxf(1.0, ts * 0.22), true)
+			ci.draw_line(c - out_dir * arrow * 0.5 + along * arrow * 0.6, c + out_dir * arrow * 0.5, col, maxf(1.0, ts * 0.22), true)
+		if with_labels:
+			var tag := String.chr(65 + (o["pair"] as int))
+			# A quarter of the way along, clear of the dimension text that
+			# sits at a wall's middle.
+			var at := outer - half * 0.5 + out_dir * ts * 1.6
+			ci.draw_circle(at, ts * 1.1, col)
+			var fs := maxi(8, int(ts * 1.4))
+			var sz := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+			ci.draw_string(font, at + Vector2(-sz.x * 0.5, sz.y * 0.32), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.06, 0.08, 0.20))
 
 
 # Is this Floor node a real floor plate (worth annotating) vs a subfloor/

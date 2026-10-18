@@ -16,6 +16,7 @@ const BP_GRID_MAJ := GridDraw.BP_GRID_MAJ
 var _segments: Array = []
 var _bounds: Rect2 = Rect2()
 var _furniture: Array = []   # [{x,y,w,h,color}], tile-space — see CityMap._furniture_preview_rects
+var _loop: LoopSeams = null  # a looped flat's openings (LoopSeams), drawn like the real plan's
 
 
 func _ready() -> void:
@@ -30,10 +31,11 @@ func _ready() -> void:
 	resized.connect(queue_redraw)
 
 
-func set_data(segments: Array, bounds: Rect2, furniture: Array = []) -> void:
+func set_data(segments: Array, bounds: Rect2, furniture: Array = [], loop: Dictionary = {}) -> void:
 	_segments = segments
 	_bounds = bounds
 	_furniture = furniture
+	_loop = LoopSeams.from_data(loop, Rect2i(bounds)) if not loop.is_empty() else null
 	queue_redraw()
 
 
@@ -94,3 +96,8 @@ func _draw() -> void:
 		draw_line(p1, p2, BP_INK, wall_px)
 
 	draw_rect(room_rect, BP_INK, false, 1.0)
+	if _loop != null:
+		# Openings that lead back into the flat, as on the real plan.
+		draw_set_transform(offset - _bounds.position * plan_scale)
+		GridDraw.draw_loop_seams(self, _loop, Rect2i(_bounds), plan_scale, plan_scale > 2.0)
+		draw_set_transform(Vector2.ZERO)

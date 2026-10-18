@@ -1216,6 +1216,10 @@ msgstr "Zu nah an einem Fenster oder einer Tür"
 msgid "Ceiling too low here"
 msgstr "Decke hier zu niedrig"
 
+#: scripts/Wall.gd:1130
+msgid "Longer than the loop: it runs into itself"
+msgstr "Länger als die Schleife: stößt an sich selbst"
+
 #: scripts/Room3DView.gd:1654
 msgid "Blocked by furniture on the floor"
 msgstr "Von Möbeln auf dem Boden blockiert"

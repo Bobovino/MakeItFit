@@ -84,6 +84,43 @@ func _ready() -> void:
 					warnings += 1
 				lines.append("    %s  %s at (%d, %d) on %s: %s" % ["ERROR" if is_error else "warn ",
 					f.furniture_name, int(f.grid_pos.x), int(f.grid_pos.y), fid, reason])
+		# Looped floors (LoopSeams): every pair in the data was taken (a
+		# turning or mismatched pair is dropped with only a warning), no
+		# opening cuts through a door or a window, and no outside-wall rules
+		# on a side that is all seam (there is no outside there).
+		for lf in (((lv as Dictionary).get("apartment", {}) as Dictionary).get("floors", []) as Array):
+			var lfd := lf as Dictionary
+			if not lfd.has("loop"):
+				continue
+			var fl: Floor = main._floors.get(lfd["id"])
+			if fl == null:
+				continue
+			var wanted := ((lfd["loop"] as Dictionary).get("pairs", []) as Array).size()
+			var got := fl.loop.seams.size() if fl.loop != null else 0
+			if got != wanted:
+				errors += 1
+				lines.append("    ERROR  loop on %s: %d of %d pairs could not be used (opposite walls, same length)" % [lfd["id"], wanted - got, wanted])
+			if fl.loop == null:
+				continue
+			for s in fl.segments:
+				var sd := s as Dictionary
+				for kind in [["has_door", "door_pos", "door"], ["has_window", "window_pos", "window"]]:
+					if not (sd.get(kind[0], false) as bool):
+						continue
+					var at := sd.get(kind[1], 0) as int
+					var n := 10 if kind[2] == "door" else sd.get("window_len", 0) as int
+					for i in range(at, at + n):
+						var t := Vector2i(sd["x1"] as int, mini(sd["y1"] as int, sd["y2"] as int) + i) if sd["x1"] == sd["x2"] \
+							else Vector2i(mini(sd["x1"] as int, sd["x2"] as int) + i, sd["y1"] as int)
+						if fl.loop.is_opening_tile(t):
+							errors += 1
+							lines.append("    ERROR  loop on %s: an opening runs through a %s at (%d, %d)" % [lfd["id"], kind[2], t.x, t.y])
+							break
+			var by_wall := (((lv as Dictionary).get("external_zone", {}) as Dictionary).get("by_wall", {}) as Dictionary)
+			for side in fl.loop.looped_sides():
+				if by_wall.has(side):
+					errors += 1
+					lines.append("    ERROR  loop on %s: outside rules for the %s wall, which is all seam" % [lfd["id"], side])
 		# With the walking-paths rule on (--pathing, or the saved setting),
 		# a starting piece the tenant can't walk to is an error too.
 		if Floor.pathing_enabled:

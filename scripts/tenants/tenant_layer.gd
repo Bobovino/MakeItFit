@@ -803,6 +803,9 @@ func _approach_tiles(f: Furniture) -> Array:
 			3:
 				for y in range(y0 - PATCH + 1, y0 + f.grid_h):
 					out.append(Vector2(x0 - PATCH, y))
+	if _floor.loop != null:
+		# Beside a piece that stands across a seam may be the other side.
+		return out.map(func(t): return _floor.wrap_point(t as Vector2))
 	return out
 
 
@@ -810,6 +813,8 @@ func _approach_tiles(f: Furniture) -> Array:
 # close as the floor allows. {path: hop waypoints, arrived: bool}.
 func _walk_to(from: Vector2, goals: Array) -> Dictionary:
 	var grid := _patch_grid()
+	if _floor.loop != null:
+		return _walk_looped(grid, from, goals)
 	var start := Vector2i(from)
 	if not grid.region.has_point(start) or grid.is_point_solid(start):
 		return {"path": [], "arrived": false}
@@ -877,4 +882,60 @@ func _patch_grid() -> AStarGrid2D:
 			if not fits:
 				grid.set_point_solid(Vector2i(b.position.x + x, b.position.y + y))
 	return grid
+
+
+# _walk_to() on a looped flat (LoopSeams): AStarGrid2D knows nothing of
+# seams, so a plain search over the same patches, where a patch against one
+# opening also leads to the patch against the other. The hop on each side of
+# a seam is kept, so the walker steps out through one opening and in at the
+# other (the tokens jump that stretch, see TenantToken2D.walk()).
+func _walk_looped(grid: AStarGrid2D, from: Vector2, goals: Array) -> Dictionary:
+	var start := Vector2i(from)
+	if not grid.region.has_point(start) or grid.is_point_solid(start):
+		return {"path": [], "arrived": false}
+	var links := _floor.loop.patch_links(PATCH)
+	var want: Dictionary = {}
+	for g in goals:
+		want[Vector2i(g as Vector2)] = true
+	var came: Dictionary = {start: start}
+	var queue: Array[Vector2i] = [start]
+	var head := 0
+	var found := Vector2i(-1, -1)
+	while head < queue.size():
+		var cur := queue[head]
+		head += 1
+		if want.has(cur):
+			found = cur
+			break
+		var next: Array = [cur + Vector2i.LEFT, cur + Vector2i.RIGHT, cur + Vector2i.UP, cur + Vector2i.DOWN]
+		next.append_array(links.get(cur, []) as Array)
+		for n in next:
+			var nv := n as Vector2i
+			if came.has(nv) or not grid.region.has_point(nv) or grid.is_point_solid(nv):
+				continue
+			came[nv] = cur
+			queue.append(nv)
+	var arrived := found != Vector2i(-1, -1)
+	if not arrived:
+		# Unreachable: head for the patch it can get to that is closest.
+		var aim := Vector2(goals[0] as Vector2) if not goals.is_empty() else Vector2(start)
+		var best_d := INF
+		for c in came:
+			var d := Vector2(c as Vector2i).distance_squared_to(aim)
+			if d < best_d:
+				best_d = d
+				found = c
+	var best: Array[Vector2i] = []
+	var at := found
+	while at != start:
+		best.push_front(at)
+		at = came[at]
+	best.push_front(start)
+	var hops: Array = []
+	for i in range(1, best.size()):
+		var jump_after := i + 1 < best.size() and best[i].distance_to(best[i + 1]) > 1.5
+		var jump_before := best[i].distance_to(best[i - 1]) > 1.5
+		if i % STEP_TILES == 0 or jump_after or jump_before or i == best.size() - 1:
+			hops.append(Vector2(best[i]))
+	return {"path": hops, "arrived": arrived}
 

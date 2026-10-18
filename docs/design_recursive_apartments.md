@@ -1,9 +1,10 @@
 # Recursive Apartments — Design Doc
 
-Status: **draft, no implementation started**. Written to be read before any code changes to
-`Wall.gd` (`has_sightline()`, `_recalculate_zones()`, `can_place()`) or `Main.gd`'s nested-box
-entry path. Assumes `docs/design_nested_levels.md` has been read — nesting itself is **built**;
-this doc is about the two things nesting deliberately does *not* do yet.
+Status: **looping (§2) is built** — see §2.4 for what shipped and how it differs from the sketch
+below. Self-containment (§3) and the rest are still a draft. Written to be read before any code
+changes to `Wall.gd` (`has_sightline()`, `_recalculate_zones()`, `can_place()`) or `Main.gd`'s
+nested-box entry path. Assumes `docs/design_nested_levels.md` has been read — nesting itself is
+**built**; this doc is about the two things nesting deliberately does *not* do yet.
 
 ## 1. Two different mechanics
 
@@ -96,6 +97,88 @@ Open: whether a wrap can also *rotate* (west edge → north edge). Cheap in the 
 potentially very confusing to read on a blueprint. Recommend shipping axis-aligned pairs only
 in v1.
 
+### 2.4 What was built (v1)
+
+Rodrigo's calls on the open questions: one rule for both kinds of loop, partial loops keep an
+outside, a blueprint-blue plane in 3D, and pieces dragged *through* a seam.
+
+**One rule: pairs join opposite walls.** A pair links a span of the west wall to a span of the
+east wall, or north to south. A whole side is the torus; a door-sized span is a door that leads
+to another door. Crossing a seam is then always a plain translation, so nothing turns and a piece
+can stand across any seam. Same-wall pairs (a north door back into a north door) and turning
+pairs (west → north) were left out: either would rotate whatever crosses. A pair that breaks
+the rule is dropped with a warning, and the level validator reports it as an error.
+
+**Schema** — on the floor, not the apartment (each floor has its own walls):
+
+```jsonc
+"floors": [{
+  "id": "fl_0", "segments": [...],
+  "loop": {"pairs": [
+    {"a": "west", "b": "east"},                                   // a whole side
+    {"a": {"side": "north", "from": 3, "to": 11},                  // absolute tiles along
+     "b": {"side": "south", "from": 14, "to": 22}}                 // the wall, `to` exclusive
+  ]}
+}]
+```
+
+**The seam has no thickness.** The interior runs from the tile after the west wall to the tile
+before the east one, and stepping west off the first column lands on the last. The wall tiles
+of an opening are never visited, so everything else can go on treating them as wall.
+`scripts/LoopSeams.gd` holds all of the geometry: `wrap_tile()`, `wrap_point()`, `split_rect()`
+(a footprint cut at the seams it crosses, each part moved to where it really is) and
+`patch_links()` (walking patches joined across a seam).
+
+**What changed, system by system:**
+
+- **Placement** (`Floor.can_place()`). A footprint is cut at the seams; its parts are checked
+  against the other pieces' parts, their clearance and door swings. Parts that overlap each
+  other are the headline rule: *"Longer than the loop: it runs into itself."* A part that sticks
+  through a wall only partly inside an opening is outside the room, as before. Every tile
+  lookup (`_rect_tiles()`) wraps, so light, zones, needs, stacking and the moment checks follow.
+  `snap_to_wall()` leaves a piece across a seam where it was put.
+- **Sightlines.** A line is clear if it is clear *any* way round: straight, or out through a
+  seam to one of the target's images (once round each seam, either way, and two seams at once).
+  The tile budget is the line itself, so nothing circles. `sightline_route()` gives the way the
+  eye goes, and the plan draws it in legs through the seams.
+- **Zones.** The BFS neighbour wraps. On a looped floor the flood also respects walls (an
+  ordinary floor still floods its whole grid), which is what makes "a seam joins two rooms into
+  one zone" mean something.
+- **Light.** The light map's neighbour wraps too, so a window lights the far side of a seam.
+- **Walking.** `_compute_reachable_floor()` links a patch against one opening to the patch
+  against the other. Tenants path over the same patches with a plain search (`AStarGrid2D`
+  knows nothing of seams), keep the hop on either side of a seam, and jump that stretch.
+- **Outside.** A side that is all seam has no outside: no outside-wall sign, and a box takes the
+  rules of the nearest wall that *is* outside (none at all on a four-sided torus). Partial loops
+  keep the rest of the wall as a real outside wall, front door and windows included.
+- **2D.** An opening is a gap in the wall tinted in its pair's colour, arrows pointing out,
+  and the pair's letter outside both ends (A, B, …). A piece across a seam is drawn in parts,
+  each with its share of the top-down render; the cut edges are dashed. The level preview cards
+  (`BlueprintPreview`) draw the openings the same way.
+- **3D.** The outer wall is cut at each opening and a blueprint-blue plane with a 50 cm grid
+  stands in the gap, framed in the pair's colour. Far seams are nearly solid, near ones a thin
+  veil. A piece across a seam is drawn again (an "echo") where its far part comes back in, and
+  both copies are cut at the room's walls by a clipping variant of the matte shader
+  (`style/shaders/matte_gradient_clip.gdshader`). Without the diorama style there is no cut.
+- **Dragging** wraps the piece's corner in 2D and 3D: push a piece past a seam and it carries on
+  from the opening opposite.
+- **Level editor:** shows a floor's seams in its preview and keeps `loop` when saving. Seams
+  are authored in `levels.json`; there is no editor tool for them yet.
+
+**Level:** `debug:_loop` ("Debug: Looped Flat"): a 2.3 × 2.9 m flat whose west and east walls
+are one seam (A, 23 tiles round) and whose north doorway comes back in through the south one
+(B). The sofa starts across A. The 2.4 m kitchen is one tile longer than the loop, so it only
+fits turned, and turned it needs a column the sofa is in the way of.
+
+**Tests:** ten `loop:` cases in `tests/run_tests.gd` (wrapping, standing across a seam, too
+long for the loop, door-sized spans, dragging through, zones, sightlines, walking, light,
+refused pairs).
+
+**Not done:** an editor tool for seams; a `zone_divider` puzzle level (§2.2) and a sightline
+level (the debug level teaches placement only); `debug:_sightlines` was not extended. Light and
+sightlines through a door-sized seam are tested only on the torus. The clipped 3D copies keep
+the palette they were made with if the palette changes mid-level.
+
 ## 3. Self-containment — the apartment inside itself
 
 The box in the apartment contains **this apartment**. Whatever you place appears inside it, and
@@ -179,6 +262,10 @@ district, plus the final shot of the Steam trailer (the camera pulls back out of
 the apartment it just left).
 
 ## 4. Open questions
+
+Questions 1, 2, 3 and 5 are settled for looping; see §2.4. In short: partial loops keep an
+outside, a fully looped side has none; a blueprint-blue plane, with pieces cut at it; dragging
+goes through a seam; tenant paths wrap. 4 stays open.
 
 1. **Does a looped apartment still have an exterior for `external_zone` purposes?** Noise/smell
    ordinances assume an outside. Simplest answer: a fully-looped level has no `external_zone`
@@ -476,6 +563,9 @@ level still wants it.
 
 Looping first — it is cheaper, more teachable, and its self-collision mechanic is the more
 distinctive of the two.
+
+Steps 1–4 are built (§2.4), as one level, `debug:_loop`, rather than the three debug levels
+proposed here.
 
 1. **Schema + wrapped placement.** `loop.pairs` parsing and `Wall.can_place()` wrap, including
    self-overlap. Ship a `debug:_loop_placement` level whose whole point is a sofa that is too

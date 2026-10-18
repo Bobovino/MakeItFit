@@ -1423,6 +1423,8 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 		var mn_y := 0.0 if f.rail_start < 0 else float(f.rail_start)
 		var mx_y := float(_apt_floor.grid_h - f.grid_h) if f.rail_end < 0 else float(f.rail_end)
 		tile.y = clampf(tile.y, mn_y, mx_y)
+	elif _apt_floor and _apt_floor.loop != null:
+		tile = _apt_floor.wrap_point(tile)   # pushed past a seam: on from the opening opposite
 	_drag_last_tile = tile
 	if Furniture.on_drag_moved.is_valid():
 		# Where the pointer is on the floor, not where the piece ended up: a
@@ -1444,6 +1446,7 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	var lift := _lift_m(f, tile)
 	mesh.position.y = lift + item_size.y * 0.5
 	_drag_target["pos"] = mesh.position
+	_sync_echoes(_drag_target)
 	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
 	if is_instance_valid(_drag_highlight):
 		_drag_highlight.position.y = lift
@@ -1798,6 +1801,9 @@ func remove_furniture_entry(f: Furniture) -> void:
 			var mesh: MeshInstance3D = _furniture_entries[i]["mesh"]
 			if is_instance_valid(mesh):
 				mesh.queue_free()
+			for e in _furniture_entries[i].get("echoes", []):
+				if is_instance_valid(e):
+					(e as Node).queue_free()
 			_furniture_entries.remove_at(i)
 	# The sold item's own static hitbox outline (and, if this sale happened
 	# mid-drag of some other piece, the shared grid/drag-highlight overlays)
@@ -3342,6 +3348,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 					# outside, looking in.
 					target = 0.0 if (wd["normal"] as Vector3).dot(flat) > 0.0 else 1.0
 		wd["target_h"] = target
+	_update_seam_planes(flat)
 	_update_scenery_visibility(flat)
 
 
@@ -3652,6 +3659,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 
 	_apt_floor = apt_floor
 	_catalog   = catalog
+	_clip_mats.clear()   # their clip box was this room's
 	var bounds := apt_floor.get_room_bounds()
 	_room_bounds = bounds
 	# Every wall is one tile thick and stands on the tile row (or column) of
@@ -5276,7 +5284,7 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 	var bx0 := bounds.position.x; var bx1 := bounds.position.x + bounds.size.x
 	var by0 := bounds.position.y; var by1 := bounds.position.y + bounds.size.y
 
-	for sd in _apt_floor.segments:
+	for sd in _wall_segments_3d(bounds):
 		var seg := sd as Dictionary
 		if seg.get("demolished", false):
 			continue
@@ -5358,6 +5366,251 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				"a": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z),
 				"b": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z + length)})
 			_add_wall_grid(mi, length, maxf(h0, h1))
+	_add_loop_seams(bounds)
+
+
+# ── Looped flats (LoopSeams) ────────────────────────────────────────────────
+# An opening that leads back into the same flat is no wall: the outer wall is
+# cut there and a blueprint-blue plane stands in the gap, framed in its
+# pair's colour (the same colours and letters as the plan, GridDraw). A piece
+# standing across a seam is drawn on both sides of it: the model again, as an
+# "echo", where its far part comes back in.
+var _seam_planes: Array = []   # [{mesh: MeshInstance3D, mat: StandardMaterial3D, normal: Vector3}]
+const SEAM_FAR_ALPHA  := 0.88   # a seam on the far side of the room, facing the camera
+const SEAM_NEAR_ALPHA := 0.22   # one between the camera and the room: see through it
+
+# The floor's wall segments with the openings of its loop cut out of them.
+func _wall_segments_3d(bounds: Rect2i) -> Array:
+	if _apt_floor.loop == null:
+		return _apt_floor.segments
+	var out: Array = []
+	for sd in _apt_floor.segments:
+		var seg := sd as Dictionary
+		var x1: int = seg["x1"]; var y1: int = seg["y1"]
+		var x2: int = seg["x2"]; var y2: int = seg["y2"]
+		var side := ""
+		if y1 == y2 and y1 == bounds.position.y: side = "north"
+		elif y1 == y2 and y1 == bounds.end.y: side = "south"
+		elif x1 == x2 and x1 == bounds.position.x: side = "west"
+		elif x1 == x2 and x1 == bounds.end.x: side = "east"
+		if side == "":
+			out.append(seg)
+			continue
+		var lo := mini(x1, x2) if y1 == y2 else mini(y1, y2)
+		var hi := maxi(x1, x2) if y1 == y2 else maxi(y1, y2)
+		var pieces: Array = [Vector2i(lo, hi)]
+		for o in _apt_floor.loop.openings():
+			if o["side"] != side:
+				continue
+			var cut: Array = []
+			for pc in pieces:
+				var r := pc as Vector2i
+				if r.x < (o["from"] as int):
+					cut.append(Vector2i(r.x, mini(r.y, o["from"] as int)))
+				if r.y > (o["to"] as int):
+					cut.append(Vector2i(maxi(r.x, o["to"] as int), r.y))
+			pieces = cut
+		for pc in pieces:
+			var r := pc as Vector2i
+			if r.y <= r.x:
+				continue
+			var part := seg.duplicate()
+			if y1 == y2:
+				part["x1"] = r.x; part["x2"] = r.y
+			else:
+				part["y1"] = r.x; part["y2"] = r.y
+			# A window or door keeps its place on the wall if it still fits on
+			# this part of it.
+			for key in [["has_window", "window_pos", "window_len"], ["has_door", "door_pos", ""]]:
+				if not (part.get(key[0], false) as bool):
+					continue
+				var at := (part.get(key[1], 0) as int) + lo - r.x
+				var n := (part.get(key[2], 10) as int) if key[2] != "" else 10
+				if at < 0 or at + n > r.y - r.x:
+					part[key[0]] = false
+				else:
+					part[key[1]] = at
+			out.append(part)
+	return out
+
+
+func _add_loop_seams(bounds: Rect2i) -> void:
+	_seam_planes.clear()
+	if _apt_floor.loop == null:
+		return
+	var rx := float(bounds.size.x) * TILE_M   # east wall's inner face
+	var rz := float(bounds.size.y) * TILE_M   # south wall's inner face
+	for o in _apt_floor.loop.openings():
+		var side := o["side"] as String
+		var a := float((o["from"] as int) - (bounds.position.y if side in ["west", "east"] else bounds.position.x)) * TILE_M
+		var b := float((o["to"] as int) - (bounds.position.y if side in ["west", "east"] else bounds.position.x)) * TILE_M
+		var length := b - a
+		var col := GridDraw.seam_color(o["pair"] as int)
+		var quad := QuadMesh.new()
+		quad.size = Vector2(length, WALL_H_M)
+		quad.center_offset = Vector3(0.0, WALL_H_M * 0.5, 0.0)
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.25, 0.30, 0.66, SEAM_FAR_ALPHA)
+		mat.albedo_texture = _seam_texture(col)
+		mat.uv1_scale = Vector3(length / 0.5, WALL_H_M / 0.5, 1.0)   # one grid square = 50 cm
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var normal := Vector3.ZERO
+		match side:
+			"west":
+				mi.position = Vector3(TILE_M, 0.0, a + length * 0.5); mi.rotation.y = PI * 0.5; normal = Vector3.LEFT
+			"east":
+				mi.position = Vector3(rx, 0.0, a + length * 0.5); mi.rotation.y = PI * 0.5; normal = Vector3.RIGHT
+			"north":
+				mi.position = Vector3(a + length * 0.5, 0.0, TILE_M); normal = Vector3.FORWARD
+			_:
+				mi.position = Vector3(a + length * 0.5, 0.0, rz); normal = Vector3.BACK
+		build_root.add_child(mi)
+		# The frame, in the pair's colour, round the opening.
+		var frame_mat := StandardMaterial3D.new()
+		frame_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		frame_mat.albedo_color = col
+		var t := 0.025
+		for edge in [[Vector3(0, WALL_H_M - t * 0.5, 0), Vector3(length, t, t)],
+				[Vector3(0, t * 0.5, 0), Vector3(length, t, t)],
+				[Vector3(-length * 0.5, WALL_H_M * 0.5, 0), Vector3(t, WALL_H_M, t)],
+				[Vector3(length * 0.5, WALL_H_M * 0.5, 0), Vector3(t, WALL_H_M, t)]]:
+			var bm := BoxMesh.new()
+			bm.size = edge[1]
+			var bar := MeshInstance3D.new()
+			bar.mesh = bm
+			bar.material_override = frame_mat
+			bar.position = edge[0]
+			bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.add_child(bar)
+		_seam_planes.append({"mesh": mi, "mat": mat, "normal": normal})
+
+
+# A blueprint grid square for the seam planes: faint lines in the pair's
+# colour on blueprint blue.
+var _seam_tex_cache: Dictionary = {}
+
+func _seam_texture(col: Color) -> ImageTexture:
+	if _seam_tex_cache.has(col):
+		return _seam_tex_cache[col]
+	const N := 32
+	var img := Image.create(N, N, true, Image.FORMAT_RGBA8)
+	img.fill(Color(1, 1, 1, 1))
+	var line := Color(col.r * 1.6, col.g * 1.6, col.b * 1.6, 1.0)
+	for i in N:
+		img.set_pixel(i, 0, line)
+		img.set_pixel(0, i, line)
+	img.generate_mipmaps()
+	var tex := ImageTexture.create_from_image(img)
+	_seam_tex_cache[col] = tex
+	return tex
+
+
+# Far seams stand nearly solid; one between the camera and the room is a
+# thin blue veil, so the room stays in view (as a wall would come down).
+func _update_seam_planes(flat: Vector3) -> void:
+	for sp in _seam_planes:
+		if not is_instance_valid(sp["mesh"]):
+			continue
+		var near := (sp["normal"] as Vector3).dot(flat) > 0.0 and wall_mode != WallMode.UP
+		var mat := sp["mat"] as StandardMaterial3D
+		mat.albedo_color.a = SEAM_NEAR_ALPHA if near or wall_mode == WallMode.DOWN else SEAM_FAR_ALPHA
+
+
+# Copies of a piece's model where the parts of it past a seam come back in.
+# `entry` is a _furniture_entries entry; its echoes live in entry["echoes"].
+func _sync_echoes(entry: Dictionary) -> void:
+	var old: Array = entry.get("echoes", [])
+	if _apt_floor == null or _apt_floor.loop == null:
+		if old.is_empty():
+			return
+	var mesh := entry.get("mesh") as MeshInstance3D
+	var shifts: Array = []
+	if is_instance_valid(mesh) and _apt_floor != null and _apt_floor.loop != null:
+		var size: Vector3 = entry["size"]
+		var corner := Vector2(mesh.position.x - size.x * 0.5, mesh.position.z - size.z * 0.5) / TILE_M \
+			+ Vector2(_room_bounds.position)
+		for part in _apt_floor.loop.split_rect(Rect2(corner, Vector2(size.x, size.z) / TILE_M)):
+			var sh: Vector2 = part["shift"]
+			if sh != Vector2.ZERO and sh not in shifts:
+				shifts.append(sh)
+	# Same shifts as last time: just move them along.
+	if old.size() == shifts.size():
+		var same := true
+		for i in old.size():
+			if not is_instance_valid(old[i]) or (old[i] as Node3D).get_meta("shift", Vector2.INF) != shifts[i]:
+				same = false
+		if same:
+			for i in old.size():
+				var e := old[i] as Node3D
+				e.position = mesh.position + Vector3(shifts[i].x, 0.0, shifts[i].y) * TILE_M
+				e.rotation = mesh.rotation
+				e.scale = mesh.scale
+			return
+	for e in old:
+		if is_instance_valid(e):
+			(e as Node).queue_free()
+	if not shifts.is_empty():
+		_clip_to_room(mesh)
+	var echoes: Array = []
+	for sh in shifts:
+		var e := mesh.duplicate() as Node3D
+		e.set_meta("shift", sh)
+		e.set_meta("echo_of", entry["furniture"])
+		e.position = mesh.position + Vector3((sh as Vector2).x, 0.0, (sh as Vector2).y) * TILE_M
+		build_root.add_child(e)
+		echoes.append(e)
+	entry["echoes"] = echoes
+
+
+# A piece across a seam, and its echoes, are drawn only inside the room: its
+# styled (matte) materials are swapped for the clipping variant, shared per
+# original material. Without the diorama style there is nothing to swap.
+const MATTE_CLIP_SHADER := preload("res://style/shaders/matte_gradient_clip.gdshader")
+var _clip_mats: Dictionary = {}   # original ShaderMaterial -> its clipping copy
+
+func _clip_to_room(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.material_override != null:
+			mi.material_override = _clip_copy(mi.material_override)
+		elif mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.get_surface_override_material(i)
+				if m != null:
+					mi.set_surface_override_material(i, _clip_copy(m))
+	for child in node.get_children():
+		_clip_to_room(child)
+
+
+func _clip_copy(m: Material) -> Material:
+	if not (m is ShaderMaterial):
+		return m
+	var sm := m as ShaderMaterial
+	if sm.shader == MATTE_CLIP_SHADER:
+		return m
+	if sm.shader != StyleController.MATTE_SHADER and sm.shader != StyleController.MATTE_DOUBLE_SHADER:
+		return m
+	if _clip_mats.has(sm):
+		return _clip_mats[sm]
+	var c := ShaderMaterial.new()
+	c.shader = MATTE_CLIP_SHADER
+	for u in sm.shader.get_shader_uniform_list():
+		var uname: String = (u as Dictionary)["name"]
+		c.set_shader_parameter(uname, sm.get_shader_parameter(uname))
+	# The room's floor in world space: the interior, out to the walls' inner faces.
+	var a := build_root.global_transform * Vector3(TILE_M, 0.0, TILE_M)
+	var b := build_root.global_transform * Vector3(float(_room_bounds.size.x) * TILE_M, 0.0, float(_room_bounds.size.y) * TILE_M)
+	c.set_shader_parameter("clip_min", Vector2(minf(a.x, b.x), minf(a.z, b.z)) - Vector2(0.002, 0.002))
+	c.set_shader_parameter("clip_max", Vector2(maxf(a.x, b.x), maxf(a.z, b.z)) + Vector2(0.002, 0.002))
+	_clip_mats[sm] = c
+	return c
 
 
 # ── Stacking: pieces standing on tables and shelves ─────────────────────────
@@ -5658,6 +5911,7 @@ func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> v
 		var lift := _lift_m(f)
 		mi.position.y = lift + (entry["size"] as Vector3).y * 0.5
 		entry["pos"] = mi.position
+		_sync_echoes(entry)
 		if f.is_surface:
 			_apply_sag(entry, entry.get("sag", 0.0) as float)
 		for h in _hitbox_highlights:
@@ -5696,6 +5950,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	if f.keepsake:
 		_add_keepsake_mark(mi, height_m)
 	_furniture_entries.append({"furniture": f, "mesh": mi, "pos": pos, "size": box_size})
+	_sync_echoes(_furniture_entries[-1])
 	_add_hitbox_highlight(Vector3(local_x, 0.0, local_z), Vector2(fw, fd), f)
 	_set_rail_indicator(mi, f, Vector2(fw, fd))
 

@@ -1435,7 +1435,8 @@ func _floor_plan_data(ld: Dictionary) -> Dictionary:
 			max_x = maxf(max_x, maxf(s.get("x1", 0.0) as float, s.get("x2", 0.0) as float))
 			min_y = minf(min_y, minf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
 			max_y = maxf(max_y, maxf(s.get("y1", 0.0) as float, s.get("y2", 0.0) as float))
-		return {"segments": segs, "bounds": Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))}
+		return {"segments": segs, "bounds": Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y)),
+			"loop": f.get("loop", {})}
 	return {"segments": [], "bounds": Rect2()}
 
 
@@ -1740,7 +1741,7 @@ func _select_level(ld: Dictionary) -> void:
 	]
 
 	var plan := _floor_plan_data(ld)
-	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld))
+	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld), plan.get("loop", {}) as Dictionary)
 	_tenant_portrait.visible = true
 	_update_portrait(tenant.get("key_name", tenant.get("name", "?")) as String)
 
@@ -2359,7 +2360,7 @@ func _select_custom_level(ld: Dictionary) -> void:
 	]
 
 	var plan := _floor_plan_data(ld)
-	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld))
+	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld), plan.get("loop", {}) as Dictionary)
 
 	var tenant := ld.get("tenant", {}) as Dictionary
 	if tenant.is_empty():

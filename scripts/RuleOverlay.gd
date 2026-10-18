@@ -254,6 +254,11 @@ func _center(tile: Vector2i) -> Vector2:
 	return (Vector2(tile) + Vector2(0.5, 0.5)) * TILE
 
 
+# _center() for a point given in tiles that need not be whole.
+func _pt(tile: Vector2) -> Vector2:
+	return (tile + Vector2(0.5, 0.5)) * TILE
+
+
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	_draw_carry_hints(font)
@@ -287,7 +292,25 @@ func _draw() -> void:
 		var seen_to := to
 		if s["block"] != null:
 			seen_to = _center(s["block"])
-		if must_clear:
+		var route := s.get("route", []) as Array
+		if not route.is_empty():
+			# Seen the long way round a looped flat: each stretch, out through
+			# one seam and in through the other, with a dot where it passes.
+			for leg in route:
+				var a := _pt(leg[0])
+				var b := _pt(leg[1])
+				if must_clear:
+					draw_line(a, b, halo, 5.0)
+					draw_line(a, b, col, 2.5)
+				else:
+					draw_dashed_line(a, b, halo, 5.0, 7.0)
+					draw_dashed_line(a, b, col, 2.5, 7.0)
+			for li in range(1, route.size()):
+				draw_circle(_pt(route[li][0]), 3.5, halo)
+				draw_circle(_pt(route[li][0]), 2.2, col)
+				draw_circle(_pt(route[li - 1][1]), 3.5, halo)
+				draw_circle(_pt(route[li - 1][1]), 2.2, col)
+		elif must_clear:
 			draw_line(from, seen_to, halo, 5.0)
 			draw_line(from, seen_to, col, 2.5)
 		else:

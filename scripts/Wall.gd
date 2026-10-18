@@ -47,6 +47,7 @@ var segments:       Array      = []   # new-format walls: [{x1,y1,x2,y2,primary,
 var stairs_data:    Array      = []   # [{rect:Rect2i, direction:String}] one entry per placed stair
 var stair_openings: Array      = []   # same format, but stair footprints from parent floor (for loft rendering)
 var _use_new_format: bool      = false
+var loop: LoopSeams = null      # openings that lead back into this same floor (see LoopSeams.gd); null = none
 
 var _block_reason: String = ""    # why the most recent can_place() call returned false, for UI feedback
 var _placed: Dictionary = {}      # Vector2i -> Array[Furniture]  (multi-Z) — rasterized cache,
@@ -123,7 +124,49 @@ func _rect_tiles(at: Vector2, w: int, h: int) -> Array[Vector2i]:
 	for x in range(x0, x1 + 1):
 		for y in range(y0, y1 + 1):
 			tiles.append(Vector2i(x, y))
+	if loop != null:
+		# On a looped floor a piece across a seam stands on both sides of it.
+		var seen: Dictionary = {}
+		var wrapped: Array[Vector2i] = []
+		for t in tiles:
+			var wt := loop.wrap_tile(t)
+			if not seen.has(wt):
+				seen[wt] = true
+				wrapped.append(wt)
+		return wrapped
 	return tiles
+
+
+# The tile `t` really is on a looped floor (see LoopSeams.wrap_tile); `t`
+# itself anywhere else.
+func wrap_tile(t: Vector2i) -> Vector2i:
+	return loop.wrap_tile(t) if loop != null else t
+
+
+# A piece's corner moved round the loop to inside the room (a no-op on an
+# ordinary floor).
+func wrap_point(p: Vector2) -> Vector2:
+	return loop.wrap_point(p) if loop != null else p
+
+
+# A footprint as the rects it covers: itself, or on a looped floor one part
+# per side of each seam it crosses.
+func footprint_rects(r: Rect2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	if loop == null:
+		out.append(r)
+		return out
+	for part in loop.split_rect(r):
+		out.append(part["rect"] as Rect2)
+	return out
+
+
+static func _rects_meet(a: Array[Rect2], b: Array[Rect2]) -> bool:
+	for ra in a:
+		for rb in b:
+			if ra.intersects(rb):
+				return true
+	return false
 
 
 func _get_all_placed_unique() -> Array:
@@ -466,7 +509,7 @@ func _compute_light_map() -> void:
 		if intensity < 0.04:
 			continue
 		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var next: Vector2i = tile + dir
+			var next: Vector2i = wrap_tile(tile + dir)   # daylight goes round a loop too
 			if not is_floor_tile(next):
 				continue
 			if next in blocked:
@@ -562,7 +605,9 @@ func setup(floor_data: Dictionary) -> void:
 		wall_definitions = []
 		partitions       = []
 		_prune_floor_mask_to_walls()
+		loop = LoopSeams.from_data(floor_data.get("loop"), get_room_bounds())
 	else:
+		loop             = null
 		floor_mask       = {}
 		segments         = []
 		wall_definitions = floor_data.get("walls", [])
@@ -1007,6 +1052,12 @@ const WALL_SNAP := 1.0   # tiles — placing within this distance of a wall snap
 # not just visually close at the floor plan's small scale.
 func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 	var bounds := get_room_bounds()
+	# A piece standing across a seam of a looped floor is not near a wall
+	# there: leave it where it was put.
+	if loop != null:
+		at = wrap_point(at)
+		if loop.split_rect(Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))).size() > 1:
+			return at
 	var snap_pos := at
 	# bounds.position itself is the wall's own tile (blocked by
 	# _partition_tile_set), so touching the west/north wall means sitting one
@@ -1073,6 +1124,11 @@ func _nearest_wall_spot(furniture: Furniture, at: Vector2, bounds: Rect2) -> Vec
 
 func can_place(furniture: Furniture, at: Vector2) -> bool:
 	_block_reason = ""
+	at = wrap_point(at)
+	# Looped floor: a piece longer than the loop meets its own tail.
+	if loop != null and LoopSeams.parts_overlap(loop.split_rect(Rect2(at, Vector2(furniture.grid_w, furniture.grid_h)))):
+		_block_reason = tr("Longer than the loop: it runs into itself")
+		return false
 	var blocked := _partition_tile_set()
 	blocked.merge(_window_tile_set())
 	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
@@ -1153,6 +1209,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	# not tile-quantized — two pieces can sit flush at a fractional boundary
 	# without a false collision from tile rounding.
 	var new_rect := Rect2(at, Vector2(furniture.grid_w, furniture.grid_h))
+	var new_parts := footprint_rects(new_rect)
 	# Whatever rests on this piece travels with it (move_with_riders()), so it
 	# is never in its own way; the riders' own landing spots are checked there.
 	var carried := riders_of(furniture) if furniture.is_surface else []
@@ -1177,7 +1234,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		if furniture.z_top <= f.z_bottom or furniture.z_bottom >= f.z_top:
 			continue   # different Z layers (e.g. loft above, ground below) never collide
 		var other_rect := Rect2(entry["pos"] as Vector2, Vector2(f.grid_w, f.grid_h))
-		if new_rect.intersects(other_rect):
+		if _rects_meet(new_parts, footprint_rects(other_rect)):
 			_block_reason = tr("Overlaps %s") % f.furniture_name
 			return false
 
@@ -1224,7 +1281,7 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			fpos - Vector2(f.ghost_radius, f.ghost_radius),
 			Vector2(f.grid_w + f.ghost_radius * 2, f.grid_h + f.ghost_radius * 2)
 		)
-		if ghost.intersects(new_rect):
+		if _rects_meet(new_parts, footprint_rects(ghost)):
 			_block_reason = tr("Needs clearance around %s") % f.furniture_name
 			return false
 
@@ -1232,9 +1289,10 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 	# there; nothing else can stand there).
 	if not furniture.walkable:
 		for swing in door_swings():
-			if _rect_hits_swing(new_rect, swing as Dictionary):
-				_block_reason = tr("In the way of the door")
-				return false
+			for part in new_parts:
+				if _rect_hits_swing(part, swing as Dictionary):
+					_block_reason = tr("In the way of the door")
+					return false
 
 	# Every other moment of the day: the piece is there too (unless it has a
 	# spot of its own in that moment), and so is everything else as it stands
@@ -1300,17 +1358,17 @@ func _moment_clash(furniture: Furniture, at: Vector2, under: Array, carried: Arr
 		var h := furniture.grid_h
 		if furniture.foldable and furniture.extended_add_h > 0:
 			h = (furniture._base_grid_h + furniture.extended_add_h) if (furniture.moment_fold_state.get(m, false) as bool) else furniture._base_grid_h
-		var rect := Rect2(at, Vector2(furniture.grid_w, h))
+		var rect := footprint_rects(Rect2(at, Vector2(furniture.grid_w, h)))
 		var label: String = Furniture.moment_labels.get(m, m)
 		for f in get_all_furniture():
 			var other := f as Furniture
 			if other == furniture or other in under or other in carried:
 				continue
 			var r := other.get_moment_rect(m)
-			if rect.intersects(r) and not (furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top):
+			if _rects_meet(rect, footprint_rects(r)) and not (furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top):
 				return tr("Would overlap %s during \"%s\"") % [other.furniture_name, label]
 			var apart := furniture.z_top <= other.z_bottom or furniture.z_bottom >= other.z_top
-			if other.ghost_radius > 0 and not apart and r.grow(float(other.ghost_radius)).intersects(rect):
+			if other.ghost_radius > 0 and not apart and _rects_meet(rect, footprint_rects(r.grow(float(other.ghost_radius)))):
 				return tr("Needs clearance around %s during \"%s\"") % [other.furniture_name, label]
 	return ""
 
@@ -1370,6 +1428,7 @@ func get_block_reason() -> String:
 
 func place_furniture(furniture: Furniture, at: Vector2) -> void:
 	_remove_from_grid(furniture)
+	at = wrap_point(at)
 	for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
 		_placed_add(tile, furniture)
 	_placed_continuous.append({"furniture": furniture, "pos": at})
@@ -1427,7 +1486,18 @@ func _recalculate_zones() -> void:
 
 	# All walkable floor tiles (floor_mask empty = whole grid)
 	var all_floor: Dictionary = {}
-	if floor_mask.is_empty():
+	if loop != null:
+		# A looped floor's rooms are what its walls (and the seams) make of
+		# it: a wall keeps two rooms apart until a seam joins them round the
+		# back. (An ordinary floor floods its whole grid, below.)
+		var walls := _partition_tile_set()
+		var b := get_room_bounds()
+		for x in range(b.position.x, b.end.x + 1):
+			for y in range(b.position.y, b.end.y + 1):
+				var t := Vector2i(x, y)
+				if is_floor_tile(t) and not walls.has(t):
+					all_floor[t] = true
+	elif floor_mask.is_empty():
 		for x in range(grid_w):
 			for y in range(grid_h):
 				all_floor[Vector2i(x, y)] = true
@@ -1457,8 +1527,9 @@ func _recalculate_zones() -> void:
 				continue
 			visited[cur] = true
 			zone_tiles[cur] = true
-			for nb in [Vector2i(cur.x - 1, cur.y), Vector2i(cur.x + 1, cur.y),
+			for step in [Vector2i(cur.x - 1, cur.y), Vector2i(cur.x + 1, cur.y),
 					   Vector2i(cur.x, cur.y - 1), Vector2i(cur.x, cur.y + 1)]:
+				var nb := wrap_tile(step)   # through a seam, to the other side
 				if nb not in visited and nb not in divider_tiles and nb in all_floor:
 					queue.append(nb)
 
@@ -1870,26 +1941,88 @@ func has_sightline(from: Vector2i, to: Vector2i) -> bool:
 # tall piece of furniture), or null when the line is clear.
 func sightline_block(from: Vector2i, to: Vector2i) -> Variant:
 	var blocked := _partition_tile_set()
-	var x0 := from.x; var y0 := from.y
-	var x1 := to.x;   var y1 := to.y
-	var dx := absi(x1 - x0); var sx := 1 if x0 < x1 else -1
-	var dy := -absi(y1 - y0); var sy := 1 if y0 < y1 else -1
+	if loop == null:
+		return _line_block(_line_tiles(from, to), blocked)
+	# On a looped floor the eye can also see `to` the long way round, out
+	# through a seam and back in: the line is clear if any way round is. The
+	# block reported is the one on the direct line.
+	var direct: Variant = null
+	for img in loop.images_of(to):
+		var hit: Variant = _line_block(_line_tiles(from, img), blocked)
+		if hit == null:
+			return null
+		if img == to:
+			direct = hit
+	return direct
+
+
+# The way round a looped floor that the eye sees `to` by, when it is not the
+# straight line: [[a, b], ...] stretches in tiles, one per side of each seam
+# it goes through. Empty when the straight line is clear, or nothing is.
+func sightline_route(from: Vector2i, to: Vector2i) -> Array:
+	if loop == null:
+		return []
+	var blocked := _partition_tile_set()
+	if _line_block(_line_tiles(from, to), blocked) == null:
+		return []
+	for img in loop.images_of(to):
+		if img == to:
+			continue
+		var line := _line_tiles(from, img)
+		if _line_block(line, blocked) != null:
+			continue
+		var out: Array = []
+		var start := Vector2(from)
+		var prev := from
+		var prev_shift := Vector2i.ZERO
+		for raw in line:
+			var shift := loop.wrap_tile(raw) - raw
+			if shift != prev_shift:
+				# Out through the seam: this stretch ends at the wall, the
+				# next one starts at the opening opposite.
+				var cross := (Vector2(prev) + Vector2(raw)) * 0.5
+				out.append([start, cross + Vector2(prev_shift)])
+				start = cross + Vector2(shift)
+				prev_shift = shift
+			prev = raw
+		out.append([start, Vector2(to)])
+		return out
+	return []
+
+
+# The tiles of a straight line from `a` to `b` (Bresenham), unwrapped.
+func _line_tiles(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var x0 := a.x; var y0 := a.y
+	var dx := absi(b.x - x0); var sx := 1 if x0 < b.x else -1
+	var dy := -absi(b.y - y0); var sy := 1 if y0 < b.y else -1
 	var err := dx + dy
 	while true:
-		var tile := Vector2i(x0, y0)
-		if tile != from and tile != to:
-			if tile in blocked:
-				return tile
-			for f in _placed_list(tile):
-				if (f as Furniture).blocks_sight():
-					return tile
-		if x0 == x1 and y0 == y1:
+		out.append(Vector2i(x0, y0))
+		if x0 == b.x and y0 == b.y:
 			break
 		var e2 := 2 * err
 		if e2 >= dy:
 			err += dy; x0 += sx
 		if e2 <= dx:
 			err += dx; y0 += sy
+	return out
+
+
+# The first tile of `line` (ends left out) that cuts it: a wall, a tall
+# piece, or — round a loop — the outside, past a wall with no opening.
+func _line_block(line: Array[Vector2i], blocked: Dictionary) -> Variant:
+	for i in range(1, line.size() - 1):
+		var tile := line[i]
+		if loop != null:
+			tile = loop.wrap_tile(tile)
+			if not is_floor_tile(tile):
+				return tile
+		if tile in blocked:
+			return tile
+		for f in _placed_list(tile):
+			if (f as Furniture).blocks_sight():
+				return tile
 	return null
 
 
@@ -2206,9 +2339,12 @@ func min_distance_to_wall(tile: Vector2i) -> int:
 	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var d := 0
 		var t := tile
-		while is_floor_tile(t) and t not in blocked:
+		# Round a loop a seam is not a wall: keep going through it, as far
+		# as once round (a row with no wall at all is never near one).
+		var cap := 999 if loop == null else grid_w + grid_h
+		while is_floor_tile(t) and t not in blocked and d < cap:
 			d += 1
-			t += dir
+			t = wrap_tile(t + dir)
 		best = mini(best, d - 1)
 	return maxi(best, 0)
 
@@ -2361,17 +2497,33 @@ func _compute_reachable_floor() -> Dictionary:
 					if ax >= 0 and ay >= 0 and ax < aw and ay < ah and clear[ay * aw + ax] == 1:
 						seeds.append(ay * aw + ax)
 
+	# Looped floor: a patch against one opening of a seam steps through to
+	# the patch against the other.
+	var links: Dictionary = {}
+	if loop != null:
+		var by_tile := loop.patch_links(WALK_WIDTH)
+		for a in by_tile:
+			var av := a as Vector2i - Vector2i(x0, y0)
+			if av.x < 0 or av.y < 0 or av.x >= aw or av.y >= ah:
+				continue
+			var to: Array[int] = []
+			for other in by_tile[a] as Array:
+				var bv := other as Vector2i - Vector2i(x0, y0)
+				if bv.x >= 0 and bv.y >= 0 and bv.x < aw and bv.y < ah:
+					to.append(bv.y * aw + bv.x)
+			links[av.y * aw + av.x] = to
+
 	var seen := PackedByteArray()
 	seen.resize(aw * ah)
 	var reached_patches: Array[int] = []
 	if not seeds.is_empty():
-		reached_patches = _flood_patches(seeds, clear, seen, aw, ah)
+		reached_patches = _flood_patches(seeds, clear, seen, aw, ah, links)
 	else:
 		# No entrance on this floor (an upper storey, a box interior, a test
 		# room): take the largest connected stretch of walkable floor.
 		for i in aw * ah:
 			if clear[i] == 1 and seen[i] == 0:
-				var comp := _flood_patches([i] as Array[int], clear, seen, aw, ah)
+				var comp := _flood_patches([i] as Array[int], clear, seen, aw, ah, links)
 				if comp.size() > reached_patches.size():
 					reached_patches = comp
 
@@ -2385,7 +2537,8 @@ func _compute_reachable_floor() -> Dictionary:
 	return reached
 
 
-func _flood_patches(seeds: Array[int], clear: PackedByteArray, seen: PackedByteArray, aw: int, ah: int) -> Array[int]:
+func _flood_patches(seeds: Array[int], clear: PackedByteArray, seen: PackedByteArray, aw: int, ah: int,
+		links: Dictionary = {}) -> Array[int]:
 	var out: Array[int] = []
 	var queue: Array[int] = []
 	for s in seeds:
@@ -2407,6 +2560,10 @@ func _flood_patches(seeds: Array[int], clear: PackedByteArray, seen: PackedByteA
 			seen[i - aw] = 1; queue.append(i - aw)
 		if y < ah - 1 and clear[i + aw] == 1 and seen[i + aw] == 0:
 			seen[i + aw] = 1; queue.append(i + aw)
+		var linked: Array = links.get(i, [])
+		for j in linked:
+			if clear[j] == 1 and seen[j] == 0:
+				seen[j] = 1; queue.append(j)
 	return out
 
 
@@ -2441,16 +2598,16 @@ func is_reachable(f: Furniture) -> bool:
 		match side:
 			0:
 				for x in range(fx, fx + f.grid_w):
-					if reached.has(Vector2i(x, fy - 1)): return true
+					if reached.has(wrap_tile(Vector2i(x, fy - 1))): return true
 			2:
 				for x in range(fx, fx + f.grid_w):
-					if reached.has(Vector2i(x, fy + f.grid_h)): return true
+					if reached.has(wrap_tile(Vector2i(x, fy + f.grid_h))): return true
 			1:
 				for y in range(fy, fy + f.grid_h):
-					if reached.has(Vector2i(fx + f.grid_w, y)): return true
+					if reached.has(wrap_tile(Vector2i(fx + f.grid_w, y))): return true
 			3:
 				for y in range(fy, fy + f.grid_h):
-					if reached.has(Vector2i(fx - 1, y)): return true
+					if reached.has(wrap_tile(Vector2i(fx - 1, y))): return true
 	return false
 
 
@@ -2467,6 +2624,20 @@ func _has_adjacent_free(f: Furniture) -> bool:
 	var y0 := floori(f.grid_pos.y)
 	var x1 := x0 + f.grid_w
 	var y1 := y0 + f.grid_h
+	if loop != null:
+		# Round a loop the free tile can be across a seam.
+		var b := get_room_bounds()
+		var walls := _partition_tile_set()
+		var around: Array[Vector2i] = []
+		for x in range(x0, x1):
+			around.append_array([Vector2i(x, y0 - 1), Vector2i(x, y1)])
+		for y in range(y0, y1):
+			around.append_array([Vector2i(x0 - 1, y), Vector2i(x1, y)])
+		for t in around:
+			var w := loop.wrap_tile(t)
+			if is_floor_tile(w) and not walls.has(w) and b.has_point(w) and not _placed_any_at(w):
+				return true
+		return false
 	for x in range(x0, x1):
 		if y0 > 0 and not _placed_any_at(Vector2i(x, y0 - 1)):
 			return true
