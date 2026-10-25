@@ -109,7 +109,7 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 # get right/iterate on than doubling geometry in Blender. Shared with the
 # room's ink lines (InkLines): same colour, and off with them on Low.
 func _apply_outline(node: Node) -> void:
-	var outline_mat := InkLines.hull_material()
+	var outline_mat := InkLines.mii_outline_material()
 	for child in node.get_children():
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).material_overlay = outline_mat
