@@ -265,6 +265,8 @@ func set_node_alpha(node: Node, alpha: float) -> void:
 
 # `provider` is func(role, source_colour_or_null) -> ShaderMaterial.
 func _style_subtree(node: Node, role: StringName, provider: Callable) -> void:
+	if node.is_in_group(InkLines.GROUP):
+		return   # the ink keeps its own material
 	if node is MeshInstance3D:
 		_style_mesh(node as MeshInstance3D, role, provider)
 	elif node is Light3D and role == ROLE_GLOW and palette != null:

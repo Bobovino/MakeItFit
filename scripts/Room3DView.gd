@@ -220,8 +220,11 @@ func _setup_style() -> void:
 	_style.manage_global_shadows = false   # shadow atlas settings are engine-wide; other views share them
 	_style.palette = _palette if _palette != null else PaletteLibrary.default_palette()
 	_style.quality = GameState.graphics_quality as StyleQuality.Level
+	InkLines.set_palette(_style.palette)
+	InkLines.set_enabled(InkLines.enabled_for(GameState.graphics_quality), get_tree())
 	GameState.graphics_quality_changed.connect(func(level: int):
-		_style.quality = level as StyleQuality.Level)
+		_style.quality = level as StyleQuality.Level
+		InkLines.set_enabled(InkLines.enabled_for(level), get_tree()))
 	build_root.get_parent().add_child(_style)
 	_cam_dist_scale = tan(deg_to_rad(cam.fov) * 0.5) / tan(deg_to_rad(STYLE_FOV) * 0.5)
 	cam.fov = STYLE_FOV
@@ -237,6 +240,7 @@ func set_level_style(level: Dictionary, levels_data: Dictionary) -> void:
 	_palette = PaletteLibrary.for_level(level, levels_data)
 	if _style != null and _palette != null:
 		_style.palette = _palette
+		InkLines.set_palette(_palette)
 
 
 func _style_node(node: Node, role: StringName) -> void:
@@ -257,6 +261,7 @@ func _model_of(mi: MeshInstance3D) -> Variant:
 func _style_if_bare(mi: MeshInstance3D) -> void:
 	if _style != null and not is_instance_valid(_model_of(mi)):
 		_style.style_node(mi, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
+		InkLines.add_to(mi)
 
 
 # The palette's accent colour is kept for small decorative pieces (a plant, a
@@ -977,6 +982,7 @@ func _ghostify(mi: MeshInstance3D) -> void:
 	var role: StringName = mi.get_meta("style_role", StyleController.ROLE_FURNITURE)
 	var inst: Variant = _model_of(mi)
 	_style.style_node_transparent(inst if is_instance_valid(inst) else mi, role, BUY_GHOST_ALPHA)
+	InkLines.set_hidden(mi, true)
 
 
 # ...and solid again once it's actually placed.
@@ -988,6 +994,7 @@ func _solidify(mi: MeshInstance3D) -> void:
 		_style.style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
 	else:
 		_style_if_bare(mi)
+	InkLines.set_hidden(mi, false)
 
 
 # Translucent pane colour for windows: the palette's glow colour when styled.
@@ -2363,6 +2370,8 @@ func _apply_animated_item_model(mi: MeshInstance3D, model_path: String, is_exten
 			mat.albedo_color.a = 0.0
 		mi.add_child(inst)
 		_style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
+		if _style != null:
+			InkLines.add_to(inst)
 		# Yawed 180° because the panels' built-in "open" direction pointed
 		# back into the room instead of out through the wall — confirmed
 		# wrong in-game, this flips it to open outward.
@@ -3464,6 +3473,8 @@ func _restore_wall_hole(f: Furniture) -> void:
 		var mesh := _add_sloped_wall(orig["length"], orig["thick"], orig["height"], orig["height"],
 			orig["pos"], orig["rot_y_deg"], orig["color"], wd.get("role", StyleController.ROLE_WALL))
 		wd["mesh"] = mesh
+		if _style != null:
+			InkLines.add_to(mesh)
 		wd.erase("has_hole")
 		wd.erase("hole_owner")
 		wd.erase("orig_wall")
@@ -3728,6 +3739,9 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_build_home_outlines()
 	_add_columns(bounds)
 	_add_window_door_overlays(bounds)
+	if _style != null:
+		for wd in _wall_data:
+			InkLines.add_to(wd["mesh"])
 	_add_rails(bounds)
 	_add_reveal_zone_markers(bounds)
 	_add_balcony_extras(bounds)
@@ -4028,6 +4042,8 @@ func _apply_item_model(mi: MeshInstance3D, model_path: String, box_size: Vector3
 	mi.set_meta("model_inst", inst)
 	mi.set_meta("model_native", native)
 	_refit_item_model(mi, box_size)
+	if _style != null:
+		InkLines.add_to(inst)
 
 
 # Cheap per-frame rescale of an already-instantiated model (used while a drag

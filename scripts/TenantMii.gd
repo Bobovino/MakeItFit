@@ -19,7 +19,6 @@ class_name TenantMii
 # body-size distinction; nothing currently selects them.
 const MODEL_PATH_MALE   := "res://assets/models/tenants/tenant_adult_masc.glb"
 const MODEL_PATH_FEMALE := "res://assets/models/tenants/tenant_adult_fem.glb"
-const OUTLINE_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 
 const BOB_SPEED  := 3.2   # radians/sec
 const BOB_AMOUNT := 0.035 # metres
@@ -105,12 +104,12 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 	return null
 
 
-# Black rim around each part via a next-pass shader (cull_front + vertex push
+# Ink rim around each part via a next-pass shader (cull_front + vertex push
 # along normal) instead of baked-in inverted-hull geometry — much easier to
-# get right/iterate on than doubling geometry in Blender.
+# get right/iterate on than doubling geometry in Blender. Shared with the
+# room's ink lines (InkLines): same colour, and off with them on Low.
 func _apply_outline(node: Node) -> void:
-	var outline_mat := ShaderMaterial.new()
-	outline_mat.shader = OUTLINE_SHADER
+	var outline_mat := InkLines.hull_material()
 	for child in node.get_children():
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).material_overlay = outline_mat
