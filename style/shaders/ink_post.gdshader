@@ -1,24 +1,32 @@
 // Ink over the finished 3D image, like a drawing (see style/ink_lines.gd).
-// Reads the depth of every pixel and its neighbours: where depth jumps, one
-// thing stands in front of another (a contour); where it bends, two faces
-// meet at a corner. Both become a line of a fixed number of pixels, so every
-// piece, wall and tenant is inked the same way at every zoom.
 //
+// - Contours, from depth: where a neighbouring pixel is well in front of this
+//   one, one thing stands in front of another. The line lands on the far
+//   side, just outside the nearer thing.
+// - Corners, from the facing pass (InkNormalPass): a texture of which way
+//   each styled surface faces, rendered from the same camera. Where that
+//   direction changes sharply between neighbouring pixels, two faces meet:
+//   a box's edges, a drawer's front, a window's frame.
+//
+// Both come from the image itself, so they line up and keep the same width
+// (a fixed fraction of the view's height) on every piece and at every zoom.
 // Drawn on a quad that covers the screen, attached to the camera.
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled, blend_mix;
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
+uniform sampler2D normal_tex : filter_nearest, repeat_disable;
+uniform bool has_normals = false;
 uniform vec4 ink_color : source_color = vec4(0.10, 0.15, 0.16, 1.0);
 // Line width as a fraction of the viewport height.
-uniform float width = 0.0018;
+uniform float width = 0.0016;
 // How big a jump in depth, relative to the distance, makes a contour.
 uniform float contour_threshold = 0.012;
-// How sharp a bend makes a corner (in units of 1/depth, relative).
-uniform float corner_threshold = 0.01;
-uniform float corner_strength = 0.75;
-// Up to this distance (metres) the corner threshold holds; beyond, it grows.
-uniform float corner_near_m = 3.0;
+// How far apart two neighbouring facing colours must be to make a corner
+// (0.34 is about 40 degrees between the faces).
+uniform float corner_lo = 0.30;
+uniform float corner_hi = 0.42;
+uniform float corner_strength = 0.85;
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy * 2.0, 1.0, 1.0);
@@ -42,35 +50,23 @@ void fragment() {
 	float r = view_z(SCREEN_UV + vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
 	float u = view_z(SCREEN_UV - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
 	float d = view_z(SCREEN_UV + vec2(0.0, px.y), INV_PROJECTION_MATRIX);
-
-	// Contour: the nearest of the neighbours is well in front of this pixel,
-	// so the line lands on the far side, just outside the nearer thing.
 	float near = min(min(l, r), min(u, d));
 	float jump = (c - near) / max(c, 1e-4);
-	float contour = smoothstep(contour_threshold, contour_threshold * 1.8, jump);
+	float ink = smoothstep(contour_threshold, contour_threshold * 1.8, jump);
 
-	// Corner: 1/depth is linear across a flat face on screen, so its second
-	// difference is zero there and spikes where two faces meet. Measured two
-	// line widths apart, so depth's own rounding doesn't break it into dashes.
-	vec2 q = px * 2.0;
-	float l2 = view_z(SCREEN_UV - vec2(q.x, 0.0), INV_PROJECTION_MATRIX);
-	float r2 = view_z(SCREEN_UV + vec2(q.x, 0.0), INV_PROJECTION_MATRIX);
-	float u2 = view_z(SCREEN_UV - vec2(0.0, q.y), INV_PROJECTION_MATRIX);
-	float d2 = view_z(SCREEN_UV + vec2(0.0, q.y), INV_PROJECTION_MATRIX);
-	float ic = 1.0 / c;
-	float bx = abs(1.0 / l2 + 1.0 / r2 - 2.0 * ic) / ic;
-	float by = abs(1.0 / u2 + 1.0 / d2 - 2.0 * ic) / ic;
-	// Only where the bend isn't already a contour (a jump on either side).
-	float far_jump = max(max(abs(l2 - c), abs(r2 - c)), max(abs(u2 - c), abs(d2 - c))) / max(c, 1e-4);
-	// The depth buffer's steps are even in 1/depth, so measured this way the
-	// rounding grows with distance: the threshold grows with it, or far
-	// pieces get freckled with dots.
-	float ct = corner_threshold * max(1.0, c / corner_near_m);
-	float corner = smoothstep(ct, ct * 2.0, max(bx, by))
-		* (1.0 - smoothstep(contour_threshold * 2.0, contour_threshold * 4.0, far_jump))
-		* corner_strength;
+	if (has_normals) {
+		// Forward differences only (right and down), so a corner gives one
+		// line of the set width rather than one on each side of it.
+		vec3 nc = texture(normal_tex, SCREEN_UV).rgb;
+		vec3 nr = texture(normal_tex, SCREEN_UV + vec2(px.x, 0.0)).rgb;
+		vec3 nd = texture(normal_tex, SCREEN_UV + vec2(0.0, px.y)).rgb;
+		float bend = max(length(nc - nr), length(nc - nd));
+		// Only between surfaces that are in the facing pass: the black around
+		// them (markings, the Miis, the sky) is the contour's job.
+		float both = step(0.01, dot(nc, vec3(1.0))) * step(0.01, min(dot(nr, vec3(1.0)), dot(nd, vec3(1.0))));
+		ink = max(ink, smoothstep(corner_lo, corner_hi, bend) * corner_strength * both);
+	}
 
-	float ink = max(contour, corner);
 	ALBEDO = ink_color.rgb;
 	ALPHA = ink_color.a * ink;
 }

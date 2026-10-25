@@ -84,6 +84,21 @@ void fragment() {
 #ifdef MATTE_ALPHA
 	ALPHA = alpha * smoothstep(fade_y_min, fade_y_max, world_y);
 #endif
+	// The ink's facing pass (style/ink_normal_pass.gd, its camera has layer
+	// 20): paint which way this face points, nothing else. Albedo 0 leaves
+	// the lights nothing to add.
+	if ((CAMERA_VISIBLE_LAYERS & (1u << 19u)) != 0u) {
+		ALBEDO = vec3(0.0);
+		EMISSION = NORMAL * 0.5 + 0.5;
+#ifdef MATTE_ALPHA
+		// See-through things (a placement ghost, a fading wall) aren't
+		// solid: no corners of their own.
+		if (ALPHA < 0.99) {
+			discard;
+		}
+		ALPHA = 1.0;
+#endif
+	}
 }
 
 void light() {

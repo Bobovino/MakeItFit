@@ -17,8 +17,16 @@ extends RefCounted
 # doubled strokes.
 #
 # Corners between two faces at the same depth (a box's front edges, a
-# drawer's seams) are too faint in depth to find cleanly: InkCorners draws
-# those from the models.
+# drawer's seams) don't show in depth at all, and Compatibility has no normal
+# buffer to find them in. InkNormalPass renders one of its own: the room
+# again, from the same camera, each styled surface painting which way it
+# faces. The ink pass draws a corner where that changes sharply, so contours
+# and corners come from the same image and line up. It costs a second render
+# of the room.
+#
+# Corner lines built on the models were tried before and dropped: they never
+# lined up with the depth contour, rounded rims turned to scribble and window
+# frames to tangles.
 #
 # The Miis keep their own thin hull outline as well (TenantMii), so they're
 # outlined in the project map's portrait too; mii_outline_material() gives it
@@ -49,11 +57,18 @@ static func mii_outline_material() -> ShaderMaterial:
 	return _mii
 
 
-# Inks everything `camera` sees: a quad in front of it that covers the view.
-static func attach(camera: Camera3D) -> MeshInstance3D:
+# Inks everything `camera` sees in `viewport`: a quad in front of the camera
+# that covers the view, fed by a facing pass of the same view.
+static func attach(camera: Camera3D, viewport: SubViewport) -> MeshInstance3D:
 	var old := camera.get_node_or_null(NODE_NAME)
 	if old:
 		return old as MeshInstance3D
+	var facing := InkNormalPass.new()
+	facing.name = "InkFacingPass"
+	viewport.get_parent().get_parent().add_child(facing)
+	facing.setup(camera, viewport)
+	post_material().set_shader_parameter("normal_tex", facing.get_texture())
+	post_material().set_shader_parameter("has_normals", true)
 	var quad := MeshInstance3D.new()
 	quad.name = NODE_NAME
 	var mesh := QuadMesh.new()
@@ -65,6 +80,8 @@ static func attach(camera: Camera3D) -> MeshInstance3D:
 	# The shader places it over the whole view itself; never cull it.
 	quad.extra_cull_margin = 16384.0
 	quad.position = Vector3(0, 0, -1)
+	# Not in the facing pass: it reads that pass's texture.
+	quad.layers = 1
 	camera.add_child(quad)
 	return quad
 
@@ -78,4 +95,3 @@ static func set_palette(palette: LevelPalette) -> void:
 	ink.a = 1.0
 	post_material().set_shader_parameter("ink_color", ink)
 	mii_outline_material().set_shader_parameter("outline_color", ink)
-	InkCorners.set_ink(ink)

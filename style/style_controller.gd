@@ -265,8 +265,6 @@ func set_node_alpha(node: Node, alpha: float) -> void:
 
 # `provider` is func(role, source_colour_or_null) -> ShaderMaterial.
 func _style_subtree(node: Node, role: StringName, provider: Callable) -> void:
-	if node.is_in_group(InkCorners.GROUP):
-		return   # the ink keeps its own material
 	if node is MeshInstance3D:
 		_style_mesh(node as MeshInstance3D, role, provider)
 	elif node is Light3D and role == ROLE_GLOW and palette != null:
@@ -276,6 +274,11 @@ func _style_subtree(node: Node, role: StringName, provider: Callable) -> void:
 
 
 func _style_mesh(mi: MeshInstance3D, role: StringName, provider: Callable) -> void:
+	_style_mesh_materials(mi, role, provider)
+	_mark_for_ink(mi)
+
+
+func _style_mesh_materials(mi: MeshInstance3D, role: StringName, provider: Callable) -> void:
 	if mi.mesh == null:
 		return
 	if mi.mesh is PrimitiveMesh or mi.material_override != null:
@@ -298,6 +301,22 @@ func _style_mesh(mi: MeshInstance3D, role: StringName, provider: Callable) -> vo
 			elif src_mat is BaseMaterial3D:
 				src = (src_mat as BaseMaterial3D).albedo_color
 		mi.set_surface_override_material(i, provider.call(surface_role, src))
+
+
+# Meshes in the matte look take part in the ink's facing pass (they know how
+# to paint their facing there); anything else (glass, a backdrop) doesn't.
+func _mark_for_ink(mi: MeshInstance3D) -> void:
+	var mats: Array = [mi.material_override]
+	for i in mi.get_surface_override_material_count():
+		mats.append(mi.get_surface_override_material(i))
+	var matte := false
+	for m in mats:
+		if m is ShaderMaterial and (m as ShaderMaterial).shader in [MATTE_SHADER, MATTE_ALPHA_SHADER, MATTE_DOUBLE_SHADER]:
+			matte = true
+	if matte:
+		mi.layers |= InkNormalPass.NORMAL_LAYER
+	else:
+		mi.layers &= ~InkNormalPass.NORMAL_LAYER
 
 
 # Floor, wall and glow are one flat palette colour: ignore the source colour.
