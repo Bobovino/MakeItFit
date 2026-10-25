@@ -30,10 +30,12 @@ extends RefCounted
 #
 # The Miis keep their own thin hull outline as well (TenantMii), so they're
 # outlined in the project map's portrait too; mii_outline_material() gives it
-# the same ink.
+# the same ink. They are in the facing pass, as black silhouettes (its next
+# pass), so the corners of furniture behind a Mii stop at its edge.
 
 const POST_SHADER := preload("res://style/shaders/ink_post.gdshader")
 const MII_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
+const MII_MASK_SHADER := preload("res://style/shaders/ink_mask.gdshader")
 const NODE_NAME := "InkPass"
 const MII_WIDTH := 0.008
 
@@ -54,6 +56,11 @@ static func mii_outline_material() -> ShaderMaterial:
 		_mii.shader = MII_SHADER
 		_mii.set_shader_parameter("outline_width", MII_WIDTH)
 		_mii.set_shader_parameter("outline_color", post_material().get_shader_parameter("ink_color"))
+		# In the facing pass the Mii is a black silhouette, so furniture
+		# behind it never gets its corners inked across it.
+		var mask := ShaderMaterial.new()
+		mask.shader = MII_MASK_SHADER
+		_mii.next_pass = mask
 	return _mii
 
 

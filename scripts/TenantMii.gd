@@ -107,12 +107,14 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 # Ink rim around each part via a next-pass shader (cull_front + vertex push
 # along normal) instead of baked-in inverted-hull geometry — much easier to
 # get right/iterate on than doubling geometry in Blender. Shared with the
-# room's ink (InkLines): same colour.
+# room's ink (InkLines): same colour, and a black silhouette in the ink's
+# facing pass, so furniture corners behind the Mii stop at its edge.
 func _apply_outline(node: Node) -> void:
 	var outline_mat := InkLines.mii_outline_material()
 	for child in node.get_children():
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).material_overlay = outline_mat
+			(child as MeshInstance3D).layers |= InkNormalPass.NORMAL_LAYER
 		_apply_outline(child)
 
 

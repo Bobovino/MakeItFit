@@ -9,5 +9,10 @@ void vertex() {
 }
 
 void fragment() {
+	// Not in the ink's facing pass (style/ink_normal_pass.gd): there the Mii
+	// is only a black silhouette (ink_mask, this material's next pass).
+	if ((CAMERA_VISIBLE_LAYERS & (1u << 19u)) != 0u) {
+		discard;
+	}
 	ALBEDO = outline_color.rgb;
 }
