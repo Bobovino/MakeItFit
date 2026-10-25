@@ -25,10 +25,14 @@ const HULL_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 const GROUP := &"ink_lines"
 const NODE_NAME := "InkLines"
 # Faces meeting at more than this bend get a line between them.
-const CREASE_DEG := 30.0
+const CREASE_DEG := 40.0
 # Vertices this close are the same point (models split them per face).
 const WELD := 1e-4
-const HULL_WIDTH := 0.012
+# A separate part of a model smaller than this (a handle, a knob, a book on
+# a shelf), in metres along its longest side, gets no lines: inked, every
+# small detail turned into a black smudge.
+const MIN_PART_M := 0.14
+const HULL_WIDTH := 0.008
 
 static var _material: ShaderMaterial
 static var _hull: ShaderMaterial
@@ -51,15 +55,17 @@ static func hull_material() -> ShaderMaterial:
 	return _hull
 
 
-# The ink: a deep shade of the palette's shadow tint, so it belongs to the
-# level's colours instead of being a flat black.
+# The ink: a deep shade of the palette's shadow tint, a little see-through,
+# so it belongs to the level's colours instead of being a flat black.
 static func set_palette(palette: LevelPalette) -> void:
 	if palette == null:
 		return
-	var ink := palette.shadow_tint.darkened(0.62)
-	ink.a = 1.0
+	var ink := palette.shadow_tint.darkened(0.5)
+	ink.a = 0.8
 	material().set_shader_parameter("ink_color", ink)
-	hull_material().set_shader_parameter("outline_color", ink)
+	var hull := ink.lerp(palette.shadow_tint, 0.25)
+	hull.a = 1.0
+	hull_material().set_shader_parameter("outline_color", hull)
 
 
 static func set_enabled(on: bool, tree: SceneTree) -> void:
@@ -150,7 +156,8 @@ static func lines_for(mesh: Mesh) -> ArrayMesh:
 static func _build(mesh: Mesh) -> ArrayMesh:
 	var ids := {}          # welded position key -> point index
 	var points := PackedVector3Array()
-	var edges := {}        # "lo,hi" point indices -> [first face normal, faces seen, sharp]
+	var tris := PackedInt32Array()
+	var edges := {}        # Vector2i(lo, hi) point indices -> [first face normal, faces seen, sharp]
 	var cos_crease := cos(deg_to_rad(CREASE_DEG))
 	for s in mesh.get_surface_count():
 		if mesh is ArrayMesh and (mesh as ArrayMesh).surface_get_primitive_type(s) != Mesh.PRIMITIVE_TRIANGLES:
@@ -176,24 +183,47 @@ static func _build(mesh: Mesh) -> ArrayMesh:
 			var i2 := remap[index[t + 2] if not index.is_empty() else t + 2]
 			if i0 == i1 or i1 == i2 or i0 == i2:
 				continue
-			var nrm := (points[i1] - points[i0]).cross(points[i2] - points[i0])
-			if nrm.length_squared() < 1e-14:
-				continue
-			nrm = nrm.normalized()
-			for pair in [[i0, i1], [i1, i2], [i2, i0]]:
-				var lo: int = mini(pair[0], pair[1])
-				var hi: int = maxi(pair[0], pair[1])
-				var ek := Vector2i(lo, hi)
-				var e = edges.get(ek)
-				if e == null:
-					edges[ek] = [nrm, 1, false]
-				else:
-					e[1] += 1
-					# A face folded back on itself (a double-sided panel) is
-					# not a crease; anything bent past the threshold is.
-					var dot: float = (e[0] as Vector3).dot(nrm)
-					if dot < cos_crease and dot > -0.999:
-						e[2] = true
+			tris.append_array([i0, i1, i2])
+	# Parts: triangles joined through shared points.
+	var parent := PackedInt32Array()
+	parent.resize(points.size())
+	for i in points.size():
+		parent[i] = i
+	for t in range(0, tris.size(), 3):
+		_union(parent, tris[t], tris[t + 1])
+		_union(parent, tris[t], tris[t + 2])
+	var part_box := {}
+	for i in points.size():
+		var r := _find(parent, i)
+		if part_box.has(r):
+			part_box[r] = (part_box[r] as AABB).expand(points[i])
+		else:
+			part_box[r] = AABB(points[i], Vector3.ZERO)
+	for t in range(0, tris.size(), 3):
+		var i0 := tris[t]
+		var i1 := tris[t + 1]
+		var i2 := tris[t + 2]
+		var pb: AABB = part_box[_find(parent, i0)]
+		if maxf(pb.size.x, maxf(pb.size.y, pb.size.z)) < MIN_PART_M:
+			continue
+		var nrm := (points[i1] - points[i0]).cross(points[i2] - points[i0])
+		if nrm.length_squared() < 1e-14:
+			continue
+		nrm = nrm.normalized()
+		for pair in [[i0, i1], [i1, i2], [i2, i0]]:
+			var lo: int = mini(pair[0], pair[1])
+			var hi: int = maxi(pair[0], pair[1])
+			var ek := Vector2i(lo, hi)
+			var e = edges.get(ek)
+			if e == null:
+				edges[ek] = [nrm, 1, false]
+			else:
+				e[1] += 1
+				# A face folded back on itself (a double-sided panel) is
+				# not a crease; anything bent past the threshold is.
+				var dot: float = (e[0] as Vector3).dot(nrm)
+				if dot < cos_crease and dot > -0.999:
+					e[2] = true
 	var pos := PackedVector3Array()
 	var other := PackedFloat32Array()
 	var uv := PackedVector2Array()
@@ -225,3 +255,17 @@ static func _build(mesh: Mesh) -> ArrayMesh:
 	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {},
 		Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 	return out
+
+
+static func _find(parent: PackedInt32Array, i: int) -> int:
+	while parent[i] != i:
+		parent[i] = parent[parent[i]]
+		i = parent[i]
+	return i
+
+
+static func _union(parent: PackedInt32Array, a: int, b: int) -> void:
+	var ra := _find(parent, a)
+	var rb := _find(parent, b)
+	if ra != rb:
+		parent[ra] = rb
