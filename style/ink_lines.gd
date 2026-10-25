@@ -12,9 +12,13 @@ extends RefCounted
 # Things that don't write depth get no ink of their own: placement ghosts,
 # glass, floor markings. That's wanted: they're not solid objects.
 #
-# Lines found on the models themselves were tried first and dropped: the
+# Contours found on the models themselves were tried first and dropped: the
 # faces they sat on half covered them, so rounded rims came out as broken,
 # doubled strokes.
+#
+# Corners between two faces at the same depth (a box's front edges, a
+# drawer's seams) are too faint in depth to find cleanly: InkCorners draws
+# those from the models.
 #
 # The Miis keep their own thin hull outline as well (TenantMii), so they're
 # outlined in the project map's portrait too; mii_outline_material() gives it
@@ -74,3 +78,4 @@ static func set_palette(palette: LevelPalette) -> void:
 	ink.a = 1.0
 	post_material().set_shader_parameter("ink_color", ink)
 	mii_outline_material().set_shader_parameter("outline_color", ink)
+	InkCorners.set_ink(ink)
