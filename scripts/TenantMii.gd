@@ -107,7 +107,7 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 # Ink rim around each part via a next-pass shader (cull_front + vertex push
 # along normal) instead of baked-in inverted-hull geometry — much easier to
 # get right/iterate on than doubling geometry in Blender. Shared with the
-# room's ink lines (InkLines): same colour, and off with them on Low.
+# room's ink (InkLines): same colour.
 func _apply_outline(node: Node) -> void:
 	var outline_mat := InkLines.mii_outline_material()
 	for child in node.get_children():
