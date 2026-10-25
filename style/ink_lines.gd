@@ -72,7 +72,9 @@ static func attach(camera: Camera3D, viewport: SubViewport) -> MeshInstance3D:
 		return old as MeshInstance3D
 	var facing := InkNormalPass.new()
 	facing.name = "InkFacingPass"
-	viewport.get_parent().get_parent().add_child(facing)
+	# Inside the view's viewport: child viewports are drawn before their
+	# parent, so the ink reads this frame's pass.
+	viewport.add_child(facing)
 	facing.setup(camera, viewport)
 	post_material().set_shader_parameter("normal_tex", facing.get_texture())
 	post_material().set_shader_parameter("has_normals", true)

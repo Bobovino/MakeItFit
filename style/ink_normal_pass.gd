@@ -29,7 +29,11 @@ func setup(view_cam: Camera3D, view_vp: SubViewport) -> void:
 	world_3d = view_vp.find_world_3d()
 	size = view_vp.size
 	render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	msaa_3d = Viewport.MSAA_DISABLED
+	# Smoothed like the view: without it a face narrower than a pixel (a door's
+	# seam, a frame's bevel) came and went from pixel to pixel and its corners
+	# were inked as dotted lines. With it, such a face blends into its pixels
+	# and draws an even, faint line; a real corner stays sharp.
+	msaa_3d = Viewport.MSAA_4X
 	transparent_bg = false
 	# Never draws its own 2D or reads input: it only exists for its texture.
 	disable_3d = false
@@ -51,8 +55,20 @@ func setup(view_cam: Camera3D, view_vp: SubViewport) -> void:
 	_sync()
 
 
-func _process(_delta: float) -> void:
-	_sync()
+# It must match the view's frame exactly, or every corner trails a frame
+# behind whatever moves (the camera, a Mii), like a shadow following it. Two
+# things see to that: it is a child of the view's own viewport, so it is
+# drawn first and the view's ink reads this frame's pass, not the last one;
+# and its camera is copied at the last moment before drawing, after the
+# view's camera has moved for the frame.
+func _enter_tree() -> void:
+	if not RenderingServer.frame_pre_draw.is_connected(_sync):
+		RenderingServer.frame_pre_draw.connect(_sync)
+
+
+func _exit_tree() -> void:
+	if RenderingServer.frame_pre_draw.is_connected(_sync):
+		RenderingServer.frame_pre_draw.disconnect(_sync)
 
 
 func _sync() -> void:

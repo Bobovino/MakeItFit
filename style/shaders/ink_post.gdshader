@@ -14,8 +14,11 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled, blend_mix;
 
-uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
-uniform sampler2D normal_tex : filter_nearest, repeat_disable;
+// Smooth filtering on both: a groove or face narrower than a pixel (a door's
+// seam, a frame's bevel) blurs out instead of flickering in and out between
+// pixels and drawing dashes.
+uniform sampler2D depth_tex : hint_depth_texture, filter_linear, repeat_disable;
+uniform sampler2D normal_tex : filter_linear, repeat_disable;
 uniform bool has_normals = false;
 // How close the camera is compared with the view a room opens with (2 =
 // twice as close). Lines get a little heavier close up and corners lighter
@@ -60,27 +63,48 @@ float view_z(vec2 uv, mat4 inv_proj) {
 
 void fragment() {
 	float w = width * clamp(pow(zoom, 0.35), 0.8, 1.35);
-	vec2 px = vec2(max(w * VIEWPORT_SIZE.y, 1.0)) / VIEWPORT_SIZE;
+	// Whole pixels: offsets that fell between pixels landed on one or the
+	// next in a repeating pattern along a slanted edge, and it came out dashed.
+	vec2 px = vec2(max(floor(w * VIEWPORT_SIZE.y + 0.5), 1.0)) / VIEWPORT_SIZE;
 	float c = view_z(SCREEN_UV, INV_PROJECTION_MATRIX);
 	float l = view_z(SCREEN_UV - vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
 	float r = view_z(SCREEN_UV + vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
 	float u = view_z(SCREEN_UV - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
 	float d = view_z(SCREEN_UV + vec2(0.0, px.y), INV_PROJECTION_MATRIX);
-	float near = min(min(l, r), min(u, d));
-	float jump = (c - near) / max(c, 1e-4);
-	float ink = smoothstep(contour_threshold, contour_threshold * 1.8, jump);
+	// A groove (a door's seam, the gap between two drawers) is a far pixel
+	// with nearer surfaces on BOTH sides; a contour has them on one side. A
+	// groove narrower than a pixel or two flickered as dashes, so a jump only
+	// counts along a direction where the other side isn't nearer too.
+	float inv = 1.0 / max(c, 1e-4);
+	float jx = max(c - l, c - r) * inv;
+	float jy = max(c - u, c - d) * inv;
+	float gx = min(c - l, c - r) * inv;
+	float gy = min(c - u, c - d) * inv;
+	float t2 = contour_threshold * 1.8;
+	float ink = max(smoothstep(contour_threshold, t2, jx) * (1.0 - smoothstep(contour_threshold, t2, gx)),
+		smoothstep(contour_threshold, t2, jy) * (1.0 - smoothstep(contour_threshold, t2, gy)));
 
 	if (has_normals) {
-		// Forward differences only (right and down), so a corner gives one
-		// line of the set width rather than one on each side of it.
+		// A corner must show both across this pixel's neighbours and across a
+		// span twice as wide: a face only a pixel or two wide on screen (a
+		// frame's bevel, a moulding) passes the first and not the second, so
+		// it draws no dots; a real corner between two faces passes both.
+		vec2 sx = vec2(px.x, 0.0);
+		vec2 sy = vec2(0.0, px.y);
 		vec4 fc = facing(SCREEN_UV);
-		vec4 fr = facing(SCREEN_UV + vec2(px.x, 0.0));
-		vec4 fd = facing(SCREEN_UV + vec2(0.0, px.y));
-		float bend = max(length(fc.xyz - fr.xyz), length(fc.xyz - fd.xyz));
+		vec4 xa = facing(SCREEN_UV - sx);
+		vec4 xb = facing(SCREEN_UV + sx);
+		vec4 ya = facing(SCREEN_UV - sy);
+		vec4 yb = facing(SCREEN_UV + sy);
+		float bx = min(length(xa.xyz - xb.xyz),
+			length(facing(SCREEN_UV - 2.0 * sx).xyz - facing(SCREEN_UV + 2.0 * sx).xyz));
+		float by = min(length(ya.xyz - yb.xyz),
+			length(facing(SCREEN_UV - 2.0 * sy).xyz - facing(SCREEN_UV + 2.0 * sy).xyz));
+		float bend = max(bx, by);
 		// Only between surfaces the pass saw (the rest is the contour's job),
 		// and only where nothing outside the pass (a Mii) stands nearer in the
 		// real image: there the pass still sees the furniture behind it.
-		float seen = step(0.0, fc.w) * step(0.0, min(fr.w, fd.w));
+		float seen = step(0.0, min(min(xa.w, xb.w), min(ya.w, yb.w)));
 		float uncovered = 1.0 - step(c, fc.w - max(0.15, fc.w * 0.04));
 		float strength = corner_strength * mix(0.55, 1.0, smoothstep(0.8, 1.8, zoom));
 		ink = max(ink, smoothstep(corner_lo, corner_hi, bend) * strength * seen * uncovered);
