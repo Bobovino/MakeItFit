@@ -2591,6 +2591,7 @@ func _update_camera() -> void:
 		_update_buy_ghost(_to_vp(_last_local_mouse))
 	if _style != null:
 		_style.refresh_view()
+		InkLines.set_zoom(_home_dist / maxf(_dist, 0.01))
 
 
 # Keeps a left-drag pan from carrying the camera target out past the room's

@@ -85,11 +85,12 @@ void fragment() {
 	ALPHA = alpha * smoothstep(fade_y_min, fade_y_max, world_y);
 #endif
 	// The ink's facing pass (style/ink_normal_pass.gd, its camera has layer
-	// 20): paint which way this face points, nothing else. Albedo 0 leaves
-	// the lights nothing to add.
+	// 20): paint which way this face points (x and y; it faces the camera, so
+	// z follows) and how far away it is (blue, 0-20 m), nothing else. Albedo
+	// 0 leaves the lights nothing to add.
 	if ((CAMERA_VISIBLE_LAYERS & (1u << 19u)) != 0u) {
 		ALBEDO = vec3(0.0);
-		EMISSION = NORMAL * 0.5 + 0.5;
+		EMISSION = vec3(NORMAL.xy * 0.5 + 0.5, clamp(-VERTEX.z / 20.0, 0.0, 1.0));
 #ifdef MATTE_ALPHA
 		// See-through things (a placement ghost, a fading wall) aren't
 		// solid: no corners of their own.

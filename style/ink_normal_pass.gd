@@ -3,11 +3,14 @@ extends SubViewport
 
 # A second, hidden render of the room for the ink (see InkLines): the same
 # world, seen through a camera that follows the view's own every frame, in
-# which each styled surface paints the direction it faces instead of its
-# colour (matte_gradient.gdshaderinc, when the camera has PASS_FLAG). Where
-# that direction changes sharply, two faces meet at a corner. Only meshes the
-# style system painted are in it (NORMAL_LAYER): floor markings, glass and the
-# Miis aren't, so they never make corners of their own.
+# which each styled surface paints the direction it faces and its distance
+# instead of its colour (matte_gradient.gdshaderinc, when the camera has
+# PASS_FLAG). Where that direction changes sharply, two faces meet at a
+# corner. Only meshes the style system painted are in it (NORMAL_LAYER):
+# floor markings, glass and the Miis aren't, so they never make corners of
+# their own. Since a Mii isn't there, the furniture behind it is; the
+# distance is how the ink pass knows something nearer covers that furniture
+# in the real image, and draws none of its corners there.
 
 # Layer 19: meshes that take part. Layer 20: set only on this pass's camera,
 # which is how the shader knows it is drawing directions. The view's own

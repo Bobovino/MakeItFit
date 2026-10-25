@@ -86,6 +86,12 @@ static func attach(camera: Camera3D, viewport: SubViewport) -> MeshInstance3D:
 	return quad
 
 
+# How close the camera is compared with the view the room opens with: line
+# weight follows it a little.
+static func set_zoom(zoom: float) -> void:
+	post_material().set_shader_parameter("zoom", zoom)
+
+
 # The ink: a deep shade of the palette's shadow tint, so it belongs to the
 # level's colours instead of being a flat black.
 static func set_palette(palette: LevelPalette) -> void:
