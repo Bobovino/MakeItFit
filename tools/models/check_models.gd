@@ -15,7 +15,7 @@ extends SceneTree
 #   - height outside the third either way the game allows before it stretches
 #   - a folding piece without an "open" clip, or whose open pose doesn't fill
 #     its open footprint (size.h + extended_add_h)
-#   - a material not named C_<rrggbb> or M_<name>
+#   - a material not named C_<rrggbb>, M_<name> or lamp (the glowing one)
 #   - a part between 5 mm and 2 cm thin (a sliver: inked as dots), or one
 #     whose longest side is under 4 cm (a speck); 5 mm or less is a flat
 #     decal (a mirror, a stripe of colour) and is fine
@@ -171,7 +171,7 @@ func _bounds(inst: Node3D) -> AABB:
 
 func _check_mesh(mi: MeshInstance3D, errors: Array, warnings: Array) -> void:
 	var mesh := mi.mesh
-	var name_re := RegEx.create_from_string("^(C_[0-9a-f]{6}|M_[a-z_]+)$")
+	var name_re := RegEx.create_from_string("^(C_[0-9a-f]{6}|M_[a-z_]+|lamp)$")
 	var ids := {}
 	var points := PackedVector3Array()
 	var tris := PackedInt32Array()

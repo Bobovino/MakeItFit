@@ -44,30 +44,47 @@ const SEG := 4   # facets per quarter turn of a rounded corner: 22.5 degrees eac
 var _groups := {}  # part name -> {parts, pivot, parent, closed, open}
 var _cur := ""
 var _parts := {}   # the current part's material name -> {"st": SurfaceTool, "color": Color}
+# The project's shared materials, in the colours the current models use.
 var _colors := {
-	"M_ceramic": Color("f4f4f0"),
-	"M_chrome": Color("a8b0b8"),
-	"M_brass": Color("c89a3a"),
-	"M_mirror": Color("c8dce6"),
-	"M_water": Color("78b4d4"),
-	"M_bird": Color("f0c020"),
-	"M_teal": Color("2a7a78"),
-	"M_cream": Color("e8dcc0"),
-	"M_coral": Color("c85a40"),
-	"M_mattress": Color("f0ece0"),
+	"M_bird": Color("f2c230"), "M_black": Color("1d1e21"), "M_blue": Color("4f7fb5"),
+	"M_brass": Color("d6ab4e"), "M_cardboard": Color("c79a63"), "M_ceramic": Color("fbfbf8"),
+	"M_chrome": Color("c9d0d6"), "M_coral": Color("d9674f"), "M_cream": Color("efe4cf"),
+	"M_glass": Color("bfe3ee"), "M_iron": Color("4a4f57"), "M_leaf": Color("5fa04a"),
+	"M_leaf_dark": Color("3d7a3c"), "M_leaf_lime": Color("8fbf4f"), "M_mattress": Color("f7f4ec"),
+	"M_mirror": Color("cfe6ef"), "M_mustard": Color("e2b043"), "M_navy": Color("34466a"),
+	"M_oak": Color("d9b382"), "M_orange": Color("e08a3c"), "M_paper": Color("f6f3ea"),
+	"M_pillow": Color("ffffff"), "M_pine": Color("ecd3a4"), "M_pink": Color("e3a3a8"),
+	"M_red": Color("c94a40"), "M_rubber": Color("2a2b2e"), "M_sage": Color("8fae84"),
+	"M_screen": Color("14181f"), "M_soil": Color("4a3526"), "M_steel": Color("9aa3ad"),
+	"M_stone": Color("e2ddd3"), "M_tape": Color("e8d7a8"), "M_teal": Color("3f9a98"),
+	"M_terracotta": Color("c96f4a"), "M_walnut": Color("8a5a3a"), "M_water": Color("8fd0ea"),
+	"M_white": Color("f4f1ea"), "M_wicker": Color("c9a36a"), "M_worktop": Color("3c4046"),
 	"M_blanket": Color("6a8eb8"),
-	"M_pillow": Color("fafaf6"),
+	"lamp": Color("fff0b8"),   # the style system makes this one glow
 }
 
 
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
-	_build("wardrobe", _wardrobe)
-	_build("dresser", _dresser)
-	_build("bathtub", _bathtub)
-	_build("sink", _sink)
-	_build("toilet", _toilet)
-	_build("murphy_bed", _murphy_bed)
+	var pieces := {
+		"wardrobe": _wardrobe, "dresser": _dresser, "bathtub": _bathtub, "sink": _sink,
+		"toilet": _toilet, "murphy_bed": _murphy_bed,
+		# Batch 1: boxy storage.
+		"nightstand": _nightstand, "bookshelf": _bookshelf, "closed_bookcase": _closed_bookcase,
+		"wide_bookcase": _wide_bookcase, "pantry": _pantry, "filing_cabinet": _filing_cabinet,
+		"bathroom_cabinet": _bathroom_cabinet, "side_table": _side_table, "tv_stand": _tv_stand,
+		"kitchen_corner_cabinet_inner": _kitchen_corner_cabinet_inner,
+		"kitchen_corner_cabinet_round": _kitchen_corner_cabinet_round,
+		"moving_box": _moving_box, "laundry_basket": _laundry_basket, "trash_can": _trash_can,
+		"sliding_wardrobe_tall": _sliding_wardrobe_tall, "sliding_bookcase": _sliding_bookcase,
+		"rolling_shelf_wide": _rolling_shelf_wide, "rolling_tv_unit": _rolling_tv_unit,
+		"pocket_pantry": _pocket_pantry, "sliding_bathroom_cabinet": _sliding_bathroom_cabinet,
+	}
+	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
+	var only := OS.get_cmdline_user_args()
+	for id in pieces:
+		if only.is_empty() or id in only:
+			_build(id, pieces[id])
 	quit()
 
 
@@ -179,6 +196,8 @@ func _st(mat: String) -> SurfaceTool:
 		var col: Color = _colors.get(mat, Color.WHITE)
 		if mat.begins_with("C_"):
 			col = Color(mat.substr(2))
+		elif not _colors.has(mat):
+			push_error("no colour for material " + mat)
 		_parts[mat] = {"st": st, "color": col}
 	return _parts[mat]["st"]
 
@@ -438,3 +457,402 @@ func _murphy_bed() -> void:
 	_box(dark, Vector3(-0.66, 1.82, 0.27), Vector3(-0.60, 1.86, 0.47))
 	_box(dark, Vector3(0.60, 1.82, 0.27), Vector3(0.66, 1.86, 0.47))
 	_box(dark, Vector3(-0.66, 1.82, 0.43), Vector3(0.66, 1.86, 0.47))
+
+
+# ── building blocks ─────────────────────────────────────────────────────────
+
+const BOOK_COLOURS := ["M_navy", "M_coral", "M_teal", "M_mustard", "M_sage", "M_red", "M_cream", "M_blue", "M_pink"]
+
+
+# A door or drawer front: flush with the body (3 mm proud, rule 3), from
+# (x0, y0) to (x1, y1) on the face at z.
+func _front(mat: String, x0: float, y0: float, x1: float, y1: float, z: float) -> void:
+	_box(mat, Vector3(x0, y0, z), Vector3(x1, y1, z + 0.003))
+
+
+# A knob or a pull, standing 2.5 cm out of the face at z.
+func _knob(cx: float, cy: float, z: float, w := 0.04, h := 0.04, mat := "M_brass") -> void:
+	_box(mat, Vector3(cx - w * 0.5, cy - h * 0.5, z), Vector3(cx + w * 0.5, cy + h * 0.5, z + 0.025))
+
+
+# Four square legs under a top spanning x0..x1, z0..z1.
+func _legs(mat: String, x0: float, x1: float, z0: float, z1: float, y1: float, t := 0.045) -> void:
+	for x in [x0, x1 - t]:
+		for z in [z0, z1 - t]:
+			_box(mat, Vector3(x, 0.0, z), Vector3(x + t, y1, z + t))
+
+
+# Castors and a steel base under a rolling piece; returns the height its
+# body starts at.
+func _castors(x0: float, x1: float, z0: float, z1: float) -> float:
+	for x in [x0 + 0.03, x1 - 0.09]:
+		for z in [z0 + 0.03, z1 - 0.09]:
+			_rblock("M_rubber", x + 0.03, z + 0.03, 0.06, 0.06, 0.03, 0.0, 0.06)
+	_box("M_steel", Vector3(x0, 0.06, z0), Vector3(x1, 0.09, z1))
+	return 0.09
+
+
+# A row of books standing on a shelf at y, from x0 towards x1 (leaving a
+# gap at the end), between z0 and z1, at most max_h tall. `seed` varies the
+# order so no two shelves match.
+func _books(x0: float, x1: float, y: float, z0: float, z1: float, max_h: float, seed := 0) -> void:
+	var widths := [0.06, 0.05, 0.07, 0.05, 0.08, 0.06, 0.05]
+	var heights := [0.85, 0.72, 0.95, 0.78, 0.88, 0.7, 0.92]
+	var x := x0
+	var i := seed
+	while x + widths[i % widths.size()] < x1 - 0.06:
+		var w: float = widths[i % widths.size()]
+		var h: float = maxf(max_h * heights[(i * 3) % heights.size()], 0.08)
+		_box(BOOK_COLOURS[(i * 5 + seed) % BOOK_COLOURS.size()], Vector3(x, y, z0 + 0.02), Vector3(x + w - 0.004, y + h, z1 - 0.02))
+		x += w
+		i += 1
+
+
+# A potted plant standing at (cx, y, cz), about `size` tall.
+func _plant(cx: float, cz: float, y: float, size := 0.3, pot := "M_terracotta") -> void:
+	var r := size * 0.28
+	_rblock(pot, cx, cz, r * 2.0, r * 2.0, r * 0.9, y, y + size * 0.35)
+	_rblock("M_leaf_dark", cx, cz, r * 2.4, r * 2.4, r * 1.1, y + size * 0.35, y + size * 0.62)
+	_rblock("M_leaf", cx - r * 0.3, cz + r * 0.2, r * 1.8, r * 1.8, r * 0.85, y + size * 0.62, y + size * 0.85)
+	_rblock("M_leaf_lime", cx + r * 0.25, cz - r * 0.2, r * 1.1, r * 1.1, r * 0.5, y + size * 0.85, y + size)
+
+
+# A jar with a lid, at (cx, y, cz).
+func _jar(cx: float, cz: float, y: float, w: float, h: float, mat: String, lid := "M_steel") -> void:
+	_rblock(mat, cx, cz, w, w, w * 0.4, y, y + h * 0.82)
+	_rblock(lid, cx, cz, w * 0.82, w * 0.82, w * 0.33, y + h * 0.82, y + h)
+
+
+# A table lamp at (cx, y, cz), `h` tall: base, stem and a glowing shade.
+func _table_lamp(cx: float, cz: float, y: float, h: float) -> void:
+	_rblock("M_brass", cx, cz, 0.12, 0.12, 0.06, y, y + 0.03)
+	_box("M_brass", Vector3(cx - 0.012, y + 0.03, cz - 0.012), Vector3(cx + 0.012, y + h * 0.55, cz + 0.012))
+	var bottom := _rr(cx, cz, h * 0.62, h * 0.62, h * 0.31)
+	var top := _rr(cx, cz, h * 0.4, h * 0.4, h * 0.2)
+	_band("lamp", bottom, y + h * 0.5, top, y + h)
+	_cap("lamp", top, y + h, true)
+	_cap("lamp", bottom, y + h * 0.5, false)
+
+
+# An open box of shelves: sides, top, bottom, back, `rows` shelves.
+# Returns the heights the shelves' tops are at, bottom first.
+func _shelf_box(mat: String, back: String, x0: float, x1: float, y0: float, y1: float, z0: float, z1: float, rows: int, t := 0.03) -> Array:
+	_box(mat, Vector3(x0, y0, z0), Vector3(x0 + t, y1, z1))
+	_box(mat, Vector3(x1 - t, y0, z0), Vector3(x1, y1, z1))
+	_box(mat, Vector3(x0 + t, y1 - t, z0), Vector3(x1 - t, y1, z1))
+	_box(mat, Vector3(x0 + t, y0, z0), Vector3(x1 - t, y0 + t, z1))
+	_box(back, Vector3(x0 + t, y0 + t, z0), Vector3(x1 - t, y1 - t, z0 + 0.02))
+	var tops := [y0 + t]
+	var step := (y1 - y0 - t) / rows
+	for r in range(1, rows):
+		var y := y0 + r * step
+		_box(mat, Vector3(x0 + t, y - t * 0.5, z0 + 0.02), Vector3(x1 - t, y + t * 0.5, z1))
+		tops.append(y + t * 0.5)
+	return tops
+
+
+# ── batch 1: boxy storage ───────────────────────────────────────────────────
+
+# 50 x 80 x 60 cm with its lamp: a two-drawer cabinet on legs.
+func _nightstand() -> void:
+	_legs("C_65543e", -0.23, 0.23, -0.28, 0.27, 0.10)
+	_box("C_907858", Vector3(-0.25, 0.10, -0.30), Vector3(0.25, 0.52, 0.27))
+	_box("C_65543e", Vector3(-0.25, 0.52, -0.30), Vector3(0.25, 0.55, 0.28))
+	_front("C_ac9a82", -0.22, 0.13, 0.22, 0.30, 0.27)
+	_front("C_ac9a82", -0.22, 0.33, 0.22, 0.49, 0.27)
+	_knob(0.0, 0.215, 0.273, 0.08, 0.025)
+	_knob(0.0, 0.41, 0.273, 0.08, 0.025)
+	_table_lamp(-0.08, -0.06, 0.55, 0.25)
+	_box("M_navy", Vector3(0.05, 0.55, -0.02), Vector3(0.21, 0.58, 0.20))
+
+
+# 80 x 220 x 30 cm: open shelves of books, a plant on one.
+func _bookshelf() -> void:
+	var tops := _shelf_box("C_9a7840", "C_6c542d", -0.40, 0.40, 0.0, 2.20, -0.15, 0.15, 5)
+	for i in tops.size():
+		if i == 2:
+			_books(-0.37, 0.05, tops[i], -0.15, 0.15, 0.30, i)
+			_plant(0.22, 0.0, tops[i], 0.28, "M_ceramic")
+		else:
+			_books(-0.37, 0.37, tops[i], -0.15, 0.15, 0.32, i)
+
+
+# 50 x 190 x 40 cm: doors below, open shelves of books above.
+func _closed_bookcase() -> void:
+	var tops := _shelf_box("C_907040", "C_654e2d", -0.25, 0.25, 0.0, 1.90, -0.20, 0.20, 4)
+	_box("C_907040", Vector3(-0.22, 0.03, -0.18), Vector3(0.22, 0.80, 0.172))
+	_front("C_b7a283", -0.22, 0.06, -0.01, 0.78, 0.172)
+	_front("C_b7a283", 0.01, 0.06, 0.22, 0.78, 0.172)
+	_knob(-0.04, 0.6, 0.175, 0.025, 0.08)
+	_knob(0.04, 0.6, 0.175, 0.025, 0.08)
+	for i in range(1, tops.size()):
+		if tops[i] > 0.8:
+			_books(-0.22, 0.22, tops[i], -0.20, 0.20, 0.30, i + 3)
+
+
+# 140 x 110 x 40 cm: a low, wide case of six open cubbies.
+func _wide_bookcase() -> void:
+	var tops := _shelf_box("C_987848", "C_6a5432", -0.70, 0.70, 0.0, 1.10, -0.20, 0.20, 2)
+	for x in [-0.235, 0.235]:
+		_box("C_987848", Vector3(x - 0.015, 0.03, -0.18), Vector3(x + 0.015, 1.07, 0.20))
+	for r in tops.size():
+		for c in 3:
+			var x0 := -0.67 + c * 0.47
+			if (r + c) % 3 == 1:
+				_box("C_ad936d", Vector3(x0 + 0.05, tops[r], -0.14), Vector3(x0 + 0.36, tops[r] + 0.26, 0.17))
+				_front("C_bca788", x0 + 0.08, tops[r] + 0.05, x0 + 0.33, tops[r] + 0.21, 0.17)
+			else:
+				_books(x0 + 0.02, x0 + 0.43, tops[r], -0.20, 0.20, 0.40, r * 3 + c)
+
+
+# 50 x 200 x 50 cm: a tall cabinet, closed below, open shelves of jars and
+# tins above.
+func _pantry() -> void:
+	_box("M_black", Vector3(-0.23, 0.0, -0.23), Vector3(0.23, 0.08, 0.21))
+	_box("C_8a7060", Vector3(-0.25, 0.08, -0.25), Vector3(0.25, 0.86, 0.222))
+	_front("C_a79488", -0.22, 0.11, 0.22, 0.83, 0.222)
+	_knob(0.16, 0.74, 0.225, 0.025, 0.10)
+	var tops := _shelf_box("C_8a7060", "C_6e5a4c", -0.25, 0.25, 0.86, 2.00, -0.25, 0.25, 3)
+	var fill := [["M_cream", "M_steel", 0.10, 0.18], ["M_mustard", "M_iron", 0.09, 0.14], ["M_teal", "M_steel", 0.10, 0.16],
+		["M_coral", "M_iron", 0.08, 0.12], ["M_orange", "M_steel", 0.09, 0.15]]
+	for r in tops.size():
+		for k in 3:
+			var f: Array = fill[(r * 2 + k) % fill.size()]
+			_jar(-0.14 + k * 0.14, 0.0, tops[r], f[2], f[3], f[0], f[1])
+
+
+# 40 x 80 x 60 cm: a steel cabinet of three drawers with pulls and labels.
+func _filing_cabinet() -> void:
+	_box("C_6878a0", Vector3(-0.20, 0.0, -0.30), Vector3(0.20, 0.80, 0.28))
+	for i in 3:
+		var y0 := 0.04 + i * 0.255
+		_front("C_8996b5", -0.18, y0, 0.18, y0 + 0.23, 0.28)
+		_knob(0.0, y0 + 0.17, 0.283, 0.12, 0.025, "M_chrome")
+		_front("M_paper", -0.06, y0 + 0.08, 0.06, y0 + 0.13, 0.283)
+
+
+# 80 x 120 x 50 cm: a vanity cabinet with an oak top, a jar and a plant.
+func _bathroom_cabinet() -> void:
+	_box("C_c7d2d9", Vector3(-0.38, 0.0, -0.23), Vector3(0.38, 0.08, 0.21))
+	_box("C_d8e4ec", Vector3(-0.40, 0.08, -0.25), Vector3(0.40, 0.82, 0.23))
+	_box("M_oak", Vector3(-0.40, 0.82, -0.25), Vector3(0.40, 0.86, 0.25))
+	_front("C_d8e4ec", -0.37, 0.11, -0.01, 0.79, 0.23)
+	_front("C_d8e4ec", 0.01, 0.11, 0.37, 0.79, 0.23)
+	_knob(-0.05, 0.66, 0.233, 0.025, 0.08, "M_chrome")
+	_knob(0.05, 0.66, 0.233, 0.025, 0.08, "M_chrome")
+	_jar(-0.24, -0.06, 0.86, 0.10, 0.16, "M_ceramic", "M_teal")
+	_box("M_coral", Vector3(-0.10, 0.86, -0.12), Vector3(0.08, 0.92, 0.06))
+	_plant(0.24, -0.04, 0.86, 0.34, "M_ceramic")
+
+
+# 70 x 50 x 50 cm: a small table with a shelf below, a vase and a book.
+func _side_table() -> void:
+	_legs("C_907858", -0.33, 0.33, -0.23, 0.23, 0.42)
+	_box("C_ac9a82", Vector3(-0.35, 0.42, -0.25), Vector3(0.35, 0.46, 0.25))
+	_box("C_907858", Vector3(-0.30, 0.10, -0.20), Vector3(0.30, 0.13, 0.20))
+	_rblock("M_teal", -0.15, 0.0, 0.10, 0.10, 0.05, 0.46, 0.58)
+	_rblock("M_teal", -0.15, 0.0, 0.06, 0.06, 0.03, 0.58, 0.62)
+	_box("M_coral", Vector3(0.04, 0.46, -0.10), Vector3(0.24, 0.49, 0.06))
+
+
+# 180 x 80 x 50 cm with what's on it: a low unit, doors at the ends and an
+# open middle with a console, and a flat screen, books and a plant on top.
+func _tv_stand() -> void:
+	_box("M_walnut", Vector3(-0.88, 0.0, -0.23), Vector3(0.88, 0.08, 0.21))
+	_box("C_604838", Vector3(-0.90, 0.08, -0.25), Vector3(0.90, 0.48, 0.23))
+	_box("C_88766a", Vector3(-0.90, 0.48, -0.25), Vector3(0.90, 0.52, 0.25))
+	_box("C_907f74", Vector3(-0.28, 0.11, -0.25), Vector3(0.28, 0.45, 0.10))    # the open middle, set back
+	_front("C_907f74", -0.87, 0.11, -0.32, 0.45, 0.23)
+	_front("C_907f74", 0.32, 0.11, 0.87, 0.45, 0.23)
+	_knob(-0.38, 0.28, 0.233, 0.025, 0.08)
+	_knob(0.38, 0.28, 0.233, 0.025, 0.08)
+	_box("M_black", Vector3(-0.20, 0.11, -0.10), Vector3(0.10, 0.18, 0.09))
+	# The screen on its foot.
+	_box("M_black", Vector3(-0.10, 0.52, -0.12), Vector3(0.10, 0.54, 0.02))
+	_box("M_black", Vector3(-0.03, 0.54, -0.07), Vector3(0.03, 0.58, -0.03))
+	_box("M_black", Vector3(-0.38, 0.56, -0.08), Vector3(0.38, 0.80, -0.04))
+	_front("M_screen", -0.36, 0.58, 0.36, 0.78, -0.04)
+	_books(-0.80, -0.50, 0.52, -0.15, 0.10, 0.20, 4)
+	_plant(0.65, -0.02, 0.52, 0.26)
+
+
+# 60 x 90 x 70 cm: a kitchen base cabinet with a dark worktop.
+func _kitchen_corner_cabinet_inner() -> void:
+	_box("M_black", Vector3(-0.28, 0.0, -0.33), Vector3(0.28, 0.10, 0.29))
+	_box("C_a09888", Vector3(-0.30, 0.10, -0.35), Vector3(0.30, 0.86, 0.32))
+	_box("M_worktop", Vector3(-0.30, 0.86, -0.35), Vector3(0.30, 0.90, 0.35))
+	_front("C_bcb7ac", -0.27, 0.13, 0.27, 0.64, 0.32)
+	_front("C_bcb7ac", -0.27, 0.67, 0.27, 0.83, 0.32)
+	_knob(0.0, 0.58, 0.323, 0.12, 0.025, "M_chrome")
+	_knob(0.0, 0.75, 0.323, 0.12, 0.025, "M_chrome")
+
+
+# 120 x 100 x 120 cm: a corner base unit whose front is a quarter round,
+# under a stone top, with jars on it.
+func _kitchen_corner_cabinet_round() -> void:
+	var foot := _quarter(-0.58, -0.58, 0.58, 0.58, 0.76)
+	var body := _quarter(-0.60, -0.60, 0.57, 0.57, 0.78)
+	var top := _quarter(-0.60, -0.60, 0.60, 0.60, 0.80)
+	_band("M_black", foot, 0.0, foot, 0.10)
+	_cap("M_black", foot, 0.0, false)
+	_band("C_988c78", body, 0.10, body, 0.86)
+	_ring("C_988c78", body, foot, 0.10, false)
+	_cap("C_988c78", body, 0.86, true)
+	_band("M_stone", top, 0.86, top, 0.90)
+	_cap("M_stone", top, 0.90, true)
+	_ring("M_stone", top, body, 0.86, false)
+	for a in [0.25, 0.55, 0.85]:
+		var ang: float = a * PI * 0.5
+		var r := 0.78 + 0.004
+		var c := Vector2(-0.21, -0.21) + Vector2(cos(ang), sin(ang)) * r
+		_box("M_steel", Vector3(c.x - 0.02, 0.70, c.y - 0.02), Vector3(c.x + 0.02, 0.80, c.y + 0.02))
+	_jar(-0.35, -0.40, 0.90, 0.12, 0.18, "M_ceramic", "M_coral")
+	_jar(-0.18, -0.42, 0.90, 0.10, 0.14, "M_mustard", "M_iron")
+	_jar(-0.42, -0.20, 0.90, 0.10, 0.12, "M_teal", "M_iron")
+
+
+# A square from (x0, z0) to (x1, z1) whose front-right corner is rounded to a
+# quarter circle of radius r centred at (x1 - r, z1 - r).
+func _quarter(x0: float, z0: float, x1: float, z1: float, r: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var c := Vector2(x1 - r, z1 - r)
+	for i in SEG * 2 + 1:
+		var ang := float(i) / (SEG * 2) * PI * 0.5
+		out.append(c + Vector2(cos(ang), sin(ang)) * r)
+	out.append(Vector2(x0, z1))
+	out.append(Vector2(x0, z0))
+	out.append(Vector2(x1, z0))
+	return out
+
+
+# 100 x 60 x 100 cm: a big taped cardboard box with a label.
+func _moving_box() -> void:
+	_box("C_b89868", Vector3(-0.48, 0.0, -0.48), Vector3(0.48, 0.56, 0.48))
+	_box("C_816a49", Vector3(-0.497, 0.56, -0.497), Vector3(0.497, 0.60, 0.497))
+	_box("M_tape", Vector3(-0.08, 0.60, -0.497), Vector3(0.08, 0.603, 0.497))
+	_front("M_tape", -0.08, 0.40, 0.08, 0.60, 0.497)
+	_front("M_paper", 0.16, 0.18, 0.40, 0.34, 0.48)
+	_front("M_red", 0.19, 0.27, 0.37, 0.30, 0.483)
+
+
+# 100 x 110 x 60 cm: a pine stand with two basket bins and folded clothes.
+func _laundry_basket() -> void:
+	for x in [-0.50, 0.455]:
+		for z in [-0.30, 0.255]:
+			_box("M_pine", Vector3(x, 0.0, z), Vector3(x + 0.045, 1.10, z + 0.045))
+	_box("M_pine", Vector3(-0.47, 0.50, -0.28), Vector3(0.47, 0.53, 0.28))
+	_box("M_pine", Vector3(-0.50, 1.06, -0.30), Vector3(0.50, 1.10, 0.30))
+	for y in [0.06, 0.53]:
+		for x in [-0.23, 0.23]:
+			var outer := _rr(x, 0.0, 0.40, 0.48, 0.06)
+			var inner := _rr(x, 0.0, 0.34, 0.42, 0.04)
+			_band("C_d0c0a8", outer, y, outer, y + 0.38)
+			_cap("C_d0c0a8", outer, y, false)
+			_ring("C_9c907e", outer, inner, y + 0.38, true)
+			_band("C_d0c0a8", inner, y + 0.38, inner, y + 0.05, true)
+			_cap("C_d0c0a8", inner, y + 0.05, true)
+	_rblock("M_cream", -0.23, 0.0, 0.30, 0.36, 0.05, 0.43, 0.48)
+	_rblock("M_blue", 0.23, 0.0, 0.28, 0.34, 0.05, 0.90, 0.95)
+	_rblock("M_coral", 0.23, 0.0, 0.24, 0.30, 0.05, 0.95, 0.99)
+
+
+# 60 x 80 x 70 cm: two bins side by side, one for rubbish, one recycling.
+func _trash_can() -> void:
+	for side in [[-0.15, "M_leaf"], [0.15, "M_mustard"]]:
+		var x: float = side[0]
+		var body := _rr(x, 0.0, 0.28, 0.66, 0.06)
+		_band("C_707878", body, 0.0, body, 0.70)
+		_cap("C_707878", body, 0.0, false)
+		_cap("C_707878", body, 0.70, true)
+		_rblock(side[1], x, 0.0, 0.30, 0.70, 0.07, 0.70, 0.76)
+		_box("M_black", Vector3(x - 0.06, 0.02, 0.33), Vector3(x + 0.06, 0.05, 0.35))
+		_box("M_black", Vector3(x - 0.05, 0.76, -0.25), Vector3(x + 0.05, 0.80, -0.20))
+
+
+# 160 x 220 x 60 cm: a wide wardrobe of two sliding doors, one mirrored,
+# under a steel rail.
+func _sliding_wardrobe_tall() -> void:
+	_box("C_7b5f32", Vector3(-0.78, 0.0, -0.28), Vector3(0.78, 0.08, 0.24))
+	_box("C_b08848", Vector3(-0.80, 0.08, -0.30), Vector3(0.80, 2.12, 0.26))
+	_box("C_b08848", Vector3(-0.80, 2.12, -0.30), Vector3(0.80, 2.20, 0.28))
+	_box("M_steel", Vector3(-0.78, 2.04, 0.26), Vector3(0.78, 2.08, 0.28))
+	_front("C_c4a676", -0.77, 0.11, 0.02, 2.02, 0.26)            # back door
+	_front("C_c4a676", -0.02, 0.11, 0.77, 2.02, 0.263)           # front door, a layer out
+	_front("M_mirror", 0.10, 0.35, 0.69, 1.85, 0.266)
+	_knob(-0.06, 1.05, 0.263, 0.025, 0.24, "M_steel")
+	_knob(0.04, 1.05, 0.266, 0.025, 0.24, "M_steel")
+
+
+# 80 x 200 x 30 cm: open shelves of books on castors.
+func _sliding_bookcase() -> void:
+	var y0 := _castors(-0.40, 0.40, -0.15, 0.15)
+	var tops := _shelf_box("C_9a7840", "C_bda783", -0.40, 0.40, y0, 2.00, -0.15, 0.15, 5)
+	for i in tops.size():
+		if i == 3:
+			_books(-0.37, 0.10, tops[i], -0.15, 0.15, 0.28, i)
+			_jar(0.25, 0.0, tops[i], 0.10, 0.14, "M_ceramic", "M_teal")
+		else:
+			_books(-0.37, 0.37, tops[i], -0.15, 0.15, 0.28, i + 2)
+
+
+# 140 x 110 x 40 cm: a low shelf on castors with wicker baskets and books.
+func _rolling_shelf_wide() -> void:
+	var y0 := _castors(-0.70, 0.70, -0.20, 0.20)
+	var tops := _shelf_box("C_987848", "C_ad936d", -0.70, 0.70, y0, 1.10, -0.20, 0.20, 2)
+	for c in 3:
+		var x0 := -0.66 + c * 0.45
+		_rblock("M_wicker", x0 + 0.20, 0.01, 0.38, 0.32, 0.04, tops[0], tops[0] + 0.28)
+		_front("C_bca788", x0 + 0.10, tops[0] + 0.12, x0 + 0.30, tops[0] + 0.19, 0.17)
+	_books(-0.66, 0.30, tops[1], -0.20, 0.20, 0.36, 5)
+	_jar(0.48, 0.0, tops[1], 0.12, 0.18, "M_ceramic", "M_coral")
+
+
+# 120 x 220 x 60 cm: a tall rolling unit, a cabinet below and a screen on
+# a panel above.
+func _rolling_tv_unit() -> void:
+	var y0 := _castors(-0.60, 0.60, -0.30, 0.30)
+	_box("C_604838", Vector3(-0.60, y0, -0.30), Vector3(0.60, 0.70, 0.28))
+	_box("C_88766a", Vector3(-0.60, 0.70, -0.30), Vector3(0.60, 0.74, 0.30))
+	_front("C_907f74", -0.57, y0 + 0.03, -0.01, 0.67, 0.28)
+	_front("C_907f74", 0.01, y0 + 0.03, 0.57, 0.67, 0.28)
+	_knob(-0.05, 0.50, 0.283, 0.025, 0.08)
+	_knob(0.05, 0.50, 0.283, 0.025, 0.08)
+	_box("C_604838", Vector3(-0.55, 0.74, -0.30), Vector3(0.55, 2.20, -0.24))
+	_box("M_black", Vector3(-0.50, 1.10, -0.24), Vector3(0.50, 1.70, -0.20))
+	_front("M_screen", -0.47, 1.13, 0.47, 1.67, -0.20)
+	_plant(-0.38, 0.0, 0.74, 0.30)
+	_box("M_black", Vector3(0.05, 0.74, -0.10), Vector3(0.40, 0.81, 0.15))
+
+
+# 40 x 210 x 60 cm: a tall, narrow pull-out pantry. Its narrow front faces
+# out with a long steel bar; its long sides are open, shelves of jars and
+# tins between the front and back panels.
+func _pocket_pantry() -> void:
+	_box("M_black", Vector3(-0.18, 0.0, -0.28), Vector3(0.18, 0.08, 0.26))
+	_box("C_8a7060", Vector3(-0.20, 0.08, 0.24), Vector3(0.20, 2.10, 0.272))     # front panel
+	_front("C_a79488", -0.17, 0.11, 0.17, 2.07, 0.272)
+	_knob(0.0, 1.10, 0.275, 0.025, 0.50, "M_steel")
+	_box("C_8a7060", Vector3(-0.20, 0.08, -0.30), Vector3(0.20, 2.10, -0.27))    # back panel
+	_box("C_8a7060", Vector3(-0.20, 2.06, -0.27), Vector3(0.20, 2.10, 0.24))     # top
+	var fill := [["M_cream", "M_steel"], ["M_mustard", "M_iron"], ["M_teal", "M_steel"], ["M_coral", "M_iron"], ["M_orange", "M_steel"]]
+	for r in 5:
+		var y := 0.08 + r * 0.40
+		_box("M_steel", Vector3(-0.17, y, -0.27), Vector3(0.17, y + 0.03, 0.24))
+		for k in 3:
+			var f: Array = fill[(r + k) % fill.size()]
+			_jar(0.0, -0.17 + k * 0.17, y + 0.03, 0.10, 0.14 + 0.03 * ((r + k) % 2), f[0], f[1])
+
+
+# 130 x 100 x 20 cm: a shallow cabinet of two mirrored sliding doors with a
+# shelf of jars on top.
+func _sliding_bathroom_cabinet() -> void:
+	_box("C_d8e4ec", Vector3(-0.65, 0.0, -0.10), Vector3(0.65, 0.80, 0.08))
+	_box("C_d8e4ec", Vector3(-0.65, 0.80, -0.10), Vector3(0.65, 0.84, 0.10))
+	_front("M_mirror", -0.62, 0.05, 0.02, 0.75, 0.08)
+	_front("M_mirror", -0.02, 0.05, 0.62, 0.75, 0.083)
+	_knob(-0.06, 0.40, 0.083, 0.025, 0.12, "M_chrome")
+	_knob(0.06, 0.40, 0.086, 0.025, 0.12, "M_chrome")
+	_jar(-0.45, 0.0, 0.84, 0.10, 0.16, "M_ceramic", "M_chrome")
+	_jar(-0.25, 0.0, 0.84, 0.08, 0.12, "M_teal", "M_chrome")
+	_rblock("M_coral", 0.30, 0.0, 0.18, 0.12, 0.05, 0.84, 0.92)
+	_rblock("M_ceramic", 0.30, 0.0, 0.16, 0.10, 0.04, 0.92, 0.98)
