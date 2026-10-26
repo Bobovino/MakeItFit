@@ -98,12 +98,19 @@ func _ensure_bus(bus_name: String) -> void:
 	AudioServer.set_bus_send(idx, "Master")
 
 
-func play(key: String) -> void:
+# `cut`: stop this sound if it is still playing from before, rather than
+# layering a second one over it (a fax printing again before the last one
+# finished).
+func play(key: String, cut := false) -> void:
 	var path: String = SOUNDS.get(key, "")
 	if path == "" or not ResourceLoader.exists(path):
 		return
 	if not _streams.has(key):
 		_streams[key] = load(path)
+	if cut:
+		for p in _pool:
+			if p.playing and p.stream == _streams[key]:
+				p.stop()
 	var player := _pool[_pool_next]
 	_pool_next = (_pool_next + 1) % POOL_SIZE
 	player.stream = _streams[key]

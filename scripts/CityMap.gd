@@ -614,6 +614,7 @@ func _fax_key(btn: Button, face: Color, text: Color) -> void:
 func _fax_print() -> void:
 	if not is_instance_valid(_fax_paper) or not is_instance_valid(_fax_clip):
 		return
+	Audio.play("fax", true)
 	if _fax_tween and _fax_tween.is_valid():
 		_fax_tween.kill()
 	var feed := func(v: float):
