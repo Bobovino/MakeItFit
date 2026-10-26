@@ -2651,6 +2651,21 @@ func _recenter_camera() -> void:
 # continuous move instead of a static screenshot. Reuses _yaw/_pitch/_dist/
 # _update_camera exactly as interactive orbiting does; the tween is just
 # another writer of the same three numbers.
+# Main keeps its 3D view while the Floor Plan is up instead of freeing it:
+# freeing it cost a 140 ms frame on every switch back to the plan, and
+# building a new one another 100 ms more on the way back. Switched off, it
+# draws nothing (its own viewport only draws while shown; the ink facing
+# pass is stopped here) and takes no input.
+func set_active(on: bool) -> void:
+	visible = on
+	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	var facing := sub_vp.get_node_or_null("InkFacingPass") as SubViewport
+	if facing:
+		facing.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+	if not on:
+		_hide_hover_highlight()
+
+
 func play_reveal(duration: float = 3.5) -> void:
 	_reveal_playing = true
 	var end_yaw   := _yaw

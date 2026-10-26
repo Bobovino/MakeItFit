@@ -3264,7 +3264,7 @@ func _set_view_mode(mode: int) -> void:
 			# a wall).
 			room.visible    = false
 			divider.visible = false
-			_ensure_mode3d_view()
+			_ensure_mode3d_view(true)
 			_set_mode_hint(_view3d_hint())
 
 	var fl := _floors.get(_current_floor_id) as Floor
@@ -3278,10 +3278,19 @@ func _set_view_mode(mode: int) -> void:
 # "reveal" opened by the 3D-view TopBar button, which stays a one-off overlay.
 # This one fits the same TOP_Y..BOT_Y band the 2D floor plan normally uses, so
 # budget/inventory/tenant-needs stay visible and usable while working in 3D.
-func _ensure_mode3d_view() -> void:
+# `if_changed`: coming back from the Floor Plan to the view kept from before,
+# skip rebuilding the room (most of the cost of the switch) when nothing it
+# is built from changed meanwhile (_mode3d_signature). Every other caller
+# rebuilds.
+var _mode3d_built_sig: Array = []
+
+func _ensure_mode3d_view(if_changed := false) -> void:
 	var fl := _floors.get(_current_floor_id) as Floor
 	if not fl:
 		return
+	var reused := is_instance_valid(_mode3d_view)
+	if is_instance_valid(_mode3d_view) and not _mode3d_view.visible:
+		_mode3d_view.set_active(true)
 	if not is_instance_valid(_mode3d_view):
 		_mode3d_view = Room3DViewScene.instantiate()
 		ui_layer.add_child(_mode3d_view)
@@ -3341,14 +3350,34 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
 	_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+	var sig := _mode3d_signature(fl)
+	if not (if_changed and reused and sig == _mode3d_built_sig):
+		_build_mode3d_view(fl)
+		_mode3d_built_sig = sig
+	if tenant_layer:
+		tenant_layer.attach_3d(_mode3d_view)
+	_after_mode3d_view_shown()
+
+
+# What the 3D room is built from, to tell whether a kept view is still right.
+func _mode3d_signature(fl: Floor) -> Array:
+	var paint := {}
+	var painted: Dictionary = _paint_pieces.get(fl.floor_id, {})
+	for type_id in painted:
+		if is_instance_valid(painted[type_id]):
+			paint[type_id] = (painted[type_id].tiles as Array).hash()
+	return [fl.get_instance_id(), gm.current_level.get("id", ""), _snapshot_all_furniture(), fl.wall_items.hash(),
+		fl.segments.hash(), fl.floor_mask.hash(), paint, _active_moment_id, _post_win_view,
+		_current_nested_daylight_factor, _nested_stack.size(), _floor_below_id.get(fl.floor_id, "")]
+
+
+func _build_mode3d_view(fl: Floor) -> void:
 	var below_floor: Floor = null
 	if fl.floor_id in _floor_below_id:
 		below_floor = _floors.get(_floor_below_id[fl.floor_id] as String) as Floor
-	# _teardown_mode3d_view() (called when switching to Floor Plan) frees this
-	# node entirely — switching back to 3D recreates it from scratch, which
-	# would otherwise silently reset read_only to its default (false) and
-	# reopen editing/selling the instant you tabbed away and back during
-	# post-win "View Apartment".
+	# Set on every (re)build, not only at creation: the view can be new (it
+	# would come up editable) or kept from before, and during post-win "View
+	# Apartment" tabbing away and back must not reopen editing/selling.
 	_mode3d_view.read_only = _post_win_view
 	_mode3d_view.set_level_style(gm.current_level, gm.levels_data)
 	_mode3d_view.set_parent_scenery(_parent_scenery_data())
@@ -3362,13 +3391,13 @@ func _ensure_mode3d_view() -> void:
 	_mode3d_view._rule_zones = fl.zones
 	_mode3d_view._rule_zone_status = fl.zone_status
 	_mode3d_view.build_from_floor(fl, gm.furniture_data["furniture"], below_floor)
-	if tenant_layer:
-		tenant_layer.attach_3d(_mode3d_view)
-	# _teardown_mode3d_view() (see the comment above) frees the whole node,
-	# tenant and all, whenever the player steps out to the Floor Plan -- so
-	# during "Watch Again" (_post_win_view), tabbing over and back silently
-	# lost the tenant showcase loop with no way back short of re-opening
-	# Watch Again from the results screen. Restart it here too, the same way
+
+
+func _after_mode3d_view_shown() -> void:
+	# _teardown_mode3d_view() stops the tenant showcase when the player steps
+	# out to the Floor Plan, so during "Watch Again" (_post_win_view) tabbing
+	# over and back would lose it with no way back short of re-opening Watch
+	# Again from the results screen. Restart it here too, the same way
 	# _on_watch_again_reveal() starts it the first time.
 	if _post_win_view:
 		_start_tenant_showcase()
@@ -3392,13 +3421,15 @@ func _ensure_mode3d_view() -> void:
 	_position_minimap()
 
 
+# Back to the Floor Plan: the 3D view is switched off and kept, not freed
+# (Room3DView.set_active), and _ensure_mode3d_view() switches it back on,
+# rebuilding it only if the flat changed meanwhile.
 func _teardown_mode3d_view() -> void:
 	if tenant_layer:
 		tenant_layer.attach_3d(null)
 	if is_instance_valid(_mode3d_view):
-		_mode3d_view.queue_free()
-	_mode3d_view = null
-	_mode3d_sell_floor = null   # the next _ensure_mode3d_view() builds a brand new node with no connections yet — force a fresh bind regardless of which floor it lands on
+		_mode3d_view.stop_tenant_showcase()
+		_mode3d_view.set_active(false)
 
 
 # ── Sims-style furniture menu: wheel (categories) → Inventory (catalog) ────

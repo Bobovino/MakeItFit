@@ -1448,37 +1448,59 @@ func _draw_natural_light(parent: Floor) -> void:
 	# Architectural hatching (45° NW→SE lines) for tiles that receive less natural light.
 	# Intensity is computed by BFS flood-fill from window tiles in Floor._compute_light_map().
 	# Tall furniture and walls fully block propagation; medium furniture attenuates.
+	#
+	# Each dim tile is one textured square (_get_hatch()), tinted by how dark
+	# it is. Drawing the lines one by one meant thousands of draw calls on
+	# every redraw of the plan (every piece moved): 100+ ms. (They were also
+	# placed in plan coordinates rather than the tile's, so only tiles near
+	# the plan's diagonal got any: a stray diagonal band.)
 	if parent._light_map.is_empty():
 		return  # no windows yet — skip hatching entirely
 
 	const LIT_MIN  := 0.50   # above this the tile is considered fully lit
 	const MAX_ALPHA := 0.34  # maximum ink density of the hatching
-	const HATCH_SP  := 3     # pixel spacing between hatch lines
 
-	for gy in range(parent.grid_h):
-		for gx in range(parent.grid_w):
+	var hatch := _get_hatch()
+	var ts := float(TILE_SIZE)
+	# The floor tiles, worked out once: Floor.is_floor_tile() works out the
+	# room's bounds from every wall segment on each call, and asking it for
+	# every tile was most of a 70 ms redraw.
+	var area := Rect2i(0, 0, parent.grid_w, parent.grid_h)
+	if parent._use_new_format and parent.floor_mask.is_empty() and not parent.segments.is_empty():
+		area = parent.get_room_bounds().intersection(area)
+	var mask: Dictionary = parent.floor_mask if parent._use_new_format else {}
+	for gy in range(area.position.y, area.end.y):
+		for gx in range(area.position.x, area.end.x):
 			var tile := Vector2i(gx, gy)
-			if not parent.is_floor_tile(tile):
+			if not mask.is_empty() and not mask.has(tile):
 				continue
 			var intensity: float = parent.get_light(tile)
 			if intensity >= LIT_MIN:
 				continue
-
 			# Remap: 0 at LIT_MIN → 1 at full dark
 			var t := 1.0 - (intensity / LIT_MIN)
-			var col := Color(0.02, 0.06, 0.13, t * MAX_ALPHA)
+			draw_texture_rect(hatch, Rect2(gx * ts, gy * ts, ts, ts), false, Color(0.02, 0.06, 0.13, t * MAX_ALPHA))
 
-			var px := float(gx * TILE_SIZE)
-			var py := float(gy * TILE_SIZE)
-			var ts := float(TILE_SIZE)
 
-			# 45° hatching: lines satisfying  y − x = k, clipped to the tile rect.
-			# For each offset k the line runs from xs=(max(px, py−k)) to xe=(min(px+ts, py+ts−k)).
-			var k := -int(ts)
-			while k < int(ts) * 2:
-				var fk  := float(k)
-				var xs  := maxf(px, py - fk)
-				var xe  := minf(px + ts, py + ts - fk)
-				if xs < xe:
-					draw_line(Vector2(xs, xs + fk), Vector2(xe, xe + fk), col, 0.7)
-				k += HATCH_SP
+# One tile's worth of hatching, white on clear (tinted when drawn): 45°
+# lines every HATCH_SP plan pixels, which divides a tile, so the pattern runs
+# on unbroken from tile to tile. Drawn at HATCH_RES texels per plan pixel so
+# it stays sharp zoomed in.
+const HATCH_SP := 4
+const HATCH_RES := 4
+static var _hatch_tex: ImageTexture = null
+
+static func _get_hatch() -> ImageTexture:
+	if _hatch_tex == null:
+		var n := TILE_SIZE * HATCH_RES
+		var period := float(HATCH_SP * HATCH_RES)
+		var half_w := 0.35 * HATCH_RES   # 0.7 plan pixels wide, as the lines were
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		for y in n:
+			for x in n:
+				# Distance across the stripes y - x = k * period, at the texel's centre.
+				var d := fposmod(float(y - x), period)
+				d = minf(d, period - d) / sqrt(2.0)
+				img.set_pixel(x, y, Color(1, 1, 1, clampf(half_w + 0.5 - d, 0.0, 1.0)))
+		_hatch_tex = ImageTexture.create_from_image(img)
+	return _hatch_tex
