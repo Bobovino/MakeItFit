@@ -103,7 +103,7 @@ float ink_at(vec2 uv, vec2 px, mat4 inv_proj) {
 		// real image: there the pass still sees the furniture behind it.
 		float seen = step(0.0, min(min(xa.w, xb.w), min(ya.w, yb.w)));
 		float uncovered = 1.0 - step(c, fc.w - max(0.15, fc.w * 0.04));
-		float strength = corner_strength * mix(0.55, 1.0, smoothstep(0.8, 1.8, zoom));
+		float strength = corner_strength * mix(0.3, 1.0, smoothstep(0.5, 1.6, zoom));
 		ink = max(ink, smoothstep(corner_lo, corner_hi, bend) * strength * seen * uncovered);
 	}
 	return ink;
@@ -124,6 +124,9 @@ void fragment() {
 		+ ink_at(SCREEN_UV + vec2(0.125, 0.375) * p1, px, INV_PROJECTION_MATRIX)
 		+ ink_at(SCREEN_UV + vec2(-0.375, 0.125) * p1, px, INV_PROJECTION_MATRIX);
 	ink *= 0.25;
+	// Pulled far back, everything is small and full-strength ink crowds it:
+	// the lines fade towards 75%.
+	ink *= mix(0.75, 1.0, smoothstep(0.45, 0.95, zoom));
 	ALBEDO = ink_color.rgb;
 	ALPHA = ink_color.a * ink;
 }
