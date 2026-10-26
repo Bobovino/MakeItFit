@@ -4437,8 +4437,8 @@ func _add_stairs(bounds: Rect2i) -> void:
 
 func _add_stair_model(ed: Dictionary, bounds: Rect2i, full_h: float) -> bool:
 	var dir := ed.get("direction", "north") as String
-	var path := "res://assets/models/furniture/makeitfit/stair_%s.glb" % dir.substr(0, 1)
-	if not ResourceLoader.exists(path):
+	var path := _find_furniture_data(_catalog, "stair_%s" % dir.substr(0, 1)).get("model", "") as String
+	if path.is_empty() or not ResourceLoader.exists(path):
 		return false
 	var r := ed["rect"] as Rect2i
 	var size := Vector3(r.size.x * TILE_M, full_h, r.size.y * TILE_M)

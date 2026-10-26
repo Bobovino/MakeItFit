@@ -18,7 +18,7 @@
       "is_nested_box": true,
       "weight": 3,
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/shoebox_apartment.glb"
+      "model": "res://assets/models/furniture/styletest/shoebox_apartment.glb"
     },
     {
       "id": "rental_capsule",
@@ -40,7 +40,7 @@
       "rental": true,
       "child_level_id": "rental:capsule",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_capsule.glb"
+      "model": "res://assets/models/furniture/styletest/rental_capsule.glb"
     },
     {
       "id": "rental_student",
@@ -62,7 +62,7 @@
       "rental": true,
       "child_level_id": "rental:student",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_student.glb"
+      "model": "res://assets/models/furniture/styletest/rental_student.glb"
     },
     {
       "id": "rental_bunk",
@@ -84,7 +84,7 @@
       "rental": true,
       "child_level_id": "rental:bunk",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_bunk.glb"
+      "model": "res://assets/models/furniture/styletest/rental_bunk.glb"
     },
     {
       "id": "rental_garret",
@@ -106,7 +106,7 @@
       "rental": true,
       "child_level_id": "rental:garret",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_garret.glb"
+      "model": "res://assets/models/furniture/styletest/rental_garret.glb"
     },
     {
       "id": "rental_nook",
@@ -128,7 +128,7 @@
       "rental": true,
       "child_level_id": "rental:nook",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_nook.glb"
+      "model": "res://assets/models/furniture/styletest/rental_nook.glb"
     },
     {
       "id": "rental_couple",
@@ -150,7 +150,7 @@
       "rental": true,
       "child_level_id": "rental:couple",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_couple.glb"
+      "model": "res://assets/models/furniture/styletest/rental_couple.glb"
     },
     {
       "id": "rental_family",
@@ -172,7 +172,7 @@
       "rental": true,
       "child_level_id": "rental:family",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_family.glb"
+      "model": "res://assets/models/furniture/styletest/rental_family.glb"
     },
     {
       "id": "rental_penthouse",
@@ -194,7 +194,7 @@
       "rental": true,
       "child_level_id": "rental:penthouse",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rental_penthouse.glb"
+      "model": "res://assets/models/furniture/styletest/rental_penthouse.glb"
     },
     {
       "id": "normal_bed",
@@ -214,7 +214,7 @@
       "color": "7a9ec0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/normal_bed.glb"
+      "model": "res://assets/models/furniture/styletest/normal_bed.glb"
     },
     {
       "id": "storage_bed",
@@ -235,7 +235,7 @@
       "color": "5888b0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/storage_bed.glb"
+      "model": "res://assets/models/furniture/styletest/storage_bed.glb"
     },
     {
       "id": "high_bed",
@@ -259,7 +259,7 @@
       "color": "6a8eb0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/high_bed.glb"
+      "model": "res://assets/models/furniture/styletest/high_bed.glb"
     },
     {
       "id": "bunk_bed",
@@ -282,7 +282,7 @@
       "color": "6a8ea8",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/bunk_bed.glb"
+      "model": "res://assets/models/furniture/styletest/bunk_bed.glb"
     },
     {
       "id": "murphy_bed",
@@ -309,7 +309,7 @@
       "wall_flush_required": true,
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/murphy_bed.glb",
+      "model": "res://assets/models/furniture/styletest/murphy_bed.glb",
       "open_anim": true
     },
     {
@@ -365,7 +365,7 @@
       "color": "c8a870",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/futon.glb",
+      "model": "res://assets/models/furniture/styletest/futon.glb",
       "open_anim": true
     },
     {
@@ -386,7 +386,7 @@
       "sell_price": 100,
       "color": "c87848",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/sofa.glb"
+      "model": "res://assets/models/furniture/styletest/sofa.glb"
     },
     {
       "id": "sofa_bed",
@@ -416,7 +416,7 @@
       "color": "b86838",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/sofa_bed.glb",
+      "model": "res://assets/models/furniture/styletest/sofa_bed.glb",
       "open_anim": true
     },
     {
@@ -437,7 +437,7 @@
       "sell_price": 70,
       "color": "a87050",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/lounge_chair.glb"
+      "model": "res://assets/models/furniture/styletest/lounge_chair.glb"
     },
     {
       "id": "puff",
@@ -456,7 +456,7 @@
       "sell_price": 30,
       "color": "d07848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/puff.glb"
+      "model": "res://assets/models/furniture/styletest/puff.glb"
     },
     {
       "id": "ottoman",
@@ -476,7 +476,7 @@
       "sell_price": 80,
       "color": "c8a060",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/ottoman.glb"
+      "model": "res://assets/models/furniture/styletest/ottoman.glb"
     },
     {
       "id": "stool",
@@ -495,7 +495,7 @@
       "sell_price": 20,
       "color": "c09060",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/stool.glb",
+      "model": "res://assets/models/furniture/styletest/stool.glb",
       "pose_open": true
     },
     {
@@ -519,7 +519,7 @@
       "max_support_weight": 6,
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/desk.glb"
+      "model": "res://assets/models/furniture/styletest/desk.glb"
     },
     {
       "id": "small_desk",
@@ -539,7 +539,7 @@
       "sell_price": 40,
       "color": "7aae88",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/small_desk.glb"
+      "model": "res://assets/models/furniture/styletest/small_desk.glb"
     },
     {
       "id": "murphy_desk",
@@ -563,7 +563,7 @@
       "buy_price": 500,
       "sell_price": 220,
       "color": "5a8e68",
-      "model": "res://assets/models/furniture/makeitfit/murphy_desk.glb",
+      "model": "res://assets/models/furniture/styletest/murphy_desk.glb",
       "open_anim": true
     },
     {
@@ -586,7 +586,7 @@
       "is_surface": true,
       "max_support_weight": 10,
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/dining_table.glb"
+      "model": "res://assets/models/furniture/styletest/dining_table.glb"
     },
     {
       "id": "coffee_table",
@@ -607,7 +607,7 @@
       "sell_price": 40,
       "color": "b09870",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/coffee_table.glb",
+      "model": "res://assets/models/furniture/styletest/coffee_table.glb",
       "pose_open": true
     },
     {
@@ -629,7 +629,7 @@
       "sell_price": 200,
       "color": "a09888",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/kitchen.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen.glb"
     },
     {
       "id": "kitchen_small",
@@ -650,7 +650,7 @@
       "sell_price": 140,
       "color": "908878",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_small.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_small.glb"
     },
     {
       "id": "bathtub",
@@ -668,7 +668,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/makeitfit/bathtub.glb"
+      "model": "res://assets/models/furniture/styletest/bathtub.glb"
     },
     {
       "id": "toilet",
@@ -686,7 +686,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/makeitfit/toilet.glb"
+      "model": "res://assets/models/furniture/styletest/toilet.glb"
     },
     {
       "id": "sink",
@@ -704,7 +704,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 14,
-      "model": "res://assets/models/furniture/makeitfit/sink.glb"
+      "model": "res://assets/models/furniture/styletest/sink.glb"
     },
     {
       "id": "shower",
@@ -722,7 +722,7 @@
       },
       "floor_category": "bathroom",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/makeitfit/shower.glb"
+      "model": "res://assets/models/furniture/styletest/shower.glb"
     },
     {
       "id": "towel_rack",
@@ -740,7 +740,7 @@
       },
       "floor_category": "bathroom",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/towel_rack.glb",
+      "model": "res://assets/models/furniture/styletest/towel_rack.glb",
       "wall_h": 16
     },
     {
@@ -765,7 +765,7 @@
       "color": "b08848",
       "zone_divider": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/wardrobe.glb"
+      "model": "res://assets/models/furniture/styletest/wardrobe.glb"
     },
     {
       "id": "bookshelf",
@@ -788,7 +788,7 @@
       "zone_divider": true,
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/bookshelf.glb"
+      "model": "res://assets/models/furniture/styletest/bookshelf.glb"
     },
     {
       "id": "pantry",
@@ -809,7 +809,7 @@
       "sell_price": 70,
       "color": "8a7060",
       "zone_divider": true,
-      "model": "res://assets/models/furniture/makeitfit/pantry.glb"
+      "model": "res://assets/models/furniture/styletest/pantry.glb"
     },
     {
       "id": "wall_shelf",
@@ -828,7 +828,7 @@
       "sell_price": 30,
       "color": "987840",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/wall_shelf.glb"
+      "model": "res://assets/models/furniture/styletest/wall_shelf.glb"
     },
     {
       "id": "wall_cabinet",
@@ -848,7 +848,7 @@
       "sell_price": 150,
       "color": "887030",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/wall_cabinet.glb"
+      "model": "res://assets/models/furniture/styletest/wall_cabinet.glb"
     },
     {
       "id": "wall_hanger",
@@ -867,7 +867,7 @@
       "sell_price": 15,
       "color": "987840",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/wall_hanger.glb"
+      "model": "res://assets/models/furniture/styletest/wall_hanger.glb"
     },
     {
       "id": "tv",
@@ -884,7 +884,7 @@
       "sell_price": 150,
       "color": "303028",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/makeitfit/tv.glb"
+      "model": "res://assets/models/furniture/styletest/tv.glb"
     },
     {
       "id": "mirror",
@@ -901,7 +901,7 @@
       "sell_price": 50,
       "color": "90b8c8",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/mirror.glb"
+      "model": "res://assets/models/furniture/styletest/mirror.glb"
     },
     {
       "id": "painting",
@@ -918,7 +918,7 @@
       "sell_price": 20,
       "color": "c89848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/painting.glb"
+      "model": "res://assets/models/furniture/styletest/painting.glb"
     },
     {
       "id": "plant",
@@ -936,7 +936,7 @@
       "color": "508040",
       "floor_category": "balcony",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/plant.glb"
+      "model": "res://assets/models/furniture/styletest/plant.glb"
     },
     {
       "id": "wall_plant",
@@ -953,7 +953,7 @@
       "sell_price": 8,
       "color": "488038",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/wall_plant.glb"
+      "model": "res://assets/models/furniture/styletest/wall_plant.glb"
     },
     {
       "id": "stair_n",
@@ -974,7 +974,7 @@
       "is_stair": true,
       "stair_direction": "north",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/makeitfit/stair_n.glb"
+      "model": "res://assets/models/furniture/styletest/stair_n.glb"
     },
     {
       "id": "stair_s",
@@ -995,7 +995,7 @@
       "is_stair": true,
       "stair_direction": "south",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/makeitfit/stair_s.glb"
+      "model": "res://assets/models/furniture/styletest/stair_s.glb"
     },
     {
       "id": "stair_e",
@@ -1016,7 +1016,7 @@
       "is_stair": true,
       "stair_direction": "east",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/makeitfit/stair_e.glb"
+      "model": "res://assets/models/furniture/styletest/stair_e.glb"
     },
     {
       "id": "stair_w",
@@ -1037,7 +1037,7 @@
       "is_stair": true,
       "stair_direction": "west",
       "wall_h": 20,
-      "model": "res://assets/models/furniture/makeitfit/stair_w.glb"
+      "model": "res://assets/models/furniture/styletest/stair_w.glb"
     },
     {
       "id": "fold_stair_e",
@@ -1065,7 +1065,7 @@
       ],
       "wall_flush_required": true,
       "open_anim": true,
-      "model": "res://assets/models/furniture/makeitfit/fold_stair_e.glb"
+      "model": "res://assets/models/furniture/styletest/fold_stair_e.glb"
     },
     {
       "id": "fold_stair_w",
@@ -1093,7 +1093,7 @@
       ],
       "wall_flush_required": true,
       "open_anim": true,
-      "model": "res://assets/models/furniture/makeitfit/fold_stair_w.glb"
+      "model": "res://assets/models/furniture/styletest/fold_stair_w.glb"
     },
     {
       "id": "laundry_basket",
@@ -1110,7 +1110,7 @@
       "sell_price": 20,
       "color": "d0c0a8",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/laundry_basket.glb"
+      "model": "res://assets/models/furniture/styletest/laundry_basket.glb"
     },
     {
       "id": "bathroom_cabinet",
@@ -1133,7 +1133,7 @@
       "is_surface": true,
       "max_support_weight": 8,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/bathroom_cabinet.glb"
+      "model": "res://assets/models/furniture/styletest/bathroom_cabinet.glb"
     },
     {
       "id": "towel_set",
@@ -1151,7 +1151,7 @@
       "color": "e8ddd0",
       "floor_category": "bathroom",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/towel_set.glb"
+      "model": "res://assets/models/furniture/styletest/towel_set.glb"
     },
     {
       "id": "floor_lamp",
@@ -1168,7 +1168,7 @@
       "sell_price": 25,
       "color": "d4c060",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/floor_lamp.glb"
+      "model": "res://assets/models/furniture/styletest/floor_lamp.glb"
     },
     {
       "id": "side_table",
@@ -1187,7 +1187,7 @@
       "mobility_tier": "yellow",
       "is_surface": true,
       "max_support_weight": 8,
-      "model": "res://assets/models/furniture/makeitfit/side_table.glb"
+      "model": "res://assets/models/furniture/styletest/side_table.glb"
     },
     {
       "id": "tv_stand",
@@ -1207,7 +1207,7 @@
       "is_surface": true,
       "max_support_weight": 15,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/tv_stand.glb"
+      "model": "res://assets/models/furniture/styletest/tv_stand.glb"
     },
     {
       "id": "office_chair",
@@ -1227,7 +1227,7 @@
       "sell_price": 70,
       "color": "506070",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/office_chair.glb"
+      "model": "res://assets/models/furniture/styletest/office_chair.glb"
     },
     {
       "id": "filing_cabinet",
@@ -1249,7 +1249,7 @@
       "is_surface": true,
       "max_support_weight": 10,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/filing_cabinet.glb"
+      "model": "res://assets/models/furniture/styletest/filing_cabinet.glb"
     },
     {
       "id": "whiteboard",
@@ -1266,7 +1266,7 @@
       "sell_price": 30,
       "color": "f0f0e0",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/whiteboard.glb"
+      "model": "res://assets/models/furniture/styletest/whiteboard.glb"
     },
     {
       "id": "desk_lamp",
@@ -1285,7 +1285,7 @@
       "weight": 1,
       "requires_surface": true,
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/desk_lamp.glb"
+      "model": "res://assets/models/furniture/styletest/desk_lamp.glb"
     },
     {
       "id": "fridge",
@@ -1305,7 +1305,7 @@
       "sell_price": 140,
       "color": "c0ccd8",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/fridge.glb"
+      "model": "res://assets/models/furniture/styletest/fridge.glb"
     },
     {
       "id": "kitchen_island",
@@ -1323,7 +1323,7 @@
       "color": "c0b090",
       "is_surface": true,
       "max_support_weight": 25,
-      "model": "res://assets/models/furniture/makeitfit/kitchen_island.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_island.glb"
     },
     {
       "id": "kitchen_rack",
@@ -1340,7 +1340,7 @@
       "sell_price": 20,
       "color": "909898",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_rack.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_rack.glb"
     },
     {
       "id": "outdoor_table",
@@ -1361,7 +1361,7 @@
       "color": "607050",
       "floor_category": "balcony",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/outdoor_table.glb",
+      "model": "res://assets/models/furniture/styletest/outdoor_table.glb",
       "pose_open": true
     },
     {
@@ -1380,7 +1380,7 @@
       "color": "507040",
       "floor_category": "balcony",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/planter_box.glb"
+      "model": "res://assets/models/furniture/styletest/planter_box.glb"
     },
     {
       "id": "sun_lounger",
@@ -1401,7 +1401,7 @@
       "color": "d4c070",
       "floor_category": "balcony",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/sun_lounger.glb"
+      "model": "res://assets/models/furniture/styletest/sun_lounger.glb"
     },
     {
       "id": "nightstand",
@@ -1420,7 +1420,7 @@
       "mobility_tier": "yellow",
       "is_surface": true,
       "max_support_weight": 8,
-      "model": "res://assets/models/furniture/makeitfit/nightstand.glb"
+      "model": "res://assets/models/furniture/styletest/nightstand.glb"
     },
     {
       "id": "dresser",
@@ -1443,7 +1443,7 @@
       "is_surface": true,
       "max_support_weight": 15,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/dresser.glb"
+      "model": "res://assets/models/furniture/styletest/dresser.glb"
     },
     {
       "id": "floor_mirror",
@@ -1464,7 +1464,7 @@
       "color": "c0c8d0",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/floor_mirror.glb"
+      "model": "res://assets/models/furniture/styletest/floor_mirror.glb"
     },
     {
       "id": "clothes_rack",
@@ -1485,7 +1485,7 @@
       "color": "909898",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/clothes_rack.glb"
+      "model": "res://assets/models/furniture/styletest/clothes_rack.glb"
     },
     {
       "id": "sink_square",
@@ -1504,7 +1504,7 @@
       "sell_price": 95,
       "color": "c8d8e8",
       "floor_category": "bathroom",
-      "model": "res://assets/models/furniture/makeitfit/sink_square.glb"
+      "model": "res://assets/models/furniture/styletest/sink_square.glb"
     },
     {
       "id": "double_bed",
@@ -1524,7 +1524,7 @@
       "color": "7a9ec0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/double_bed.glb"
+      "model": "res://assets/models/furniture/styletest/double_bed.glb"
     },
     {
       "id": "bench",
@@ -1543,7 +1543,7 @@
       "sell_price": 35,
       "color": "8a7050",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/bench.glb"
+      "model": "res://assets/models/furniture/styletest/bench.glb"
     },
     {
       "id": "cushioned_bench",
@@ -1562,7 +1562,7 @@
       "sell_price": 50,
       "color": "9a7858",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/cushioned_bench.glb"
+      "model": "res://assets/models/furniture/styletest/cushioned_bench.glb"
     },
     {
       "id": "low_bench",
@@ -1581,7 +1581,7 @@
       "sell_price": 40,
       "color": "907048",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/low_bench.glb"
+      "model": "res://assets/models/furniture/styletest/low_bench.glb"
     },
     {
       "id": "closed_bookcase",
@@ -1604,7 +1604,7 @@
       "is_surface": true,
       "max_support_weight": 8,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/closed_bookcase.glb"
+      "model": "res://assets/models/furniture/styletest/closed_bookcase.glb"
     },
     {
       "id": "wide_bookcase",
@@ -1627,7 +1627,7 @@
       "is_surface": true,
       "max_support_weight": 12,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/wide_bookcase.glb"
+      "model": "res://assets/models/furniture/styletest/wide_bookcase.glb"
     },
     {
       "id": "moving_box",
@@ -1646,7 +1646,7 @@
       "sell_price": 5,
       "color": "b89868",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/moving_box.glb"
+      "model": "res://assets/models/furniture/styletest/moving_box.glb"
     },
     {
       "id": "dining_chair",
@@ -1666,7 +1666,7 @@
       "sell_price": 20,
       "color": "8a6848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/dining_chair.glb"
+      "model": "res://assets/models/furniture/styletest/dining_chair.glb"
     },
     {
       "id": "keyboard",
@@ -1683,7 +1683,7 @@
       "sell_price": 5,
       "color": "e0e0e0",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/keyboard.glb"
+      "model": "res://assets/models/furniture/styletest/keyboard.glb"
     },
     {
       "id": "computer_mouse",
@@ -1700,7 +1700,7 @@
       "sell_price": 2,
       "color": "e0e0e0",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/computer_mouse.glb"
+      "model": "res://assets/models/furniture/styletest/computer_mouse.glb"
     },
     {
       "id": "monitor",
@@ -1721,7 +1721,7 @@
       "color": "202020",
       "mobility_tier": "green",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/monitor.glb"
+      "model": "res://assets/models/furniture/styletest/monitor.glb"
     },
     {
       "id": "kitchen_corner_cabinet_inner",
@@ -1740,7 +1740,7 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "a09888",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_corner_cabinet_inner.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_corner_cabinet_inner.glb"
     },
     {
       "id": "kitchen_corner_cabinet_round",
@@ -1759,7 +1759,7 @@
       "buy_price": 190,
       "sell_price": 75,
       "color": "988c78",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_corner_cabinet_round.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_corner_cabinet_round.glb"
     },
     {
       "id": "fridge_large",
@@ -1779,7 +1779,7 @@
       "sell_price": 210,
       "color": "b8c4d0",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/fridge_large.glb"
+      "model": "res://assets/models/furniture/styletest/fridge_large.glb"
     },
     {
       "id": "chest_freezer",
@@ -1800,7 +1800,7 @@
       "sell_price": 120,
       "color": "dfe6ec",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/chest_freezer.glb"
+      "model": "res://assets/models/furniture/styletest/chest_freezer.glb"
     },
     {
       "id": "upright_freezer",
@@ -1820,7 +1820,7 @@
       "sell_price": 150,
       "color": "d4dce4",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/upright_freezer.glb"
+      "model": "res://assets/models/furniture/styletest/upright_freezer.glb"
     },
     {
       "id": "mini_fridge",
@@ -1838,7 +1838,7 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "c8d4e0",
-      "model": "res://assets/models/furniture/makeitfit/mini_fridge.glb"
+      "model": "res://assets/models/furniture/styletest/mini_fridge.glb"
     },
     {
       "id": "kitchen_sink",
@@ -1858,7 +1858,7 @@
       "sell_price": 60,
       "color": "c8ccd0",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_sink.glb"
+      "model": "res://assets/models/furniture/styletest/kitchen_sink.glb"
     },
     {
       "id": "stove",
@@ -1878,7 +1878,7 @@
       "sell_price": 100,
       "color": "303030",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/makeitfit/stove.glb"
+      "model": "res://assets/models/furniture/styletest/stove.glb"
     },
     {
       "id": "design_sofa",
@@ -1898,7 +1898,7 @@
       "sell_price": 260,
       "color": "384048",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/design_sofa.glb"
+      "model": "res://assets/models/furniture/styletest/design_sofa.glb"
     },
     {
       "id": "trash_can",
@@ -1915,7 +1915,7 @@
       "sell_price": 5,
       "color": "707878",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/trash_can.glb"
+      "model": "res://assets/models/furniture/styletest/trash_can.glb"
     },
     {
       "id": "washer",
@@ -1936,7 +1936,7 @@
       "sell_price": 120,
       "color": "d0d0d0",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/makeitfit/washer.glb"
+      "model": "res://assets/models/furniture/styletest/washer.glb"
     },
     {
       "id": "washer_dryer_stack",
@@ -1958,7 +1958,7 @@
       "sell_price": 190,
       "color": "c8c8c8",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/makeitfit/washer_dryer_stack.glb"
+      "model": "res://assets/models/furniture/styletest/washer_dryer_stack.glb"
     },
     {
       "placement": "wall",
@@ -1983,7 +1983,7 @@
       "sell_price": 430,
       "color": "5a7ea0",
       "needs_quiet": true,
-      "model": "res://assets/models/furniture/makeitfit/murphy_bed_double.glb",
+      "model": "res://assets/models/furniture/styletest/murphy_bed_double.glb",
       "open_anim": true
     },
     {
@@ -2012,7 +2012,7 @@
       "sell_price": 560,
       "color": "6a86a8",
       "needs_quiet": true,
-      "model": "res://assets/models/furniture/makeitfit/murphy_bed_sofa.glb",
+      "model": "res://assets/models/furniture/styletest/murphy_bed_sofa.glb",
       "open_anim": true
     },
     {
@@ -2041,7 +2041,7 @@
       "sell_price": 150,
       "color": "a87050",
       "needs_quiet": true,
-      "model": "res://assets/models/furniture/makeitfit/armchair_bed.glb",
+      "model": "res://assets/models/furniture/styletest/armchair_bed.glb",
       "open_anim": true
     },
     {
@@ -2070,7 +2070,7 @@
       "sell_price": 130,
       "color": "c8a060",
       "needs_quiet": true,
-      "model": "res://assets/models/furniture/makeitfit/ottoman_bed.glb",
+      "model": "res://assets/models/furniture/styletest/ottoman_bed.glb",
       "open_anim": true
     },
     {
@@ -2101,7 +2101,7 @@
       "color": "384048",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/design_sofa_bed.glb",
+      "model": "res://assets/models/furniture/styletest/design_sofa_bed.glb",
       "open_anim": true
     },
     {
@@ -2132,7 +2132,7 @@
       "color": "b86838",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/corner_sofa_bed.glb",
+      "model": "res://assets/models/furniture/styletest/corner_sofa_bed.glb",
       "open_anim": true
     },
     {
@@ -2161,7 +2161,7 @@
       "color": "7a9ec0",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/trundle_bed.glb",
+      "model": "res://assets/models/furniture/styletest/trundle_bed.glb",
       "open_anim": true
     },
     {
@@ -2192,7 +2192,7 @@
       "color": "887050",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/cabinet_guest_bed.glb",
+      "model": "res://assets/models/furniture/styletest/cabinet_guest_bed.glb",
       "open_anim": true
     },
     {
@@ -2222,7 +2222,7 @@
       "color": "9a7858",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/bench_bed.glb",
+      "model": "res://assets/models/furniture/styletest/bench_bed.glb",
       "open_anim": true
     },
     {
@@ -2253,7 +2253,7 @@
       "color": "5a8e68",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/desk_bed_combo.glb",
+      "model": "res://assets/models/furniture/styletest/desk_bed_combo.glb",
       "open_anim": true
     },
     {
@@ -2279,7 +2279,7 @@
       "sell_price": 80,
       "color": "b09060",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/drop_leaf_table.glb",
+      "model": "res://assets/models/furniture/styletest/drop_leaf_table.glb",
       "open_anim": true
     },
     {
@@ -2308,7 +2308,7 @@
       "sell_price": 145,
       "color": "b09060",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/extending_table.glb",
+      "model": "res://assets/models/furniture/styletest/extending_table.glb",
       "open_anim": true
     },
     {
@@ -2336,7 +2336,7 @@
       "buy_price": 280,
       "sell_price": 110,
       "color": "b09870",
-      "model": "res://assets/models/furniture/makeitfit/lift_coffee_table.glb",
+      "model": "res://assets/models/furniture/styletest/lift_coffee_table.glb",
       "open_anim": true
     },
     {
@@ -2361,7 +2361,7 @@
       "buy_price": 300,
       "sell_price": 120,
       "color": "a08858",
-      "model": "res://assets/models/furniture/makeitfit/wall_dining_table.glb",
+      "model": "res://assets/models/furniture/styletest/wall_dining_table.glb",
       "open_anim": true
     },
     {
@@ -2389,7 +2389,7 @@
       "sell_price": 75,
       "color": "b09870",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/nesting_tables.glb",
+      "model": "res://assets/models/furniture/styletest/nesting_tables.glb",
       "open_anim": true
     },
     {
@@ -2415,7 +2415,7 @@
       "sell_price": 125,
       "color": "907858",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/console_dining_table.glb",
+      "model": "res://assets/models/furniture/styletest/console_dining_table.glb",
       "open_anim": true
     },
     {
@@ -2443,7 +2443,7 @@
       "sell_price": 155,
       "color": "b8d0d8",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/folding_glass_table.glb",
+      "model": "res://assets/models/furniture/styletest/folding_glass_table.glb",
       "open_anim": true
     },
     {
@@ -2468,7 +2468,7 @@
       "buy_price": 240,
       "sell_price": 95,
       "color": "987848",
-      "model": "res://assets/models/furniture/makeitfit/murphy_table.glb",
+      "model": "res://assets/models/furniture/styletest/murphy_table.glb",
       "open_anim": true
     },
     {
@@ -2494,7 +2494,7 @@
       "sell_price": 125,
       "color": "a09888",
       "mobility_tier": "yellow",
-      "model": "res://assets/models/furniture/makeitfit/extending_bar_table.glb",
+      "model": "res://assets/models/furniture/styletest/extending_bar_table.glb",
       "open_anim": true
     },
     {
@@ -2526,7 +2526,7 @@
       "color": "8a7040",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/secretary_desk.glb",
+      "model": "res://assets/models/furniture/styletest/secretary_desk.glb",
       "open_anim": true
     },
     {
@@ -2554,7 +2554,7 @@
       "buy_price": 390,
       "sell_price": 155,
       "color": "6878a0",
-      "model": "res://assets/models/furniture/makeitfit/corner_fold_desk.glb",
+      "model": "res://assets/models/furniture/styletest/corner_fold_desk.glb",
       "open_anim": true
     },
     {
@@ -2579,7 +2579,7 @@
       "buy_price": 190,
       "sell_price": 75,
       "color": "7aae88",
-      "model": "res://assets/models/furniture/makeitfit/wall_laptop_desk.glb",
+      "model": "res://assets/models/furniture/styletest/wall_laptop_desk.glb",
       "open_anim": true
     },
     {
@@ -2609,7 +2609,7 @@
       "color": "6a9e78",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/standing_desk.glb",
+      "model": "res://assets/models/furniture/styletest/standing_desk.glb",
       "open_anim": true
     },
     {
@@ -2632,7 +2632,7 @@
       "color": "6a9e78",
       "mobility_tier": "green",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/rolling_desk.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_desk.glb"
     },
     {
       "placement": "floor",
@@ -2662,7 +2662,7 @@
       "color": "907858",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/vanity_desk.glb",
+      "model": "res://assets/models/furniture/styletest/vanity_desk.glb",
       "open_anim": true
     },
     {
@@ -2694,7 +2694,7 @@
       "color": "9a7840",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/bookcase_desk.glb",
+      "model": "res://assets/models/furniture/styletest/bookcase_desk.glb",
       "open_anim": true
     },
     {
@@ -2718,7 +2718,7 @@
       "sell_price": 130,
       "color": "b08848",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/sliding_wardrobe_tall.glb"
+      "model": "res://assets/models/furniture/styletest/sliding_wardrobe_tall.glb"
     },
     {
       "placement": "floor",
@@ -2740,7 +2740,7 @@
       "sell_price": 80,
       "color": "9a7840",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/sliding_bookcase.glb"
+      "model": "res://assets/models/furniture/styletest/sliding_bookcase.glb"
     },
     {
       "placement": "floor",
@@ -2763,7 +2763,7 @@
       "color": "987848",
       "mobility_tier": "green",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/rolling_shelf_wide.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_shelf_wide.glb"
     },
     {
       "placement": "floor",
@@ -2784,7 +2784,7 @@
       "color": "604838",
       "mobility_tier": "green",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/rolling_tv_unit.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_tv_unit.glb"
     },
     {
       "placement": "floor",
@@ -2802,7 +2802,7 @@
       "sell_price": 160,
       "color": "c0b090",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rolling_island.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_island.glb"
     },
     {
       "placement": "floor",
@@ -2824,7 +2824,7 @@
       "color": "909898",
       "mobility_tier": "green",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/rolling_clothes_rack.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_clothes_rack.glb"
     },
     {
       "placement": "floor",
@@ -2853,7 +2853,7 @@
       "sell_price": 100,
       "color": "9a7858",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/folding_storage_bench.glb",
+      "model": "res://assets/models/furniture/styletest/folding_storage_bench.glb",
       "open_anim": true
     },
     {
@@ -2881,7 +2881,7 @@
       "sell_price": 80,
       "color": "987840",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/expanding_shelf.glb",
+      "model": "res://assets/models/furniture/styletest/expanding_shelf.glb",
       "open_anim": true
     },
     {
@@ -2904,7 +2904,7 @@
       "buy_price": 280,
       "sell_price": 105,
       "color": "8a7060",
-      "model": "res://assets/models/furniture/makeitfit/pocket_pantry.glb"
+      "model": "res://assets/models/furniture/styletest/pocket_pantry.glb"
     },
     {
       "placement": "floor",
@@ -2928,7 +2928,7 @@
       "buy_price": 90,
       "sell_price": 35,
       "color": "b89868",
-      "model": "res://assets/models/furniture/makeitfit/pull_out_hamper.glb",
+      "model": "res://assets/models/furniture/styletest/pull_out_hamper.glb",
       "open_anim": true
     },
     {
@@ -2960,7 +2960,7 @@
       "sell_price": 320,
       "color": "a09888",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/hidden_kitchenette.glb",
+      "model": "res://assets/models/furniture/styletest/hidden_kitchenette.glb",
       "open_anim": true
     },
     {
@@ -2985,7 +2985,7 @@
       "buy_price": 230,
       "sell_price": 90,
       "color": "887030",
-      "model": "res://assets/models/furniture/makeitfit/fold_down_breakfast_bar.glb",
+      "model": "res://assets/models/furniture/styletest/fold_down_breakfast_bar.glb",
       "open_anim": true
     },
     {
@@ -3004,7 +3004,7 @@
       "sell_price": 80,
       "color": "a09888",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/rolling_kitchen_cart.glb"
+      "model": "res://assets/models/furniture/styletest/rolling_kitchen_cart.glb"
     },
     {
       "placement": "floor",
@@ -3035,7 +3035,7 @@
       "sell_price": 280,
       "color": "908878",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/kitchen_tower.glb",
+      "model": "res://assets/models/furniture/styletest/kitchen_tower.glb",
       "open_anim": true
     },
     {
@@ -3060,7 +3060,7 @@
       "buy_price": 350,
       "sell_price": 140,
       "color": "988c78",
-      "model": "res://assets/models/furniture/makeitfit/fold_out_counter.glb",
+      "model": "res://assets/models/furniture/styletest/fold_out_counter.glb",
       "open_anim": true
     },
     {
@@ -3087,7 +3087,7 @@
       "buy_price": 460,
       "sell_price": 230,
       "color": "b8ccd8",
-      "model": "res://assets/models/furniture/makeitfit/folding_shower.glb",
+      "model": "res://assets/models/furniture/styletest/folding_shower.glb",
       "open_anim": true
     },
     {
@@ -3112,7 +3112,7 @@
       "buy_price": 160,
       "sell_price": 60,
       "color": "90b8c8",
-      "model": "res://assets/models/furniture/makeitfit/mirror_cabinet.glb",
+      "model": "res://assets/models/furniture/styletest/mirror_cabinet.glb",
       "open_anim": true
     },
     {
@@ -3134,7 +3134,7 @@
       "sell_price": 70,
       "color": "d8e4ec",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/sliding_bathroom_cabinet.glb"
+      "model": "res://assets/models/furniture/styletest/sliding_bathroom_cabinet.glb"
     },
     {
       "placement": "floor",
@@ -3159,7 +3159,7 @@
       "sell_price": 20,
       "color": "8a6848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/folding_chair.glb",
+      "model": "res://assets/models/furniture/styletest/folding_chair.glb",
       "open_anim": true
     },
     {
@@ -3187,7 +3187,7 @@
       "sell_price": 50,
       "color": "806848",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/stacking_stools.glb",
+      "model": "res://assets/models/furniture/styletest/stacking_stools.glb",
       "open_anim": true
     },
     {
@@ -3213,7 +3213,7 @@
       "sell_price": 45,
       "color": "907048",
       "mobility_tier": "green",
-      "model": "res://assets/models/furniture/makeitfit/wall_folding_seat.glb",
+      "model": "res://assets/models/furniture/styletest/wall_folding_seat.glb",
       "open_anim": true
     },
     {
@@ -3241,7 +3241,7 @@
       "buy_price": 300,
       "sell_price": 120,
       "color": "8a7050",
-      "model": "res://assets/models/furniture/makeitfit/picnic_bench_table.glb",
+      "model": "res://assets/models/furniture/styletest/picnic_bench_table.glb",
       "open_anim": true
     },
     {
@@ -3271,7 +3271,7 @@
       "color": "8a6848",
       "mobility_tier": "yellow",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/under_counter_table.glb",
+      "model": "res://assets/models/furniture/styletest/under_counter_table.glb",
       "open_anim": true
     },
     {
@@ -3294,7 +3294,7 @@
       "is_surface": true,
       "max_support_weight": 10,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/banquette_bench.glb"
+      "model": "res://assets/models/furniture/styletest/banquette_bench.glb"
     },
     {
       "placement": "floor",
@@ -3312,7 +3312,7 @@
       "sell_price": 220,
       "color": "556070",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/ceiling_lift_storage.glb"
+      "model": "res://assets/models/furniture/styletest/ceiling_lift_storage.glb"
     },
     {
       "placement": "floor",
@@ -3330,7 +3330,7 @@
       "sell_price": 130,
       "color": "70604a",
       "mobility_tier": "red",
-      "model": "res://assets/models/furniture/makeitfit/floor_hatch_storage.glb"
+      "model": "res://assets/models/furniture/styletest/floor_hatch_storage.glb"
     },
     {
       "placement": "floor",
@@ -3350,7 +3350,7 @@
       "sell_price": 360,
       "color": "8a7a5a",
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/movable_island_wall.glb"
+      "model": "res://assets/models/furniture/styletest/movable_island_wall.glb"
     },
     {
       "placement": "floor",
@@ -3370,7 +3370,7 @@
       "color": "6a7a9a",
       "needs_quiet": true,
       "front": "long",
-      "model": "res://assets/models/furniture/makeitfit/platform_bed_podium.glb"
+      "model": "res://assets/models/furniture/styletest/platform_bed_podium.glb"
     },
     {
       "placement": "floor",
@@ -3394,7 +3394,7 @@
       "color": "7a9ec0",
       "wall_flush_required": true,
       "needs_quiet": true,
-      "model": "res://assets/models/furniture/makeitfit/sliding_pocket_bed.glb",
+      "model": "res://assets/models/furniture/styletest/sliding_pocket_bed.glb",
       "open_anim": true
     },
     {
@@ -3415,7 +3415,7 @@
       "screen": true,
       "zone_divider": true,
       "front": "any",
-      "model": "res://assets/models/furniture/makeitfit/fluted_glass_panel.glb",
+      "model": "res://assets/models/furniture/styletest/fluted_glass_panel.glb",
       "mobility_tier": "yellow"
     },
     {
@@ -3441,7 +3441,7 @@
       "screen_when": "extended",
       "zone_divider": true,
       "walkable": true,
-      "model": "res://assets/models/furniture/makeitfit/curtain.glb",
+      "model": "res://assets/models/furniture/styletest/curtain.glb",
       "open_anim": true,
       "mobility_tier": "green"
     },
@@ -3465,7 +3465,7 @@
       "is_noisy": true,
       "noise_radius": 5,
       "needs_daylight": true,
-      "model": "res://assets/models/furniture/makeitfit/bird_cage.glb",
+      "model": "res://assets/models/furniture/styletest/bird_cage.glb",
       "mobility_tier": "green"
     }
   ],
