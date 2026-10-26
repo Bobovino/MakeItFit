@@ -96,6 +96,12 @@ func _init() -> void:
 		# Batch 4: beds.
 		"normal_bed": _normal_bed, "double_bed": _double_bed, "storage_bed": _storage_bed,
 		"high_bed": _high_bed, "bunk_bed": _bunk_bed, "platform_bed_podium": _platform_bed_podium,
+		# Batch 5: small things.
+		"plant": _plant_tall, "planter_box": _planter_box, "floor_lamp": _floor_lamp,
+		"desk_lamp": _desk_lamp, "floor_mirror": _floor_mirror, "clothes_rack": _clothes_rack,
+		"rolling_clothes_rack": _rolling_clothes_rack, "keyboard": _keyboard,
+		"computer_mouse": _computer_mouse, "monitor": _monitor, "bird_cage": _bird_cage,
+		"fluted_glass_panel": _fluted_glass_panel,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -1636,3 +1642,185 @@ func _platform_bed_podium() -> void:
 	_bedding("+x", 0.40, -0.285, 1.98, 1.50, 0.48, 0.60, "C_6a7a9a", "C_adb6c7", 2)
 	_cushion("M_mustard", -1.40, 0.38, -0.85, -0.90, 0.50, -0.35, 0.06)
 	_cushion("M_teal", -1.38, 0.38, -0.28, -0.82, 0.50, 0.28, 0.06)
+
+
+# ── batch 5: small things ───────────────────────────────────────────────────
+
+# A clump of leaves: three overlapping rounded blocks in the three greens,
+# centred on (cx, y, cz), about `w` across and `h` tall.
+func _foliage(cx: float, cz: float, y: float, w: float, h: float) -> void:
+	_rblock("M_leaf_dark", cx, cz, w, w * 0.9, w * 0.4, y, y + h * 0.55)
+	_rblock("M_leaf", cx - w * 0.12, cz + w * 0.08, w * 0.8, w * 0.75, w * 0.33, y + h * 0.4, y + h * 0.85)
+	_rblock("M_leaf_lime", cx + w * 0.1, cz - w * 0.06, w * 0.5, w * 0.5, w * 0.22, y + h * 0.7, y + h)
+
+
+# 70 x 180 x 50 cm: a tall plant in a terracotta pot: a trunk and three
+# clumps of leaves.
+func _plant_tall() -> void:
+	_rblock("C_975338", 0.0, 0.0, 0.30, 0.30, 0.13, 0.0, 0.03)
+	var foot := _rr(0.0, 0.0, 0.30, 0.30, 0.13)
+	var rim := _rr(0.0, 0.0, 0.38, 0.38, 0.17)
+	_band("M_terracotta", foot, 0.03, rim, 0.34)
+	_cap("M_terracotta", foot, 0.03, false)
+	_cap("M_terracotta", rim, 0.34, true)
+	_rblock("M_terracotta", 0.0, 0.0, 0.40, 0.40, 0.18, 0.34, 0.38)
+	_rblock("M_soil", 0.0, 0.0, 0.34, 0.34, 0.15, 0.38, 0.385)
+	_box("M_walnut", Vector3(-0.02, 0.38, -0.02), Vector3(0.02, 1.30, 0.02))
+	_foliage(-0.14, 0.0, 0.60, 0.42, 0.50)
+	_foliage(0.14, 0.0, 0.95, 0.42, 0.45)
+	_foliage(0.0, 0.0, 1.30, 0.55, 0.50)
+
+
+# 130 x 130 x 40 cm: a long wooden trough on a stand, full of greenery and
+# flowers.
+func _planter_box() -> void:
+	_legs("C_384e2d", -0.62, 0.62, -0.17, 0.17, 0.35, 0.06)
+	_box("C_507040", Vector3(-0.65, 0.35, -0.20), Vector3(0.65, 0.64, 0.20))
+	_front("C_3c5430", -0.62, 0.42, 0.62, 0.57, 0.20)
+	_box("M_soil", Vector3(-0.63, 0.64, -0.18), Vector3(0.63, 0.644, 0.18))
+	_foliage(-0.40, 0.0, 0.64, 0.42, 0.62)
+	_foliage(0.05, 0.02, 0.64, 0.40, 0.56)
+	_foliage(0.42, -0.02, 0.64, 0.38, 0.64)
+	for f: Array in [["M_coral", -0.10, 0.92], ["M_pink", 0.22, 0.86], ["M_mustard", -0.30, 1.02], ["M_coral", 0.48, 1.04]]:
+		_rblock(f[0], f[1], 0.12, 0.07, 0.07, 0.03, f[2], f[2] + 0.06)
+
+
+# 30 x 140 x 30 cm: an iron base, a brass stem, a glowing shade.
+func _floor_lamp() -> void:
+	_rblock("M_iron", 0.0, 0.0, 0.26, 0.26, 0.13, 0.0, 0.04)
+	_box("M_brass", Vector3(-0.015, 0.04, -0.015), Vector3(0.015, 1.10, 0.015))
+	var bottom := _rr(0.0, 0.0, 0.30, 0.30, 0.15)
+	var top := _rr(0.0, 0.0, 0.20, 0.20, 0.10)
+	_band("lamp", bottom, 1.08, top, 1.40)
+	_cap("C_d4c060", top, 1.40, true)
+	_cap("lamp", bottom, 1.08, false)
+
+
+# 30 x 80 x 30 cm: an arm lamp: a heavy base, an upright, an arm reaching
+# forward, a head glowing downwards.
+func _desk_lamp() -> void:
+	_rblock("C_d4b060", 0.0, 0.0, 0.30, 0.29, 0.13, 0.0, 0.04)
+	_box("M_steel", Vector3(-0.10, 0.04, -0.02), Vector3(-0.06, 0.78, 0.02))
+	_box("M_steel", Vector3(-0.10, 0.74, -0.02), Vector3(0.10, 0.78, 0.02))
+	_rblock("C_d4b060", 0.09, 0.0, 0.12, 0.14, 0.05, 0.68, 0.80)
+	_rblock("lamp", 0.09, 0.0, 0.09, 0.11, 0.04, 0.66, 0.68)
+
+
+# 40 x 180 x 80 cm, the mirror's face along Z looking to +X: an oak frame
+# leaning back on a stand, a shirt hanging from a brass peg on top.
+func _floor_mirror() -> void:
+	_part("Body")
+	_box("M_oak", Vector3(-0.20, 0.0, -0.40), Vector3(0.20, 0.04, 0.40))
+	_box("M_oak", Vector3(-0.20, 0.04, -0.40), Vector3(-0.16, 1.40, -0.36))
+	_box("M_oak", Vector3(-0.20, 0.04, 0.36), Vector3(-0.16, 1.40, 0.40))
+	# The frame: upright, but set back so it reads as leaning on the stand.
+	_box("M_oak", Vector3(-0.12, 0.04, -0.40), Vector3(-0.06, 1.80, -0.34))
+	_box("M_oak", Vector3(-0.12, 0.04, 0.34), Vector3(-0.06, 1.80, 0.40))
+	_box("M_oak", Vector3(-0.12, 0.04, -0.34), Vector3(-0.06, 0.12, 0.34))
+	_box("M_oak", Vector3(-0.12, 1.72, -0.34), Vector3(-0.06, 1.80, 0.34))
+	_box("M_oak", Vector3(-0.12, 0.12, -0.34), Vector3(-0.09, 1.72, 0.34))
+	_box("M_mirror", Vector3(-0.09, 0.12, -0.34), Vector3(-0.087, 1.72, 0.34))
+	_box("M_brass", Vector3(-0.06, 1.66, -0.02), Vector3(0.0, 1.70, 0.02))
+	_cushion("M_ceramic", -0.05, 1.10, -0.18, -0.01, 1.66, 0.18, 0.02)
+
+
+# Clothes hanging from a rail at y, from x0 to x1: garments of different
+# lengths in a row, each a soft slab across the rail.
+func _garments(x0: float, x1: float, rail_y: float, depth: float, seed := 0) -> void:
+	var cols := ["M_coral", "M_navy", "M_teal", "M_blue", "M_cream", "M_sage", "M_pink", "M_mustard"]
+	var lengths := [0.95, 0.80, 1.10, 0.70, 0.90, 1.00, 0.75]
+	var x := x0
+	var i := seed
+	while x + 0.07 < x1:
+		var w := 0.06 + 0.02 * ((i * 7) % 3)
+		var l: float = lengths[i % lengths.size()]
+		_cushion(cols[(i * 3 + seed) % cols.size()], x, rail_y - l, -depth * 0.5, x + w - 0.008, rail_y - 0.04, depth * 0.5, 0.02)
+		x += w
+		i += 1
+
+
+# 120 x 200 x 50 cm: an iron frame with a chrome rail of clothes, an oak
+# shelf below with a wicker basket, a box on top.
+func _clothes_rack() -> void:
+	for x in [-0.60, 0.56]:
+		_box("M_iron", Vector3(x, 0.0, -0.25), Vector3(x + 0.04, 0.03, 0.25))
+		_box("M_iron", Vector3(x, 0.03, -0.02), Vector3(x + 0.04, 1.75, 0.02))
+	_box("M_oak", Vector3(-0.58, 0.13, -0.24), Vector3(0.58, 0.16, 0.24))
+	_box("M_oak", Vector3(-0.58, 1.75, -0.24), Vector3(0.58, 1.78, 0.24))
+	_box("M_chrome", Vector3(-0.58, 1.63, -0.015), Vector3(0.58, 1.66, 0.015))
+	_garments(-0.54, 0.54, 1.63, 0.40)
+	_rblock("M_wicker", 0.32, 0.0, 0.30, 0.30, 0.05, 0.16, 0.34)
+	_box("M_cardboard", Vector3(-0.42, 1.78, -0.16), Vector3(0.0, 1.90, 0.16))
+	_box("M_teal", Vector3(0.10, 1.78, -0.14), Vector3(0.46, 2.00, 0.14))
+
+
+# 120 x 200 x 50 cm: the same rack on castors.
+func _rolling_clothes_rack() -> void:
+	var y0 := _castors(-0.60, 0.60, -0.25, 0.25)
+	for x in [-0.60, 0.56]:
+		_box("M_iron", Vector3(x, y0, -0.02), Vector3(x + 0.04, 1.75, 0.02))
+	_box("M_oak", Vector3(-0.58, 0.20, -0.23), Vector3(0.58, 0.23, 0.23))
+	_box("M_oak", Vector3(-0.58, 1.75, -0.23), Vector3(0.58, 1.78, 0.23))
+	_box("M_chrome", Vector3(-0.58, 1.63, -0.015), Vector3(0.58, 1.66, 0.015))
+	_garments(-0.54, 0.54, 1.63, 0.40, 3)
+	_rblock("M_wicker", 0.32, 0.0, 0.30, 0.30, 0.05, 0.23, 0.41)
+	_box("M_cardboard", Vector3(-0.42, 1.78, -0.15), Vector3(0.0, 1.90, 0.15))
+	_box("M_teal", Vector3(0.12, 1.78, -0.14), Vector3(0.48, 2.00, 0.14))
+
+
+# 20 x 3 x 10 cm: a keyboard: a slab with a darker key field on top.
+func _keyboard() -> void:
+	_box("C_e0e0e0", Vector3(-0.10, 0.0, -0.05), Vector3(0.10, 0.025, 0.05))
+	_box("M_iron", Vector3(-0.088, 0.025, -0.038), Vector3(0.088, 0.028, 0.038))
+
+
+# 10 x 4 x 10 cm: a round mouse with a darker button.
+func _computer_mouse() -> void:
+	_rblock("C_e0e0e0", 0.0, 0.0, 0.10, 0.098, 0.045, 0.0, 0.04)
+	_rblock("M_iron", 0.0, -0.02, 0.06, 0.04, 0.02, 0.04, 0.043)
+
+
+# 30 x 40 x 20 cm: a screen on a stand.
+func _monitor() -> void:
+	_rblock("M_iron", 0.0, -0.02, 0.18, 0.20, 0.05, 0.0, 0.02)
+	_box("M_iron", Vector3(-0.025, 0.02, -0.06), Vector3(0.025, 0.20, -0.03))
+	_box("C_202020", Vector3(-0.15, 0.17, -0.03), Vector3(0.15, 0.40, 0.0))
+	_front("M_screen", -0.135, 0.185, 0.135, 0.385, 0.0)
+
+
+# 40 x 160 x 40 cm: a cage on a tall stand: a ring of bars under a roof, a
+# perch with the bird, a water dish.
+func _bird_cage() -> void:
+	_rblock("M_iron", 0.0, 0.0, 0.32, 0.32, 0.16, 0.0, 0.04)
+	_box("M_iron", Vector3(-0.02, 0.04, -0.02), Vector3(0.02, 0.98, 0.02))
+	_rblock("C_d9b56a", 0.0, 0.0, 0.40, 0.40, 0.20, 0.98, 1.03)
+	_rblock("C_d9b56a", 0.0, 0.0, 0.40, 0.40, 0.20, 1.43, 1.46)
+	var ring := _rr(0.0, 0.0, 0.36, 0.36, 0.18)
+	for k in range(0, ring.size(), 2):
+		var pt := ring[k]
+		_box("C_d9b56a", Vector3(pt.x - 0.01, 1.03, pt.y - 0.01), Vector3(pt.x + 0.01, 1.43, pt.y + 0.01))
+	var roof := _rr(0.0, 0.0, 0.40, 0.40, 0.20)
+	var peak := _rr(0.0, 0.0, 0.08, 0.08, 0.04)
+	_band("C_d9b56a", roof, 1.46, peak, 1.58)
+	_cap("C_d9b56a", peak, 1.58, true)
+	_rblock("C_d9b56a", 0.0, 0.0, 0.04, 0.04, 0.02, 1.58, 1.60)
+	_box("M_walnut", Vector3(-0.16, 1.15, -0.012), Vector3(0.16, 1.17, 0.012))
+	_rblock("M_bird", 0.01, 0.0, 0.09, 0.06, 0.03, 1.17, 1.24)
+	_rblock("M_bird", 0.04, 0.0, 0.05, 0.05, 0.025, 1.24, 1.28)
+	_box("M_orange", Vector3(0.065, 1.25, -0.01), Vector3(0.105, 1.27, 0.01))
+	_rblock("M_ceramic", -0.08, -0.06, 0.07, 0.07, 0.03, 1.03, 1.06)
+
+
+# 120 x 220 x 30 cm: a screen of reeded glass: an iron frame on two feet,
+# the panel a row of rounded reeds in two tones of pale glass.
+func _fluted_glass_panel() -> void:
+	for x in [-0.60, 0.56]:
+		_box("M_iron", Vector3(x, 0.0, -0.15), Vector3(x + 0.04, 0.03, 0.15))
+		_box("M_iron", Vector3(x, 0.03, -0.03), Vector3(x + 0.04, 2.20, 0.03))
+	_box("M_iron", Vector3(-0.56, 0.03, -0.03), Vector3(0.56, 0.07, 0.03))
+	_box("M_iron", Vector3(-0.56, 2.16, -0.03), Vector3(0.56, 2.20, 0.03))
+	var n := 14
+	var w := 1.12 / n
+	for k in n:
+		var cx := -0.56 + (k + 0.5) * w
+		_rblock("C_cfe3ea" if k % 2 == 0 else "M_glass", cx, 0.0, w, 0.05, 0.02, 0.07, 2.16)

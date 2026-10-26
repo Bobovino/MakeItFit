@@ -126,7 +126,9 @@ func _check_fit(box: AABB, want: Vector3, label: String, errors: Array, warnings
 	elif absf(box.position.z - back_z) > FIT_TOL:
 		errors.append("%sdoesn't grow from the closed back edge (%.2f vs %.2f)" % [pre, box.position.z, back_z])
 	var ratio := box.size.y / maxf(want.y, 0.001)
-	if ratio > HEIGHT_GIVE or ratio < 1.0 / HEIGHT_GIVE:
+	if ratio < 1.0 / HEIGHT_GIVE and want.y <= TILE + 0.001:
+		warnings.append("%sheight %.2f m: lower than the catalogue's smallest height can say; the game stretches it by up to a third" % [pre, box.size.y])
+	elif ratio > HEIGHT_GIVE or ratio < 1.0 / HEIGHT_GIVE:
 		errors.append("%sheight %.2f m against the catalogue's %.2f: the game would stretch it" % [pre, box.size.y, want.y])
 	elif absf(ratio - 1.0) > 0.05:
 		warnings.append("%sheight %.2f m against the catalogue's %.2f" % [pre, box.size.y, want.y])
