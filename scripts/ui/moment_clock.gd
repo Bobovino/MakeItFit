@@ -32,6 +32,7 @@ var _active := 0
 var _hand_angle := 0.0            # radians, 0 = twelve o'clock, clockwise
 var _hover := -1
 var _tween: Tween
+var _done := {}                   # moment id -> whether its needs are met; none until known
 
 
 func setup(moments: Array, size_px: float) -> void:
@@ -67,6 +68,15 @@ func set_active(moment_id: String) -> void:
 	_tween.tween_method(func(t: float) -> void:
 		_hand_angle = from + delta * t
 		queue_redraw(), 0.0, 1.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	queue_redraw()
+
+
+# Which moments have all their needs met: a green mark on the rim of their
+# slice, a red one where something is missing.
+func set_status(done: Dictionary) -> void:
+	if done == _done:
+		return
+	_done = done.duplicate()
 	queue_redraw()
 
 
@@ -172,6 +182,17 @@ func _draw() -> void:
 		var a := TAU * t / TICKS
 		draw_line(_point(a, r - 4.0), _point(a, r), GameTheme.INK, 1.5, true)
 	draw_arc(c, r, 0.0, TAU, 64, GameTheme.NAVY, RIM * 2.0, true)
+	# Status marks on the rim, one per slice.
+	var mr := clampf(r * 0.13, 4.0, 11.0)
+	for k in n:
+		var mid := (_moments[k] as Dictionary).get("id", "") as String
+		if not _done.has(mid):
+			continue
+		# Done is also smaller, so the two read apart without colour.
+		var at := _point(_slice_angle(k), r)
+		var dr := mr * (0.6 if _done[mid] else 1.0)
+		draw_circle(at, dr + 1.5, GameTheme.CARD)
+		draw_circle(at, dr, GameTheme.OK if _done[mid] else GameTheme.RED)
 	# Icons, out in each slice; on the large clock, each with its name.
 	var font := GameTheme.font("icons")
 	var fs := int(clampf(r * (0.62 if n <= 2 else 0.52 if n <= 4 else 0.40), 12.0, 30.0))

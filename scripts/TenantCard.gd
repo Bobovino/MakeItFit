@@ -534,9 +534,14 @@ func update_checks(fulfilled: Array, required: Array) -> void:
 func update_moments(results: Dictionary) -> void:
 	if _moments.is_empty():
 		return
+	var done := {}
 	for m in _moments:
 		var mid    := m["id"]    as String
 		var needs  := m["needs"] as Array
+		var mfulfilled_all := (results.get(mid, {}) as Dictionary).get("fulfilled", []) as Array
+		# Hidden needs don't count, so the clock doesn't give them away.
+		done[mid] = needs.all(func(f) -> bool:
+			return f in mfulfilled_all or is_hidden_requirement("moment:%s:%s" % [mid, f]) 				or is_hidden_requirement("need:" + str(f)))
 		if not _moment_check_chips.has(mid):
 			continue
 		var chips  := _moment_check_chips[mid] as Dictionary
@@ -545,6 +550,10 @@ func update_moments(results: Dictionary) -> void:
 		for func_name in needs:
 			if chips.has(func_name):
 				_set_need_chip(chips[func_name] as PanelContainer, func_name in mfulfilled)
+	if is_instance_valid(_moment_clock):
+		_moment_clock.set_status(done)
+	if is_instance_valid(_picker_clock):
+		_picker_clock.set_status(done)
 
 
 # ── Requirement ids, hidden requirements, the application ───────────────────
@@ -704,6 +713,7 @@ func set_project_status(done: int, total: int, pending: Array) -> void:
 # the dial. Choosing one switches to it and closes; a click outside or Esc
 # closes without a change.
 var _picker: CanvasLayer = null
+var _picker_clock: MomentClock = null
 
 func _open_moment_picker() -> void:
 	if is_instance_valid(_picker) or not is_instance_valid(_moment_clock):
@@ -725,6 +735,8 @@ func _open_moment_picker() -> void:
 	var side := clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 0.62, 280.0, 480.0)
 	big.setup(_moments, side)
 	big.set_active(_moments[_moment_clock_active_index()]["id"] as String)
+	big.set_status(_moment_clock._done)
+	_picker_clock = big
 	big.tooltip_text = " "
 	big.moment_chosen.connect(func(mid: String):
 		moment_selected.emit(mid)
