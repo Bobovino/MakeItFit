@@ -31,11 +31,11 @@ var _setup_ticks: int = 0
 var _moments: Array = []
 var _moment_check_chips: Dictionary = {}  # moment_id -> { need -> Control }
 var _moment_rows: Dictionary = {}         # moment_id -> HFlowContainer (its chip row)
-# Each moment's tab doubles as its nav button — clicking "DAY" or "NIGHT"
-# both switches which chip row is visible and switches the active moment, so
-# the TopBar doesn't need its own separate Day/Night strip.
-var _moment_header_btns: Dictionary = {}  # moment_id -> Button
-var _moment_group := ButtonGroup.new()
+# The moments themselves: a clock with a slice per moment (MomentClock) and
+# the active one's name beside it. Choosing a slice switches the moment.
+var _moment_clock: MomentClock = null
+var _moment_name: Label = null
+const CLOCK_SIZE := 64.0
 var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
 
 # Every chip by the requirement id(s) it shows (see Requirements): one chip
@@ -178,9 +178,9 @@ func _clear_checklist() -> void:
 	_rule_chips.clear()
 	_rule_row = null
 	_moment_check_chips.clear()
-	_moment_header_btns.clear()
+	_moment_clock = null   # freed with the rest of the bar
+	_moment_name = null
 	_moment_rows.clear()
-	_moment_group = ButtonGroup.new()
 	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
 	_chips_by_req.clear()
 	_project_chip = null   # freed with the rest of the bar
@@ -235,11 +235,23 @@ func _build_moment_checklist() -> void:
 	_moment_check_chips = {}
 	_add_goal_label()
 
-	# Chrome-tab strip: every moment's tab sits in one connected row up front,
-	# always visible regardless of which one is active.
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 0)
-	checklist_container.add_child(tabs)
+	# The clock, then the active moment's name: every moment is on the dial,
+	# whichever is active.
+	_moment_clock = MomentClock.new()
+	_moment_clock.name = "MomentClock"
+	_moment_clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_moment_clock.setup(_moments, CLOCK_SIZE)
+	_moment_clock.tooltip_text = " "   # turns on _get_tooltip(): it names the slice under the pointer
+	_moment_clock.moment_chosen.connect(func(mid: String): moment_selected.emit(mid))
+	checklist_container.add_child(_moment_clock)
+	_moment_name = Label.new()
+	_moment_name.name = "MomentName"
+	_moment_name.text = tr(_moment_clock.active_label()).to_upper()
+	_moment_name.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	_moment_name.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	_moment_name.add_theme_color_override("font_color", GameTheme.INK)
+	_moment_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	checklist_container.add_child(_moment_name)
 
 	# Then a single shared content area — only the active moment's chip row is
 	# actually visible/sized inside it at any one time (see highlight_moment).
@@ -250,12 +262,7 @@ func _build_moment_checklist() -> void:
 	for i in _moments.size():
 		var m     := _moments[i] as Dictionary
 		var mid   := m["id"]    as String
-		var label := m["label"] as String
 		var needs := m["needs"] as Array
-
-		var hdr := _make_moment_header_btn(label.to_upper(), mid, i, _moments.size())
-		tabs.add_child(hdr)
-		_moment_header_btns[mid] = hdr
 
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", 7)
@@ -285,60 +292,13 @@ func _make_section_label(text: String) -> Label:
 	return lbl
 
 
-# Chrome-tab styling: one connected strip (zero separation between buttons,
-# only the outer ends rounded — see _tab_style()) instead of separate pill
-# chips, and the ACTIVE tab's fill matches the bar's own background so it
-# visually fuses with the chip row beneath it, the way a browser's selected
-# tab merges into the page below while the others stay a shade darker.
-func _make_moment_header_btn(text: String, mid: String, index: int, count: int) -> Button:
-	var btn := Button.new()
-	btn.text = text
-	btn.toggle_mode  = true
-	btn.button_group = _moment_group
-	btn.focus_mode   = Control.FOCUS_NONE
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	btn.custom_minimum_size.y = 36
-	btn.add_theme_stylebox_override("normal",   GameTheme.segment_style(index, count, false))
-	btn.add_theme_stylebox_override("hover",    GameTheme.segment_style(index, count, false, true))
-	btn.add_theme_stylebox_override("pressed",  GameTheme.segment_style(index, count, true))
-	btn.add_theme_stylebox_override("hover_pressed", GameTheme.segment_style(index, count, true))
-	btn.add_theme_stylebox_override("focus",    StyleBoxEmpty.new())
-	btn.add_theme_color_override("font_color",         GameTheme.INK)
-	btn.add_theme_color_override("font_hover_color",   GameTheme.INK)
-	btn.add_theme_color_override("font_pressed_color", GameTheme.CHALK)
-	btn.add_theme_color_override("font_hover_pressed_color", GameTheme.CHALK)
-	btn.pressed.connect(func(): moment_selected.emit(mid))
-	return btn
-
-
-static func _tab_style(bg: Color, border: Color, index: int, count: int) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = border
-	s.set_border_width_all(1)
-	s.anti_aliasing = true
-	s.set_content_margin(SIDE_LEFT, 10)
-	s.set_content_margin(SIDE_RIGHT, 10)
-	s.set_content_margin(SIDE_TOP, 4)
-	s.set_content_margin(SIDE_BOTTOM, 4)
-	var r_left  := 6 if index == 0 else 0
-	var r_right := 6 if index == count - 1 else 0
-	s.corner_radius_top_left     = r_left
-	s.corner_radius_bottom_left  = r_left
-	s.corner_radius_top_right    = r_right
-	s.corner_radius_bottom_right = r_right
-	return s
-
-
 # Called by Main after it switches moments (including the initial one on
-# level load) so the header that matches the active moment stays highlighted
-# even when the switch was triggered some other way. Also swaps which
-# moment's chip row is actually visible — the chrome-tab illusion of
-# "switching pages" rather than just re-coloring a button.
+# level load), however the switch was made: turns the clock's hand, names
+# the moment and shows that moment's chips.
 func highlight_moment(moment_id: String) -> void:
-	if _moment_header_btns.has(moment_id):
-		(_moment_header_btns[moment_id] as Button).button_pressed = true
+	if is_instance_valid(_moment_clock):
+		_moment_clock.set_active(moment_id)
+		_moment_name.text = tr(_moment_clock.active_label()).to_upper()
 	for mid in _moment_rows:
 		(_moment_rows[mid] as Control).visible = (mid == moment_id)
 
@@ -670,8 +630,8 @@ func requirement_anchor(req_id: String) -> Control:
 			return chip
 	for chip in chips:
 		var mid := (chip as Control).get_meta("moment", "") as String
-		if _moment_header_btns.has(mid) and not is_hidden_requirement(req_id):
-			return _moment_header_btns[mid]
+		if mid != "" and is_instance_valid(_moment_clock) and not is_hidden_requirement(req_id):
+			return _moment_clock
 	return null
 
 

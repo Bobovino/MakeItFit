@@ -1040,6 +1040,24 @@ func _rebuild_moments_list(vb: VBoxContainer, win: Window) -> void:
 			_rebuild_moment_dropdown())
 		row.add_child(ef)
 
+		# Its icon on the moments clock: chosen, or guessed from the name.
+		var icon_pick := OptionButton.new()
+		icon_pick.tooltip_text = "Icon on the moments clock"
+		icon_pick.add_theme_font_size_override("font_size", 11)
+		icon_pick.add_item("auto")
+		var names: Array = MomentClock.ICONS.keys()
+		names.sort()
+		for n: String in names:
+			icon_pick.add_item("%s %s" % [MomentClock.ICONS[n], n])
+			if m.get("icon", "") == n:
+				icon_pick.select(icon_pick.item_count - 1)
+		icon_pick.item_selected.connect(func(idx: int):
+			if idx == 0:
+				(_moments[ci] as Dictionary).erase("icon")
+			else:
+				_moments[ci]["icon"] = names[idx - 1])
+		row.add_child(icon_pick)
+
 		var del_btn := Button.new()
 		del_btn.text = "×"
 		del_btn.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
