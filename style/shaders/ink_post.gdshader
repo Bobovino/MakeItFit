@@ -61,16 +61,13 @@ float view_z(vec2 uv, mat4 inv_proj) {
 	return -v.z / v.w;
 }
 
-void fragment() {
-	float w = width * clamp(pow(zoom, 0.35), 0.8, 1.2);
-	// Whole pixels: offsets that fell between pixels landed on one or the
-	// next in a repeating pattern along a slanted edge, and it came out dashed.
-	vec2 px = vec2(max(floor(w * VIEWPORT_SIZE.y + 0.5), 1.0)) / VIEWPORT_SIZE;
-	float c = view_z(SCREEN_UV, INV_PROJECTION_MATRIX);
-	float l = view_z(SCREEN_UV - vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
-	float r = view_z(SCREEN_UV + vec2(px.x, 0.0), INV_PROJECTION_MATRIX);
-	float u = view_z(SCREEN_UV - vec2(0.0, px.y), INV_PROJECTION_MATRIX);
-	float d = view_z(SCREEN_UV + vec2(0.0, px.y), INV_PROJECTION_MATRIX);
+// How much ink at `uv`, with neighbours `px` apart.
+float ink_at(vec2 uv, vec2 px, mat4 inv_proj) {
+	float c = view_z(uv, inv_proj);
+	float l = view_z(uv - vec2(px.x, 0.0), inv_proj);
+	float r = view_z(uv + vec2(px.x, 0.0), inv_proj);
+	float u = view_z(uv - vec2(0.0, px.y), inv_proj);
+	float d = view_z(uv + vec2(0.0, px.y), inv_proj);
 	// A groove (a door's seam, the gap between two drawers) is a far pixel
 	// with nearer surfaces on BOTH sides; a contour has them on one side. A
 	// groove narrower than a pixel or two flickered as dashes, so a jump only
@@ -91,15 +88,15 @@ void fragment() {
 		// it draws no dots; a real corner between two faces passes both.
 		vec2 sx = vec2(px.x, 0.0);
 		vec2 sy = vec2(0.0, px.y);
-		vec4 fc = facing(SCREEN_UV);
-		vec4 xa = facing(SCREEN_UV - sx);
-		vec4 xb = facing(SCREEN_UV + sx);
-		vec4 ya = facing(SCREEN_UV - sy);
-		vec4 yb = facing(SCREEN_UV + sy);
+		vec4 fc = facing(uv);
+		vec4 xa = facing(uv - sx);
+		vec4 xb = facing(uv + sx);
+		vec4 ya = facing(uv - sy);
+		vec4 yb = facing(uv + sy);
 		float bx = min(length(xa.xyz - xb.xyz),
-			length(facing(SCREEN_UV - 2.0 * sx).xyz - facing(SCREEN_UV + 2.0 * sx).xyz));
+			length(facing(uv - 2.0 * sx).xyz - facing(uv + 2.0 * sx).xyz));
 		float by = min(length(ya.xyz - yb.xyz),
-			length(facing(SCREEN_UV - 2.0 * sy).xyz - facing(SCREEN_UV + 2.0 * sy).xyz));
+			length(facing(uv - 2.0 * sy).xyz - facing(uv + 2.0 * sy).xyz));
 		float bend = max(bx, by);
 		// Only between surfaces the pass saw (the rest is the contour's job),
 		// and only where nothing outside the pass (a Mii) stands nearer in the
@@ -109,7 +106,24 @@ void fragment() {
 		float strength = corner_strength * mix(0.55, 1.0, smoothstep(0.8, 1.8, zoom));
 		ink = max(ink, smoothstep(corner_lo, corner_hi, bend) * strength * seen * uncovered);
 	}
+	return ink;
 
+}
+
+void fragment() {
+	float w = width * clamp(pow(zoom, 0.35), 0.8, 1.2);
+	// Whole pixels: offsets that fell between pixels landed on one or the
+	// next in a repeating pattern along a slanted edge, and it came out dashed.
+	vec2 px = vec2(max(floor(w * VIEWPORT_SIZE.y + 0.5), 1.0)) / VIEWPORT_SIZE;
+	// Four samples inside the pixel on a rotated grid, averaged: each one
+	// decides ink or no ink, so alone the lines came out stair-stepped and
+	// thin ones broke into dashes; together they give a smooth edge.
+	vec2 p1 = 1.0 / VIEWPORT_SIZE;
+	float ink = ink_at(SCREEN_UV + vec2(-0.125, -0.375) * p1, px, INV_PROJECTION_MATRIX)
+		+ ink_at(SCREEN_UV + vec2(0.375, -0.125) * p1, px, INV_PROJECTION_MATRIX)
+		+ ink_at(SCREEN_UV + vec2(0.125, 0.375) * p1, px, INV_PROJECTION_MATRIX)
+		+ ink_at(SCREEN_UV + vec2(-0.375, 0.125) * p1, px, INV_PROJECTION_MATRIX);
+	ink *= 0.25;
 	ALBEDO = ink_color.rgb;
 	ALPHA = ink_color.a * ink;
 }
