@@ -1671,18 +1671,34 @@ func _plant_tall() -> void:
 	_foliage(0.0, 0.0, 1.30, 0.55, 0.50)
 
 
-# 130 x 130 x 40 cm: a long wooden trough on a stand, full of greenery and
-# flowers.
+# 130 x 130 x 40 cm: a long wooden trough on a stand, full of tall leaves
+# and a few flowers.
 func _planter_box() -> void:
 	_legs("C_384e2d", -0.62, 0.62, -0.17, 0.17, 0.35, 0.06)
 	_box("C_507040", Vector3(-0.65, 0.35, -0.20), Vector3(0.65, 0.64, 0.20))
 	_front("C_3c5430", -0.62, 0.42, 0.62, 0.57, 0.20)
 	_box("M_soil", Vector3(-0.63, 0.64, -0.18), Vector3(0.63, 0.644, 0.18))
-	_foliage(-0.40, 0.0, 0.64, 0.42, 0.62)
-	_foliage(0.05, 0.02, 0.64, 0.40, 0.56)
-	_foliage(0.42, -0.02, 0.64, 0.38, 0.64)
-	for f: Array in [["M_coral", -0.10, 0.92], ["M_pink", 0.22, 0.86], ["M_mustard", -0.30, 1.02], ["M_coral", 0.48, 1.04]]:
-		_rblock(f[0], f[1], 0.12, 0.07, 0.07, 0.03, f[2], f[2] + 0.06)
+	var greens := ["M_leaf", "M_leaf_dark", "M_leaf_lime"]
+	for k in 13:
+		var x := -0.58 + k * 0.095
+		var z := 0.07 * (1 if k % 2 == 0 else -1)
+		var h := 0.40 + 0.22 * ((k * 5) % 4) / 3.0
+		_blade(greens[k % 3], x, z, 0.644, h, 0.05 * ((k % 3) - 1), 0.04 * (1 if k % 2 == 0 else -1))
+	for f: Array in [["M_coral", -0.30, 1.00], ["M_pink", 0.10, 0.94], ["M_mustard", 0.42, 1.04]]:
+		_box("M_leaf_dark", Vector3(f[1] - 0.01, 0.644, -0.01), Vector3(f[1] + 0.01, f[2], 0.01))
+		_rblock(f[0], f[1], 0.0, 0.08, 0.08, 0.035, f[2], f[2] + 0.06)
+
+
+# A leaf blade standing up from (cx, y, cz), `h` tall, tapering to a point
+# that leans by (lx, lz).
+func _blade(mat: String, cx: float, cz: float, y: float, h: float, lx: float, lz: float) -> void:
+	var base := _rr(cx, cz, 0.06, 0.03, 0.012)
+	var mid := _rr(cx + lx * 0.5, cz + lz * 0.5, 0.05, 0.025, 0.01)
+	var tip := _rr(cx + lx, cz + lz, 0.012, 0.008, 0.003)
+	_band(mat, base, y, mid, y + h * 0.55)
+	_band(mat, mid, y + h * 0.55, tip, y + h)
+	_cap(mat, base, y, false)
+	_cap(mat, tip, y + h, true)
 
 
 # 30 x 140 x 30 cm: an iron base, a brass stem, a glowing shade.
@@ -1706,22 +1722,21 @@ func _desk_lamp() -> void:
 	_rblock("lamp", 0.09, 0.0, 0.09, 0.11, 0.04, 0.66, 0.68)
 
 
-# 40 x 180 x 80 cm, the mirror's face along Z looking to +X: an oak frame
-# leaning back on a stand, a shirt hanging from a brass peg on top.
+# 40 x 180 x 80 cm, the mirror's face along Z looking to -X (the side the
+# old model showed): an oak frame on a stand, a shirt hanging from a brass
+# peg on top.
 func _floor_mirror() -> void:
-	_part("Body")
 	_box("M_oak", Vector3(-0.20, 0.0, -0.40), Vector3(0.20, 0.04, 0.40))
-	_box("M_oak", Vector3(-0.20, 0.04, -0.40), Vector3(-0.16, 1.40, -0.36))
-	_box("M_oak", Vector3(-0.20, 0.04, 0.36), Vector3(-0.16, 1.40, 0.40))
-	# The frame: upright, but set back so it reads as leaning on the stand.
-	_box("M_oak", Vector3(-0.12, 0.04, -0.40), Vector3(-0.06, 1.80, -0.34))
-	_box("M_oak", Vector3(-0.12, 0.04, 0.34), Vector3(-0.06, 1.80, 0.40))
-	_box("M_oak", Vector3(-0.12, 0.04, -0.34), Vector3(-0.06, 0.12, 0.34))
-	_box("M_oak", Vector3(-0.12, 1.72, -0.34), Vector3(-0.06, 1.80, 0.34))
-	_box("M_oak", Vector3(-0.12, 0.12, -0.34), Vector3(-0.09, 1.72, 0.34))
-	_box("M_mirror", Vector3(-0.09, 0.12, -0.34), Vector3(-0.087, 1.72, 0.34))
-	_box("M_brass", Vector3(-0.06, 1.66, -0.02), Vector3(0.0, 1.70, 0.02))
-	_cushion("M_ceramic", -0.05, 1.10, -0.18, -0.01, 1.66, 0.18, 0.02)
+	_box("M_oak", Vector3(0.16, 0.04, -0.40), Vector3(0.20, 1.40, -0.36))
+	_box("M_oak", Vector3(0.16, 0.04, 0.36), Vector3(0.20, 1.40, 0.40))
+	_box("M_oak", Vector3(0.06, 0.04, -0.40), Vector3(0.12, 1.80, -0.34))
+	_box("M_oak", Vector3(0.06, 0.04, 0.34), Vector3(0.12, 1.80, 0.40))
+	_box("M_oak", Vector3(0.06, 0.04, -0.34), Vector3(0.12, 0.12, 0.34))
+	_box("M_oak", Vector3(0.06, 1.72, -0.34), Vector3(0.12, 1.80, 0.34))
+	_box("M_oak", Vector3(0.09, 0.12, -0.34), Vector3(0.12, 1.72, 0.34))
+	_box("M_mirror", Vector3(0.087, 0.12, -0.34), Vector3(0.09, 1.72, 0.34))
+	_box("M_brass", Vector3(0.0, 1.66, -0.02), Vector3(0.06, 1.70, 0.02))
+	_cushion("M_ceramic", 0.01, 1.10, -0.18, 0.05, 1.66, 0.18, 0.02)
 
 
 # Clothes hanging from a rail at y, from x0 to x1: garments of different
