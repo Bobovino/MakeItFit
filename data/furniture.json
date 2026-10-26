@@ -447,7 +447,7 @@
         "w": 5,
         "h": 5
       },
-      "wall_h": 12,
+      "wall_h": 5,
       "floor_depth": 5,
       "functions": [
         "sit"

@@ -93,6 +93,9 @@ func _init() -> void:
 		"cushioned_bench": _cushioned_bench, "low_bench": _low_bench, "puff": _puff, "ottoman": _ottoman,
 		"lounge_chair": _lounge_chair, "sofa": _sofa, "design_sofa": _design_sofa,
 		"sun_lounger": _sun_lounger, "banquette_bench": _banquette_bench,
+		# Batch 4: beds.
+		"normal_bed": _normal_bed, "double_bed": _double_bed, "storage_bed": _storage_bed,
+		"high_bed": _high_bed, "bunk_bed": _bunk_bed, "platform_bed_podium": _platform_bed_podium,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -1415,14 +1418,20 @@ func _low_bench() -> void:
 	_cushion("M_sage", -0.56, 0.44, -0.22, 0.56, 0.52, 0.28, 0.05)
 
 
-# 50 x 120 x 50 cm: three poufs stacked into a tower, big to small.
+# 50 x 48 x 50 cm: a round pouf, a little fuller at the middle, a seam
+# round its waist, a cushioned top with a button.
 func _puff() -> void:
-	_rblock("C_d07848", 0.0, 0.0, 0.50, 0.50, 0.20, 0.0, 0.42)
-	_rblock("C_9c5a36", 0.0, 0.0, 0.52, 0.52, 0.21, 0.19, 0.23)
-	_rblock("C_dea07f", 0.0, 0.0, 0.44, 0.44, 0.18, 0.42, 0.80)
-	_rblock("C_9c5a36", 0.0, 0.0, 0.46, 0.46, 0.19, 0.59, 0.63)
-	_rblock("C_d07848", 0.0, 0.0, 0.36, 0.36, 0.15, 0.80, 1.20)
-	_rblock("C_9c5a36", 0.0, 0.0, 0.38, 0.38, 0.16, 0.98, 1.02)
+	var foot := _rr(0.0, 0.0, 0.44, 0.44, 0.22)
+	var waist := _rr(0.0, 0.0, 0.50, 0.50, 0.25)
+	var top := _rr(0.0, 0.0, 0.46, 0.46, 0.23)
+	_rblock("C_9c5a36", 0.0, 0.0, 0.42, 0.42, 0.21, 0.0, 0.03)
+	_cap("C_d07848", foot, 0.03, false)
+	_band("C_d07848", foot, 0.03, waist, 0.21)
+	_band("C_9c5a36", waist, 0.21, waist, 0.24)
+	_band("C_d07848", waist, 0.24, top, 0.42)
+	_cap("C_d07848", top, 0.42, true)
+	_rblock("C_dea07f", 0.0, 0.0, 0.44, 0.44, 0.22, 0.42, 0.48)
+	_rblock("C_9c5a36", 0.0, 0.0, 0.06, 0.06, 0.03, 0.48, 0.483)
 
 
 # 70 x 50 x 70 cm: a storage ottoman on feet, its lid a cushion.
@@ -1500,3 +1509,130 @@ func _banquette_bench() -> void:
 		_cushion("C_4a3f32", 0.87, 0.50, z, 1.00, 0.84, z + 0.64, 0.05)
 	_cushion("M_mustard", -0.85, 0.50, -0.60, -0.60, 0.74, -0.48, 0.05)
 	_cushion("M_coral", 0.60, 0.50, -0.60, 0.85, 0.74, -0.48, 0.05)
+
+
+# ── beds ────────────────────────────────────────────────────────────────────
+
+# A box given along a bed instead of in X and Z: u runs along the bed, from
+# its foot (0) to its head (`length`), v across it from its middle. `axis`
+# says where the bed lies: "+x" head towards +X, "-z" head towards -Z;
+# (cx, cz) is the bed's middle.
+func _bbox(mat: String, axis: String, cx: float, cz: float, length: float, u0: float, y0: float, v0: float, u1: float, y1: float, v1: float) -> void:
+	var a := _bpoint(axis, cx, cz, length, u0, y0, v0)
+	var b := _bpoint(axis, cx, cz, length, u1, y1, v1)
+	_box(mat, Vector3(minf(a.x, b.x), y0, minf(a.z, b.z)), Vector3(maxf(a.x, b.x), y1, maxf(a.z, b.z)))
+
+
+func _bpoint(axis: String, cx: float, cz: float, length: float, u: float, y: float, v: float) -> Vector3:
+	var along := u - length * 0.5
+	if axis == "-z":
+		return Vector3(cx + v, y, cz - along)
+	return Vector3(cx + along, y, cz + v)
+
+
+# A mattress with its bedding, its foot at u = 0 and its head at `length`,
+# `width` across, the mattress from y0 up to y1: a blanket draped over the
+# sides from the foot to a fold band, and `pillows` pillows at the head.
+func _bedding(axis: String, cx: float, cz: float, length: float, width: float, y0: float, y1: float,
+		blanket: String, fold: String, pillows: int) -> void:
+	var hw := width * 0.5
+	_bbox("M_mattress", axis, cx, cz, length, 0.02, y0, -hw + 0.02, length - 0.02, y1, hw - 0.02)
+	var fold_u := length - 0.62
+	_bbox(blanket, axis, cx, cz, length, 0.0, y1 - 0.10, -hw, fold_u, y1 + 0.03, hw)
+	_bbox(fold, axis, cx, cz, length, fold_u, y1 - 0.10, -hw, fold_u + 0.14, y1 + 0.05, hw)
+	var pw := (width - 0.12 - (pillows - 1) * 0.06) / pillows
+	for k in pillows:
+		var v0 := -hw + 0.06 + k * (pw + 0.06)
+		var a := _bpoint(axis, cx, cz, length, length - 0.36, 0.0, v0)
+		var b := _bpoint(axis, cx, cz, length, length - 0.06, 0.0, v0 + pw)
+		_cushion("M_pillow", minf(a.x, b.x), y1, minf(a.z, b.z), maxf(a.x, b.x), y1 + 0.11, maxf(a.z, b.z), 0.05)
+
+
+# ── batch 4: beds ───────────────────────────────────────────────────────────
+
+# 190 x 52 x 90 cm: an oak bed, the head at +X with a headboard.
+func _normal_bed() -> void:
+	_legs("M_oak", -0.95, 0.95, -0.45, 0.45, 0.12, 0.06)
+	_box("M_oak", Vector3(-0.95, 0.12, -0.45), Vector3(0.95, 0.24, 0.45))
+	_box("M_oak", Vector3(0.89, 0.24, -0.45), Vector3(0.95, 0.52, 0.45))
+	_bedding("+x", -0.03, 0.0, 1.82, 0.88, 0.24, 0.38, "C_7a9ec0", "C_b6cadc", 1)
+
+
+# 220 x 62 x 140 cm: a walnut double bed with two pillows.
+func _double_bed() -> void:
+	_legs("M_walnut", -1.10, 1.10, -0.70, 0.70, 0.12, 0.07)
+	_box("M_walnut", Vector3(-1.10, 0.12, -0.70), Vector3(1.10, 0.26, 0.70))
+	_box("M_walnut", Vector3(1.03, 0.26, -0.70), Vector3(1.10, 0.62, 0.70))
+	_bedding("+x", -0.035, 0.0, 2.12, 1.38, 0.26, 0.42, "C_7a9ec0", "C_b6cadc", 2)
+
+
+# 160 x 70 x 210 cm, along Z with the head at -Z: a bed on a base of pine
+# drawers with chrome pulls, a headboard.
+func _storage_bed() -> void:
+	_box("M_oak", Vector3(-0.80, 0.0, -1.05), Vector3(0.80, 0.04, 1.03))
+	_box("M_oak", Vector3(-0.80, 0.04, -1.05), Vector3(0.80, 0.34, 1.03))
+	for side in [-1.0, 1.0]:
+		var x: float = 0.80 if side > 0 else -0.803
+		for k in 3:
+			var z0 := -0.62 + k * 0.55
+			_box("M_pine", Vector3(minf(x, x + side * 0.003), 0.06, z0), Vector3(maxf(x, x + side * 0.003), 0.30, z0 + 0.51))
+	for k in 2:
+		var x0 := -0.76 + k * 0.77
+		_front("M_pine", x0, 0.06, x0 + 0.75, 0.30, 1.03)
+		_knob(x0 + 0.375, 0.24, 1.033, 0.14, 0.025, "M_chrome")
+	_box("M_oak", Vector3(-0.80, 0.34, -1.05), Vector3(0.80, 0.70, -0.99))
+	_bedding("-z", 0.0, -0.01, 2.0, 1.56, 0.34, 0.50, "C_5888b0", "C_a3bed4", 2)
+
+
+# 190 x 100 x 90 cm: a cabin bed: an oak frame on four tall posts, the bed
+# on top with a guard rail, a row of pine cupboards under it and a ladder of
+# steps at the foot.
+func _high_bed() -> void:
+	for x in [-0.95, 0.89]:
+		for z in [-0.45, 0.38]:
+			_box("M_oak", Vector3(x, 0.0, z), Vector3(x + 0.06, 1.00, z + 0.07))
+	_box("M_oak", Vector3(-0.95, 0.56, -0.45), Vector3(0.95, 0.66, 0.45))
+	_box("M_oak", Vector3(-0.89, 0.86, -0.45), Vector3(0.89, 0.92, -0.40))
+	_box("M_oak", Vector3(-0.30, 0.86, 0.38), Vector3(0.89, 0.92, 0.45))
+	_bedding("+x", 0.0, -0.02, 1.76, 0.80, 0.66, 0.80, "C_6a8eb0", "C_adc1d4", 1)
+	_box("M_pine", Vector3(-0.50, 0.0, -0.42), Vector3(0.89, 0.56, 0.38))
+	for k in 3:
+		var x0 := -0.48 + k * 0.455
+		_front("M_oak", x0, 0.04, x0 + 0.435, 0.52, 0.38)
+		_knob(x0 + 0.2175, 0.44, 0.383, 0.10, 0.025, "M_chrome")
+	# Steps up at the foot, each one a little box.
+	for k in 3:
+		var y := 0.18 * k
+		_box("M_walnut", Vector3(-0.89, y, -0.42), Vector3(-0.52, y + 0.18, 0.38 - k * 0.22))
+
+
+
+# 190 x 160 x 90 cm: two beds on one oak frame, a ladder at the foot, a
+# guard rail along the top bunk.
+func _bunk_bed() -> void:
+	for x in [-0.95, 0.89]:
+		for z in [-0.45, 0.38]:
+			_box("M_oak", Vector3(x, 0.0, z), Vector3(x + 0.06, 1.60, z + 0.07))
+	_box("M_oak", Vector3(-0.89, 0.12, -0.45), Vector3(0.89, 0.24, 0.45))
+	_box("M_oak", Vector3(-0.89, 1.04, -0.45), Vector3(0.89, 1.16, 0.45))
+	_box("M_oak", Vector3(-0.30, 1.42, 0.38), Vector3(0.89, 1.48, 0.45))
+	_box("M_oak", Vector3(-0.89, 1.42, -0.45), Vector3(0.89, 1.48, -0.38))
+	_bedding("+x", 0.0, -0.0, 1.76, 0.76, 0.24, 0.38, "C_6a8ea8", "C_adc1cf", 1)
+	_bedding("+x", 0.0, -0.0, 1.76, 0.76, 1.16, 1.30, "C_5d7d94", "C_a6b8c4", 1)
+	for y in [0.30, 0.55, 0.80, 1.05, 1.30]:
+		_box("M_walnut", Vector3(-0.85, y, 0.41), Vector3(-0.50, y + 0.03, 0.45))
+	_box("M_walnut", Vector3(-0.87, 0.0, 0.41), Vector3(-0.83, 1.55, 0.45))
+	_box("M_walnut", Vector3(-0.52, 0.0, 0.41), Vector3(-0.48, 1.55, 0.45))
+
+
+# 300 x 72 x 220 cm: a wide oak podium with a pine step along its front, a
+# walnut bed base on it (head at +X) and two floor cushions to its left.
+func _platform_bed_podium() -> void:
+	_box("M_oak", Vector3(-1.50, 0.0, -1.10), Vector3(1.50, 0.38, 0.60))
+	_box("M_pine", Vector3(-1.50, 0.0, 0.60), Vector3(1.50, 0.18, 1.10))
+	_box("M_chrome", Vector3(-1.05, 0.30, 0.60), Vector3(1.05, 0.33, 0.62))
+	_box("M_walnut", Vector3(-0.60, 0.38, -1.05), Vector3(1.45, 0.48, 0.48))
+	_box("M_walnut", Vector3(1.40, 0.48, -1.05), Vector3(1.45, 0.72, 0.48))
+	_bedding("+x", 0.40, -0.285, 1.98, 1.50, 0.48, 0.60, "C_6a7a9a", "C_adb6c7", 2)
+	_cushion("M_mustard", -1.40, 0.38, -0.85, -0.90, 0.50, -0.35, 0.06)
+	_cushion("M_teal", -1.38, 0.38, -0.28, -0.82, 0.50, 0.28, 0.06)
