@@ -107,6 +107,13 @@ func _init() -> void:
 		"towel_rack": _towel_rack, "towel_set": _towel_set, "tv": _tv, "wall_cabinet": _wall_cabinet,
 		"wall_hanger": _wall_hanger, "wall_plant": _wall_plant, "wall_shelf": _wall_shelf,
 		"whiteboard": _whiteboard,
+		# Batch 7: special pieces.
+		"stair_n": _stair_n, "stair_s": _stair_s, "stair_e": _stair_e, "stair_w": _stair_w,
+		"shoebox_apartment": _shoebox_apartment, "rental_capsule": _rental_capsule,
+		"rental_student": _rental_student, "rental_bunk": _rental_bunk, "rental_garret": _rental_garret,
+		"rental_nook": _rental_nook, "rental_couple": _rental_couple, "rental_family": _rental_family,
+		"rental_penthouse": _rental_penthouse, "ceiling_lift_storage": _ceiling_lift_storage,
+		"floor_hatch_storage": _floor_hatch_storage, "movable_island_wall": _movable_island_wall,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -1997,3 +2004,214 @@ func _whiteboard() -> void:
 	for k in 3:
 		var x := 0.10 + k * 0.08
 		_box(["M_black", "M_red", "M_blue"][k], Vector3(x, 0.05, 0.0), Vector3(x + 0.06, 0.07, 0.04))
+
+
+# ── batch 7: special pieces ─────────────────────────────────────────────────
+
+# A staircase 80 cm wide and 180 cm long climbing towards `dir` ("n", "s",
+# "e", "w": -Z, +Z, +X, -X) up to a landing at 186 cm: solid steps with a
+# blue runner between walnut side panels that follow the steps. (A handrail
+# on posts would stand 90 cm over the landing, far above the catalogue's
+# 2 m.)
+func _stairs(dir: String) -> void:
+	var steps := 9
+	var rise := 1.86 / steps
+	var run := 1.8 / (steps + 1)
+	for k in steps + 1:
+		var top := minf((k + 1) * rise, 1.86)
+		# u: along the climb from the bottom end (0) to the landing (1.8).
+		var u0 := k * run
+		var u1 := 1.8 if k == steps else (k + 1) * run
+		_stair_box(dir, "M_oak", u0, 0.0, -0.38, u1, top, 0.38)
+		_stair_box(dir, "C_4a5a8a", u0, top, -0.18, u1, top + 0.004, 0.18)
+	_stair_box(dir, "M_walnut", 0.0, 0.0, 0.38, 1.8, 0.0, 0.40, true)
+	_stair_box(dir, "M_walnut", 0.0, 0.0, -0.40, 1.8, 0.0, -0.38, true)
+
+
+# The walnut side panel follows the steps when `stepped`; otherwise a box.
+func _stair_box(dir: String, mat: String, u0: float, y0: float, v0: float, u1: float, y1: float, v1: float, stepped := false) -> void:
+	if stepped:
+		var steps := 9
+		var rise := 1.86 / steps
+		var run := 1.8 / (steps + 1)
+		for k in steps + 1:
+			_stair_box(dir, mat, k * run, 0.0, v0, 1.8 if k == steps else (k + 1) * run, minf((k + 1) * rise, 1.86) + 0.14, v1)
+		return
+	# u runs from the bottom of the flight to the top, v across it.
+	var a: Vector3
+	var b: Vector3
+	match dir:
+		"n":
+			a = Vector3(v0, y0, 0.9 - u0)
+			b = Vector3(v1, y1, 0.9 - u1)
+		"s":
+			a = Vector3(-v0, y0, -0.9 + u0)
+			b = Vector3(-v1, y1, -0.9 + u1)
+		"e":
+			a = Vector3(-0.9 + u0, y0, v0)
+			b = Vector3(-0.9 + u1, y1, v1)
+		_:
+			a = Vector3(0.9 - u0, y0, -v0)
+			b = Vector3(0.9 - u1, y1, -v1)
+	_box(mat, Vector3(minf(a.x, b.x), minf(a.y, b.y), minf(a.z, b.z)), Vector3(maxf(a.x, b.x), maxf(a.y, b.y), maxf(a.z, b.z)))
+
+
+func _stair_n() -> void:
+	_stairs("n")
+
+
+func _stair_s() -> void:
+	_stairs("s")
+
+
+func _stair_e() -> void:
+	_stairs("e")
+
+
+func _stair_w() -> void:
+	_stairs("w")
+
+
+# A carton made into a little house: walls, a gable roof of two lid flaps
+# along X with tape over the ridge, a door and a lit window in the front
+# (+Z).
+func _home_box(w: float, d: float, body: String, dark: String, lid: String) -> void:
+	var hw := w * 0.5
+	var hd := d * 0.5
+	_box(body, Vector3(-hw + 0.01, 0.0, -hd + 0.01), Vector3(hw - 0.01, 0.30, hd - 0.01))
+	# Gable ends, then the two roof flaps overhanging them by 1 cm.
+	for x in [-hw + 0.01, hw - 0.01]:
+		var o := Vector3(signf(x), 0, 0)
+		_tri(body, Vector3(x, 0.30, -hd + 0.01), Vector3(x, 0.30, hd - 0.01), Vector3(x, 0.48, 0.0), o)
+	_prism_roof(lid, dark, hw, hd, 0.30, 0.50)
+	_box("M_tape", Vector3(-0.025, 0.0, hd - 0.01), Vector3(0.025, 0.30, hd - 0.007))
+	var door_w := minf(0.12, w * 0.22)
+	var dx := -hw * 0.45
+	_front("M_walnut", dx - door_w * 0.5, 0.0, dx + door_w * 0.5, 0.24, hd - 0.01)
+	_box("M_brass", Vector3(dx + door_w * 0.3 - 0.02, 0.10, hd - 0.007), Vector3(dx + door_w * 0.3 + 0.02, 0.14, hd - 0.003))
+	var wx := hw * 0.45
+	var ww := minf(0.16, w * 0.28)
+	_front("M_ceramic", wx - ww * 0.5, 0.08, wx + ww * 0.5, 0.24, hd - 0.01)
+	_front("lamp", wx - ww * 0.5 + 0.02, 0.10, wx + ww * 0.5 - 0.02, 0.22, hd - 0.007)
+
+
+# Two roof slabs, 2 cm thick, meeting at a ridge along X, over a box hw by
+# hd from the eaves at y0 to the ridge at y1.
+func _prism_roof(top: String, under: String, hw: float, hd: float, y0: float, y1: float) -> void:
+	var t := 0.02
+	for side in [-1.0, 1.0]:
+		# Outer surface from the eave (z = side * hd) up to the ridge (z = 0).
+		var e := Vector3(0, y0, side * hd)
+		var r := Vector3(0, y1, 0)
+		var n := Vector3(0, hd, side * (y1 - y0)).normalized()
+		var a := Vector3(-hw, e.y, e.z)
+		var b := Vector3(hw, e.y, e.z)
+		var c := Vector3(hw, r.y, r.z)
+		var dd := Vector3(-hw, r.y, r.z)
+		_quad(top, a, b, c, dd, n)
+		var down := Vector3(0, -t, 0)
+		_quad(under, a + down, b + down, c + down, dd + down, -n)
+		_quad(top, a, b, b + down, a + down, Vector3(0, 0, side))
+		for x in [-hw, hw]:
+			_quad(top, Vector3(x, e.y, e.z), Vector3(x, r.y, r.z), Vector3(x, r.y, r.z) + down, Vector3(x, e.y, e.z) + down, Vector3(signf(x), 0, 0))
+	_box("M_tape", Vector3(-hw, y1, -0.03), Vector3(hw, y1 + 0.004, 0.03))
+
+
+func _shoebox_apartment() -> void:
+	_home_box(0.60, 0.60, "C_d8c8a0", "C_978c70", "C_ded0ae")
+
+
+func _rental_capsule() -> void:
+	_home_box(0.40, 0.40, "C_c9d6df", "C_8d969c", "C_d1dce4")
+
+
+func _rental_student() -> void:
+	_home_box(0.50, 0.50, "C_e0c890", "C_9d8c65", "C_e5d0a1")
+
+
+func _rental_bunk() -> void:
+	_home_box(0.60, 0.40, "C_b8d0a8", "C_819276", "C_c3d7b5")
+
+
+func _rental_garret() -> void:
+	_home_box(0.60, 0.60, "C_d8a890", "C_977665", "C_deb5a1")
+
+
+func _rental_nook() -> void:
+	_home_box(0.80, 0.50, "C_a8a8c8", "C_76768c", "C_b5b5d0")
+
+
+func _rental_couple() -> void:
+	_home_box(0.80, 0.60, "C_e0b0b8", "C_9d7b81", "C_e5bcc3")
+
+
+func _rental_family() -> void:
+	_home_box(1.00, 0.60, "C_d8c070", "C_97864e", "C_dec985")
+
+
+func _rental_penthouse() -> void:
+	_home_box(1.00, 0.80, "C_e8e0d0", "C_a29d92", "C_ebe5d7")
+
+
+# 140 x 50 x 90 cm: a storage tray hanging from a ceiling panel on four
+# steel straps, boxes and bags in it.
+func _ceiling_lift_storage() -> void:
+	_box("M_white", Vector3(-0.70, 0.47, -0.45), Vector3(0.70, 0.50, 0.45))
+	_box("M_steel", Vector3(-0.66, 0.42, -0.42), Vector3(0.66, 0.47, 0.42))
+	for x in [-0.66, 0.64]:
+		for z in [-0.42, 0.40]:
+			_box("M_steel", Vector3(x, 0.10, z), Vector3(x + 0.02, 0.42, z + 0.02))
+	_box("M_oak", Vector3(-0.68, 0.0, -0.43), Vector3(0.68, 0.04, 0.43))
+	_box("M_oak", Vector3(-0.68, 0.04, -0.43), Vector3(0.68, 0.11, -0.40))
+	_box("M_oak", Vector3(-0.68, 0.04, 0.40), Vector3(0.68, 0.11, 0.43))
+	_box("M_oak", Vector3(-0.68, 0.04, -0.40), Vector3(-0.65, 0.11, 0.40))
+	_box("M_oak", Vector3(0.65, 0.04, -0.40), Vector3(0.68, 0.11, 0.40))
+	_box("M_cardboard", Vector3(-0.58, 0.04, -0.30), Vector3(-0.12, 0.34, 0.20))
+	_box("M_tape", Vector3(-0.38, 0.34, -0.30), Vector3(-0.32, 0.343, 0.20))
+	_cushion("M_teal", -0.05, 0.04, -0.28, 0.45, 0.26, 0.08, 0.05)
+	_cushion("M_coral", 0.0, 0.04, 0.10, 0.44, 0.20, 0.30, 0.05)
+
+
+# 230 x 60 x 130 cm: a raised floor: a deck on a base, a hatch in its top
+# with a pull, and stored things showing under its open corner.
+func _floor_hatch_storage() -> void:
+	_box("C_70604a", Vector3(-1.15, 0.0, -0.65), Vector3(1.15, 0.54, 0.65))
+	_box("M_oak", Vector3(-1.15, 0.54, -0.65), Vector3(1.15, 0.60, 0.65))
+	# The hatch: a panel outlined by darker seams, with a black pull.
+	_box("C_70604a", Vector3(-0.90, 0.60, -0.40), Vector3(-0.20, 0.603, -0.37))
+	_box("C_70604a", Vector3(-0.90, 0.60, 0.37), Vector3(-0.20, 0.603, 0.40))
+	_box("C_70604a", Vector3(-0.90, 0.60, -0.37), Vector3(-0.87, 0.603, 0.37))
+	_box("C_70604a", Vector3(-0.23, 0.60, -0.37), Vector3(-0.20, 0.603, 0.37))
+	_box("M_black", Vector3(-0.30, 0.60, -0.08), Vector3(-0.26, 0.604, 0.08))
+	# A second hatch, open: a hole with boxes in it.
+	_box("M_oak", Vector3(0.20, 0.60, -0.40), Vector3(1.00, 0.603, -0.37))
+	_box("M_soil", Vector3(0.23, 0.60, -0.37), Vector3(0.97, 0.603, 0.37))
+	_box("M_cardboard", Vector3(0.30, 0.603, -0.30), Vector3(0.62, 0.66, 0.10))
+	_cushion("M_teal", 0.66, 0.603, -0.10, 0.94, 0.65, 0.30, 0.04)
+	_cushion("M_coral", 0.66, 0.603, -0.32, 0.94, 0.64, -0.14, 0.04)
+
+
+# 240 x 220 x 80 cm: a wall of cupboards with an opening in the middle, and
+# in it a kitchen island on castors under a tiled splashback, ready to roll
+# out.
+func _movable_island_wall() -> void:
+	for side in [-1.0, 1.0]:
+		var x0: float = -1.20 if side < 0 else 0.62
+		_box("C_8a7a5a", Vector3(x0, 0.0, -0.40), Vector3(x0 + 0.58, 2.20, 0.36))
+		_front("C_ada28c", x0 + 0.03, 0.06, x0 + 0.55, 2.17, 0.36)
+		_knob(x0 + (0.50 if side < 0 else 0.08), 1.10, 0.363, 0.025, 0.30, "M_chrome")
+	_box("C_8a7a5a", Vector3(-0.62, 1.40, -0.40), Vector3(0.62, 2.20, 0.36))
+	_front("C_ada28c", -0.59, 1.43, -0.01, 2.17, 0.36)
+	_front("C_ada28c", 0.01, 1.43, 0.59, 2.17, 0.36)
+	_knob(-0.06, 1.50, 0.363, 0.025, 0.12, "M_chrome")
+	_knob(0.06, 1.50, 0.363, 0.025, 0.12, "M_chrome")
+	_box("M_ceramic", Vector3(-0.62, 0.0, -0.40), Vector3(0.62, 1.40, -0.36))
+	var y0 := _castors(-0.56, 0.56, -0.33, 0.33)
+	_box("M_white", Vector3(-0.56, y0, -0.33), Vector3(0.56, 0.88, 0.33))
+	_box("M_worktop", Vector3(-0.58, 0.88, -0.36), Vector3(0.58, 0.92, 0.37))
+	_front("M_white", -0.53, y0 + 0.03, -0.01, 0.85, 0.33)
+	_front("M_white", 0.01, y0 + 0.03, 0.53, 0.85, 0.33)
+	_knob(-0.05, 0.75, 0.333, 0.025, 0.10, "M_chrome")
+	_knob(0.05, 0.75, 0.333, 0.025, 0.10, "M_chrome")
+	_hob(-0.20, -0.05, 0.92, 0.46, 0.40, 2)
+	_box("M_oak", Vector3(0.24, 0.92, -0.10), Vector3(0.52, 0.95, 0.10))
