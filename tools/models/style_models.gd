@@ -102,6 +102,11 @@ func _init() -> void:
 		"rolling_clothes_rack": _rolling_clothes_rack, "keyboard": _keyboard,
 		"computer_mouse": _computer_mouse, "monitor": _monitor, "bird_cage": _bird_cage,
 		"fluted_glass_panel": _fluted_glass_panel,
+		# Batch 6: hung on walls. Back flat at -Z (against the wall), front +Z.
+		"kitchen_rack": _kitchen_rack, "mirror": _mirror, "painting": _painting,
+		"towel_rack": _towel_rack, "towel_set": _towel_set, "tv": _tv, "wall_cabinet": _wall_cabinet,
+		"wall_hanger": _wall_hanger, "wall_plant": _wall_plant, "wall_shelf": _wall_shelf,
+		"whiteboard": _whiteboard,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -1839,3 +1844,156 @@ func _fluted_glass_panel() -> void:
 	for k in n:
 		var cx := -0.56 + (k + 0.5) * w
 		_rblock("C_cfe3ea" if k % 2 == 0 else "M_glass", cx, 0.0, w, 0.05, 0.02, 0.07, 2.16)
+
+
+# ── batch 6: hung on walls ──────────────────────────────────────────────────
+# The game hangs these by their box: width along the wall, height, depth out
+# of it. Each is built with its back flat at -Z (on the wall) and its front
+# towards +Z, as the floor pieces are.
+
+# 60 x 40 x 10 cm: a chrome rail with utensils hanging from hooks.
+func _kitchen_rack() -> void:
+	_box("M_chrome", Vector3(-0.30, 0.34, -0.05), Vector3(0.30, 0.38, -0.02))
+	_box("M_chrome", Vector3(-0.30, 0.36, -0.02), Vector3(0.30, 0.40, 0.05))
+	# A ladle, a spatula, a whisk, a pan.
+	_box("M_steel", Vector3(-0.25, 0.10, -0.01), Vector3(-0.23, 0.36, 0.01))
+	_rblock("M_steel", -0.24, 0.0, 0.07, 0.05, 0.025, 0.04, 0.10)
+	_box("M_black", Vector3(-0.13, 0.10, -0.01), Vector3(-0.11, 0.36, 0.01))
+	_box("M_black", Vector3(-0.15, 0.0, -0.01), Vector3(-0.09, 0.12, 0.01))
+	_box("M_steel", Vector3(-0.02, 0.20, -0.01), Vector3(0.0, 0.36, 0.01))
+	_rblock("M_steel", -0.01, 0.0, 0.05, 0.04, 0.02, 0.06, 0.20)
+	_box("M_oak", Vector3(0.16, 0.26, -0.01), Vector3(0.20, 0.36, 0.01))
+	_zblock("M_iron", 0.18, 0.13, 0.18, 0.18, 0.09, -0.02, 0.02)
+
+
+# 80 x 170 x 20 cm: a tall oak-framed mirror, a small shelf at its foot
+# with a cup.
+func _mirror() -> void:
+	_box("M_oak", Vector3(-0.40, 0.10, -0.10), Vector3(0.40, 1.70, -0.06))
+	_box("M_oak", Vector3(-0.40, 0.10, -0.06), Vector3(-0.34, 1.70, -0.03))
+	_box("M_oak", Vector3(0.34, 0.10, -0.06), Vector3(0.40, 1.70, -0.03))
+	_box("M_oak", Vector3(-0.34, 1.64, -0.06), Vector3(0.34, 1.70, -0.03))
+	_box("M_oak", Vector3(-0.34, 0.10, -0.06), Vector3(0.34, 0.16, -0.03))
+	_box("M_mirror", Vector3(-0.34, 0.16, -0.06), Vector3(0.34, 1.64, -0.057))
+	_box("M_oak", Vector3(-0.38, 0.0, -0.10), Vector3(0.38, 0.03, 0.10))
+	_rblock("C_90b8c8", 0.26, 0.0, 0.07, 0.07, 0.03, 0.03, 0.12)
+
+
+# 50 x 50 x 10 cm: a framed picture: a lake under a sun, hills in front.
+func _painting() -> void:
+	_box("C_c89848", Vector3(-0.25, 0.0, -0.05), Vector3(0.25, 0.50, 0.047))
+	_front("M_water", -0.21, 0.04, 0.21, 0.46, 0.047)
+	_front("M_leaf", -0.21, 0.04, 0.21, 0.20, 0.0475)
+	_front("M_leaf_dark", -0.21, 0.04, 0.05, 0.13, 0.048)
+	_front("M_mustard", 0.06, 0.30, 0.14, 0.38, 0.0475)
+
+
+# 50 x 160 x 10 cm: a ladder of chrome bars with towels folded over two.
+func _towel_rack() -> void:
+	for x in [-0.25, 0.22]:
+		_box("M_chrome", Vector3(x, 0.0, -0.05), Vector3(x + 0.03, 1.60, -0.02))
+	for y in [0.30, 0.60, 0.90, 1.20, 1.50]:
+		_box("M_chrome", Vector3(-0.22, y, -0.05), Vector3(0.22, y + 0.025, -0.025))
+	_cushion("C_c8bca8", -0.19, 0.90, -0.06, 0.19, 1.24, 0.05, 0.02)
+	_cushion("M_teal", -0.17, 0.32, -0.06, 0.17, 0.64, 0.05, 0.02)
+
+
+# 50 x 180 x 30 cm: a tall oak bathroom shelf: towels rolled and folded, a
+# basket of soaps below.
+func _towel_set() -> void:
+	var tops := _shelf_box("M_oak", "M_oak", -0.25, 0.25, 0.0, 1.80, -0.15, 0.15, 4)
+	_rblock("M_ceramic", 0.0, 0.0, 0.40, 0.24, 0.05, tops[0], tops[0] + 0.30)
+	for k in 3:
+		_cushion(["C_e8ddd0", "M_teal", "C_ebebeb"][k], -0.21, tops[1] + k * 0.09, -0.12, 0.21, tops[1] + k * 0.09 + 0.08, 0.13, 0.03)
+	for k in 3:
+		_zblock("C_e8ddd0" if k != 1 else "M_teal", -0.13 + k * 0.13, tops[2] + 0.06, 0.12, 0.12, 0.06, -0.12, 0.13)
+	_cushion("M_coral", -0.20, tops[3], -0.12, 0.0, tops[3] + 0.12, 0.13, 0.04)
+
+
+# 120 x 220 x 60 cm: a media wall: a panel with a big screen, a low shelf
+# unit with a console, a plant and books.
+func _tv() -> void:
+	_box("M_walnut", Vector3(-0.60, 0.0, -0.30), Vector3(0.60, 2.20, -0.26))
+	_box("C_303028", Vector3(-0.56, 1.03, -0.26), Vector3(0.56, 1.67, -0.21))
+	_front("M_screen", -0.54, 1.05, 0.54, 1.65, -0.21)
+	_box("M_oak", Vector3(-0.60, 0.0, -0.26), Vector3(0.60, 0.08, 0.26))
+	_box("M_oak", Vector3(-0.60, 0.08, -0.26), Vector3(0.60, 0.62, 0.27))
+	_front("M_white", -0.57, 0.12, -0.01, 0.58, 0.27)
+	_front("M_white", 0.01, 0.12, 0.57, 0.58, 0.27)
+	_knob(-0.05, 0.35, 0.273, 0.025, 0.10)
+	_knob(0.05, 0.35, 0.273, 0.025, 0.10)
+	_box("M_oak", Vector3(-0.60, 0.62, -0.26), Vector3(0.60, 0.66, 0.28))
+	_box("M_black", Vector3(-0.30, 0.66, -0.10), Vector3(0.10, 0.73, 0.18))
+	_plant(0.46, 0.0, 0.66, 0.24, "M_ceramic")
+	_books(-0.56, -0.34, 0.66, -0.10, 0.12, 0.20, 1)
+
+
+# 70 x 90 x 50 cm: a kitchen wall cupboard over a row of hooked mugs.
+func _wall_cabinet() -> void:
+	_box("C_887030", Vector3(-0.35, 0.16, -0.25), Vector3(0.35, 0.90, 0.21))
+	_front("C_ac9b6e", -0.33, 0.19, -0.01, 0.87, 0.21)
+	_front("C_ac9b6e", 0.01, 0.19, 0.33, 0.87, 0.21)
+	_knob(-0.05, 0.26, 0.213, 0.025, 0.10, "M_chrome")
+	_knob(0.05, 0.26, 0.213, 0.025, 0.10, "M_chrome")
+	_box("M_chrome", Vector3(-0.32, 0.12, -0.03), Vector3(0.32, 0.16, 0.01))
+	var cols := ["M_coral", "M_ceramic", "M_teal", "M_mustard"]
+	for k in 4:
+		var x := -0.24 + k * 0.16
+		_rblock(cols[k], x, -0.01, 0.08, 0.08, 0.04, 0.0, 0.12)
+
+
+# 120 x 100 x 20 cm: a coat rail of hooks under a shelf, coats and a bag
+# hanging, a basket and a box on the shelf.
+func _wall_hanger() -> void:
+	_box("C_987840", Vector3(-0.60, 0.71, -0.10), Vector3(0.60, 0.86, -0.07))
+	_box("C_ad9366", Vector3(-0.60, 0.88, -0.10), Vector3(0.60, 0.92, 0.10))
+	for k in 5:
+		_box("M_walnut", Vector3(-0.46 + k * 0.23 - 0.015, 0.76, -0.07), Vector3(-0.46 + k * 0.23 + 0.015, 0.80, 0.0))
+	_cushion("M_navy", -0.58, 0.0, -0.07, -0.22, 0.80, 0.05, 0.03)
+	_cushion("M_mustard", -0.19, 0.16, -0.07, 0.15, 0.80, 0.05, 0.03)
+	_cushion("M_cream", 0.18, 0.26, -0.07, 0.42, 0.55, 0.04, 0.04)
+	_box("M_cream", Vector3(0.28, 0.55, -0.03), Vector3(0.32, 0.78, 0.0))
+	_rblock("M_wicker", -0.30, 0.0, 0.18, 0.16, 0.04, 0.92, 1.0)
+	_box("M_teal", Vector3(0.24, 0.92, -0.08), Vector3(0.48, 1.0, 0.08))
+
+
+# 110 x 180 x 20 cm: an oak trellis on the wall with pots of plants and
+# flowers.
+func _wall_plant() -> void:
+	_box("M_walnut", Vector3(-0.55, 0.0, -0.10), Vector3(0.55, 1.80, -0.08))
+	for x in [-0.55, -0.20, 0.15, 0.50]:
+		_box("M_oak", Vector3(x, 0.02, -0.08), Vector3(x + 0.05, 1.78, -0.05))
+	for y in [0.10, 0.70, 1.30]:
+		_box("M_oak", Vector3(-0.55, y, -0.08), Vector3(0.55, y + 0.05, -0.05))
+		for k in 3:
+			var x := -0.36 + k * 0.36
+			var pot: String = ["M_terracotta", "M_ceramic", "M_terracotta"][(k + int(y * 10)) % 3]
+			_rblock(pot, x, 0.0, 0.16, 0.14, 0.06, y + 0.05, y + 0.20)
+			_foliage(x, 0.0, y + 0.20, 0.22, 0.30)
+	_rblock("M_coral", 0.30, 0.04, 0.06, 0.06, 0.03, 0.42, 0.48)
+	_rblock("M_pink", -0.42, 0.04, 0.06, 0.06, 0.03, 1.62, 1.68)
+	_rblock("M_mustard", -0.05, 0.04, 0.06, 0.06, 0.03, 1.02, 1.08)
+
+
+# 80 x 30 x 20 cm: a plank on iron brackets, books and a small plant.
+func _wall_shelf() -> void:
+	for x in [-0.29, 0.25]:
+		_box("M_iron", Vector3(x, 0.0, -0.10), Vector3(x + 0.04, 0.08, -0.07))
+		_box("M_iron", Vector3(x, 0.05, -0.07), Vector3(x + 0.04, 0.08, 0.05))
+	_box("C_987840", Vector3(-0.40, 0.08, -0.10), Vector3(0.40, 0.11, 0.10))
+	_books(-0.36, 0.10, 0.11, -0.10, 0.10, 0.18, 2)
+	_plant(0.25, 0.0, 0.11, 0.19, "M_ceramic")
+
+
+# 120 x 90 x 20 cm: a steel-framed whiteboard with notes and a tray of pens.
+func _whiteboard() -> void:
+	_box("M_steel", Vector3(-0.60, 0.05, -0.10), Vector3(0.60, 0.90, -0.06))
+	_box("C_f0f0e0", Vector3(-0.56, 0.09, -0.06), Vector3(0.56, 0.86, -0.057))
+	_front("M_blue", -0.50, 0.40, -0.10, 0.72, -0.057)
+	_front("M_red", -0.02, 0.50, 0.34, 0.74, -0.057)
+	_front("M_mustard", 0.20, 0.18, 0.44, 0.40, -0.057)
+	_front("M_leaf", -0.40, 0.16, -0.10, 0.30, -0.057)
+	_box("M_steel", Vector3(-0.50, 0.0, -0.06), Vector3(0.50, 0.05, 0.10))
+	for k in 3:
+		var x := 0.10 + k * 0.08
+		_box(["M_black", "M_red", "M_blue"][k], Vector3(x, 0.05, 0.0), Vector3(x + 0.06, 0.07, 0.04))
