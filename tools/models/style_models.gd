@@ -144,6 +144,30 @@ func _init() -> void:
 		"standing_desk": _standing_desk,
 		"vanity_desk": _vanity_desk,
 		"bookcase_desk": _bookcase_desk,
+		# Batch 8b: folding pieces.
+		"folding_storage_bench": _folding_storage_bench,
+		"expanding_shelf": _expanding_shelf,
+		"pull_out_hamper": _pull_out_hamper,
+		"hidden_kitchenette": _hidden_kitchenette,
+		"fold_down_breakfast_bar": _fold_down_breakfast_bar,
+		"kitchen_tower": _kitchen_tower,
+		"fold_out_counter": _fold_out_counter,
+		"folding_shower": _folding_shower,
+		"mirror_cabinet": _mirror_cabinet,
+		"folding_chair": _folding_chair,
+		"stacking_stools": _stacking_stools,
+		"wall_folding_seat": _wall_folding_seat,
+		"picnic_bench_table": _picnic_bench_table,
+		"under_counter_table": _under_counter_table,
+		"sliding_pocket_bed": _sliding_pocket_bed,
+		"curtain": _curtain,
+		"murphy_desk": _murphy_desk,
+		"fold_stair_e": _fold_stair_e,
+		"fold_stair_w": _fold_stair_w,
+		"murphy_bed_double": _murphy_bed_double,
+		"murphy_bed_sofa": _murphy_bed_sofa,
+		"wall_dining_table": _wall_dining_table,
+		"murphy_table": _murphy_table,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -515,32 +539,36 @@ func _toilet() -> void:
 # whose bed panel swings down on a hinge low at its front, with a pair of
 # legs that fold out under the foot end.
 func _murphy_bed() -> void:
-	var body := "C_5a7ea0"
-	var dark := "C_3f5870"
-	var front := "C_8fa8c4"
-	# Cabinet: back, two sides, a top and a low base under the hinge.
-	_box(dark, Vector3(-0.75, 0.0, -0.30), Vector3(0.75, 2.00, -0.27))
-	_box(body, Vector3(-0.75, 0.0, -0.27), Vector3(-0.71, 2.00, 0.30))
-	_box(body, Vector3(0.71, 0.0, -0.27), Vector3(0.75, 2.00, 0.30))
-	_box(body, Vector3(-0.75, 1.94, -0.27), Vector3(0.75, 2.00, 0.30))
-	_box(body, Vector3(-0.71, 0.0, -0.27), Vector3(0.71, 0.20, 0.27))
-	# The bed panel, standing up inside the cabinet: hinge 20 cm up at its
-	# front, 1.72 m long, its underside (the cabinet's face when closed)
-	# towards +Z, the mattress towards the back. It swings 90 degrees forward
-	# to lie on the floor side, mattress up.
-	var hinge := Vector3(0.0, 0.20, 0.27)
-	_part("Bed", hinge, "Body", Vector3.ZERO, Vector3(90.0, 0.0, 0.0))
-	_box(front, Vector3(-0.70, 0.20, 0.19), Vector3(0.70, 1.92, 0.27))            # underside board
-	_box("M_mattress", Vector3(-0.66, 0.24, 0.01), Vector3(0.66, 1.88, 0.19))     # mattress
-	_box("M_blanket", Vector3(-0.66, 0.70, 0.007), Vector3(0.66, 1.88, 0.01))    # blanket stripe
-	_box("M_pillow", Vector3(-0.50, 0.28, -0.03), Vector3(0.50, 0.58, 0.01))     # pillow at the head
-	_box("M_brass", Vector3(-0.25, 1.70, 0.27), Vector3(0.25, 1.74, 0.29))       # handle
-	# Legs at the foot end: built standing out of the underside (+Z), as they
-	# are when the bed is down; folded flat along it when closed.
-	_part("Legs", Vector3(0.0, 1.84, 0.27), "Bed", Vector3(90.0, 0.0, 0.0), Vector3.ZERO)
-	_box(dark, Vector3(-0.66, 1.82, 0.27), Vector3(-0.60, 1.86, 0.47))
-	_box(dark, Vector3(0.60, 1.82, 0.27), Vector3(0.66, 1.86, 0.47))
-	_box(dark, Vector3(-0.66, 1.82, 0.43), Vector3(0.66, 1.86, 0.47))
+	_murphy("C_5a7ea0", "C_3f5870", "C_8fa8c4", 0.75, 2.00, -0.30, 0.20, 1.72, 0.0)
+
+
+# A wall bed: a cabinet `hw` half wide and `h` tall from z = zb, 60 cm deep
+# (or 50 with a sofa in front), and a bed panel hinged `hinge_y` up at the
+# cabinet's front, `bed_len` long, that swings down 90 degrees (then moves
+# forward by `move_z`, to land over a sofa) with its legs unfolding.
+func _murphy(body: String, dark: String, front: String, hw: float, h: float, zb: float,
+		hinge_y: float, bed_len: float, move_z: float, depth := 0.60) -> void:
+	var zf := zb + depth
+	_box(dark, Vector3(-hw, 0.0, zb), Vector3(hw, h, zb + 0.03))
+	_box(body, Vector3(-hw, 0.0, zb + 0.03), Vector3(-hw + 0.04, h, zf))
+	_box(body, Vector3(hw - 0.04, 0.0, zb + 0.03), Vector3(hw, h, zf))
+	_box(body, Vector3(-hw, h - 0.06, zb + 0.03), Vector3(hw, h, zf))
+	_box(body, Vector3(-hw + 0.04, 0.0, zb + 0.03), Vector3(hw - 0.04, hinge_y, zf - 0.03))
+	var bw := hw - 0.05
+	var mz := zf - 0.03
+	var hinge := Vector3(0.0, hinge_y, mz)
+	_part("Bed", hinge, "Body", Vector3.ZERO, Vector3(90.0, 0.0, 0.0), Vector3(0, 0, move_z))
+	var y1 := hinge_y + bed_len
+	_box(front, Vector3(-bw, hinge_y, mz - 0.08), Vector3(bw, y1, mz))
+	_box("M_mattress", Vector3(-bw + 0.04, hinge_y + 0.04, mz - 0.26), Vector3(bw - 0.04, y1 - 0.04, mz - 0.08))
+	_box("M_blanket", Vector3(-bw + 0.04, hinge_y + 0.50, mz - 0.263), Vector3(bw - 0.04, y1 - 0.04, mz - 0.26))
+	_box("M_pillow", Vector3(-bw + 0.20, hinge_y + 0.08, mz - 0.30), Vector3(bw - 0.20, hinge_y + 0.38, mz - 0.26))
+	_box("M_brass", Vector3(-0.25, y1 - 0.22, mz), Vector3(0.25, y1 - 0.18, mz + 0.02))
+	_part("Legs", Vector3(0.0, y1 - 0.08, mz), "Bed", Vector3(90.0, 0.0, 0.0), Vector3.ZERO)
+	var leg := hinge_y
+	_box(dark, Vector3(-bw + 0.04, y1 - 0.10, mz), Vector3(-bw + 0.10, y1 - 0.06, mz + leg))
+	_box(dark, Vector3(bw - 0.10, y1 - 0.10, mz), Vector3(bw - 0.04, y1 - 0.06, mz + leg))
+	_box(dark, Vector3(-bw + 0.04, y1 - 0.10, mz + leg - 0.04), Vector3(bw - 0.04, y1 - 0.06, mz + leg))
 
 
 # ── building blocks ─────────────────────────────────────────────────────────
@@ -2707,3 +2735,375 @@ func _bookcase_desk() -> void:
 # knob before the footprint's edge.
 func _pull(cx: float, cy: float, z: float, w: float, h: float, mat := "M_brass") -> void:
 	_box(mat, Vector3(cx - w * 0.5, cy - h * 0.5, z), Vector3(cx + w * 0.5, cy + h * 0.5, z + 0.003))
+
+
+# ── batch 8b ────────────────────────────────────────────────────────────────
+
+# 170 x 240 x 60 cm, opening to 220 cm deep.
+func _murphy_bed_double() -> void:
+	_murphy(_c("murphy_bed_double"), _c("murphy_bed_double", 0.3), _c("murphy_bed_double", -0.2), 0.85, 2.40, -0.30, 0.25, 1.93, 0.0)
+
+
+# 190 x 240 x 150 cm: a wall bed over a sofa: the cabinet behind, the sofa
+# in front; the bed swings down and out to lie over the sofa, whose back
+# cushions drop onto its seat.
+func _murphy_bed_sofa() -> void:
+	_murphy(_c("murphy_bed_sofa"), _c("murphy_bed_sofa", 0.3), _c("murphy_bed_sofa", -0.2), 0.95, 2.40, -0.75, 0.52, 1.84, 0.80, 0.50)
+	_part("Sofa", Vector3.ZERO, "Body")
+	var base := _c("murphy_bed_sofa", 0.4)
+	_box("M_walnut", Vector3(-0.78, 0.0, -0.20), Vector3(0.78, 0.08, 0.72))
+	_box(base, Vector3(-0.83, 0.08, -0.23), Vector3(0.83, 0.26, 0.75))
+	_cushion(_c("murphy_bed_sofa", 0.15), -0.83, 0.26, -0.22, 0.83, 0.42, 0.74, 0.05)
+	_part("Cushions", Vector3(0, 0.42, -0.23), "Body", Vector3.ZERO, Vector3(90, 0, 0), Vector3(0, -0.07, 0.15))
+	_cushion(_c("murphy_bed_sofa", -0.2), -0.66, 0.42, -0.23, 0.66, 0.82, -0.08, 0.05)
+
+
+# 120 x 60 x 40 cm: a bench whose seat box pulls out as a drawer.
+func _folding_storage_bench() -> void:
+	var body := _c("folding_storage_bench")
+	_box(body, Vector3(-0.60, 0.0, -0.20), Vector3(-0.56, 0.51, 0.197))
+	_box(body, Vector3(0.56, 0.0, -0.20), Vector3(0.60, 0.51, 0.197))
+	_box(body, Vector3(-0.60, 0.0, -0.20), Vector3(0.60, 0.06, -0.16))
+	_box(body, Vector3(-0.60, 0.51, -0.20), Vector3(0.60, 0.54, 0.197))
+	_cushion(_c("folding_storage_bench", -0.25), -0.58, 0.54, -0.18, 0.58, 0.60, 0.20, 0.04)
+	_part("Drawer", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.30))
+	_box(_c("folding_storage_bench", 0.2), Vector3(-0.56, 0.06, -0.18), Vector3(0.56, 0.48, 0.19))
+	_front(_c("folding_storage_bench", -0.1), -0.56, 0.06, 0.56, 0.50, 0.19)
+	_pull(0.0, 0.40, 0.193, 0.20, 0.03)
+	_box("M_cardboard", Vector3(-0.45, 0.48, -0.12), Vector3(-0.10, 0.50, 0.10))
+
+
+# 60 x 200 x 60 cm: a shelf unit whose front half slides out of the back
+# half, doubling its shelves.
+func _expanding_shelf() -> void:
+	var body := _c("expanding_shelf")
+	var tops := _shelf_box(body, _c("expanding_shelf", 0.25), -0.30, 0.30, 0.0, 2.00, -0.30, 0.30, 5)
+	for k in tops.size():
+		_books(-0.27, 0.27, tops[k], -0.30, -0.04, 0.30, k)
+	_part("Inner", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.30))
+	for x in [-0.26, 0.23]:
+		_box(_c("expanding_shelf", -0.1), Vector3(x, 0.03, -0.03), Vector3(x + 0.03, 1.96, 0.29))
+	for k in 5:
+		var y := 0.06 + k * 0.38
+		_box(_c("expanding_shelf", -0.1), Vector3(-0.23, y, -0.03), Vector3(0.23, y + 0.03, 0.29))
+		if k < 4:
+			_books(-0.21, 0.21, y + 0.03, -0.01, 0.27, 0.28, k + 5)
+
+
+# 50 x 90 x 60 cm: a cupboard whose front pulls out with a laundry basket.
+func _pull_out_hamper() -> void:
+	var body := _c("pull_out_hamper")
+	_box("M_black", Vector3(-0.23, 0.0, -0.28), Vector3(0.23, 0.11, 0.26))
+	_box(body, Vector3(-0.25, 0.11, -0.30), Vector3(-0.22, 0.90, 0.28))
+	_box(body, Vector3(0.22, 0.11, -0.30), Vector3(0.25, 0.90, 0.28))
+	_box(body, Vector3(-0.22, 0.86, -0.30), Vector3(0.22, 0.90, 0.28))
+	_box(body, Vector3(-0.22, 0.11, -0.30), Vector3(0.22, 0.86, -0.27))
+	_part("Hamper", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.30))
+	_box(_c("pull_out_hamper", -0.15), Vector3(-0.24, 0.11, 0.28), Vector3(0.24, 0.85, 0.31))
+	_pull(0.0, 0.76, 0.31, 0.14, 0.03, "M_chrome")
+	_rblock("M_wicker", 0.0, 0.03, 0.40, 0.44, 0.05, 0.13, 0.62)
+	_rblock("M_blue", 0.0, 0.03, 0.34, 0.38, 0.05, 0.62, 0.68)
+	_rblock("M_cream", 0.04, 0.0, 0.26, 0.30, 0.05, 0.68, 0.72)
+
+
+# 170 x 220 x 70 cm: a tall cupboard hiding a kitchen; its two doors fold
+# back into the sides.
+func _hidden_kitchenette() -> void:
+	var body := _c("hidden_kitchenette")
+	_box(body, Vector3(-0.85, 0.0, -0.35), Vector3(-0.81, 2.20, 0.31))
+	_box(body, Vector3(0.81, 0.0, -0.35), Vector3(0.85, 2.20, 0.31))
+	_box(body, Vector3(-0.81, 2.14, -0.35), Vector3(0.81, 2.20, 0.31))
+	_box("M_stone", Vector3(-0.81, 0.86, -0.35), Vector3(0.81, 1.50, -0.32))
+	_base_run("M_white", "M_white", -0.81, 0.81, -0.32, 0.25, 3, false)
+	_worktop("M_worktop", -0.81, 0.81, -0.32, 0.28)
+	_basin(-0.40, -0.02, 0.90, 0.40, 0.34)
+	_hob(0.38, -0.02, 0.90, 0.46, 0.40, 2)
+	_box("M_white", Vector3(-0.81, 1.50, -0.35), Vector3(0.81, 2.14, -0.05))
+	_box("M_oak", Vector3(-0.81, 1.48, -0.35), Vector3(0.81, 1.50, -0.05))
+	_jar(-0.60, -0.20, 1.50, 0.10, 0.16, "M_teal", "M_iron")
+	_jar(-0.45, -0.20, 1.50, 0.09, 0.12, "M_coral", "M_iron")
+	_part("DoorL", Vector3(-0.83, 0, 0.33), "Body", Vector3.ZERO, Vector3(0, -90, 0), Vector3(0, 0, -0.61))
+	_box(_c("hidden_kitchenette", -0.15), Vector3(-0.84, 0.01, 0.31), Vector3(-0.01, 2.19, 0.35))
+	_pull(-0.08, 1.10, 0.35, 0.03, 0.30, "M_chrome")
+	_part("DoorR", Vector3(0.83, 0, 0.33), "Body", Vector3.ZERO, Vector3(0, 90, 0), Vector3(0, 0, -0.61))
+	_box(_c("hidden_kitchenette", -0.15), Vector3(0.01, 0.01, 0.31), Vector3(0.84, 2.19, 0.35))
+	_pull(0.08, 1.10, 0.35, 0.03, 0.30, "M_chrome")
+
+
+# 120 x 90 x 80 cm against a wall: a base cabinet whose front panel lifts
+# up into a bar, brackets swinging out beneath it.
+func _fold_down_breakfast_bar() -> void:
+	var body := _c("fold_down_breakfast_bar")
+	_box("M_black", Vector3(-0.58, 0.0, -0.38), Vector3(0.58, 0.08, 0.32))
+	_box(body, Vector3(-0.60, 0.08, -0.40), Vector3(0.60, 0.86, 0.36))
+	_box("M_worktop", Vector3(-0.60, 0.86, -0.40), Vector3(0.60, 0.90, 0.36))
+	_front(_c("fold_down_breakfast_bar", -0.15), -0.57, 0.11, 0.57, 0.34, 0.36)
+	_pull(0.0, 0.28, 0.363, 0.20, 0.03, "M_chrome")
+	_part("Leaf", Vector3(0, 0.88, 0.38), "Body", Vector3.ZERO, Vector3(-90, 0, 0))
+	_box(_c("fold_down_breakfast_bar", -0.25), Vector3(-0.58, 0.36, 0.36), Vector3(0.58, 0.88, 0.40))
+	for x in [-0.42, 0.40]:
+		_part("Bracket%s" % ("L" if x < 0 else "R"), Vector3(x + 0.01, 0.60, 0.38), "Body", Vector3.ZERO, Vector3.ZERO,
+			Vector3.ZERO, Vector3.ONE, Vector3.ZERO, Vector3(1, 1, 0.05))
+		_box("M_iron", Vector3(x, 0.60, 0.38), Vector3(x + 0.02, 0.84, 0.79))
+
+
+# 60 x 220 x 70 cm: a tall unit with an oven whose door folds down.
+func _kitchen_tower() -> void:
+	var body := _c("kitchen_tower")
+	_box("M_black", Vector3(-0.28, 0.0, -0.33), Vector3(0.28, 0.08, 0.26))
+	_box(body, Vector3(-0.30, 0.08, -0.35), Vector3(0.30, 2.20, 0.30))
+	_front(_c("kitchen_tower", -0.15), -0.28, 0.11, 0.28, 0.62, 0.30)
+	_front(_c("kitchen_tower", -0.15), -0.28, 1.14, 0.28, 2.17, 0.30)
+	_pull(0.0, 0.55, 0.303, 0.16, 0.03, "M_chrome")
+	_pull(0.20, 1.40, 0.303, 0.03, 0.30, "M_chrome")
+	_box("M_iron", Vector3(-0.28, 0.64, 0.10), Vector3(0.28, 1.12, 0.30))
+	_part("OvenDoor", Vector3(0, 0.66, 0.32), "Body", Vector3.ZERO, Vector3(90, 0, 0))
+	_box("M_black", Vector3(-0.28, 0.66, 0.30), Vector3(0.28, 1.08, 0.34))
+	_front("M_screen", -0.22, 0.72, 0.22, 0.98, 0.34)
+	_pull(0.0, 1.03, 0.343, 0.40, 0.025, "M_chrome")
+
+
+# 60 x 90 x 70 cm against a wall: a base cabinet whose worktop slides out.
+func _fold_out_counter() -> void:
+	var body := _c("fold_out_counter")
+	_box("M_black", Vector3(-0.28, 0.0, -0.33), Vector3(0.28, 0.08, 0.29))
+	_box(body, Vector3(-0.30, 0.08, -0.35), Vector3(0.30, 0.78, 0.33))
+	_front(_c("fold_out_counter", -0.15), -0.27, 0.11, 0.27, 0.75, 0.33)
+	_pull(0.0, 0.66, 0.333, 0.16, 0.03, "M_chrome")
+	_part("Board", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.40))
+	_box("M_oak", Vector3(-0.30, 0.78, -0.35), Vector3(0.30, 0.85, 0.35))
+	_box("M_coral", Vector3(-0.10, 0.85, -0.05), Vector3(0.12, 0.88, 0.15))
+
+
+# 90 x 200 x 90 cm: a shower whose two glass leaves fold out from the left
+# wall to close its front.
+func _folding_shower() -> void:
+	_box("M_stone", Vector3(-0.45, 0.0, -0.45), Vector3(0.45, 0.08, 0.45))
+	_box(_c("folding_shower"), Vector3(-0.45, 0.08, -0.45), Vector3(0.45, 1.98, -0.41))
+	_box(_c("folding_shower"), Vector3(-0.45, 0.08, -0.41), Vector3(-0.41, 1.98, -0.02))
+	_rblock("M_steel", 0.05, -0.05, 0.08, 0.08, 0.04, 0.08, 0.083)
+	_box("M_chrome", Vector3(-0.025, 1.00, -0.41), Vector3(0.025, 1.85, -0.385))
+	_box("M_chrome", Vector3(-0.025, 1.82, -0.41), Vector3(0.025, 1.85, -0.20))
+	_rblock("M_chrome", 0.0, -0.17, 0.16, 0.16, 0.08, 1.78, 1.82)
+	_box("M_coral", Vector3(0.25, 1.20, -0.41), Vector3(0.40, 1.50, -0.37))
+	for k in 2:
+		var name: String = "LeafA" if k == 0 else "LeafB"
+		var x := -0.40 + k * 0.04
+		var open_move := Vector3.ZERO if k == 0 else Vector3(0.37, 0, 0.20)
+		_part(name, Vector3(x, 0, 0.42), "Body", Vector3.ZERO, Vector3(0, -90, 0), open_move)
+		_box("M_chrome", Vector3(x - 0.02, 0.08, -0.02), Vector3(x + 0.02, 1.98, 0.0))
+		_box("M_chrome", Vector3(x - 0.02, 0.08, 0.38), Vector3(x + 0.02, 1.98, 0.40))
+		_box("M_chrome", Vector3(x - 0.02, 1.94, 0.0), Vector3(x + 0.02, 1.98, 0.38))
+		_box("M_chrome", Vector3(x - 0.02, 0.08, 0.0), Vector3(x + 0.02, 0.12, 0.38))
+		_box("M_glass", Vector3(x - 0.002, 0.12, 0.0), Vector3(x + 0.002, 1.94, 0.38))
+
+
+# 90 x 70 x 20 cm on a wall: a bathroom cabinet of two mirror doors that
+# swing open on shelves of jars.
+func _mirror_cabinet() -> void:
+	var body := _c("mirror_cabinet")
+	_box(body, Vector3(-0.45, 0.0, -0.10), Vector3(0.45, 0.70, -0.07))
+	_box(body, Vector3(-0.45, 0.0, -0.07), Vector3(-0.42, 0.70, 0.08))
+	_box(body, Vector3(0.42, 0.0, -0.07), Vector3(0.45, 0.70, 0.08))
+	for y in [0.0, 0.33, 0.67]:
+		_box(body, Vector3(-0.42, y, -0.07), Vector3(0.42, y + 0.03, 0.08))
+	_jar(-0.25, 0.0, 0.03, 0.08, 0.14, "M_ceramic", "M_chrome")
+	_jar(-0.10, 0.0, 0.03, 0.07, 0.10, "M_teal", "M_chrome")
+	_jar(0.20, 0.0, 0.36, 0.08, 0.12, "M_coral", "M_chrome")
+	_part("DoorL", Vector3(-0.44, 0, 0.095), "Body", Vector3.ZERO, Vector3(0, -24, 0))
+	_box(_c("mirror_cabinet", -0.2), Vector3(-0.45, 0.0, 0.08), Vector3(-0.003, 0.70, 0.11))
+	_box("M_mirror", Vector3(-0.42, 0.04, 0.11), Vector3(-0.03, 0.66, 0.113))
+	_part("DoorR", Vector3(0.44, 0, 0.095), "Body", Vector3.ZERO, Vector3(0, 24, 0))
+	_box(_c("mirror_cabinet", -0.2), Vector3(0.003, 0.0, 0.08), Vector3(0.45, 0.70, 0.11))
+	_box("M_mirror", Vector3(0.03, 0.04, 0.11), Vector3(0.42, 0.66, 0.113))
+
+
+# 50 x 110 x 20 cm folded; open, a chair 40 cm deep.
+func _folding_chair() -> void:
+	var col := _c("folding_chair")
+	for x in [-0.25, 0.21]:
+		_box(col, Vector3(x, 0.0, -0.10), Vector3(x + 0.04, 1.10, -0.06))
+	_box(col, Vector3(-0.21, 0.80, -0.10), Vector3(0.21, 1.05, -0.07))
+	_part("Seat", Vector3(0, 0.46, 0.02), "Body", Vector3.ZERO, Vector3(90, 0, 0))
+	_box(_c("folding_chair", -0.2), Vector3(-0.21, 0.46, 0.0), Vector3(0.21, 0.83, 0.03))
+	_part("Legs", Vector3(0, 0.44, 0.375), "Body", Vector3(180, 0, 0), Vector3.ZERO, Vector3.ZERO, Vector3.ONE,
+		Vector3(0, 0, -0.30))
+	for x in [-0.20, 0.16]:
+		_box(col, Vector3(x, 0.0, 0.36), Vector3(x + 0.04, 0.44, 0.39))
+	_box(col, Vector3(-0.16, 0.10, 0.36), Vector3(0.16, 0.13, 0.39))
+
+
+# A stackable stool: a seat on splayed legs.
+func _stool_at(y: float, z0: float) -> void:
+	_box("M_walnut", Vector3(-0.19, y, z0 + 0.01), Vector3(-0.15, y + 0.42, z0 + 0.05))
+	_box("M_walnut", Vector3(0.15, y, z0 + 0.01), Vector3(0.19, y + 0.42, z0 + 0.05))
+	_box("M_walnut", Vector3(-0.19, y, z0 + 0.45), Vector3(-0.15, y + 0.42, z0 + 0.49))
+	_box("M_walnut", Vector3(0.15, y, z0 + 0.45), Vector3(0.19, y + 0.42, z0 + 0.49))
+	_cushion(_c("stacking_stools"), -0.20, y + 0.42, z0, 0.20, y + 0.46, z0 + 0.50, 0.04)
+
+
+# 40 x 110 x 50 cm: three stools stacked; open, the top one stands beside.
+func _stacking_stools() -> void:
+	_stool_at(0.0, -0.25)
+	_stool_at(0.32, -0.25)
+	_part("C", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, -0.64, 0.40))
+	_stool_at(0.64, -0.25)
+
+
+# 50 x 110 x 20 cm on a wall: a seat that folds down from a padded plate.
+func _wall_folding_seat() -> void:
+	_box(_c("wall_folding_seat"), Vector3(-0.25, 0.0, -0.10), Vector3(0.25, 1.10, -0.06))
+	_cushion(_c("wall_folding_seat", -0.2), -0.21, 0.70, -0.06, 0.21, 1.06, -0.02, 0.03)
+	_box(_c("wall_folding_seat", 0.2), Vector3(-0.24, 0.40, -0.06), Vector3(0.24, 0.45, 0.04))
+	_part("Seat", Vector3(0, 0.45, 0.04), "Body", Vector3.ZERO, Vector3(90, 0, 0))
+	_box(_c("wall_folding_seat", 0.2), Vector3(-0.22, 0.45, 0.04), Vector3(0.22, 0.90, 0.07))
+	_cushion(_c("wall_folding_seat", -0.3), -0.20, 0.47, 0.07, 0.20, 0.88, 0.10, 0.01)
+
+
+# 100 x 150 x 40 cm: a bench whose tall back flips forward into a table.
+func _picnic_bench_table() -> void:
+	var col := _c("picnic_bench_table")
+	_legs(_c("picnic_bench_table", 0.3), -0.50, 0.50, -0.19, 0.20, 0.40, 0.05)
+	_box(col, Vector3(-0.50, 0.40, -0.19), Vector3(0.50, 0.45, 0.20))
+	for x in [-0.50, 0.45]:
+		_box(_c("picnic_bench_table", 0.3), Vector3(x, 0.45, -0.19), Vector3(x + 0.05, 0.64, -0.13))
+	_part("Top", Vector3(0, 0.64, -0.16), "Body", Vector3.ZERO, Vector3(90, 0, 0))
+	_box(_c("picnic_bench_table", -0.15), Vector3(-0.50, 0.64, -0.19), Vector3(0.50, 1.50, -0.13))
+
+
+# 130 x 90 x 70 cm: a counter whose middle bay holds a table board that
+# slides out.
+func _under_counter_table() -> void:
+	var body := _c("under_counter_table")
+	for side in [-1.0, 1.0]:
+		var x0: float = -0.65 if side < 0 else 0.35
+		_box("M_black", Vector3(x0 + 0.02, 0.0, -0.33), Vector3(x0 + 0.28, 0.08, 0.29))
+		_box(body, Vector3(x0, 0.08, -0.35), Vector3(x0 + 0.30, 0.86, 0.33))
+		_front(_c("under_counter_table", -0.15), x0 + 0.02, 0.11, x0 + 0.28, 0.83, 0.33)
+		_pull(x0 + 0.15, 0.76, 0.333, 0.12, 0.03, "M_chrome")
+	_box(body, Vector3(-0.35, 0.0, -0.35), Vector3(0.35, 0.78, -0.32))
+	_box("M_worktop", Vector3(-0.65, 0.86, -0.35), Vector3(0.65, 0.90, 0.35))
+	_part("Board", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.26))
+	_box("M_oak", Vector3(-0.34, 0.78, -0.33), Vector3(0.34, 0.82, 0.09))
+	_box("M_oak", Vector3(-0.30, 0.0, 0.03), Vector3(-0.26, 0.78, 0.07))
+	_box("M_oak", Vector3(0.26, 0.0, 0.03), Vector3(0.30, 0.78, 0.07))
+
+
+# 180 x 220 x 220 cm, along Z: a raised platform with a wall of shelves at
+# the back; the bed rolls out from under it to the front.
+func _sliding_pocket_bed() -> void:
+	var col := _c("sliding_pocket_bed")
+	_box(col, Vector3(-0.90, 0.0, -1.10), Vector3(-0.84, 0.68, 1.10))
+	_box(col, Vector3(0.84, 0.0, -1.10), Vector3(0.90, 0.68, 1.10))
+	_box("M_oak", Vector3(-0.90, 0.62, -1.04), Vector3(0.90, 0.68, 1.10))
+	var tops := _shelf_box(col, _c("sliding_pocket_bed", 0.25), -0.90, 0.90, 0.68, 2.20, -1.10, -0.80, 3)
+	for k in tops.size():
+		_books(-0.86, 0.86, tops[k], -1.10, -0.80, 0.34, k + 2)
+	_cushion("M_mustard", -0.60, 0.68, -0.40, -0.10, 0.80, 0.10, 0.06)
+	_cushion("M_teal", 0.10, 0.68, -0.30, 0.60, 0.80, 0.20, 0.06)
+	_part("Bed", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 0.80))
+	_box("M_pine", Vector3(-0.83, 0.0, -1.04), Vector3(0.83, 0.42, 1.10))
+	_bedding("-z", 0.0, 0.03, 2.10, 1.60, 0.42, 0.58, _c("sliding_pocket_bed", -0.3), _c("sliding_pocket_bed", -0.5), 2)
+
+
+# 20 x 220 x 20 cm bunched; open, a pleated curtain 90 cm long on its rod.
+func _curtain() -> void:
+	_part("Track", Vector3(0, 0, -0.10), "Body", Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 5.0))
+	_box("M_iron", Vector3(-0.03, 2.16, -0.10), Vector3(0.03, 2.20, 0.10))
+	for k in 10:
+		var z0 := -0.10 + k * 0.02
+		var name := "Fold%d" % k
+		_part(name, Vector3(0, 0, z0), "Body", Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, k * 0.08), Vector3(1, 1, 5.0))
+		var x := 0.10 if k % 2 == 0 else 0.07
+		_box(_c("curtain") if k % 2 == 0 else _c("curtain", 0.15), Vector3(-x, 0.0, z0), Vector3(x, 2.16, z0 + 0.02))
+
+
+# 120 x 210 x 70 cm on a wall: a cabinet of shelves whose front folds down
+# into a desk, a leg swinging out under its edge.
+func _murphy_desk() -> void:
+	var body := _c("murphy_desk")
+	_box(body, Vector3(-0.60, 0.0, -0.35), Vector3(0.60, 2.10, -0.31))
+	_box(body, Vector3(-0.60, 0.0, -0.31), Vector3(-0.56, 2.10, 0.32))
+	_box(body, Vector3(0.56, 0.0, -0.31), Vector3(0.60, 2.10, 0.32))
+	_box(body, Vector3(-0.56, 2.04, -0.31), Vector3(0.56, 2.10, 0.32))
+	_box(body, Vector3(-0.56, 0.0, -0.31), Vector3(0.56, 0.70, 0.32))
+	_front(_c("murphy_desk", -0.15), -0.54, 0.04, 0.54, 0.66, 0.32)
+	for y in [1.57, 1.80]:
+		_box(body, Vector3(-0.56, y, -0.31), Vector3(0.56, y + 0.03, 0.10))
+		_books(-0.52, 0.20, y + 0.03, -0.31, 0.10, 0.20, int(y * 10))
+	_box(_c("murphy_desk", -0.15), Vector3(-0.56, 1.57, 0.28), Vector3(0.56, 2.04, 0.32))
+	_laptop(0.0, -0.05, 0.70)
+	_part("Flap", Vector3(0, 0.74, 0.32), "Body", Vector3.ZERO, Vector3(90, 0, 0))
+	_box(_c("murphy_desk", -0.25), Vector3(-0.56, 0.74, 0.32), Vector3(0.56, 1.57, 0.36))
+	_part("Leg", Vector3(0, 0.70, 1.105), "Body", Vector3(180, 0, 0), Vector3.ZERO, Vector3.ZERO, Vector3.ONE,
+		Vector3(0, 0.12, -0.80))
+	_box(body, Vector3(-0.46, 0.0, 1.09), Vector3(-0.42, 0.70, 1.12))
+	_box(body, Vector3(0.42, 0.0, 1.09), Vector3(0.46, 0.70, 1.12))
+	_box(body, Vector3(-0.42, 0.62, 1.09), Vector3(0.42, 0.66, 1.12))
+
+
+# A fold-flat stair on a wall, 230 cm along X, climbing towards +X (dir 1)
+# or -X (dir -1): a stepped stringer on the wall, ten treads folded up flat
+# against it that drop down to make steps, an outer stringer that swings
+# out with them.
+func _fold_stair(dir: float) -> void:
+	var col := "M_oak"
+	for k in 10:
+		var x0 := dir * (-1.15 + 0.22 * k)
+		var y := 0.20 + 0.19 * k
+		var a := minf(x0, x0 + dir * 0.22)
+		var b := maxf(x0, x0 + dir * 0.22)
+		_box(col, Vector3(a, y - 0.20, -0.10), Vector3(b, y + 0.06, -0.06))
+	var top := dir * 1.15
+	_box("M_walnut", Vector3(minf(top, top - dir * 0.05), 0.0, -0.10), Vector3(maxf(top, top - dir * 0.05), 2.40, -0.06))
+	for k in 10:
+		var x0 := dir * (-1.15 + 0.22 * k + 0.01)
+		var a := minf(x0, x0 + dir * 0.20)
+		var b := maxf(x0, x0 + dir * 0.20)
+		var y := 0.20 + 0.19 * k
+		_part("Tread%02d" % (k + 1), Vector3((a + b) * 0.5, y, -0.06), "Body", Vector3(-90, 0, 0), Vector3.ZERO)
+		_box(_c("fold_stair_e"), Vector3(a, y - 0.03, -0.06), Vector3(b, y, 0.36))
+	_part("Plank", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, Vector3(0, 0, -0.30))
+	for k in 10:
+		var x0 := dir * (-1.15 + 0.22 * k)
+		var a := minf(x0, x0 + dir * 0.22)
+		var b := maxf(x0, x0 + dir * 0.22)
+		var y := 0.20 + 0.19 * k
+		_box("M_walnut", Vector3(a, y - 0.20, 0.36), Vector3(b, y + 0.04, 0.40))
+
+
+func _fold_stair_e() -> void:
+	_fold_stair(1.0)
+
+
+func _fold_stair_w() -> void:
+	_fold_stair(-1.0)
+
+
+# 70 x 110 x 20 cm on a wall: a panel whose leaf folds down into a small
+# table on a swing leg.
+func _wall_dining_table() -> void:
+	_wall_table("wall_dining_table", 0.35, 0.80, 0.80, 0.20)
+
+
+# 110 x 110 x 30 cm on a wall: the same, wider.
+func _murphy_table() -> void:
+	_wall_table("murphy_table", 0.55, 0.75, 0.70, 0.30)
+
+
+# A wall table `depth` deep closed: a panel `hw` half wide and 110 cm tall,
+# and a leaf hinged at `top_y` on a ledge, hanging down closed and folding
+# up to `leaf` deep, with a leg that swings out under its edge.
+func _wall_table(id: String, hw: float, top_y: float, leaf: float, depth: float) -> void:
+	var col := _c(id)
+	var zb := -depth * 0.5
+	var zh := depth * 0.5
+	_box(col, Vector3(-hw, 0.0, zb), Vector3(hw, 1.10, zb + 0.04))
+	_box(_c(id, 0.25), Vector3(-hw + 0.02, top_y - 0.06, zb + 0.04), Vector3(hw - 0.02, top_y, zh - 0.03))
+	_box(col, Vector3(-hw + 0.06, top_y + 0.10, zb + 0.04), Vector3(hw - 0.06, top_y + 0.13, zh - 0.03))
+	_plant(hw - 0.15, (zb + zh) * 0.5, top_y + 0.13, 0.20, "M_ceramic")
+	_part("Leaf", Vector3(0, top_y, zh), "Body", Vector3(90, 0, 0), Vector3.ZERO)
+	_box(_c(id, -0.15), Vector3(-hw + 0.01, top_y - 0.03, zh), Vector3(hw - 0.01, top_y, zh + leaf))
+	_part("Leg", Vector3.ZERO, "Body", Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, Vector3(0, 0.0, -leaf + 0.01))
+	_box(_c(id, 0.25), Vector3(-0.04, 0.0, zh + leaf - 0.07), Vector3(0.04, top_y - 0.03, zh + leaf - 0.04))
+	_box(_c(id, 0.25), Vector3(-0.15, 0.0, zh + leaf - 0.07), Vector3(0.15, 0.04, zh + leaf - 0.04))
