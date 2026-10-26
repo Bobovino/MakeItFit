@@ -26,7 +26,7 @@ uniform bool has_normals = false;
 uniform float zoom = 1.0;
 uniform vec4 ink_color : source_color = vec4(0.10, 0.15, 0.16, 1.0);
 // Line width as a fraction of the viewport height.
-uniform float width = 0.0016;
+uniform float width = 0.0012;
 // How big a jump in depth, relative to the distance, makes a contour.
 uniform float contour_threshold = 0.012;
 // How far apart two neighbouring facing directions must be to make a corner
@@ -62,7 +62,7 @@ float view_z(vec2 uv, mat4 inv_proj) {
 }
 
 void fragment() {
-	float w = width * clamp(pow(zoom, 0.35), 0.8, 1.35);
+	float w = width * clamp(pow(zoom, 0.35), 0.8, 1.2);
 	// Whole pixels: offsets that fell between pixels landed on one or the
 	// next in a repeating pattern along a slanted edge, and it came out dashed.
 	vec2 px = vec2(max(floor(w * VIEWPORT_SIZE.y + 0.5), 1.0)) / VIEWPORT_SIZE;
