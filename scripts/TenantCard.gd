@@ -34,6 +34,7 @@ var _moment_rows: Dictionary = {}         # moment_id -> HFlowContainer (its chi
 # The moments themselves: a clock with a slice per moment (MomentClock) and
 # the active one's name beside it. Choosing a slice switches the moment.
 var _moment_clock: MomentClock = null
+var _moment_icon: Label = null
 var _moment_name: Label = null
 const CLOCK_SIZE := 64.0
 var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
@@ -180,6 +181,7 @@ func _clear_checklist() -> void:
 	_moment_check_chips.clear()
 	_moment_clock = null   # freed with the rest of the bar
 	_moment_name = null
+	_moment_icon = null
 	_moment_rows.clear()
 	_showcased_chips.clear()   # the chips themselves are about to be freed with the old rows
 	_chips_by_req.clear()
@@ -243,7 +245,19 @@ func _build_moment_checklist() -> void:
 	_moment_clock.setup(_moments, CLOCK_SIZE)
 	_moment_clock.tooltip_text = " "   # turns on _get_tooltip(): it names the slice under the pointer
 	_moment_clock.moment_chosen.connect(func(mid: String): moment_selected.emit(mid))
+	_moment_clock.open_requested.connect(_open_moment_picker)
 	checklist_container.add_child(_moment_clock)
+	# With too many moments for icons on the small dial, the active one's
+	# icon sits here instead.
+	_moment_icon = Label.new()
+	_moment_icon.name = "MomentIcon"
+	_moment_icon.add_theme_font_override("font", GameTheme.font("icons"))
+	_moment_icon.add_theme_font_size_override("font_size", 26)
+	_moment_icon.add_theme_color_override("font_color", GameTheme.NAVY)
+	_moment_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_moment_icon.visible = _moment_clock.is_compact()
+	_moment_icon.text = _moment_clock.active_icon()
+	checklist_container.add_child(_moment_icon)
 	_moment_name = Label.new()
 	_moment_name.name = "MomentName"
 	_moment_name.text = tr(_moment_clock.active_label()).to_upper()
@@ -299,6 +313,7 @@ func highlight_moment(moment_id: String) -> void:
 	if is_instance_valid(_moment_clock):
 		_moment_clock.set_active(moment_id)
 		_moment_name.text = tr(_moment_clock.active_label()).to_upper()
+		_moment_icon.text = _moment_clock.active_icon()
 	for mid in _moment_rows:
 		(_moment_rows[mid] as Control).visible = (mid == moment_id)
 
@@ -684,3 +699,60 @@ func set_project_status(done: int, total: int, pending: Array) -> void:
 		else tr("Every apartment is ready")
 	_set_need_chip(_project_chip, done == total)
 
+
+# The large clock, over the whole screen: every moment's icon and name round
+# the dial. Choosing one switches to it and closes; a click outside or Esc
+# closes without a change.
+var _picker: CanvasLayer = null
+
+func _open_moment_picker() -> void:
+	if is_instance_valid(_picker) or not is_instance_valid(_moment_clock):
+		return
+	_picker = CanvasLayer.new()
+	_picker.layer = 60
+	add_child(_picker)
+	var dim := ColorRect.new()
+	dim.color = Color(GameTheme.NAVY, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_picker.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.add_child(center)
+	var big := MomentClock.new()
+	big.show_labels = true
+	var side := clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 0.62, 280.0, 480.0)
+	big.setup(_moments, side)
+	big.set_active(_moments[_moment_clock_active_index()]["id"] as String)
+	big.tooltip_text = " "
+	big.moment_chosen.connect(func(mid: String):
+		moment_selected.emit(mid)
+		_close_moment_picker())
+	center.add_child(big)
+	dim.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			_close_moment_picker())
+	if not GameState.reduce_motion:
+		big.pivot_offset = Vector2(side, side) * 0.5
+		big.scale = Vector2(0.85, 0.85)
+		dim.modulate.a = 0.0
+		var tw := big.create_tween().set_parallel()
+		tw.tween_property(big, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(dim, "modulate:a", 1.0, 0.12)
+
+
+func _moment_clock_active_index() -> int:
+	return maxi(0, _moment_clock._active)
+
+
+func _close_moment_picker() -> void:
+	if is_instance_valid(_picker):
+		_picker.queue_free()
+	_picker = null
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(_picker) and event.is_action_pressed("ui_cancel"):
+		_close_moment_picker()
+		get_viewport().set_input_as_handled()
