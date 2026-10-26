@@ -3248,3 +3248,142 @@ msgstr "Recorre el piso terminado a la altura de los ojos"
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr "W A S D para andar · ratón para mirar · Mayús para ir más rápido · Esc para salir"
 
+#: data/furniture.json:wallkit_cube_1x1
+msgid "Wall module: Open cube 1×1"
+msgstr "Módulo de pared: Cubo abierto 1×1"
+
+#: data/furniture.json:wallkit_cube_2x1
+msgid "Wall module: Open cube 2×1"
+msgstr "Módulo de pared: Cubo abierto 2×1"
+
+#: data/furniture.json:wallkit_cube_3x1
+msgid "Wall module: Open cube 3×1"
+msgstr "Módulo de pared: Cubo abierto 3×1"
+
+#: data/furniture.json:wallkit_cube_1x2
+msgid "Wall module: Open cube 1×2"
+msgstr "Módulo de pared: Cubo abierto 1×2"
+
+#: data/furniture.json:wallkit_cube_1x3
+msgid "Wall module: Open cube 1×3"
+msgstr "Módulo de pared: Cubo abierto 1×3"
+
+#: data/furniture.json:wallkit_cube_2x2
+msgid "Wall module: Open cube 2×2"
+msgstr "Módulo de pared: Cubo abierto 2×2"
+
+#: data/furniture.json:wallkit_books_1x1
+msgid "Wall module: Books 1×1"
+msgstr "Módulo de pared: Libros 1×1"
+
+#: data/furniture.json:wallkit_bin_1x1
+msgid "Wall module: Fabric bin 1×1"
+msgstr "Módulo de pared: Caja de tela 1×1"
+
+#: data/furniture.json:wallkit_winerack_1x1
+msgid "Wall module: Wine rack 1×1"
+msgstr "Módulo de pared: Botellero 1×1"
+
+#: data/furniture.json:wallkit_corner_1x1
+msgid "Wall module: Corner shelf 1×1"
+msgstr "Módulo de pared: Estante de esquina 1×1"
+
+#: data/furniture.json:wallkit_door_1x1
+msgid "Wall module: Door 1×1"
+msgstr "Módulo de pared: Puerta 1×1"
+
+#: data/furniture.json:wallkit_door_2x1
+msgid "Wall module: Double door 2×1"
+msgstr "Módulo de pared: Puerta doble 2×1"
+
+#: data/furniture.json:wallkit_glassdoor_1x2
+msgid "Wall module: Glass door 1×2"
+msgstr "Módulo de pared: Puerta de cristal 1×2"
+
+#: data/furniture.json:wallkit_flapup_2x1
+msgid "Wall module: Lift-up flap 2×1"
+msgstr "Módulo de pared: Puerta abatible 2×1"
+
+#: data/furniture.json:wallkit_drawer_1x1
+msgid "Wall module: Drawer 1×1"
+msgstr "Módulo de pared: Cajón 1×1"
+
+#: data/furniture.json:wallkit_drawer_2x1
+msgid "Wall module: Drawer 2×1"
+msgstr "Módulo de pared: Cajón 2×1"
+
+#: data/furniture.json:wallkit_basket_1x1
+msgid "Wall module: Pull-out basket 1×1"
+msgstr "Módulo de pared: Cesta extraíble 1×1"
+
+#: data/furniture.json:wallkit_shoerack_2x1
+msgid "Wall module: Shoe rack 2×1"
+msgstr "Módulo de pared: Zapatero 2×1"
+
+#: data/furniture.json:wallkit_shallow_2x2
+msgid "Wall module: Shallow shelf 2×2"
+msgstr "Módulo de pared: Estante poco profundo 2×2"
+
+#: data/furniture.json:wallkit_hooks_2x1
+msgid "Wall module: Coat hooks 2×1"
+msgstr "Módulo de pared: Perchero de pared 2×1"
+
+#: data/furniture.json:wallkit_rail_2x3
+msgid "Wall module: Hanging rail 2×3"
+msgstr "Módulo de pared: Barra de colgar 2×3"
+
+#: data/furniture.json:wallkit_media_2x2
+msgid "Wall module: TV bay 2×2"
+msgstr "Módulo de pared: Hueco para la tele 2×2"
+
+#: data/furniture.json:wallkit_desk_2x1
+msgid "Wall module: Fold-down desk 2×1"
+msgstr "Módulo de pared: Escritorio abatible 2×1"
+
+#: data/furniture.json:wallkit_bench_2x1
+msgid "Wall module: Bench 2×1"
+msgstr "Módulo de pared: Banco 2×1"
+
+#: data/furniture.json:wallkit_plinth_2
+msgid "Wall module: Plinth"
+msgstr "Módulo de pared: Zócalo"
+
+#: data/furniture.json:wallkit_cap_2
+msgid "Wall module: Cornice"
+msgstr "Módulo de pared: Cornisa"
+
+#: data/furniture.json:wallkit_filler_half
+msgid "Wall module: Filler strip"
+msgstr "Módulo de pared: Remate"
+
+#: data/furniture.json:sofakit_seat_1
+msgid "Sofa module: Seat"
+msgstr "Módulo de sofá: Asiento"
+
+#: data/furniture.json:sofakit_corner_1
+msgid "Sofa module: Corner seat"
+msgstr "Módulo de sofá: Asiento de esquina"
+
+#: data/furniture.json:sofakit_chaise_1
+msgid "Sofa module: Chaise"
+msgstr "Módulo de sofá: Chaise longue"
+
+#: data/furniture.json:sofakit_ottoman_1
+msgid "Sofa module: Ottoman"
+msgstr "Módulo de sofá: Otomana"
+
+#: data/furniture.json:sofakit_storage_1
+msgid "Sofa module: Storage ottoman"
+msgstr "Módulo de sofá: Puf con almacenaje"
+
+#: data/furniture.json:sofakit_arm_1
+msgid "Sofa module: Armrest"
+msgstr "Módulo de sofá: Brazo"
+
+#: data/furniture.json:sofakit_console_1
+msgid "Sofa module: Side table"
+msgstr "Módulo de sofá: Mesita auxiliar"
+
+#: scripts/Inventory.gd
+msgid "Modular"
+msgstr "Modular"

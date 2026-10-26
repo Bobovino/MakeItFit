@@ -1982,11 +1982,17 @@ func _mezzanine_load(exclude: Furniture = null) -> float:
 # null if none does — null means "bare floor", not "no support needed". When
 # surfaces are themselves stacked (a nightstand on a kitchen island), the
 # highest one is the one actually underneath.
-func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
+#
+# Two surfaces with the same footprint (two storage-wall modules of one size,
+# stacked) could each be "on" the other. Where `exclude` is placed now
+# (`as_placed`), it only rests on such a twin put down before it — without
+# that, each one's height was the top of the other and the lookup never ended.
+func _surface_support_at(tiles: Array, exclude: Furniture = null, as_placed := false) -> Furniture:
 	if exclude != null and exclude.overhead:
 		return null   # a skylight is up in the ceiling, never resting on a table
 	var best: Furniture = null
 	var best_top := -1.0
+	var own_index := _placed_index(exclude) if as_placed and exclude != null else -1
 	for f in get_all_furniture():
 		var fur := f as Furniture
 		if fur == exclude or not fur.is_surface:
@@ -1996,6 +2002,8 @@ func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
 			if not _placed_list(tile).has(fur):
 				covers_all = false
 				break
+		if covers_all and own_index >= 0 and _placed_index(fur) > own_index 				and Vector2i(fur.grid_w, fur.grid_h) == Vector2i(exclude.grid_w, exclude.grid_h):
+			continue   # its twin, put down after it: that one is on top
 		if covers_all:
 			var top := stack_lift(fur) + fur.body_h
 			if top > best_top:
@@ -2007,7 +2015,15 @@ func _surface_support_at(tiles: Array, exclude: Furniture = null) -> Furniture:
 # The surface `f` rests on (at `at`, or where it is now), or null on bare floor.
 func support_under(f: Furniture, at: Variant = null) -> Furniture:
 	var pos: Vector2 = f.grid_pos if at == null else at as Vector2
-	return _surface_support_at(_rect_tiles(pos, f.grid_w, f.grid_h), f)
+	return _surface_support_at(_rect_tiles(pos, f.grid_w, f.grid_h), f, at == null and is_registered(f))
+
+
+# Where `f` is in the order pieces were put down here, or -1.
+func _placed_index(f: Furniture) -> int:
+	for i in _placed_continuous.size():
+		if _placed_continuous[i]["furniture"] == f:
+			return i
+	return -1
 
 
 # How high above the floor `f` stands, in tiles (the same units as the

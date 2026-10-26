@@ -53,23 +53,23 @@ Not furniture, and a separate and much larger decision: **sloped ceilings** and 
 floors**, both of which are recurring devices in the source material and would be level geometry
 rather than props.
 
-## Modular furniture kits from MakeItFit_GameAssets/furniture
+## Modular furniture kits — follow-ups
 
-The external asset pack (`C:\Users\rodry\Documents\MakeItFit_GameAssets\furniture`) ships two
-grid-composable kits that are NOT single-footprint props like the rest of the catalog, so they
-were not imported along with the single-piece items:
+The storage wall (`wall_system/`, 0.40 m cells) and the sectional sofa (`modular_sofa/`, 0.90 m
+cells) are in the ordinary shop, one piece per module (`wallkit_*`, `sofakit_*`, all under the
+Modular tab and on the category wheel). Each is bought and placed like any piece; wall modules
+are surfaces, so a wall is built by stacking modules on one another. Left open:
 
-- `godot_glb/wall_system/` — 27 tiling modules (0.40m cells) for building custom storage walls
-  piece by piece, instead of placing one fixed prop.
-- `godot_glb/modular_sofa/` — 7 modules (0.90m cells) for composing a sectional sofa.
-
-Bringing these in needs real design work, not just an asset copy:
-- A new placement mode (module-by-module grid snapping along a run, distinct from the existing
-  drag-a-rectangle furniture placement).
-- A new save/serialize shape for a composed run (list of modules + positions, not one `grid_pos`).
-- UI for picking/placing individual modules and previewing a run.
-- Decide whether this is its own build tool or an extension of the existing Inventory/CategoryWheel
-  flow.
+- **Stacking needs full support.** A module only stands on one piece that covers its whole
+  footprint, so a two-wide module can't bridge two one-wide cubes (the game's surface rule).
+- **A stacked wall is a pile of low pieces** as far as light, sightlines and loft headroom are
+  concerned: each module is judged by its own height, not the height of the stack.
+- **Nothing keeps the desk or bench module at a sensible height**: a fold-down desk on the floor
+  still counts for work.
+- `Corner_1` (sofa) has its second back on its right only; there is no mirrored version, so a
+  corner on the left end is the same piece turned.
+- Module animations (drawers, doors, the ottoman lid) are not played.
+- Prices and functions per module are a first pass.
 
 Also deferred, for the same "not a single footprint prop" reason:
 - `godot_glb/stairs/` (11 space-saving staircases) — the existing `stair_n/s/e/w` catalog entries

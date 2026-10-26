@@ -3248,3 +3248,142 @@ msgstr "Geh auf Augenhöhe durch die fertige Wohnung"
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr "W A S D zum Gehen · Maus zum Umsehen · Umschalt für schneller · Esc zum Verlassen"
 
+#: data/furniture.json:wallkit_cube_1x1
+msgid "Wall module: Open cube 1×1"
+msgstr "Wandmodul: Offenes Fach 1×1"
+
+#: data/furniture.json:wallkit_cube_2x1
+msgid "Wall module: Open cube 2×1"
+msgstr "Wandmodul: Offenes Fach 2×1"
+
+#: data/furniture.json:wallkit_cube_3x1
+msgid "Wall module: Open cube 3×1"
+msgstr "Wandmodul: Offenes Fach 3×1"
+
+#: data/furniture.json:wallkit_cube_1x2
+msgid "Wall module: Open cube 1×2"
+msgstr "Wandmodul: Offenes Fach 1×2"
+
+#: data/furniture.json:wallkit_cube_1x3
+msgid "Wall module: Open cube 1×3"
+msgstr "Wandmodul: Offenes Fach 1×3"
+
+#: data/furniture.json:wallkit_cube_2x2
+msgid "Wall module: Open cube 2×2"
+msgstr "Wandmodul: Offenes Fach 2×2"
+
+#: data/furniture.json:wallkit_books_1x1
+msgid "Wall module: Books 1×1"
+msgstr "Wandmodul: Bücher 1×1"
+
+#: data/furniture.json:wallkit_bin_1x1
+msgid "Wall module: Fabric bin 1×1"
+msgstr "Wandmodul: Stoffbox 1×1"
+
+#: data/furniture.json:wallkit_winerack_1x1
+msgid "Wall module: Wine rack 1×1"
+msgstr "Wandmodul: Weinregal 1×1"
+
+#: data/furniture.json:wallkit_corner_1x1
+msgid "Wall module: Corner shelf 1×1"
+msgstr "Wandmodul: Eckregal 1×1"
+
+#: data/furniture.json:wallkit_door_1x1
+msgid "Wall module: Door 1×1"
+msgstr "Wandmodul: Tür 1×1"
+
+#: data/furniture.json:wallkit_door_2x1
+msgid "Wall module: Double door 2×1"
+msgstr "Wandmodul: Doppeltür 2×1"
+
+#: data/furniture.json:wallkit_glassdoor_1x2
+msgid "Wall module: Glass door 1×2"
+msgstr "Wandmodul: Glastür 1×2"
+
+#: data/furniture.json:wallkit_flapup_2x1
+msgid "Wall module: Lift-up flap 2×1"
+msgstr "Wandmodul: Klappe nach oben 2×1"
+
+#: data/furniture.json:wallkit_drawer_1x1
+msgid "Wall module: Drawer 1×1"
+msgstr "Wandmodul: Schublade 1×1"
+
+#: data/furniture.json:wallkit_drawer_2x1
+msgid "Wall module: Drawer 2×1"
+msgstr "Wandmodul: Schublade 2×1"
+
+#: data/furniture.json:wallkit_basket_1x1
+msgid "Wall module: Pull-out basket 1×1"
+msgstr "Wandmodul: Auszugskorb 1×1"
+
+#: data/furniture.json:wallkit_shoerack_2x1
+msgid "Wall module: Shoe rack 2×1"
+msgstr "Wandmodul: Schuhregal 2×1"
+
+#: data/furniture.json:wallkit_shallow_2x2
+msgid "Wall module: Shallow shelf 2×2"
+msgstr "Wandmodul: Flaches Regal 2×2"
+
+#: data/furniture.json:wallkit_hooks_2x1
+msgid "Wall module: Coat hooks 2×1"
+msgstr "Wandmodul: Garderobenhaken 2×1"
+
+#: data/furniture.json:wallkit_rail_2x3
+msgid "Wall module: Hanging rail 2×3"
+msgstr "Wandmodul: Kleiderstange 2×3"
+
+#: data/furniture.json:wallkit_media_2x2
+msgid "Wall module: TV bay 2×2"
+msgstr "Wandmodul: TV-Fach 2×2"
+
+#: data/furniture.json:wallkit_desk_2x1
+msgid "Wall module: Fold-down desk 2×1"
+msgstr "Wandmodul: Klappschreibtisch 2×1"
+
+#: data/furniture.json:wallkit_bench_2x1
+msgid "Wall module: Bench 2×1"
+msgstr "Wandmodul: Bank 2×1"
+
+#: data/furniture.json:wallkit_plinth_2
+msgid "Wall module: Plinth"
+msgstr "Wandmodul: Sockel"
+
+#: data/furniture.json:wallkit_cap_2
+msgid "Wall module: Cornice"
+msgstr "Wandmodul: Kranzleiste"
+
+#: data/furniture.json:wallkit_filler_half
+msgid "Wall module: Filler strip"
+msgstr "Wandmodul: Passleiste"
+
+#: data/furniture.json:sofakit_seat_1
+msgid "Sofa module: Seat"
+msgstr "Sofamodul: Sitz"
+
+#: data/furniture.json:sofakit_corner_1
+msgid "Sofa module: Corner seat"
+msgstr "Sofamodul: Eckelement"
+
+#: data/furniture.json:sofakit_chaise_1
+msgid "Sofa module: Chaise"
+msgstr "Sofamodul: Recamiere"
+
+#: data/furniture.json:sofakit_ottoman_1
+msgid "Sofa module: Ottoman"
+msgstr "Sofamodul: Hocker"
+
+#: data/furniture.json:sofakit_storage_1
+msgid "Sofa module: Storage ottoman"
+msgstr "Sofamodul: Hocker mit Stauraum"
+
+#: data/furniture.json:sofakit_arm_1
+msgid "Sofa module: Armrest"
+msgstr "Sofamodul: Armlehne"
+
+#: data/furniture.json:sofakit_console_1
+msgid "Sofa module: Side table"
+msgstr "Sofamodul: Beistelltisch"
+
+#: scripts/Inventory.gd
+msgid "Modular"
+msgstr "Modular"

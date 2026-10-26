@@ -32,6 +32,7 @@ func _ready() -> void:
 	await _t_moved_from_home()
 	await _t_carry_hints()
 	await _t_three_freezers()
+	await _t_kit_modules_in_a_level()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -56,6 +57,7 @@ func _run_all() -> void:
 	_test("a skylight lights from above and takes no floor", func(): _t_skylight())
 	_test("a sleeping pod sleeps, stores, splits and shades", func(): _t_sleeping_pod())
 	_test("a foldable gives only what its fold state gives, per moment", func(): _t_fold_gives_per_moment())
+	_test("kit modules: every module is in the shop, with its model", func(): _t_kit_modules_catalogue())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -413,6 +415,87 @@ func _t_tenants_are_cosmetic() -> void:
 	_ok(on_floor, str(main.tenant_layer._tiles))
 	main.queue_free()
 	await get_tree().process_frame
+
+
+# ── Modular kits: storage-wall and sofa modules, one piece each ──────────────
+func _t_kit_modules_catalogue() -> void:
+	var data = JSON.parse_string(FileAccess.get_file_as_string("res://data/furniture.json"))
+	var wall := 0
+	var sofa := 0
+	var missing: Array = []
+	var inv := Inventory.new()
+	var wrong_tab: Array = []
+	for e in data["furniture"]:
+		match e.get("kit", ""):
+			"wall": wall += 1
+			"sofa": sofa += 1
+			_: continue
+		if not ResourceLoader.exists(e["model"]):
+			missing.append(e["id"])
+		if inv._sub_category_of(e) != "Modular":
+			wrong_tab.append(e["id"])
+	inv.free()
+	_eq([wall, sofa], [27, 7], "wall and sofa modules")
+	_eq(missing, [], "modules without their model")
+	_eq(wrong_tab, [], "modules outside the Modular tab")
+
+
+# Modules are stacked into a wall one by one with the ordinary placement: a
+# cube goes on a drawer, a wider piece doesn't hang off a narrower one, and a
+# desk module and a sofa seat count for the tenant like any desk and seat.
+func _t_kit_modules_in_a_level() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_kits_save.json"
+	GameState.pending_level_id = "day_and_night"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var gm: GameManager = main.gm
+	var drawer := _place_somewhere(main, fl, "wallkit_drawer_2x1")
+	_current = "kit modules: a drawer module stands against a wall"
+	_ok(drawer != null and fl.is_registered(drawer) and fl.support_under(drawer) == null)
+	var cube: Furniture = main._spawn_furniture("wallkit_cube_1x1", fl, 0, 0)
+	var on_drawer := fl.can_place(cube, drawer.grid_pos)
+	fl.place_furniture(cube, drawer.grid_pos)
+	_current = "kit modules: a cube stacks on the drawer, 0.40 m up"
+	_ok(on_drawer and fl.support_under(cube) == drawer and is_equal_approx(fl.stack_lift(cube), 4.0),
+		"%s %s %s" % [on_drawer, fl.support_under(cube), fl.stack_lift(cube)])
+	var desk: Furniture = main._spawn_furniture("wallkit_desk_2x1", fl, 0, 0)
+	_current = "kit modules: a two-wide module doesn't hang off a one-wide cube"
+	_ok(not fl.can_place(desk, cube.grid_pos))
+	fl.remove_furniture(cube)
+	var desk_on := fl.can_place(desk, drawer.grid_pos)
+	fl.place_furniture(desk, drawer.grid_pos)
+	var seat := _place_somewhere(main, fl, "sofakit_seat_1")
+	main._refresh_functions()
+	_current = "kit modules: a desk module and a sofa seat count for work and sit"
+	_ok(desk_on and seat != null and fl.is_registered(seat) and gm.fulfilled_functions.has("work")
+		and gm.fulfilled_functions.has("sit"), "%s %s" % [desk_on, gm.fulfilled_functions])
+	var before := _level_state_string(main)
+	var data := LevelProgress.capture(main)
+	main._load_level("day_and_night")
+	for i in 5:
+		await get_tree().process_frame
+	LevelProgress.apply(main, data)
+	_current = "kit modules: a stacked wall and a sofa module load back as they were"
+	_ok(_level_state_string(main) == before, "\n  before %s\n  after  %s" % [before, _level_state_string(main)])
+	fl = main._floors[main._current_floor_id]
+	var top: Furniture = null
+	for entry in fl.get_all_furniture():
+		if (entry as Furniture).furniture_id == "wallkit_desk_2x1":
+			top = entry
+	var under := fl.support_under(top) if top else null
+	_current = "kit modules: of two same-size modules, the one put down second is still on top after loading"
+	_ok(under != null and under.furniture_id == "wallkit_drawer_2x1" and fl.support_under(under) == null
+		and is_equal_approx(fl.stack_lift(top), 4.0), "%s" % under)
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
 
 
 func _puzzle_state(main: Node, fl: Floor) -> String:
