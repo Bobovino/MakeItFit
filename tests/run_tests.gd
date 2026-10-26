@@ -33,6 +33,7 @@ func _ready() -> void:
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
+	await _t_sloped_split_levels()
 	print("\n%d passed, %d failed" % [_pass, _fail])
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -68,6 +69,8 @@ func _run_all() -> void:
 	_test("loop: the tenant walks through a seam", func(): _t_loop_pathing())
 	_test("loop: daylight comes round through a seam", func(): _t_loop_light())
 	_test("loop: only opposite walls can be joined", func(): _t_loop_bad_pairs())
+	_test("ceiling: ramps make a gable, a dormer stays in its rect, the old key loads", func(): _t_ceiling_heights())
+	_test("split levels: one level per piece, steps kept clear, headroom, walking over steps", func(): _t_split_level_rules())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -1485,10 +1488,10 @@ func _t_skylight() -> void:
 	var under_after := fl.can_place(_make_furniture(fl, 1, 1), Vector2(5, 5))
 	# Under a raked ceiling it still goes in (a roof window), where a
 	# bookshelf no longer fits.
-	fl.sloped_ceiling = {"axis": "x", "low_start": 2, "high_end": 8, "min_h": 1.8, "max_h": 2.4}
+	fl.ceiling_ramps = [{"axis": "x", "low_start": 2, "high_end": 8, "min_h": 1.8, "max_h": 2.4}]
 	var tall := _catalog_piece(fl, "bookshelf", 1, 1)
 	var under_slope := fl.can_place(sky, Vector2(2, 2)) and not fl.can_place(tall, Vector2(2, 6))
-	fl.sloped_ceiling = {}
+	fl.ceiling_ramps = []
 	_ok(dark == 0.0 and fits_over and lit_under > 0.9 and lit_beside > 0.0 and free_with_sky == free_with_pieces
 		and free_with_pieces == free_before - 6 and fl.support_under(sky) == null
 		and not (sky in fl.get_inaccessible_furniture()) and not sky.blocks_sight() and under_after and under_slope,
@@ -1530,3 +1533,182 @@ func _t_fold_gives_per_moment() -> void:
 		"gym %s/%s, bed %s/%s, folded now %s %s" % [gym.functions_for_moment("day"), gym.functions_for_moment("night"),
 			bed.functions_for_moment("day"), bed.functions_for_moment("night"), gym.functions, bed.functions])
 	fl.queue_free()
+# ── Ceilings and split levels ──────────────────────────────────────────────
+func _make_level_floor(extra: Dictionary) -> Floor:
+	var floor_data := {
+		"id": "test_levels", "label": "Test Levels", "grid_w": 30, "grid_h": 20, "floor_tiles": [],
+		"segments": [
+			{"x1": 1, "y1": 1, "x2": 21, "y2": 1, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 1, "x2": 21, "y2": 13, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 13, "x2": 1, "y2": 13, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 13, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+		],
+	}
+	floor_data.merge(extra, true)
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup(floor_data)
+	return fl
+
+
+# Two ramps make a gable (the lower one wins), a ramp may fall either way, a
+# rect keeps a dormer to part of the room, and the old single-ramp key still
+# loads.
+func _t_ceiling_heights() -> void:
+	var gable := _make_level_floor({"ceiling_ramps": [
+		{"axis": "x", "low_start": 1, "high_end": 11, "min_h": 1.0, "max_h": 2.6},
+		{"axis": "x", "low_start": 20, "high_end": 10, "min_h": 1.0, "max_h": 2.6}]})
+	_ok(is_equal_approx(gable.ceiling_height_at(Vector2(1, 5)), 1.0) and is_equal_approx(gable.ceiling_height_at(Vector2(20, 5)), 1.0)
+		and gable.ceiling_height_at(Vector2(10, 5)) > 2.4 and gable.ceiling_height_at(Vector2(6, 5)) < gable.ceiling_height_at(Vector2(9, 5)),
+		"%s %s %s" % [gable.ceiling_height_at(Vector2(1, 5)), gable.ceiling_height_at(Vector2(10, 5)), gable.ceiling_height_at(Vector2(20, 5))])
+	gable.queue_free()
+	var dormer := _make_level_floor({"ceiling_ramps": [
+		{"axis": "y", "low_start": 1, "high_end": 12, "min_h": 1.2, "max_h": 2.4, "rect": [1, 1, 10, 12]}]})
+	_ok(is_equal_approx(dormer.ceiling_height_at(Vector2(3, 1)), 1.2) and is_equal_approx(dormer.ceiling_height_at(Vector2(15, 1)), Floor.CEILING_H_M),
+		"inside %s outside %s" % [dormer.ceiling_height_at(Vector2(3, 1)), dormer.ceiling_height_at(Vector2(15, 1))])
+	dormer.queue_free()
+	var legacy := _make_level_floor({"sloped_ceiling": {"axis": "x", "low_start": 1, "high_end": 20, "min_h": 1.6, "max_h": 2.4}, "ceiling_h": 2.7})
+	_ok(legacy.ceiling_ramps.size() == 1 and is_equal_approx(legacy.ceiling_height_at(Vector2(1, 3)), 1.6)
+		and is_equal_approx(legacy.ceiling_h, 2.7), str(legacy.ceiling_ramps))
+	legacy.queue_free()
+
+
+# A platform 40 cm up over x 1..8, reached over steps at x 9..11, y 4..8.
+func _split_fixture() -> Floor:
+	var levels: Array = []
+	var steps: Array = []
+	for y in range(1, 13):
+		for x in range(1, 9):
+			levels.append([x, y, 4])
+	for y in range(4, 9):
+		for x in range(9, 12):
+			levels.append([x, y, 2])
+			steps.append([x, y])
+	return _make_level_floor({"floor_levels": levels, "step_tiles": steps})
+
+
+func _t_split_level_rules() -> void:
+	var fl := _split_fixture()
+	var f := _make_furniture(fl, 2, 2)
+	_ok(fl.can_place(f, Vector2(3, 3)) and fl.can_place(f, Vector2(14, 3)), fl.get_block_reason())
+	_ok(not fl.can_place(f, Vector2(8, 2)) and fl.get_block_reason() == "Can't stand across a step", fl.get_block_reason())
+	_ok(not fl.can_place(f, Vector2(9, 5)) and fl.get_block_reason() == "Keep the steps clear", fl.get_block_reason())
+	# The platform takes its height off the ceiling: 2.1 m fits on the floor
+	# below, not on the platform (2.1 + 0.4 > 2.4).
+	f.body_h = 21
+	_ok(fl.can_place(f, Vector2(14, 3)) and not fl.can_place(f, Vector2(3, 3)) and fl.get_block_reason() == "Ceiling too low here",
+		fl.get_block_reason())
+	_eq(fl.level_under(Vector2(3, 3), 2, 2), 4, "level under")
+	var reached := fl.get_reachable_floor()
+	_ok(reached.has(Vector2i(3, 3)) and reached.has(Vector2i(15, 6)), "walks onto the platform over the steps")
+	_ok(not fl.patch_level_ok(Vector2i(7, 1), 4) and fl.patch_level_ok(Vector2i(8, 4), 4),
+		"a patch over the edge is a ledge, one on the steps is floor")
+	# Without the steps the platform is cut off: the bigger floor below wins.
+	fl.step_mask.clear()
+	for y in range(4, 9):
+		for x in range(9, 12):
+			fl.floor_level.erase(Vector2i(x, y))
+	reached = fl.get_reachable_floor()
+	_ok(not reached.has(Vector2i(3, 3)) and reached.has(Vector2i(15, 6)), "no steps, no way up")
+	f.queue_free()
+	fl.queue_free()
+
+
+# The real levels: the attic's gable keeps tall pieces to its middle and
+# counts what a piece stands on; the split-level studio's platform and pit
+# show in 2D rules, in 3D and in where tenants stand.
+func _t_sloped_split_levels() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_levels_save.json"
+	GameState.pending_level_id = "debug:_attic"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var wardrobe: Furniture = main._spawn_furniture("wardrobe", fl, 0, 0)
+	fl.forget_furniture(wardrobe)
+	_current = "attic: a wardrobe is refused under the eaves and fits under the ridge"
+	_ok(not fl.can_place(wardrobe, Vector2(24, 2)) and fl.get_block_reason() == "Ceiling too low here"
+		and fl.can_place(wardrobe, Vector2(24, 14)), fl.get_block_reason())
+	_current = "attic: carrying it shows the low ceiling on both eaves, not the ridge"
+	var low: Array = fl.carry_hints(wardrobe)["low_ceiling"]
+	_ok(Vector2i(24, 2) in low and Vector2i(24, 35) in low and not (Vector2i(24, 18) in low), "%d tiles" % low.size())
+	var desk: Furniture = main._spawn_furniture("desk", fl, 0, 0)
+	var lamp: Furniture = main._spawn_furniture("desk_lamp", fl, 0, 0)
+	fl.forget_furniture(lamp)
+	_current = "attic: a desk fits under the eaves, a lamp on it doesn't (it stands 0.8 m higher)"
+	var desk_ok := fl.can_place(desk, Vector2(24, 3))
+	fl.place_furniture(desk, Vector2(24, 3))
+	_ok(desk_ok and not fl.can_place(lamp, Vector2(25, 4)) and fl.get_block_reason() == "Ceiling too low here", fl.get_block_reason())
+	fl.remove_furniture(desk)
+	main._set_view_mode(main.ViewMode.VIEW3D)
+	for i in 5:
+		await get_tree().process_frame
+	var view = main._mode3d_view
+	var heights: Array = []
+	for wd in view._wall_data:
+		heights.append([snappedf(wd["full_h"] as float, 0.01), wd.get("flat", true)])
+	_current = "attic 3D: knee walls are 1 m, the gable ends rise to the ridge, and the ceiling is drawn"
+	var has_ceiling := false
+	for n in view.build_root.get_children():
+		if n.has_meta("sloped_ceiling"):
+			has_ceiling = true
+	_ok([1.0, true] in heights and heights.any(func(h): return (h[0] as float) > 2.4 and not h[1]) and has_ceiling, str(heights))
+	main._set_view_mode(main.ViewMode.TOPDOWN)
+	wardrobe.queue_free()
+	lamp.queue_free()
+	main.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+	GameState.pending_level_id = "debug:_split_level"
+	main = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	fl = main._floors[main._current_floor_id]
+	var bed: Furniture = null
+	var sofa: Furniture = null
+	for f in fl.get_all_furniture():
+		if (f as Furniture).furniture_id == "normal_bed": bed = f
+		if (f as Furniture).furniture_id == "sofa": sofa = f
+	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	fl.forget_furniture(shelf)
+	var wr: Furniture = main._spawn_furniture("wardrobe", fl, 0, 0)
+	fl.forget_furniture(wr)
+	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+	fl.forget_furniture(stool)
+	_current = "split level: on the 40 cm platform a stool fits and a bookshelf is too tall; below, the bookshelf fits"
+	_ok(fl.can_place(stool, Vector2(2, 11)) and not fl.can_place(shelf, Vector2(2, 11))
+		and fl.get_block_reason() == "Ceiling too low here" and fl.can_place(shelf, Vector2(30, 5)), fl.get_block_reason())
+	_current = "split level: nothing stands on the steps or across the platform's edge"
+	_ok(not fl.can_place(shelf, Vector2(11, 15)) and fl.get_block_reason() == "Keep the steps clear", fl.get_block_reason())
+	_ok(not fl.can_place(wr, Vector2(18, 11)) and fl.get_block_reason() == "Can't stand across a step", fl.get_block_reason())
+	Floor.pathing_enabled = true
+	_current = "split level: the bed on the platform and the sofa in the pit can both be walked to"
+	_ok(bed != null and sofa != null and fl.is_reachable(bed) and fl.is_reachable(sofa))
+	Floor.pathing_enabled = false
+	main._set_view_mode(main.ViewMode.VIEW3D)
+	for i in 5:
+		await get_tree().process_frame
+	view = main._mode3d_view
+	var bottom_of := func(f: Furniture) -> float:
+		var e: Dictionary = view._entry_of(f)
+		return (e["mesh"] as Node3D).position.y - (e["size"] as Vector3).y * 0.5 if not e.is_empty() else -99.0
+	_current = "split level 3D: the bed stands 40 cm up, the sofa 30 cm down"
+	_ok(is_equal_approx(bottom_of.call(bed), 0.4) and is_equal_approx(bottom_of.call(sofa), -0.3),
+		"bed %s sofa %s" % [bottom_of.call(bed), bottom_of.call(sofa)])
+	_current = "split level 3D: a tenant using the bed stands on the platform"
+	_ok(is_equal_approx(view._entry_of(bed).get("floor_y", 0.0) as float, 0.4), str(view._entry_of(bed).get("floor_y")))
+	main._set_view_mode(main.ViewMode.TOPDOWN)
+	shelf.queue_free()
+	wr.queue_free()
+	stool.queue_free()
+	main.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path

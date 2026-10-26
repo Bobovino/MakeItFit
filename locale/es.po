@@ -3391,3 +3391,14 @@ msgstr "Módulo de sofá: Mesita auxiliar"
 #: scripts/Inventory.gd
 msgid "Modular"
 msgstr "Modular"
+#: scripts/Wall.gd
+msgid "Keep the steps clear"
+msgstr "Deja libres los escalones"
+
+#: scripts/Wall.gd
+msgid "Can't stand across a step"
+msgstr "No puede quedar entre dos alturas"
+
+#: scripts/GridDraw.gd
+msgid "Sloped ceiling: %.2fm to %.2fm"
+msgstr "Techo inclinado: de %.2f m a %.2f m"

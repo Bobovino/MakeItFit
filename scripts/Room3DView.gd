@@ -319,8 +319,18 @@ func _show_carry_hints(carried: Furniture) -> void:
 			var x1 := x0 + px.size.x / RuleOverlay.TILE * TILE_M
 			var z1 := z0 + px.size.y / RuleOverlay.TILE * TILE_M
 			var y := HITBOX_Y + 0.002
-			verts.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
-				Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+			if _apt_floor.floor_level.is_empty():
+				verts.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
+					Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+				continue
+			# Split levels: each tile at its own floor's height.
+			for tz in range(int(round((z1 - z0) / TILE_M))):
+				for tx in range(int(round((x1 - x0) / TILE_M))):
+					var ax := x0 + tx * TILE_M
+					var az := z0 + tz * TILE_M
+					var ty := y + _apt_floor.level_m_at(Vector2i(int(origin.x) + int(round(ax / TILE_M)), int(origin.y) + int(round(az / TILE_M))))
+					verts.append_array([Vector3(ax, ty, az), Vector3(ax + TILE_M, ty, az), Vector3(ax + TILE_M, ty, az + TILE_M),
+						Vector3(ax, ty, az), Vector3(ax + TILE_M, ty, az + TILE_M), Vector3(ax, ty, az + TILE_M)])
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = verts
@@ -1277,7 +1287,14 @@ func _ground_hit(vp_pos: Vector2) -> Vector3:
 	if absf(dir.y) < 0.0001:
 		return from
 	var t := -from.y / dir.y
-	return from + dir * t
+	var hit := from + dir * t
+	# On split levels, aim at the floor actually under the cursor: settle on
+	# the level of the tile the ray meets (a couple of passes do it).
+	if is_instance_valid(_apt_floor) and not _apt_floor.floor_level.is_empty():
+		for i in 3:
+			var y := _apt_floor.level_m_at(Vector2i(_room_local_to_tile(hit).floor()))
+			hit = from + dir * ((y - from.y) / dir.y)
+	return hit
 
 
 func _room_local_to_tile(local: Vector3) -> Vector2:
@@ -2056,36 +2073,21 @@ func _wall_restricted_zones(edge: String) -> Array:
 # mirrors WallInspector._ceiling_height_m exactly, just fed from Room3DView's
 # own state instead of a 2D panel's.
 func _wall_ceiling_height_m(edge: String, col: int) -> float:
-	if not _apt_floor or _apt_floor.sloped_ceiling.is_empty():
+	if not _apt_floor or not _apt_floor.has_sloped_ceiling():
 		return WALL_H_M
-	var sc: Dictionary = _apt_floor.sloped_ceiling
-	var axis: String  = sc.get("axis", "x") as String
-	var low_s: int    = sc.get("low_start", 0) as int
-	var high_e: int   = sc.get("high_end", 0) as int
-	var min_h: float  = sc.get("min_h", 1.8) as float
-	var max_h: float  = sc.get("max_h", 2.4) as float
-	var span := high_e - low_s
-	if span <= 0:
-		return max_h
-	var bounds := _room_bounds
-	var progressive := (axis == "x" and edge in ["north", "south"]) \
-		or (axis == "y" and edge in ["east", "west"])
-	var coord: int
-	if progressive:
-		coord = (bounds.position.x if edge in ["north", "south"] else bounds.position.y) + col
-	else:
-		match edge:
-			"north": coord = bounds.position.y
-			"south": coord = bounds.position.y + bounds.size.y - 1
-			"west":  coord = bounds.position.x
-			"east":  coord = bounds.position.x + bounds.size.x - 1
-			_:       coord = low_s
-	var frac := clampf(float(coord - low_s) / float(span), 0.0, 1.0)
-	return min_h + frac * (max_h - min_h)
+	# The tile just inside this wall, `col` tiles along it.
+	var b := _room_bounds
+	var t: Vector2i
+	match edge:
+		"north": t = Vector2i(b.position.x + col, b.position.y)
+		"south": t = Vector2i(b.position.x + col, b.end.y - 1)
+		"west":  t = Vector2i(b.position.x, b.position.y + col)
+		_:       t = Vector2i(b.end.x - 1, b.position.y + col)
+	return _apt_floor.ceiling_height_at(Vector2(t))
 
 
 func _wall_ceiling_cut_tiles(edge: String, col: int) -> int:
-	if not _apt_floor or _apt_floor.sloped_ceiling.is_empty():
+	if not _apt_floor or not _apt_floor.has_sloped_ceiling():
 		return 0
 	var avail_tiles := int(round(_wall_ceiling_height_m(edge, col) * 10.0))
 	return clampi(WALL_HEIGHT_TILES - avail_tiles, 0, WALL_HEIGHT_TILES)
@@ -2122,7 +2124,7 @@ func _can_place_wall_item(edge: String, at: Vector2i, iw: int, ih: int, ignore_o
 		if (zone as Rect2i).intersects(item_rect):
 			_wall_block_reason = tr("Too close to a window or door")
 			return false
-	if _apt_floor and not _apt_floor.sloped_ceiling.is_empty():
+	if _apt_floor and _apt_floor.has_sloped_ceiling():
 		for tx in range(iw):
 			if at.y < _wall_ceiling_cut_tiles(edge, at.x + tx):
 				_wall_block_reason = tr("Ceiling too low here")
@@ -3510,7 +3512,7 @@ func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: V
 	var length := aabb.size.x
 	var height := aabb.size.y
 	var thick  := aabb.size.z
-	if absf(aabb.size.y - wd.get("full_h", height)) > 0.01:
+	if not (wd.get("flat", true) as bool):
 		# Sloped wall (or anything else whose AABB doesn't match a flat box) —
 		# no clean rectangular cut to make; fall back to hiding it outright.
 		wd["force_hidden"] = true
@@ -3523,7 +3525,7 @@ func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: V
 	# Cached so _restore_wall_hole can rebuild the exact same plain wall back
 	# if this item is later sold or picked up to move elsewhere.
 	wd["orig_wall"] = {
-		"length": length, "thick": thick, "height": height,
+		"length": length, "thick": thick, "height": aabb.end.y,
 		"pos": old_mesh.position, "rot_y_deg": rad_to_deg(old_mesh.rotation.y),
 		"color": color,
 	}
@@ -3540,7 +3542,7 @@ func _rebuild_wall_with_hole(wd: Dictionary, item_pos: Vector3, item_box_size: V
 
 	var wall_box := CSGBox3D.new()
 	wall_box.size = Vector3(length, height, thick)
-	wall_box.position = Vector3(length * 0.5, height * 0.5, thick * 0.5)
+	wall_box.position = Vector3(length * 0.5, aabb.position.y + height * 0.5, thick * 0.5)
 	var wall_mat := StandardMaterial3D.new()
 	wall_mat.albedo_color = color
 	wall_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -3721,7 +3723,13 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 
 	if _style != null:
 		_style.daylight = _daylight
-	_add_floor(w, d)
+	_floor_base_m = 0.0
+	if apt_floor.has_split_levels():
+		for t in apt_floor.floor_level:
+			_floor_base_m = minf(_floor_base_m, apt_floor.level_m_at(t as Vector2i))
+		_add_split_level_floor(w, d, bounds)
+	else:
+		_add_floor(w, d)
 	if below_floor == null:   # a loft shows the floor beneath it there instead
 		# Inside a box the room stands on its parent's floor; otherwise it
 		# floats on its own block.
@@ -3745,7 +3753,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		_update_camera()
 		return
 
-	_add_walls(w, d, apt_floor.sloped_ceiling, bounds)
+	_add_walls(w, d, bounds)
+	_add_sloped_ceiling(bounds)
 	_outside_signs.clear()   # freed with the rest of build_root's children
 	_build_outside_signs()
 	_home_outlines.clear()
@@ -4140,6 +4149,132 @@ func _combined_aabb(node: Node3D) -> AABB:
 			if child is Node3D:
 				stack.append([child, xform * (child as Node3D).transform])
 	return box
+
+
+# Lowest floor of the room (a sunken area's), metres; walls reach down to it.
+var _floor_base_m: float = 0.0
+
+
+# A floor with raised platforms or sunken areas: one slab per stretch of
+# tiles at the same level, from the lowest floor up to its own top, so a
+# platform shows its sides and a sunken area its walls. Rows of equal level
+# are merged into rectangles to keep it to a few boxes.
+func _add_split_level_floor(w: float, d: float, bounds: Rect2i) -> void:
+	var done: Dictionary = {}
+	var bottom := _floor_base_m - 0.05
+	for y in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var t := Vector2i(x, y)
+			if done.has(t):
+				continue
+			var lvl := _apt_floor.level_at(t)
+			var x1 := x
+			while x1 + 1 < bounds.end.x and not done.has(Vector2i(x1 + 1, y)) and _apt_floor.level_at(Vector2i(x1 + 1, y)) == lvl:
+				x1 += 1
+			var y1 := y
+			while y1 + 1 < bounds.end.y:
+				var row_ok := true
+				for xx in range(x, x1 + 1):
+					var o := Vector2i(xx, y1 + 1)
+					if done.has(o) or _apt_floor.level_at(o) != lvl:
+						row_ok = false
+						break
+				if not row_ok:
+					break
+				y1 += 1
+			for yy in range(y, y1 + 1):
+				for xx in range(x, x1 + 1):
+					done[Vector2i(xx, yy)] = true
+			var top := lvl * TILE_M
+			var size := Vector3((x1 - x + 1) * TILE_M, top - bottom, (y1 - y + 1) * TILE_M)
+			var pos := Vector3((x - bounds.position.x) * TILE_M + size.x * 0.5, bottom + size.y * 0.5,
+				(y - bounds.position.y) * TILE_M + size.z * 0.5)
+			_box(size, pos, Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
+	# A thin dark line along every edge where two levels meet, so the step
+	# reads from above as well as from the side.
+	var edge_col := Color(0.30, 0.26, 0.22)
+	for y in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var t := Vector2i(x, y)
+			for n in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var o: Vector2i = t + n
+				if o.x >= bounds.end.x or o.y >= bounds.end.y:
+					continue
+				var la := _apt_floor.level_at(t)
+				var lb := _apt_floor.level_at(o)
+				if la == lb:
+					continue
+				var top := maxi(la, lb) * TILE_M
+				var cx := (x - bounds.position.x + (1.0 if n.x == 1 else 0.5)) * TILE_M
+				var cz := (y - bounds.position.y + (1.0 if n.y == 1 else 0.5)) * TILE_M
+				var sz := Vector3(0.012, 0.006, TILE_M) if n.x == 1 else Vector3(TILE_M, 0.006, 0.012)
+				_box(sz, Vector3(cx, top + 0.003, cz), edge_col, StyleController.ROLE_WALL)
+	_add_grid_overlay(w, d)
+
+
+# A sloped ceiling as a surface: drawn facing down only, so it is there when
+# you look up at it from inside and out of the way of the camera above. Rafters
+# run up the slope on top of it, which is what reads from above.
+func _add_sloped_ceiling(bounds: Rect2i) -> void:
+	if not is_instance_valid(_apt_floor) or not _apt_floor.has_sloped_ceiling():
+		return
+	var h_at := func(x: float, y: float) -> float:
+		return _apt_floor.ceiling_height_at(Vector2(clampf(x, bounds.position.x, bounds.end.x - 1),
+			clampf(y, bounds.position.y, bounds.end.y - 1)))
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for y in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var lx := (x - bounds.position.x) * TILE_M
+			var lz := (y - bounds.position.y) * TILE_M
+			var a := Vector3(lx, h_at.call(x, y), lz)
+			var b := Vector3(lx + TILE_M, h_at.call(x + 1, y), lz)
+			var c := Vector3(lx + TILE_M, h_at.call(x + 1, y + 1), lz + TILE_M)
+			var e := Vector3(lx, h_at.call(x, y + 1), lz + TILE_M)
+			for v in [a, b, c, a, c, e]:
+				st.set_normal(Vector3.DOWN)
+				st.add_vertex(v)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.90, 0.88, 0.84)
+	mat.cull_mode = BaseMaterial3D.CULL_FRONT
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_meta("sloped_ceiling", true)
+	build_root.add_child(mi)
+
+	# Rafters: one every 60 cm across the slope, following the ceiling.
+	var axes: Dictionary = {}
+	for r in _apt_floor.ceiling_ramps:
+		axes[(r as Dictionary).get("axis", "x")] = true
+	const RAFTER_STEP := 6   # tiles
+	var wood := Color(0.62, 0.48, 0.34)
+	for axis in axes:
+		var along_x: bool = axis == "x"
+		var cross0 := bounds.position.y if along_x else bounds.position.x
+		var cross1 := bounds.end.y if along_x else bounds.end.x
+		var a0 := bounds.position.x if along_x else bounds.position.y
+		var a1 := bounds.end.x if along_x else bounds.end.y
+		for c in range(cross0 + RAFTER_STEP, cross1 - RAFTER_STEP / 2, RAFTER_STEP):   # clear of the walls
+			var pts := PackedVector2Array()
+			for i in range(a0, a1 + 1):
+				var p := Vector2(i, c) if along_x else Vector2(c, i)
+				pts.append(Vector2(i, h_at.call(p.x, p.y)))
+			var prof := _thin_profile(pts)
+			for k in range(prof.size() - 1):
+				var h0 := prof[k].y
+				var h1 := prof[k + 1].y
+				if absf(h0 - _apt_floor.ceiling_h) < 0.001 and absf(h1 - _apt_floor.ceiling_h) < 0.001:
+					continue   # under the flat part of the ceiling there is no roof slope to show
+				var q0 := Vector2(prof[k].x, c) if along_x else Vector2(c, prof[k].x)
+				var q1 := Vector2(prof[k + 1].x, c) if along_x else Vector2(c, prof[k + 1].x)
+				var m0 := Vector3((q0.x - bounds.position.x) * TILE_M, h0, (q0.y - bounds.position.y) * TILE_M)
+				var m1 := Vector3((q1.x - bounds.position.x) * TILE_M, h1, (q1.y - bounds.position.y) * TILE_M)
+				var seg := _box(Vector3(0.04, 0.06, m0.distance_to(m1)), (m0 + m1) * 0.5 + Vector3(0, 0.03, 0), wood, StyleController.ROLE_WALL)
+				seg.look_at_from_position(seg.position, seg.position + (m1 - m0), Vector3.UP)
+				seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				seg.set_meta("sloped_ceiling", true)
 
 
 func _add_floor(w: float, d: float) -> void:
@@ -4954,44 +5089,33 @@ func _add_balcony_extras(bounds: Rect2i) -> void:
 			_box(rail_size, center + Vector3(0.0, RAIL_H_M * 0.5, 0.0), rail_col, StyleController.ROLE_WALL)
 
 
-# Ceiling height (metres) at a given absolute world tile coordinate along the
-# slope axis — same formula GridDraw/WallInspector use for the 2D contour.
-func _sloped_height_m(sc: Dictionary, coord_tile: float) -> float:
-	var low_s  := sc.get("low_start", 0) as float
-	var high_e := sc.get("high_end", 0) as float
-	var min_h  := sc.get("min_h", 1.8) as float
-	var max_h  := sc.get("max_h", 2.4) as float
-	var span := high_e - low_s
-	if span <= 0.0:
-		return max_h
-	var frac := clampf((coord_tile - low_s) / span, 0.0, 1.0)
-	return min_h + frac * (max_h - min_h)
-
-
-# A wall as a "wedge" prism: rectangular cross-section whose top edge rises
-# linearly from h0 (local x=0) to h1 (local x=length) — degenerates to a
-# plain box when h0 == h1, so it doubles as the flat-ceiling case too.
-func _wedge_mesh(length: float, thick: float, h0: float, h1: float) -> ArrayMesh:
+# A wall as a prism whose top follows `prof` ([Vector2(x, height)] from x=0
+# to x=length, metres) and whose bottom is at `base` (below 0 where the floor
+# has a sunken area). Two points of equal height make a plain box.
+func _wedge_mesh(length: float, thick: float, h0: float, h1: float,
+		prof: PackedVector2Array = PackedVector2Array(), base: float = 0.0) -> ArrayMesh:
+	if prof.size() < 2:
+		prof = PackedVector2Array([Vector2(0.0, h0), Vector2(length, h1)])
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var a0 := Vector3(0.0, 0.0, 0.0)
-	var b0 := Vector3(0.0, h0, 0.0)
-	var c0 := Vector3(length, h1, 0.0)
-	var d0 := Vector3(length, 0.0, 0.0)
-	var a1 := Vector3(0.0, 0.0, thick)
-	var b1 := Vector3(0.0, h0, thick)
-	var c1 := Vector3(length, h1, thick)
-	var d1 := Vector3(length, 0.0, thick)
+	var faces := []
+	for i in range(prof.size() - 1):
+		var x0 := prof[i].x
+		var x1 := prof[i + 1].x
+		var a0 := Vector3(x0, base, 0.0); var b0 := Vector3(x0, prof[i].y, 0.0)
+		var c0 := Vector3(x1, prof[i + 1].y, 0.0); var d0 := Vector3(x1, base, 0.0)
+		var a1 := Vector3(x0, base, thick); var b1 := Vector3(x0, prof[i].y, thick)
+		var c1 := Vector3(x1, prof[i + 1].y, thick); var d1 := Vector3(x1, base, thick)
+		faces.append([a0, d0, d1, a1])   # bottom
+		faces.append([b0, b1, c1, c0])   # top
+		faces.append([a0, b0, c0, d0])   # front (z=0)
+		faces.append([d1, c1, b1, a1])   # back (z=thick)
+		if i == 0:
+			faces.append([a1, b1, b0, a0])   # left end (x=0)
+		if i == prof.size() - 2:
+			faces.append([d0, c0, c1, d1])   # right end (x=length)
 	# Winding isn't hardened per-face (materials render double-sided instead),
 	# so these just need to be planar quads, not a specific orientation.
-	var faces := [
-		[a0, d0, d1, a1],   # bottom
-		[b0, b1, c1, c0],   # slanted top
-		[a0, b0, c0, d0],   # front (z=0)
-		[d1, c1, b1, a1],   # back (z=thick)
-		[a1, b1, b0, a0],   # left end (x=0)
-		[d0, c0, c1, d1],   # right end (x=length)
-	]
 	for quad in faces:
 		var p0: Vector3 = quad[0]
 		var p1: Vector3 = quad[1]
@@ -5008,9 +5132,10 @@ func _wedge_mesh(length: float, thick: float, h0: float, h1: float) -> ArrayMesh
 
 
 func _add_sloped_wall(length: float, thick: float, h0: float, h1: float,
-		pos: Vector3, rot_y_deg: float, color: Color, role: StringName = StyleController.ROLE_WALL) -> MeshInstance3D:
+		pos: Vector3, rot_y_deg: float, color: Color, role: StringName = StyleController.ROLE_WALL,
+		prof: PackedVector2Array = PackedVector2Array()) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.mesh = _wedge_mesh(length, thick, h0, h1)
+	mi.mesh = _wedge_mesh(length, thick, h0, h1, prof, _floor_base_m)
 	mi.position = pos
 	mi.rotation.y = deg_to_rad(rot_y_deg)
 	var mat := StandardMaterial3D.new()
@@ -5061,20 +5186,28 @@ func _wall_part(wall: MeshInstance3D, x0: float, x1: float, y0: float, y1: float
 # same fields the 2D plan and the wall inspector read), on both faces of the
 # wall. Returns the parts so the wall's fade can hide them while it is cut
 # down to a stub.
-func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> Array:
+func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, low_h: float,
+		prof: PackedVector2Array = PackedVector2Array()) -> Array:
 	var parts: Array = []
 	if _style == null:
 		return parts
-	_add_stub_marks(wall, seg, wall_h)
+	_add_stub_marks(wall, seg, low_h)
+	# Under a sloped ceiling each opening goes by the wall's height where it
+	# is, not at the wall's lowest point (a gable end's window is in its tall
+	# middle).
+	var win_h := _profile_min_over(prof, (seg.get("window_pos", 0) as float) * TILE_M,
+		((seg.get("window_pos", 0) as float) + (seg.get("window_len", 10) as float)) * TILE_M, low_h)
+	var door_h := _profile_min_over(prof, (seg.get("door_pos", 0) as float) * TILE_M,
+		((seg.get("door_pos", 0) as float) + DOOR_LEN_TILES) * TILE_M, low_h)
 	# [z at the wall face, direction pointing out of the wall] for each face.
 	for face in [[0.0, -1.0], [WALL_THICK, 1.0]]:
 		var z: float = face[0]
 		var out: float = face[1]
-		if seg.get("has_window", false) and wall_h >= WINDOW_Y0_M + 0.5:
+		if seg.get("has_window", false) and win_h >= WINDOW_Y0_M + 0.5:
 			var x0 := (seg.get("window_pos", 0) as float) * TILE_M
 			var x1 := x0 + (seg.get("window_len", 10) as float) * TILE_M
 			var y0 := WINDOW_Y0_M
-			var y1 := minf(WINDOW_Y1_M, wall_h - 0.12)
+			var y1 := minf(WINDOW_Y1_M, win_h - 0.12)
 			const BAR := 0.045
 			parts.append(_wall_part(wall, x0, x1, y0, y1, z, z + out * 0.012, StyleController.ROLE_WINDOW))
 			parts.append(_wall_part(wall, x0 - BAR, x0, y0, y1, z, z + out * 0.035, StyleController.ROLE_FLOOR))
@@ -5087,7 +5220,7 @@ func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, wall_h: float) ->
 		if seg.get("has_door", false):
 			var x0 := (seg.get("door_pos", 0) as float) * TILE_M
 			var x1 := x0 + DOOR_LEN_TILES * TILE_M
-			var y1 := minf(DOOR_H_M, wall_h - 0.06)
+			var y1 := minf(DOOR_H_M, door_h - 0.06)
 			const JAMB := 0.05
 			parts.append(_wall_part(wall, x0 - JAMB, x0, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
 			parts.append(_wall_part(wall, x1, x1 + JAMB, 0.0, y1, z, z + out * 0.04, StyleController.ROLE_FLOOR))
@@ -5119,7 +5252,7 @@ func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, wall_h: float) ->
 		door["back"] = _pending_door_backs.duplicate()
 		# The doorway behind the leaf: dark, so the open door shows a way through.
 		var x0d := (seg.get("door_pos", 0) as float) * TILE_M
-		var y1d := minf(DOOR_H_M, wall_h - 0.06)
+		var y1d := minf(DOOR_H_M, door_h - 0.06)
 		var hole := MeshInstance3D.new()
 		var hb := BoxMesh.new()
 		hb.size = Vector3(DOOR_LEN_TILES * TILE_M, y1d, WALL_THICK + 0.01)
@@ -5295,7 +5428,7 @@ func _add_stub_marks(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> vo
 	wall.set_meta("stub_marks", marks)
 
 
-# `sc` is Floor.sloped_ceiling ({} if the room has a flat ceiling). One
+# The ceiling comes from Floor.ceiling_height_at() (flat, or ramps). One
 # MeshInstance3D per actual wall segment (perimeter AND interior partitions)
 # instead of a fixed north/south/west/east box around the room's bounding
 # rect — a multi-room floor (an L-shape, an interior partition with a door,
@@ -5304,11 +5437,9 @@ func _add_stub_marks(wall: MeshInstance3D, seg: Dictionary, wall_h: float) -> vo
 # slope axis get a slanted top edge; the other orientation gets a constant
 # height matching the ceiling at that segment's fixed position — mirrors the
 # 2D GridDraw/WallInspector cut logic, just per-segment instead of per-side.
-func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
+func _add_walls(_w: float, _d: float, bounds: Rect2i) -> void:
 	var col          := Color(0.86, 0.83, 0.76)
 	var interior_col := Color(0.90, 0.87, 0.80)   # faint warm tint hints "removable partition"
-	var has_slope := not sc.is_empty()
-	var axis: String = sc.get("axis", "x") as String
 	var bx0 := bounds.position.x; var bx1 := bounds.position.x + bounds.size.x
 	var by0 := bounds.position.y; var by1 := bounds.position.y + bounds.size.y
 
@@ -5330,12 +5461,8 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 			# Horizontal run along world X, fixed at world Z = line_z.
 			var xs := mini(x1, x2); var xe := maxi(x1, x2)
 			var length := (xe - xs) * TILE_M
-			var h0 := WALL_H_M; var h1 := WALL_H_M
-			if has_slope:
-				if axis == "x":
-					h0 = _sloped_height_m(sc, xs); h1 = _sloped_height_m(sc, xe)
-				else:
-					h0 = _sloped_height_m(sc, y1); h1 = h0
+			var prof := _wall_profile(true, y1, xs, xe, bounds)
+			var h0 := _profile_min(prof); var h1 := _profile_max(prof)
 			var local_x := (xs - bounds.position.x) * TILE_M
 			var line_z  := (y1 - bounds.position.y) * TILE_M
 			# An interior wall drawn from (or to) the perimeter stops at the
@@ -5356,24 +5483,21 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_z = line_z; normal = Vector3(0, 0, 1)                     # south perimeter
 			else:
 				pos_z = line_z - WALL_THICK * 0.5; normal = Vector3(0, 0, -1) # interior partition
-			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role)
-			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
-				"decor": _add_wall_openings(mi, seg, minf(h0, h1)),
+			var lprof := _profile_local(prof, local_x - (xs - bounds.position.x) * TILE_M, length)
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role, lprof)
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": h1, "flat": absf(h1 - h0) < 0.005, "role": wall_role,
+				"decor": _add_wall_openings(mi, seg, h0, lprof),
 				"interior": y1 != by0 and y1 != by1,
 				"a": Vector3(local_x, 0.0, pos_z + WALL_THICK * 0.5),
 				"b": Vector3(local_x + length, 0.0, pos_z + WALL_THICK * 0.5)})
-			_add_wall_grid(mi, length, maxf(h0, h1))
+			_add_wall_grid(mi, length, h1)
 
 		elif x1 == x2 and y1 != y2:
 			# Vertical run along world Z, fixed at world X = line_x.
 			var ys := mini(y1, y2); var ye := maxi(y1, y2)
 			var length := (ye - ys) * TILE_M
-			var h0 := WALL_H_M; var h1 := WALL_H_M
-			if has_slope:
-				if axis == "y":
-					h0 = _sloped_height_m(sc, ys); h1 = _sloped_height_m(sc, ye)
-				else:
-					h0 = _sloped_height_m(sc, x1); h1 = h0
+			var prof := _wall_profile(false, x1, ys, ye, bounds)
+			var h0 := _profile_min(prof); var h1 := _profile_max(prof)
 			var local_z := (ys - bounds.position.y) * TILE_M
 			var line_x  := (x1 - bounds.position.x) * TILE_M
 			if x1 != bx0 and x1 != bx1:      # as for horizontal runs, above
@@ -5387,13 +5511,14 @@ func _add_walls(_w: float, _d: float, sc: Dictionary, bounds: Rect2i) -> void:
 				pos_x = line_x + WALL_THICK; normal = Vector3(1, 0, 0)        # east perimeter
 			else:
 				pos_x = line_x + WALL_THICK * 0.5; normal = Vector3(-1, 0, 0) # interior partition
-			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role)
-			_wall_data.append({"mesh": mi, "normal": normal, "full_h": maxf(h0, h1), "role": wall_role,
-				"decor": _add_wall_openings(mi, seg, minf(h0, h1)),
+			var lprof := _profile_local(prof, local_z - (ys - bounds.position.y) * TILE_M, length)
+			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role, lprof)
+			_wall_data.append({"mesh": mi, "normal": normal, "full_h": h1, "flat": absf(h1 - h0) < 0.005, "role": wall_role,
+				"decor": _add_wall_openings(mi, seg, h0, lprof),
 				"interior": x1 != bx0 and x1 != bx1,
 				"a": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z),
 				"b": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z + length)})
-			_add_wall_grid(mi, length, maxf(h0, h1))
+			_add_wall_grid(mi, length, h1)
 	_add_loop_seams(bounds)
 
 
@@ -5641,6 +5766,96 @@ func _clip_copy(m: Material) -> Material:
 	return c
 
 
+# The ceiling height along a wall, as [Vector2(metres along from s0, metres
+# high)], sampled tile by tile on the room side of the wall (both sides for
+# an interior wall, the lower one winning) and thinned to its corners.
+func _wall_profile(horizontal: bool, line: int, s0: int, s1: int, bounds: Rect2i) -> PackedVector2Array:
+	var rows: Array[int] = []
+	var lo := bounds.position.y if horizontal else bounds.position.x
+	var hi := bounds.end.y if horizontal else bounds.end.x
+	for r in [line - 1, line]:
+		if r >= lo and r < hi:
+			rows.append(r)
+	var pts := PackedVector2Array()
+	# A wall's far end is on the line past the room's last tile: sample the
+	# ceiling over that last tile, not outside the room.
+	var a_lo := bounds.position.x if horizontal else bounds.position.y
+	var a_hi := (bounds.end.x if horizontal else bounds.end.y) - 1
+	for i in range(s0, s1 + 1):
+		var h := INF
+		var ai := clampi(i, a_lo, a_hi)
+		for r in rows:
+			var p := Vector2(ai, r) if horizontal else Vector2(r, ai)
+			h = minf(h, _apt_floor.ceiling_height_at(p) if is_instance_valid(_apt_floor) else WALL_H_M)
+		if h == INF:
+			h = WALL_H_M
+		pts.append(Vector2((i - s0) * TILE_M, h))
+	return _thin_profile(pts)
+
+
+# Drops the points of a profile that lie on the line between their neighbours.
+func _thin_profile(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array([pts[0]])
+	for i in range(1, pts.size() - 1):
+		var a := out[out.size() - 1]
+		var b := pts[i + 1]
+		var k := (pts[i].x - a.x) / (b.x - a.x)
+		if absf(lerpf(a.y, b.y, k) - pts[i].y) > 0.002:
+			out.append(pts[i])
+	if pts.size() > 1:
+		out.append(pts[pts.size() - 1])
+	return out
+
+
+# The lowest the wall's top gets between a and b (metres along it); `fallback`
+# without a profile.
+func _profile_min_over(prof: PackedVector2Array, a: float, b: float, fallback: float) -> float:
+	if prof.size() < 2:
+		return fallback
+	var m := INF
+	for i in range(prof.size() - 1):
+		var p0 := prof[i]
+		var p1 := prof[i + 1]
+		if p1.x < a or p0.x > b:
+			continue
+		var span := maxf(p1.x - p0.x, 0.0001)
+		m = minf(m, lerpf(p0.y, p1.y, clampf((maxf(a, p0.x) - p0.x) / span, 0.0, 1.0)))
+		m = minf(m, lerpf(p0.y, p1.y, clampf((minf(b, p1.x) - p0.x) / span, 0.0, 1.0)))
+	return m if m < INF else fallback
+
+
+func _profile_min(prof: PackedVector2Array) -> float:
+	var m := INF
+	for p in prof:
+		m = minf(m, p.y)
+	return m
+
+
+func _profile_max(prof: PackedVector2Array) -> float:
+	var m := -INF
+	for p in prof:
+		m = maxf(m, p.y)
+	return m
+
+
+# The profile cut to a wall that starts `offset` metres along it and is
+# `length` long (perimeter walls are trimmed or lengthened at their corners).
+func _profile_local(prof: PackedVector2Array, offset: float, length: float) -> PackedVector2Array:
+	var height_at := func(x: float) -> float:
+		if x <= prof[0].x:
+			return prof[0].y
+		for i in range(1, prof.size()):
+			if x <= prof[i].x:
+				return lerpf(prof[i - 1].y, prof[i].y, (x - prof[i - 1].x) / maxf(prof[i].x - prof[i - 1].x, 0.0001))
+		return prof[prof.size() - 1].y
+	var out := PackedVector2Array([Vector2(0.0, height_at.call(offset))])
+	for p in prof:
+		if p.x - offset > 0.0001 and p.x - offset < length - 0.0001:
+			out.append(Vector2(p.x - offset, p.y))
+	out.append(Vector2(length, height_at.call(offset + length)))
+	return out
+
+
 # ── Stacking: pieces standing on tables and shelves ─────────────────────────
 # Floor.support_under() says which surface a piece rests on; here it is lifted
 # onto the top of that surface as drawn (the model's own height, which can be
@@ -5667,10 +5882,18 @@ func _drawn_height(mi: MeshInstance3D, box_h: float) -> float:
 func _top_m(f: Furniture) -> float:
 	var entry := _entry_of(f)
 	if entry.is_empty() or not is_instance_valid(entry.get("mesh")):
-		return (_apt_floor.stack_lift(f) + f.body_h) * TILE_M
+		return (_apt_floor.stack_lift(f) + f.body_h) * TILE_M + _floor_lift_m(f)
 	var mi := entry["mesh"] as MeshInstance3D
 	var box_h := (entry["size"] as Vector3).y
 	return mi.position.y - box_h * 0.5 + _drawn_height(mi, box_h)
+
+
+# How high the floor under `f` is (a platform or a sunken area), metres.
+func _floor_lift_m(f: Furniture, at: Variant = null) -> float:
+	if not is_instance_valid(_apt_floor):
+		return 0.0
+	var corner: Vector2 = f.grid_pos if at == null else at as Vector2
+	return _apt_floor.level_under(corner, f.grid_w, f.grid_h) * TILE_M
 
 
 # How high `f` stands when its corner is at `at` (where it is now if null):
@@ -5683,7 +5906,7 @@ func _lift_m(f: Furniture, at: Variant = null) -> float:
 		return _ceiling_m_at(c) - maxf(f.body_h * TILE_M, 0.2)
 	var sup := _apt_floor.support_under(f, at)
 	if sup == null:
-		return 0.0
+		return _floor_lift_m(f, at)
 	var corner: Vector2 = f.grid_pos if at == null else at as Vector2
 	var cx := (corner.x - _room_bounds.position.x + f.grid_w * 0.5) * TILE_M
 	var cz := (corner.y - _room_bounds.position.y + f.grid_h * 0.5) * TILE_M
@@ -5691,19 +5914,11 @@ func _lift_m(f: Furniture, at: Variant = null) -> float:
 
 
 # Ceiling height (metres) over a point of the plan, in tiles: a skylight
-# hangs flush under it. Same slope rule as Floor.can_place().
+# hangs flush under it. The same heights Floor.can_place() checks.
 func _ceiling_m_at(p: Vector2) -> float:
-	var sc: Dictionary = _apt_floor.sloped_ceiling
-	if sc.is_empty():
+	if not is_instance_valid(_apt_floor):
 		return WALL_H_M
-	var low_s := sc.get("low_start", 0) as int
-	var span := float((sc.get("high_end", 0) as int) - low_s)
-	var max_h := sc.get("max_h", 2.4) as float
-	var coord := p.x if (sc.get("axis", "x") as String) == "x" else p.y
-	if span <= 0.0 or coord < low_s or coord > low_s + span:
-		return max_h
-	var min_h := sc.get("min_h", 1.8) as float
-	return min_h + (coord - low_s) / span * (max_h - min_h)
+	return _apt_floor.ceiling_height_at(p)
 
 
 # ── Bowing: a loaded surface sags ───────────────────────────────────────────
@@ -5959,6 +6174,7 @@ func _settle_stacked(carried: Furniture = null, carried_at: Variant = null) -> v
 		mi.position.y = lift + (entry["size"] as Vector3).y * 0.5
 		entry["pos"] = mi.position
 		_sync_echoes(entry)
+		entry["floor_y"] = _floor_lift_m(f)   # where a tenant using it stands
 		if f.is_surface:
 			_apply_sag(entry, entry.get("sag", 0.0) as float)
 		for h in _hitbox_highlights:

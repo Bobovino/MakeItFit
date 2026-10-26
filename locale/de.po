@@ -3391,3 +3391,14 @@ msgstr "Sofamodul: Beistelltisch"
 #: scripts/Inventory.gd
 msgid "Modular"
 msgstr "Modular"
+#: scripts/Wall.gd
+msgid "Keep the steps clear"
+msgstr "Die Stufen freihalten"
+
+#: scripts/Wall.gd
+msgid "Can't stand across a step"
+msgstr "Kann nicht über einer Stufe stehen"
+
+#: scripts/GridDraw.gd
+msgid "Sloped ceiling: %.2fm to %.2fm"
+msgstr "Dachschräge: %.2f m bis %.2f m"

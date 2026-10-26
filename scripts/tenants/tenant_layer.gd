@@ -322,7 +322,8 @@ func _piece_3d(f: Furniture) -> Vector3:
 
 func _tile_to_3d(t: Vector2) -> Vector3:
 	var rb := _view3d._room_bounds
-	return Vector3((t.x - rb.position.x) * Room3DView.TILE_M, 0.0, (t.y - rb.position.y) * Room3DView.TILE_M)
+	var y := _floor.level_m_at(Vector2i(t.floor())) if is_instance_valid(_floor) else 0.0
+	return Vector3((t.x - rb.position.x) * Room3DView.TILE_M, y, (t.y - rb.position.y) * Room3DView.TILE_M)
 
 
 # ── what changed, what broke, and why ───────────────────────────────────────
@@ -879,7 +880,7 @@ func _patch_grid() -> AStarGrid2D:
 		for x in w:
 			var fits := x + PATCH <= w and y + PATCH <= h and (sums[(y + PATCH) * (w + 1) + x + PATCH] \
 				- sums[y * (w + 1) + x + PATCH] - sums[(y + PATCH) * (w + 1) + x] + sums[y * (w + 1) + x]) == PATCH * PATCH
-			if not fits:
+			if not fits or not _floor.patch_level_ok(Vector2i(b.position.x + x, b.position.y + y), PATCH):
 				grid.set_point_solid(Vector2i(b.position.x + x, b.position.y + y))
 	return grid
 

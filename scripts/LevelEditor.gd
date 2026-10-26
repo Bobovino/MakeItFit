@@ -27,7 +27,7 @@ const _OV_SCRIPT     := preload("res://scripts/EditorOverlay.gd")
 const FurnitureScene := preload("res://scenes/Furniture.tscn")
 const Room3DViewScene := preload("res://scenes/Room3DView.tscn")
 
-enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE, GLASS_WALL }
+enum Tool { FLOOR, MEZZANINE, STAIRS, RAIL, REVEAL, PRIMARY_WALL, SECONDARY_WALL, WINDOW, DOOR, WALL_VIEW, COLUMN, ERASE, GLASS_WALL, LEVEL }
 
 # ── Floor geometry ────────────────────────────────────────────────────────────
 var _gw: int = DEFAULT_GW
@@ -49,12 +49,17 @@ var _floor_kind_paint:  String = ""  # kind stamped by Floor Paint while paintin
 var _floor_kind:        Dictionary = {}    # Vector2i -> String ("balcony"|"bathroom"); absent = "normal"
 
 # Sloped ceiling (per active floor) — {axis, low_start, high_end, min_h, max_h}
-var _sc_enabled:   bool   = false
-var _sc_axis:      String = "x"
-var _sc_low_start: int    = 0
-var _sc_high_end:  int    = 10
-var _sc_min_h:     float  = 1.8
-var _sc_max_h:     float  = 2.4
+# Ceiling of the active floor: flat height plus ramps (see Floor.ceiling_ramps).
+var _ceiling_h:     float = Floor.CEILING_H_M
+var _ceiling_ramps: Array = []
+var _ramp_sel:      int   = 0      # ramp shown in the Sloped Ceiling window
+# Split levels of the active floor (see Floor.floor_level / step_mask).
+var _floor_level:    Dictionary = {}   # Vector2i -> int (tiles)
+var _step_mask:      Dictionary = {}   # Vector2i -> true
+var _level_paint:    int  = 4          # tiles the Floor Height tool paints (+ up, - down)
+var _step_paint:     bool = false      # the Floor Height tool paints steps
+var _level_painting: bool = false
+var _level_erase:    bool = false
 var _mezz_painting:    bool = false
 var _mezz_erase:       bool = false
 var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
@@ -391,6 +396,7 @@ func _build_left(ui: Node) -> void:
 	var tool_defs: Array = [
 		[Tool.FLOOR,         "Floor Paint",    "LMB paint · RMB erase floor tiles"],
 		[Tool.MEZZANINE,     "Mezzanine",      "LMB paint · RMB erase mezzanine/loft tiles"],
+		[Tool.LEVEL,         "Floor Height",   "LMB paint a raised platform, sunken area or steps · RMB back to level 0"],
 		[Tool.STAIRS,        "Stairs",         "LMB stamp · RMB remove · R rotate · T loft/floor"],
 		[Tool.RAIL,          "Rail",           "Drag to draw sliding rail track"],
 		[Tool.REVEAL,        "Reveal Zone",    "Drag over a rail to mark where a piece counts as revealed"],
@@ -471,6 +477,29 @@ func _build_left(ui: Node) -> void:
 		kbtn.add_theme_font_size_override("font_size", 9)
 		kbtn.pressed.connect(func(): _floor_kind_paint = kid)
 		vb.add_child(kbtn)
+
+	# ── Floor height (Floor Height tool): raised platforms, sunken areas, steps.
+	_sect(vb, "FLOOR HEIGHT")
+	var lh := Label.new()
+	lh.text = "Height painted, in cm (+ raised, - sunken). Steps: a band at least 30 cm deep and 40 cm wide where two heights meet, painted at a height between them."
+	lh.autowrap_mode = TextServer.AUTOWRAP_WORD
+	lh.add_theme_font_size_override("font_size", 8)
+	lh.add_theme_color_override("font_color", GameTheme.C_MUTED)
+	vb.add_child(lh)
+	var lvl_spin := SpinBox.new()
+	lvl_spin.min_value = -60
+	lvl_spin.max_value = 120
+	lvl_spin.step = 5
+	lvl_spin.value = _level_paint * 10
+	lvl_spin.suffix = "cm"
+	lvl_spin.value_changed.connect(func(v: float): _level_paint = int(round(v / 10.0)))
+	vb.add_child(lvl_spin)
+	var step_cb := CheckBox.new()
+	step_cb.text = "Paint steps"
+	step_cb.button_pressed = _step_paint
+	step_cb.add_theme_font_size_override("font_size", 9)
+	step_cb.toggled.connect(func(on: bool): _step_paint = on)
+	vb.add_child(step_cb)
 
 	_sect(vb, "ACTIONS")
 	var clear_btn := Button.new()
@@ -851,69 +880,143 @@ func _open_external_zone_modal() -> void:
 func _open_sloped_ceiling_modal() -> void:
 	var win := Window.new()
 	win.title = "Sloped Ceiling"
-	win.size  = Vector2i(300, 320)
+	win.size  = Vector2i(330, 560)
 	win.wrap_controls = true
 	add_child(win)
 
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	vb.custom_minimum_size = Vector2(280, 0)
+	vb.add_theme_constant_override("separation", 5)
+	vb.custom_minimum_size = Vector2(310, 0)
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	win.add_child(vb)
+	var reopen := func():
+		win.queue_free()
+		_open_sloped_ceiling_modal.call_deferred()
 
 	var hint := Label.new()
-	hint.text = "Ceiling height ramps linearly from Min (at Low Start) to Max (at High End), along the chosen axis. Tall furniture is blocked wherever the ceiling drops below 2.0m."
+	hint.text = "Each ramp lowers the ceiling from Min (at Low Start) to Max (at High End) along its axis; where ramps overlap the lowest one wins (two make a gable, one limited to part of the room a dormer). Low Start may be past High End for a ramp that falls the other way. A piece fits where its floor, what it stands on and its own height fit under the ceiling."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.add_theme_font_size_override("font_size", 9)
 	hint.add_theme_color_override("font_color", GameTheme.C_MUTED)
 	vb.add_child(hint)
 
-	var en_cb := CheckBox.new()
-	en_cb.text = "Enabled"
-	en_cb.button_pressed = _sc_enabled
-	en_cb.add_theme_font_size_override("font_size", 11)
-	vb.add_child(en_cb)
+	var s_flat := _float_spinbox(vb, "Flat ceiling (m)", _ceiling_h, 1.8, 3.2, 0.1)
+	s_flat.value_changed.connect(func(v: float):
+		_ceiling_h = v
+		_apply_ceiling_preview())
 
-	var axis_row := HBoxContainer.new()
-	axis_row.add_theme_constant_override("separation", 4)
-	vb.add_child(axis_row)
-	var axis_bg := ButtonGroup.new()
-	for adef: Array in [["x", "Slopes along X"], ["y", "Slopes along Y"]]:
-		var aid  := adef[0] as String
-		var albl := adef[1] as String
-		var abtn := Button.new()
-		abtn.text = albl
-		abtn.toggle_mode  = true
-		abtn.button_group = axis_bg
-		abtn.button_pressed = (aid == _sc_axis)
-		abtn.add_theme_font_size_override("font_size", 9)
-		abtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		abtn.pressed.connect(func(): _sc_axis = aid)
-		axis_row.add_child(abtn)
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 3)
+	vb.add_child(bar)
+	var pick := OptionButton.new()
+	pick.add_theme_font_size_override("font_size", 10)
+	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for i in _ceiling_ramps.size():
+		pick.add_item("Ramp %d" % (i + 1))
+	_ramp_sel = clampi(_ramp_sel, 0, maxi(_ceiling_ramps.size() - 1, 0))
+	if not _ceiling_ramps.is_empty():
+		pick.select(_ramp_sel)
+	pick.item_selected.connect(func(i: int):
+		_ramp_sel = i
+		reopen.call())
+	bar.add_child(pick)
+	for bdef: Array in [["Add", "add"], ["Remove", "remove"]]:
+		var b := Button.new()
+		b.text = bdef[0] as String
+		b.add_theme_font_size_override("font_size", 9)
+		var act := bdef[1] as String
+		b.pressed.connect(func():
+			if act == "add":
+				var rb := _floor.get_room_bounds() if is_instance_valid(_floor) else Rect2i(0, 0, 20, 20)
+				_ceiling_ramps.append({"axis": "x", "low_start": rb.position.x, "high_end": rb.end.x - 1,
+					"min_h": 1.6, "max_h": _ceiling_h})
+				_ramp_sel = _ceiling_ramps.size() - 1
+			elif not _ceiling_ramps.is_empty():
+				_ceiling_ramps.remove_at(_ramp_sel)
+			_apply_ceiling_preview()
+			reopen.call())
+		bar.add_child(b)
 
-	var s_low  := _spinbox(vb, "Low Start (tile)",  _sc_low_start, 0, 300, 1)
-	var s_high := _spinbox(vb, "High End (tile)",   _sc_high_end,  0, 300, 1)
-	s_low.value_changed.connect(func(v: float):  _sc_low_start = int(v))
-	s_high.value_changed.connect(func(v: float): _sc_high_end  = int(v))
+	var presets := HBoxContainer.new()
+	presets.add_theme_constant_override("separation", 3)
+	vb.add_child(presets)
+	for pdef: Array in [["x", "Gable along X"], ["y", "Gable along Y"]]:
+		var b := Button.new()
+		b.text = pdef[1] as String
+		b.add_theme_font_size_override("font_size", 9)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var ax := pdef[0] as String
+		b.pressed.connect(func():
+			var rb := _floor.get_room_bounds() if is_instance_valid(_floor) else Rect2i(0, 0, 20, 20)
+			var a0 := rb.position.x if ax == "x" else rb.position.y
+			var a1 := (rb.end.x if ax == "x" else rb.end.y) - 1
+			var mid := (a0 + a1) / 2
+			_ceiling_ramps = [
+				{"axis": ax, "low_start": a0, "high_end": mid, "min_h": 1.2, "max_h": 2.6},
+				{"axis": ax, "low_start": a1, "high_end": mid + 1, "min_h": 1.2, "max_h": 2.6},
+			]
+			_ramp_sel = 0
+			_apply_ceiling_preview()
+			reopen.call())
+		presets.add_child(b)
 
-	var s_min := _float_spinbox(vb, "Min Height (m)", _sc_min_h, 1.0, 3.0, 0.1)
-	var s_max := _float_spinbox(vb, "Max Height (m)", _sc_max_h, 1.0, 3.0, 0.1)
-	s_min.value_changed.connect(func(v: float): _sc_min_h = v)
-	s_max.value_changed.connect(func(v: float): _sc_max_h = v)
-
-	en_cb.toggled.connect(func(on: bool):
-		_sc_enabled = on
-		if is_instance_valid(_floor):
-			_floor.sloped_ceiling = _current_sloped_ceiling_dict()
-			_floor.grid_draw.queue_redraw())
+	if not _ceiling_ramps.is_empty():
+		var r := _ceiling_ramps[_ramp_sel] as Dictionary
+		var axis_row := HBoxContainer.new()
+		axis_row.add_theme_constant_override("separation", 4)
+		vb.add_child(axis_row)
+		var axis_bg := ButtonGroup.new()
+		for adef: Array in [["x", "Slopes along X"], ["y", "Slopes along Y"]]:
+			var aid  := adef[0] as String
+			var abtn := Button.new()
+			abtn.text = adef[1] as String
+			abtn.toggle_mode  = true
+			abtn.button_group = axis_bg
+			abtn.button_pressed = (aid == (r.get("axis", "x") as String))
+			abtn.add_theme_font_size_override("font_size", 9)
+			abtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			abtn.pressed.connect(func():
+				r["axis"] = aid
+				_apply_ceiling_preview())
+			axis_row.add_child(abtn)
+		var set_key := func(key: String, v: Variant):
+			r[key] = v
+			_apply_ceiling_preview()
+		_spinbox(vb, "Low Start (tile)", r.get("low_start", 0) as int, 0, 300, 1).value_changed.connect(
+			func(v: float): set_key.call("low_start", int(v)))
+		_spinbox(vb, "High End (tile)", r.get("high_end", 10) as int, 0, 300, 1).value_changed.connect(
+			func(v: float): set_key.call("high_end", int(v)))
+		_float_spinbox(vb, "Min Height (m)", r.get("min_h", 1.8) as float, 0.6, 3.2, 0.1).value_changed.connect(
+			func(v: float): set_key.call("min_h", v))
+		_float_spinbox(vb, "Max Height (m)", r.get("max_h", 2.4) as float, 0.6, 3.2, 0.1).value_changed.connect(
+			func(v: float): set_key.call("max_h", v))
+		var part_cb := CheckBox.new()
+		part_cb.text = "Only over part of the room (dormer)"
+		part_cb.button_pressed = r.has("rect")
+		part_cb.add_theme_font_size_override("font_size", 10)
+		part_cb.toggled.connect(func(on: bool):
+			if on:
+				var rb := _floor.get_room_bounds() if is_instance_valid(_floor) else Rect2i(0, 0, 20, 20)
+				r["rect"] = [rb.position.x, rb.position.y, rb.size.x, rb.size.y / 2]
+			else:
+				r.erase("rect")
+			_apply_ceiling_preview()
+			reopen.call())
+		vb.add_child(part_cb)
+		if r.has("rect"):
+			var rc := r["rect"] as Array
+			for i in 4:
+				var idx := i
+				_spinbox(vb, ["Rect X", "Rect Y", "Rect W", "Rect H"][i] as String, rc[i] as int, 0, 300, 1).value_changed.connect(
+					func(v: float):
+						rc[idx] = int(v)
+						_apply_ceiling_preview())
 
 	var close_btn := Button.new()
 	close_btn.text = "Close"
 	close_btn.add_theme_font_size_override("font_size", 11)
 	close_btn.pressed.connect(func():
-		if is_instance_valid(_floor):
-			_floor.sloped_ceiling = _current_sloped_ceiling_dict()
-			_floor.grid_draw.queue_redraw()
+		_apply_ceiling_preview()
 		win.queue_free())
 	vb.add_child(close_btn)
 
@@ -921,13 +1024,55 @@ func _open_sloped_ceiling_modal() -> void:
 	win.popup_centered()
 
 
-func _current_sloped_ceiling_dict() -> Dictionary:
-	if not _sc_enabled:
-		return {}
-	return {
-		"axis": _sc_axis, "low_start": _sc_low_start, "high_end": _sc_high_end,
-		"min_h": _sc_min_h, "max_h": _sc_max_h
-	}
+func _apply_ceiling_preview() -> void:
+	if is_instance_valid(_floor):
+		_floor.ceiling_h = _ceiling_h
+		_floor.ceiling_ramps = _ceiling_ramps.duplicate(true)
+		_floor.grid_draw.queue_redraw()
+
+
+func _level_tiles_data() -> Array:
+	var out: Array = []
+	for t in _floor_level:
+		out.append([(t as Vector2i).x, (t as Vector2i).y, _floor_level[t]])
+	return out
+
+
+func _step_tiles_data() -> Array:
+	var out: Array = []
+	for t in _step_mask:
+		out.append([(t as Vector2i).x, (t as Vector2i).y])
+	return out
+
+
+# Floor Height tool: stamps the brush with _level_paint (and as steps when
+# "Paint steps" is on); erasing puts the tiles back at level 0, no steps.
+func _paint_level_tile(tile: Vector2i, erase: bool) -> void:
+	if _active_floor_type() != "floor":
+		_set_status("Floor heights can only be painted on floor layers")
+		return
+	var half := _floor_brush / 2
+	for dy in range(_floor_brush):
+		for dx in range(_floor_brush):
+			var t := Vector2i(tile.x + dx - half, tile.y + dy - half)
+			if t not in _floor_mask and not (_floor_mask.is_empty() and is_instance_valid(_floor) and _floor.is_floor_tile(t)):
+				continue
+			if erase or (_level_paint == 0 and not _step_paint):
+				_floor_level.erase(t)
+				_step_mask.erase(t)
+			else:
+				if _level_paint == 0:
+					_floor_level.erase(t)
+				else:
+					_floor_level[t] = _level_paint
+				if _step_paint:
+					_step_mask[t] = true
+				else:
+					_step_mask.erase(t)
+	if is_instance_valid(_floor):
+		_floor.floor_level = _floor_level.duplicate()
+		_floor.step_mask = _step_mask.duplicate()
+		_floor.grid_draw.queue_redraw()
 
 
 func _float_spinbox(p: Control, label: String, val: float, mn: float, mx: float, step: float) -> SpinBox:
@@ -1183,7 +1328,7 @@ func _make_efloor(id: String, label: String, ftype: String) -> Dictionary:
 		"id": id, "label": label, "type": ftype,
 		"floor_tiles": [], "floor_kinds": [], "mezzanine_tiles": [], "stair_tiles": [],
 		"stairs": [], "rails": [], "reveal_zones": [], "segments": [], "columns": [],
-		"sloped_ceiling": {}
+		"ceiling_ramps": []
 	}
 
 func _make_floor_trio(fid: String, lbl: String) -> Array:
@@ -1222,7 +1367,14 @@ func _snapshot_to_efloor(fd: Dictionary) -> void:
 	fd["floor_tiles"]     = ft
 	fd["floor_kinds"]     = fk
 	fd["mezzanine_tiles"] = mt
-	fd["sloped_ceiling"]  = _current_sloped_ceiling_dict()
+	fd.erase("sloped_ceiling")   # older single-ramp key; ceiling_ramps replaces it
+	fd["ceiling_ramps"]   = _ceiling_ramps.duplicate(true)
+	if absf(_ceiling_h - Floor.CEILING_H_M) > 0.001:
+		fd["ceiling_h"] = _ceiling_h
+	else:
+		fd.erase("ceiling_h")
+	fd["floor_levels"]    = _level_tiles_data()
+	fd["step_tiles"]      = _step_tiles_data()
 	fd["stair_tiles"]     = st   # auto-derived for backward compat; source of truth is "stairs"
 	fd["stairs"]          = _stairs.duplicate(true)
 	fd["rails"]           = _rails.duplicate(true)
@@ -1278,13 +1430,19 @@ func _load_active_efloor() -> void:
 	for t in fd.get("floor_kinds", []):
 		_floor_kind[Vector2i(t[0] as int, t[1] as int)] = t[2] as String
 
+	_ceiling_h = fd.get("ceiling_h", Floor.CEILING_H_M) as float
+	_ceiling_ramps = (fd.get("ceiling_ramps", []) as Array).duplicate(true)
 	var _scd := fd.get("sloped_ceiling", {}) as Dictionary
-	_sc_enabled   = not _scd.is_empty()
-	_sc_axis      = _scd.get("axis", "x") as String
-	_sc_low_start = _scd.get("low_start", 0) as int
-	_sc_high_end  = _scd.get("high_end", 10) as int
-	_sc_min_h     = _scd.get("min_h", 1.8) as float
-	_sc_max_h     = _scd.get("max_h", 2.4) as float
+	if _ceiling_ramps.is_empty() and not _scd.is_empty():
+		_ceiling_ramps = [_scd.duplicate(true)]
+	_ramp_sel = 0
+	_floor_level.clear()
+	for t in fd.get("floor_levels", []):
+		if (t[2] as int) != 0:
+			_floor_level[Vector2i(t[0] as int, t[1] as int)] = t[2] as int
+	_step_mask.clear()
+	for t in fd.get("step_tiles", []):
+		_step_mask[Vector2i(t[0] as int, t[1] as int)] = true
 
 	_mezzanine_mask.clear()
 	for t in fd.get("mezzanine_tiles", []):
@@ -1633,7 +1791,10 @@ func _rebuild_floor() -> void:
 		"grid_w": _gw, "grid_h": _gh,
 		"floor_tiles":     floor_tiles,
 		"floor_kinds":     floor_kinds,
-		"sloped_ceiling":  _current_sloped_ceiling_dict(),
+		"ceiling_h":       _ceiling_h,
+		"ceiling_ramps":   _ceiling_ramps.duplicate(true),
+		"floor_levels":    _level_tiles_data(),
+		"step_tiles":      _step_tiles_data(),
 		"mezzanine_tiles": mezz_tiles,
 		"stair_tiles":     stair_tiles,
 		"stairs":          _stairs.duplicate(true),
@@ -2189,7 +2350,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if not mb.pressed:
-			var has_active := _floor_painting or _mezz_painting or _stair_painting or _window_painting or _pdrawing or _door_dragging or _wv_dragging
+			var has_active := _floor_painting or _mezz_painting or _level_painting or _stair_painting or _window_painting or _pdrawing or _door_dragging or _wv_dragging
 			if has_active:
 				if mb.button_index == MOUSE_BUTTON_LEFT:
 					_lmb_up()
@@ -2226,6 +2387,9 @@ func _input(event: InputEvent) -> void:
 			elif _tool == Tool.MEZZANINE:
 				_mezz_painting = true; _mezz_erase = true
 				_paint_mezz_tile(tile, true)
+			elif _tool == Tool.LEVEL:
+				_level_painting = true; _level_erase = true
+				_paint_level_tile(tile, true)
 			elif _tool == Tool.STAIRS:
 				_remove_stair_at(tile)
 			elif _tool == Tool.WINDOW:
@@ -2258,6 +2422,8 @@ func _input(event: InputEvent) -> void:
 			_paint_floor_tile(tile, _floor_erase)
 		elif _mezz_painting:
 			_paint_mezz_tile(tile, _mezz_erase)
+		elif _level_painting:
+			_paint_level_tile(tile, _level_erase)
 		elif _window_painting:
 			var hit := _detect_segment_at(fl)
 			if not hit.is_empty():
@@ -2269,7 +2435,7 @@ func _input(event: InputEvent) -> void:
 			var is_rail := _tool == Tool.RAIL
 			var is_reveal := _tool == Tool.REVEAL
 			var snapped_tile := _snap_tile(tile)
-			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE
+			var is_floor_like := _tool == Tool.FLOOR or _tool == Tool.MEZZANINE or _tool == Tool.LEVEL
 			_ov.set("floor_hover",  tile if is_floor_like else Vector2i(-1, -1))
 			_ov.set("mezz_hover",   _tool == Tool.MEZZANINE)
 			_ov.set("stair_hover",  _tool == Tool.STAIRS)
@@ -2353,6 +2519,9 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 		Tool.MEZZANINE:
 			_mezz_painting = true; _mezz_erase = false
 			_paint_mezz_tile(tile, false)
+		Tool.LEVEL:
+			_level_painting = true; _level_erase = false
+			_paint_level_tile(tile, false)
 		Tool.STAIRS:
 			_place_stair(tile)
 		Tool.PRIMARY_WALL, Tool.SECONDARY_WALL, Tool.GLASS_WALL, Tool.RAIL, Tool.REVEAL:
@@ -2415,9 +2584,10 @@ func _lmb_down(fl: Vector2, tile: Vector2i) -> void:
 
 
 func _rmb_up() -> void:
-	var needs_rebuild := _floor_painting or _mezz_painting or _stair_painting or _window_painting
+	var needs_rebuild := _floor_painting or _mezz_painting or _level_painting or _stair_painting or _window_painting
 	_floor_painting  = false
 	_mezz_painting   = false
+	_level_painting  = false
 	_stair_painting  = false
 	_window_painting = false
 	if needs_rebuild:
@@ -2431,6 +2601,10 @@ func _lmb_up() -> void:
 		return
 	if _mezz_painting:
 		_mezz_painting = false
+		_rebuild_floor()
+		return
+	if _level_painting:
+		_level_painting = false
 		_rebuild_floor()
 		return
 	if _stair_painting:
@@ -2539,6 +2713,7 @@ func _preview_wall(tile: Vector2i) -> void:
 func _cancel_wall_drawing() -> void:
 	_floor_painting  = false
 	_mezz_painting   = false
+	_level_painting  = false
 	_stair_painting  = false
 	_window_painting = false
 	if _door_dragging:
@@ -2588,6 +2763,8 @@ func _paint_floor_tile(tile: Vector2i, erase: bool) -> void:
 				if t in _floor_mask:
 					_floor_mask.erase(t)
 					_floor_kind.erase(t)
+					_floor_level.erase(t)
+					_step_mask.erase(t)
 					if is_instance_valid(_floor):
 						_floor.floor_mask.erase(t)
 						_floor.floor_kind.erase(t)
