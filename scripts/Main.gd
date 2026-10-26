@@ -56,6 +56,7 @@ var SCREEN_W := 1280.0   # full width of the play screen, same as RIGHT_X
 var _view_mode: int = ViewMode.TOPDOWN
 var _mode3d_view:    Control = null   # persistent 3D view for VIEW3D mode (separate from the "reveal" overlay)
 var _mode3d_sell_floor: Floor = null  # which Floor _mode3d_view's sell_requested/wall_sell_requested are currently bound to — see _ensure_mode3d_view
+var _walk_view_index := 0           # the 3D view's place among ui_layer's children before Walk Through raised it
 var _watch_done_btn: Button  = null   # floating "back to results" button shown during free-camera Watch Again
 var _post_win_view: bool = false      # true during Watch Again — level is already rented out, so editing/shortcuts are locked out; only the camera works
 var _last_wall_click_by_floor: Dictionary = {}   # floor_id -> {edge, span_lo, span_hi} — for the "W" reopen-last-wall shortcut
@@ -257,7 +258,7 @@ func _fit_to_window() -> void:
 		_breadcrumb_lbl.offset_right = RIGHT_X
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.offset_right = RIGHT_X
-		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+		_mode3d_view.offset_bottom = BOT_Y if _mode3d_view.first_person else _floor_pane_bottom_y()
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and _view_mode == ViewMode.TOPDOWN:
 		_fit_floor(fl, true)
@@ -318,6 +319,8 @@ func _ready() -> void:
 		result_screen.retry_requested.connect(_on_retry)
 	if not result_screen.watch_again_requested.is_connected(_on_watch_again_reveal):
 		result_screen.watch_again_requested.connect(_on_watch_again_reveal)
+	if not result_screen.walk_through_requested.is_connected(_on_walk_through):
+		result_screen.walk_through_requested.connect(_on_walk_through)
 	if not result_screen.advance_level_requested.is_connected(_on_advance_level):
 		result_screen.advance_level_requested.connect(_on_advance_level)
 	divider.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -4834,6 +4837,37 @@ func _on_watch_again_reveal() -> void:
 		_furniture_menu_btn.visible = false
 	_refresh_undo_redo_buttons()
 	_show_watch_done_button()
+
+
+# "Walk Through" on the Results screen: the same read-only look around as
+# View Apartment, but at eye height inside the flat (Room3DView's first-person
+# mode), over the whole window with the HUD out of the way. Esc goes straight
+# back to the results.
+func _on_walk_through() -> void:
+	_on_watch_again_reveal()
+	if not is_instance_valid(_mode3d_view) or not _mode3d_view.enter_first_person():
+		return   # nowhere to stand: stays the ordinary View Apartment
+	if is_instance_valid(_watch_done_btn):
+		_watch_done_btn.visible = false
+	_mode3d_view.offset_left   = 0.0
+	_mode3d_view.offset_top    = 0.0
+	_mode3d_view.offset_right  = RIGHT_X
+	_mode3d_view.offset_bottom = BOT_Y
+	_walk_view_index = _mode3d_view.get_index()
+	ui_layer.move_child(_mode3d_view, ui_layer.get_child_count() - 1)
+	if not _mode3d_view.first_person_exited.is_connected(_on_walk_through_exited):
+		_mode3d_view.first_person_exited.connect(_on_walk_through_exited)
+
+
+func _on_walk_through_exited() -> void:
+	if is_instance_valid(_mode3d_view):
+		_mode3d_view.offset_left   = LEFT_X
+		_mode3d_view.offset_top    = TOP_Y
+		_mode3d_view.offset_right  = RIGHT_X
+		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+		# Back under the HUD it was raised over.
+		ui_layer.move_child(_mode3d_view, mini(_walk_view_index, ui_layer.get_child_count() - 1))
+	_close_watch_again()
 
 
 func _show_watch_done_button() -> void:

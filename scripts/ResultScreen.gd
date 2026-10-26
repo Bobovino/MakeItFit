@@ -18,6 +18,7 @@ class_name ResultScreen
 signal next_level_requested     # back to the projects (also "Finish" at the goal)
 signal retry_requested          # start the level over
 signal watch_again_requested    # close this and look around the finished apartment
+signal walk_through_requested   # close this and walk around the finished apartment in first person
 signal advance_level_requested  # load the next owned level directly
 
 const STAMP_INK := GameTheme.NAVY   # the Housing Office's stamp
@@ -115,6 +116,10 @@ func show_success(info: Dictionary) -> void:
 		next_level_requested.emit())
 	back.tooltip_text = tr("Back to Projects")
 	_button(bar, tr("View Apartment"), "", func(): watch_again_requested.emit())
+	# Walking needs a keyboard and mouse for now; touch controls come later.
+	if not TouchControls.active:
+		var walk := _button(bar, tr("Walk Through"), "", func(): walk_through_requested.emit())
+		walk.tooltip_text = tr("Walk around the finished flat at eye height")
 	_button(bar, tr("Play Again"), "", func():
 		MenuKit.dialog(self, tr("Play Again"), tr("Start this level over from the beginning? The layout you rented out stays saved."),
 			tr("Start over"), func():
