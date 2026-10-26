@@ -58,21 +58,23 @@ func _build() -> void:
 	_entry(vb, tr("Settings"), "", func(): _over(SettingsMenu.open(self)))
 	_entry(vb, tr("How to Play"), "", func(): _over(HowToPlay.open(self)))
 	_gap(vb)
-	# On the map: back to the title screen (Continue, Credits and the rest).
+	# On the map: back to the title screen, which has Credits and Quit; the
+	# map's menu doesn't repeat them.
 	if not in_level:
 		_entry(vb, tr("Title screen"), "", func():
 			_close()
 			Transition.change_scene("res://scenes/MainMenu.tscn"))
-	if in_level:
-		_entry(vb, tr("Restart Level"), "", func():
-			MenuKit.dialog(self, tr("Restart Level"), tr("Discard this layout and start over?"),
-				tr("Yes, restart"), func():
-					_close()
-					_host.call("_restart_level")))
-		if _host.has_method("_go_back"):
-			_entry(vb, tr("Back to Projects"), "", func():
+		_first.grab_focus.call_deferred()
+		return
+	_entry(vb, tr("Restart Level"), "", func():
+		MenuKit.dialog(self, tr("Restart Level"), tr("Discard this layout and start over?"),
+			tr("Yes, restart"), func():
 				_close()
-				_host.call("_go_back"))
+				_host.call("_restart_level")))
+	if _host.has_method("_go_back"):
+		_entry(vb, tr("Back to Projects"), "", func():
+			_close()
+			_host.call("_go_back"))
 	_entry(vb, tr("Quit Game"), "danger", func():
 		MenuKit.dialog(self, tr("Quit Game"), tr("Quit for real?"), tr("Yes, quit"),
 			func(): get_tree().quit()))
