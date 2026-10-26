@@ -50,6 +50,12 @@ def gd_unescape(s):
         c = s[i]
         if c == "\\" and i + 1 < len(s):
             n = s[i + 1]
+            # \uXXXX and \UXXXXXX: icon glyphs, written as escapes in the scripts.
+            width = {"u": 4, "U": 6}.get(n, 0)
+            if width and re.fullmatch(r"[0-9a-fA-F]{%d}" % width, s[i + 2:i + 2 + width]):
+                out.append(chr(int(s[i + 2:i + 2 + width], 16)))
+                i += 2 + width
+                continue
             out.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\", "'": "'"}.get(n, "\\" + n))
             i += 2
         else:

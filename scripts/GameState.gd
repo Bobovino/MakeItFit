@@ -289,6 +289,7 @@ func load_game() -> void:
 	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
 	# Version 1 saves had no progress; nothing else changed shape.
 	progress = (data.get("progress", {}) as Dictionary).duplicate(true)
+	_forget_missing_levels()
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
 		if data.has("sfx_volume"):
@@ -361,12 +362,19 @@ func get_stars(level_id: String) -> int:
 
 
 func save_level_layout(level_id: String, snapshot: Dictionary) -> void:
+	snapshot["level_fp"] = level_fingerprint(level_id)
 	level_layouts[level_id] = snapshot
 	save_game()
 
 
+# A won layout is only reopened while the level is still the one it was
+# won in; after an update redrew it, the level starts fresh. (Layouts saved
+# before fingerprints existed are trusted.)
 func has_level_layout(level_id: String) -> bool:
-	return level_id in level_layouts
+	if not level_id in level_layouts:
+		return false
+	var fp := (level_layouts[level_id] as Dictionary).get("level_fp", "") as String
+	return fp == "" or fp == level_fingerprint(level_id)
 
 
 func get_level_layout(level_id: String) -> Dictionary:
@@ -390,3 +398,44 @@ func dev_unlock_all(all_ids: Array) -> void:
 
 func is_retired() -> bool:
 	return portfolio_rent >= RETIRE_GOAL
+
+
+# ── Surviving updates ─────────────────────────────────────────────────────────
+# An update can redraw a level, or drop one. What the save holds about a
+# level that is gone is forgotten on load (stars earned stay earned), and a
+# saved layout carries a fingerprint of the level it was made in, so a
+# redrawn level can tell (LevelProgress.apply, has_level_layout).
+
+var _levels_raw: Dictionary = {}   # level id -> its entry in levels.json, as authored
+
+func _level_entry(level_id: String) -> Dictionary:
+	if _levels_raw.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/levels.json"))
+		if parsed is Dictionary:
+			for lv in (parsed as Dictionary).get("levels", []) as Array:
+				_levels_raw[(lv as Dictionary).get("id", "")] = lv
+	return _levels_raw.get(level_id, {}) as Dictionary
+
+
+func level_exists(level_id: String) -> bool:
+	return not _level_entry(level_id).is_empty()
+
+
+# Changes whenever the level's authored data does; "" for a level that
+# isn't in levels.json (one made in the editor).
+func level_fingerprint(level_id: String) -> String:
+	var entry := _level_entry(level_id)
+	if entry.is_empty():
+		return ""
+	return JSON.stringify(entry, "", true).md5_text()
+
+
+func _forget_missing_levels() -> void:
+	for dict in [progress, level_layouts]:
+		for lid in (dict as Dictionary).keys():
+			if not level_exists(lid):
+				(dict as Dictionary).erase(lid)
+	if last_active_level_id != "" and not level_exists(last_active_level_id):
+		last_active_level_id = ""
+	if not level_exists(pending_level_id):
+		pending_level_id = "beach_house"

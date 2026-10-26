@@ -588,14 +588,15 @@ func _build_ui() -> void:
 	_fax_key(settings_btn, FaxStyle.KEY_GREY, GameTheme.CHALK)
 	settings_btn.pressed.connect(func(): SettingsMenu.open(self))
 	keys.add_child(settings_btn)
+	# Back to the title screen, where Continue, Credits and Quit are.
 	var quit_btn := Button.new()
-	quit_btn.text = tr("\ueb0d Quit")
-	quit_btn.tooltip_text = tr("Quit to desktop")
+	quit_btn.text = tr("\ueb0d Menu")
+	quit_btn.tooltip_text = tr("Back to the title screen")
 	quit_btn.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
 	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quit_btn.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	_fax_key(quit_btn, FaxStyle.KEY_GREY, GameTheme.CHALK_SOFT)
-	quit_btn.pressed.connect(func(): get_tree().quit())
+	quit_btn.pressed.connect(func(): Transition.change_scene("res://scenes/MainMenu.tscn"))
 	keys.add_child(quit_btn)
 
 

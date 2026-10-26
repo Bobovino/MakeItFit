@@ -28,6 +28,31 @@ const SOUNDS := {
 }
 const AMBIENT_PATH := "res://assets/audio/ambient_rain.wav"
 
+# Each sound's gain, so they sit at a common loudness: the files came from
+# different packs at very different levels (measured as the loudest 50 ms
+# of each). A cue the player hears constantly (click, an error when a piece
+# won't fit) stays below the rare, rewarding ones (success, a happy tenant).
+const GAIN_DB := {
+	"click": 3.0,           # -23.5 dB as recorded, nearly lost under the rest
+	"place": -1.0,
+	"rotate": -2.0,
+	"error": -4.5,          # clipped as recorded, and the loudest thing heard often
+	"sell": 7.0,            # -23 dB as recorded
+	"success": -5.5,        # still the loudest, but no longer 7 dB over everything
+	"demolish": -1.0,
+	"rail_attach": 10.0,    # -30 dB as recorded
+	"rail_detach": -4.0,
+	"fold": -3.0,
+	"whoosh": 1.0,
+	"fax": -3.0,
+	"grumble": -2.5,
+	"happy": -1.0,
+	"huh": -2.5,
+}
+# Sounds heard over and over get a slightly different pitch each time, so a
+# run of them doesn't sound mechanical.
+const PITCH_JITTER := {"click": 0.05, "place": 0.06, "rotate": 0.05, "fold": 0.04, "error": 0.03}
+
 const SFX_BUS     := "SFX"
 const MUSIC_BUS   := "Music"
 const POOL_SIZE   := 6
@@ -36,6 +61,7 @@ var _pool:        Array[AudioStreamPlayer] = []
 var _pool_next:   int = 0
 var _ambient:     AudioStreamPlayer
 var _streams:     Dictionary = {}   # key -> preloaded AudioStream, cached on first use
+var _rng := RandomNumberGenerator.new()   # its own, so pitch jitter never shifts the game's random sequence
 
 var sfx_volume:   float = 1.0   # linear 0..1, persisted via GameState
 var music_volume: float = 0.7
@@ -81,6 +107,9 @@ func play(key: String) -> void:
 	var player := _pool[_pool_next]
 	_pool_next = (_pool_next + 1) % POOL_SIZE
 	player.stream = _streams[key]
+	player.volume_db = GAIN_DB.get(key, 0.0) as float
+	var jitter := PITCH_JITTER.get(key, 0.0) as float
+	player.pitch_scale = 1.0 + _rng.randf_range(-jitter, jitter)
 	player.play()
 
 

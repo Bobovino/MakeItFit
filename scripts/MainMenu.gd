@@ -6,11 +6,16 @@ extends Control
 
 var _title_box: Control = null
 var _buttons: VBoxContainer = null
+var _diorama: TitleDiorama = null
 
 
 func _ready() -> void:
 	theme = GameTheme.make()
 	add_child(DeskBackdrop.new())
+	# A little furnished flat in the middle of the board, behind the menu.
+	_diorama = TitleDiorama.new()
+	_diorama.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_diorama)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -26,7 +31,7 @@ func _ready() -> void:
 
 	# Left: the title, white letters standing on their navy extrusion.
 	_title_box = VBoxContainer.new()
-	_title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title_box.custom_minimum_size.x = 380
 	_title_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_title_box.add_theme_constant_override("separation", 6)
 	row.add_child(_title_box)
@@ -50,11 +55,17 @@ func _ready() -> void:
 	note.text = tr("Every request arrives by fax.") + " " + \
 		tr("Make every tenant fit in their apartment, one piece of furniture at a time.")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.custom_minimum_size.x = 420
+	note.custom_minimum_size.x = 360
 	note.add_theme_font_override("font", GameTheme.font("body"))
 	note.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 	note.add_theme_color_override("font_color", GameTheme.CHALK_SOFT)
 	_title_box.add_child(note)
+
+	# The middle stays open for the flat (_diorama, behind).
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(gap)
 
 	# Right: what to do.
 	_buttons = VBoxContainer.new()
@@ -63,23 +74,28 @@ func _ready() -> void:
 	_buttons.add_theme_constant_override("separation", 16)
 	row.add_child(_buttons)
 
-	var start_btn := MenuKit.menu_button(tr("Start Game"), "primary")
-	start_btn.pressed.connect(_on_start)
-	_buttons.add_child(start_btn)
-
-	# Only shown once there's actually somewhere to resume — a fresh save has
-	# no last_active_level_id yet, and it's cleared to a level the player
+	# Continue only once there's actually somewhere to resume — a fresh save
+	# has no last_active_level_id yet, and it's cleared to a level the player
 	# still owns (own_level/buy never removes entries, so no un-owning check
-	# needed beyond is_owned itself matching CityMap's normal gating).
-	if GameState.last_active_level_id != "" and GameState.is_owned(GameState.last_active_level_id):
-		var continue_btn := MenuKit.menu_button(tr("Continue"))
+	# needed beyond is_owned itself matching CityMap's normal gating). When
+	# it's there it's the main button, and the other one opens the map.
+	var can_continue := GameState.last_active_level_id != "" and GameState.is_owned(GameState.last_active_level_id)
+	var first: Button = null
+	if can_continue:
+		var continue_btn := MenuKit.menu_button(tr("Continue"), "primary")
 		continue_btn.pressed.connect(_on_continue)
 		_buttons.add_child(continue_btn)
+		first = continue_btn
+	var start_btn := MenuKit.menu_button(tr("Projects") if can_continue else tr("Start Game"), "" if can_continue else "primary")
+	start_btn.pressed.connect(_on_start)
+	_buttons.add_child(start_btn)
+	if first == null:
+		first = start_btn
 
 	# Level Editor is intentionally not exposed here — it's reached only via
 	# the existing dev-only Ctrl+Shift+Alt+E shortcut in CityMap.gd, same as
 	# debug mode; players shouldn't see a menu path to it.
-	var options_btn := MenuKit.menu_button(tr("Options"))
+	var options_btn := MenuKit.menu_button(tr("Settings"))
 	options_btn.pressed.connect(func(): SettingsMenu.open(self))
 	_buttons.add_child(options_btn)
 
@@ -101,8 +117,9 @@ func _ready() -> void:
 	_buttons.add_child(quit_btn)
 
 	call_deferred("_play_entrance")
-	# Start is selected from the outset, so Enter starts and ↑ ↓ work at once.
-	start_btn.grab_focus.call_deferred()
+	# The main button is selected from the outset, so Enter starts and ↑ ↓
+	# work at once.
+	first.grab_focus.call_deferred()
 
 
 # The title and the cards slide in from either side when the menu opens.
