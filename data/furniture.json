@@ -3467,6 +3467,95 @@
       "needs_daylight": true,
       "model": "res://assets/models/furniture/styletest/bird_cage.glb",
       "mobility_tier": "green"
+    },
+    {
+      "id": "sleeping_pod",
+      "name": "Sleeping Pod",
+      "placement": "floor",
+      "size": {
+        "w": 20,
+        "h": 11
+      },
+      "wall_h": 20,
+      "floor_depth": 11,
+      "height_category": "tall",
+      "functions": [
+        "sleep",
+        "storage"
+      ],
+      "buy_price": 980,
+      "sell_price": 420,
+      "color": "7d93ad",
+      "zone_divider": true,
+      "needs_quiet": true,
+      "front": "long",
+      "model": "res://assets/models/furniture/makeitfit/rental_capsule.glb"
+    },
+    {
+      "id": "wall_gym",
+      "name": "Fold-Away Wall Gym",
+      "placement": "floor",
+      "size": {
+        "w": 12,
+        "h": 3
+      },
+      "wall_h": 22,
+      "floor_depth": 3,
+      "height_category": "medium",
+      "functions": [],
+      "folded_functions": [],
+      "extended_functions": [
+        "sport"
+      ],
+      "foldable": true,
+      "extended_add_h": 12,
+      "wall_flush_required": true,
+      "buy_price": 450,
+      "sell_price": 180,
+      "color": "c07a4a",
+      "front": "long",
+      "model": "res://assets/models/furniture/old/WallPegboard.glb"
+    },
+    {
+      "id": "skylight",
+      "name": "Skylight",
+      "placement": "floor",
+      "size": {
+        "w": 8,
+        "h": 10
+      },
+      "wall_h": 1,
+      "floor_depth": 10,
+      "height_category": "low",
+      "z_bottom": 24,
+      "z_top": 25,
+      "overhead": true,
+      "walkable": true,
+      "weight": 0,
+      "functions": [],
+      "buy_price": 1400,
+      "sell_price": 600,
+      "color": "d8ecf4",
+      "model": ""
+    },
+    {
+      "id": "magnetic_wall",
+      "name": "Magnetic Wall",
+      "placement": "wall",
+      "size": {
+        "w": 12,
+        "h": 1
+      },
+      "wall_h": 12,
+      "floor_depth": 1,
+      "functions": [
+        "storage"
+      ],
+      "buy_price": 120,
+      "sell_price": 45,
+      "color": "8a9098",
+      "mobility_tier": "yellow",
+      "model": "res://assets/models/furniture/makeitfit/whiteboard.glb"
     }
   ],
   "paintable": [

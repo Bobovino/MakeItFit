@@ -2930,6 +2930,22 @@ msgstr ""
 msgid "Bird Cage"
 msgstr ""
 
+#: data/furniture.json:sleeping_pod
+msgid "Sleeping Pod"
+msgstr ""
+
+#: data/furniture.json:wall_gym
+msgid "Fold-Away Wall Gym"
+msgstr ""
+
+#: data/furniture.json:skylight
+msgid "Skylight"
+msgstr ""
+
+#: data/furniture.json:magnetic_wall
+msgid "Magnetic Wall"
+msgstr ""
+
 #: data/furniture.json:painted_bed
 msgid "Custom Bed"
 msgstr ""

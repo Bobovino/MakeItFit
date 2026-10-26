@@ -79,6 +79,7 @@ const NEED_GLYPH := {
 	"laundry": "\uebe1",
 	"social":  "\uee46",
 	"pet":     "\ueff9",
+	"sport":   "\ueff0",
 }
 
 

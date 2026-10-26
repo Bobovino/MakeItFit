@@ -51,6 +51,11 @@ func _run_all() -> void:
 	_test("a swing door keeps the quarter circle it opens through", func(): _t_door_swing())
 	_test("a bed unfolded in another moment keeps its space then", func(): _t_other_moment())
 	_test("under a loft only what is low enough; nothing in a window", func(): _t_loft_and_window())
+	_test("reeded glass lets daylight through and stops the eye", func(): _t_reeded_glass())
+	_test("a curtain is drawn and opened per moment", func(): _t_curtain_per_moment())
+	_test("a skylight lights from above and takes no floor", func(): _t_skylight())
+	_test("a sleeping pod sleeps, stores, splits and shades", func(): _t_sleeping_pod())
+	_test("a foldable gives only what its fold state gives, per moment", func(): _t_fold_gives_per_moment())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -1110,3 +1115,151 @@ func _place_somewhere(main: Node, fl: Floor, id: String) -> Furniture:
 				fl.place_furniture(f, Vector2(x, y))
 				return f
 	return f
+
+
+# ── Space-saving pieces: screens, curtains, skylights, pods ─────────────────
+# A 25 x 19 room (tiles 2..26 x 2..20) with a window in its north wall over
+# x 5..14.
+func _window_floor() -> Floor:
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup({"id": "window_floor", "label": "Window", "grid_w": 30, "grid_h": 24, "floor_tiles": [],
+		"segments": [
+			{"x1": 1, "y1": 1, "x2": 27, "y2": 1, "primary": true, "demolished": false,
+				"has_window": true, "window_pos": 4, "window_len": 10},
+			{"x1": 27, "y1": 1, "x2": 27, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 27, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+		]})
+	return fl
+
+
+# A catalogue piece, optionally stretched to another footprint.
+func _catalog_piece(fl: Floor, id: String, w: int = 0, h: int = 0) -> Furniture:
+	var data := main_catalog_entry(id).duplicate(true)
+	if w > 0:
+		data["size"] = {"w": w, "h": h}
+	var f := load("res://scenes/Furniture.tscn").instantiate() as Furniture
+	fl.add_child(f)
+	f.setup(data, fl)
+	return f
+
+
+# Reeded glass across the whole room: the far side still gets daylight, but
+# nobody sees through it. A bookshelf in the same place leaves it dark.
+func _t_reeded_glass() -> void:
+	var fl := _window_floor()
+	var behind := Vector2i(10, 12)
+	var open_light := fl.get_light(behind)
+	var open_sight := fl.has_sightline(Vector2i(10, 3), behind)
+	var glass := _catalog_piece(fl, "fluted_glass_panel", 25, 3)
+	fl.place_furniture(glass, Vector2(2, 6))
+	var glass_light := fl.get_light(behind)
+	var glass_sight := fl.has_sightline(Vector2i(10, 3), behind)
+	fl.remove_furniture(glass)
+	var shelf := _catalog_piece(fl, "bookshelf", 25, 3)
+	fl.place_furniture(shelf, Vector2(2, 6))
+	var shelf_light := fl.get_light(behind)
+	_ok(open_light > 0.0 and open_sight and glass_light > 0.0 and not glass_sight and shelf_light == 0.0
+		and glass.divides_zone(),
+		"open %.2f/%s, glass %.2f/%s, shelf %.2f, zone %s" % [open_light, open_sight, glass_light, glass_sight, shelf_light, glass.divides_zone()])
+	fl.queue_free()
+
+
+# Day and night: the curtain is open by day and drawn at night. Drawn, it
+# hides one side of the room from the other and splits the zone, and still
+# lets the light through; open, it does neither.
+func _t_curtain_per_moment() -> void:
+	var real_ids := Furniture.all_moment_ids
+	var real_labels := Furniture.moment_labels
+	var real_test := Furniture.test_mode_active
+	var real_active := Furniture.active_moment_id
+	Furniture.all_moment_ids = ["day", "night"]
+	Furniture.moment_labels = {"day": "Day", "night": "Night"}
+	Furniture.test_mode_active = true
+	var fl := _window_floor()
+	var curtain := _catalog_piece(fl, "curtain")
+	fl.place_furniture(curtain, Vector2(12, 6))
+	curtain.moment_fold_state = {"day": false, "night": true}
+	var across := [Vector2i(6, 10), Vector2i(20, 10)]
+	Furniture.active_moment_id = "night"
+	curtain.set_moment_view("night")
+	var night := [curtain.is_extended, fl.has_sightline(across[0], across[1]), curtain.divides_zone(), curtain.blocks_light()]
+	Furniture.active_moment_id = "day"
+	curtain.set_moment_view("day")
+	var day := [curtain.is_extended, fl.has_sightline(across[0], across[1]), curtain.divides_zone()]
+	_ok(night == [true, false, true, false] and day == [false, true, false],
+		"night (drawn, sight, zone, blocks light) %s, day (drawn, sight, zone) %s" % [night, day])
+	fl.queue_free()
+	Furniture.all_moment_ids = real_ids
+	Furniture.moment_labels = real_labels
+	Furniture.test_mode_active = real_test
+	Furniture.active_moment_id = real_active
+
+
+# A skylight in a windowless room: it hangs over a bookshelf and a table
+# without touching them, lights its own tiles even with the shelf under
+# it, takes no floor and is never "out of reach".
+func _t_skylight() -> void:
+	var fl := _make_floor()
+	var dark := fl.get_light(Vector2i(4, 3))
+	var free_before := fl.count_free_tiles_for_moment("")
+	var shelf := _catalog_piece(fl, "bookshelf", 2, 2)
+	fl.place_furniture(shelf, Vector2(4, 3))
+	var table := _catalog_piece(fl, "coffee_table", 1, 2)
+	fl.place_furniture(table, Vector2(6, 3))
+	var free_with_pieces := fl.count_free_tiles_for_moment("")
+	var sky := _catalog_piece(fl, "skylight", 3, 3)
+	var fits_over := fl.can_place(sky, Vector2(4, 3))
+	fl.place_furniture(sky, Vector2(4, 3))
+	var lit_under := fl.get_light(Vector2i(4, 3))
+	var lit_beside := fl.get_light(Vector2i(4, 6))
+	var free_with_sky := fl.count_free_tiles_for_moment("")
+	var under_after := fl.can_place(_make_furniture(fl, 1, 1), Vector2(5, 5))
+	# Under a raked ceiling it still goes in (a roof window), where a
+	# bookshelf no longer fits.
+	fl.sloped_ceiling = {"axis": "x", "low_start": 2, "high_end": 8, "min_h": 1.8, "max_h": 2.4}
+	var tall := _catalog_piece(fl, "bookshelf", 1, 1)
+	var under_slope := fl.can_place(sky, Vector2(2, 2)) and not fl.can_place(tall, Vector2(2, 6))
+	fl.sloped_ceiling = {}
+	_ok(dark == 0.0 and fits_over and lit_under > 0.9 and lit_beside > 0.0 and free_with_sky == free_with_pieces
+		and free_with_pieces == free_before - 6 and fl.support_under(sky) == null
+		and not (sky in fl.get_inaccessible_furniture()) and not sky.blocks_sight() and under_after and under_slope,
+		"dark %.2f, fits %s, under %.2f, beside %.2f, free %d/%d/%d, support %s, inaccessible %s, under after %s, slope %s" % [
+			dark, fits_over, lit_under, lit_beside, free_before, free_with_pieces, free_with_sky,
+			fl.support_under(sky), fl.get_inaccessible_furniture(), under_after, under_slope])
+	fl.queue_free()
+
+
+# A sleeping pod is a room in the room: it sleeps and stores, splits the zone,
+# and shades and hides what is behind it from the window.
+func _t_sleeping_pod() -> void:
+	var fl := _window_floor()
+	var behind := Vector2i(10, 18)
+	var open_light := fl.get_light(behind)
+	var pod := _catalog_piece(fl, "sleeping_pod")
+	var fits := fl.can_place(pod, Vector2(2, 4))
+	fl.place_furniture(pod, Vector2(2, 4))
+	var pod_light := fl.get_light(behind)
+	_ok(fits and "sleep" in pod.functions and "storage" in pod.functions and pod.divides_zone()
+		and pod_light < open_light and fl.get_light(Vector2i(10, 8)) == 0.0
+		and not fl.has_sightline(Vector2i(10, 3), behind),
+		"fits %s, functions %s, light behind %.2f -> %.2f" % [fits, pod.functions, open_light, pod_light])
+	fl.queue_free()
+
+
+# Fold state decides what a piece gives in each moment, also when one side of
+# it gives nothing: the wall gym is sport only unfolded, a Murphy bed sleeps
+# only let down.
+func _t_fold_gives_per_moment() -> void:
+	var fl := _window_floor()
+	var gym := _catalog_piece(fl, "wall_gym")
+	var bed := _catalog_piece(fl, "murphy_bed")
+	for f in [gym, bed]:
+		(f as Furniture).moment_fold_state = {"day": true, "night": false}
+	_ok(gym.functions_for_moment("day") == ["sport"] and gym.functions_for_moment("night").is_empty()
+		and bed.functions_for_moment("day") == ["sleep"] and bed.functions_for_moment("night").is_empty()
+		and gym.functions.is_empty() and bed.functions.is_empty(),
+		"gym %s/%s, bed %s/%s, folded now %s %s" % [gym.functions_for_moment("day"), gym.functions_for_moment("night"),
+			bed.functions_for_moment("day"), bed.functions_for_moment("night"), gym.functions, bed.functions])
+	fl.queue_free()

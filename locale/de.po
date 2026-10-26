@@ -2978,6 +2978,22 @@ msgstr "Vorhang"
 msgid "Bird Cage"
 msgstr "Vogelkäfig"
 
+#: data/furniture.json:sleeping_pod
+msgid "Sleeping Pod"
+msgstr "Schlafkapsel"
+
+#: data/furniture.json:wall_gym
+msgid "Fold-Away Wall Gym"
+msgstr "Klappbare Fitnesswand"
+
+#: data/furniture.json:skylight
+msgid "Skylight"
+msgstr "Dachfenster"
+
+#: data/furniture.json:magnetic_wall
+msgid "Magnetic Wall"
+msgstr "Magnetwand"
+
 #: data/furniture.json:painted_bed
 msgid "Custom Bed"
 msgstr "Maßbett"

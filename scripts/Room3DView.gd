@@ -266,6 +266,8 @@ func _style_if_bare(mi: MeshInstance3D) -> void:
 # lamp, a stack of books): things with no function of their own and a small
 # footprint. Everything else is a tint of the level hue.
 func _item_role(fdata: Dictionary) -> StringName:
+	if fdata.get("overhead", false):
+		return StyleController.ROLE_WINDOW   # a skylight is window glass in the ceiling
 	var item_size := fdata.get("size", {}) as Dictionary
 	var area := (item_size.get("w", 99) as int) * (item_size.get("h", 99) as int)
 	if (fdata.get("functions", []) as Array).is_empty() and area <= ACCENT_MAX_AREA_TILES \
@@ -5423,6 +5425,9 @@ func _top_m(f: Furniture) -> float:
 func _lift_m(f: Furniture, at: Variant = null) -> float:
 	if not is_instance_valid(_apt_floor):
 		return 0.0
+	if f.overhead:
+		var c: Vector2 = (f.grid_pos if at == null else at as Vector2) + Vector2(f.grid_w, f.grid_h) * 0.5
+		return _ceiling_m_at(c) - maxf(f.body_h * TILE_M, 0.2)
 	var sup := _apt_floor.support_under(f, at)
 	if sup == null:
 		return 0.0
@@ -5430,6 +5435,22 @@ func _lift_m(f: Furniture, at: Variant = null) -> float:
 	var cx := (corner.x - _room_bounds.position.x + f.grid_w * 0.5) * TILE_M
 	var cz := (corner.y - _room_bounds.position.y + f.grid_h * 0.5) * TILE_M
 	return _top_m(sup) - _sag_at(_entry_of(sup), cx, cz)
+
+
+# Ceiling height (metres) over a point of the plan, in tiles: a skylight
+# hangs flush under it. Same slope rule as Floor.can_place().
+func _ceiling_m_at(p: Vector2) -> float:
+	var sc: Dictionary = _apt_floor.sloped_ceiling
+	if sc.is_empty():
+		return WALL_H_M
+	var low_s := sc.get("low_start", 0) as int
+	var span := float((sc.get("high_end", 0) as int) - low_s)
+	var max_h := sc.get("max_h", 2.4) as float
+	var coord := p.x if (sc.get("axis", "x") as String) == "x" else p.y
+	if span <= 0.0 or coord < low_s or coord > low_s + span:
+		return max_h
+	var min_h := sc.get("min_h", 1.8) as float
+	return min_h + (coord - low_s) / span * (max_h - min_h)
 
 
 # ── Bowing: a loaded surface sags ───────────────────────────────────────────

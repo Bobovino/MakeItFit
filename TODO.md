@@ -1,35 +1,53 @@
 # TODO
 
-## `sport` is met by free floor, not furniture
+## `sport` is met by free floor, or by the wall gym
 
 The old entry here said `final_01`, `final_04` and `final_05` could not be finished because no
 catalogue item provides `sport`. Those levels no longer exist: the level set was replaced by the
 eight Königsberg demo homes. Today only `debug_moments` asks for `sport`, and it gets it from the
-Day moment's `space_needs` (enough open floor; see `GameManager.gd`'s space-needs handling), so
-no current level needs a `sport` provider.
+Day moment's `space_needs` (enough open floor; see `GameManager.gd`'s space-needs handling).
 
-If a future level wants `sport` as a function instead, it needs a catalogue item; the fold-away
-wall gym under "Missing space-saving furniture" below would fill that.
+`sport` is now also a function: the **Fold-Away Wall Gym** (`wall_gym`) provides it while
+unfolded, so a level can ask for it either way.
 
-## Missing space-saving furniture worth modelling
+## Space-saving furniture from the Never Too Small cross-check
 
-From cross-checking the imported pack against Never Too Small's published design articles. The
-pack already covers most of the canon; these are the real gaps, ordered by how much existing
-mechanics they activate:
+From cross-checking the imported pack against Never Too Small's published design articles. All in
+`data/furniture.json`, each covered by a test in `tests/run_tests.gd`:
 
-- **Sleeping pod** — a closed sleeping capsule with integrated storage. This is the nesting
-  mechanic as it exists in real architecture: a room inside a room that occupies floor and blocks
-  or admits light depending on placement. Highest value of the set.
-- **Fluted / translucent glass panel** — passes daylight, blocks sightline. A new *combination* of
-  two systems that already exist, so close to free. Note `GlassPartition_Sliding` is already
-  imported but is clear glass, which passes both.
-- **Fold-away wall gym** — a wall-mounted workout station that folds flat, so it would provide
-  `sport` only when unfolded. Came up as a real gap against Never Too Small. `WallPegboard.glb`
-  could stand in as the model until a proper one exists; it still needs a price and footprint.
-- **Curtain divider** — a `zone_divider` that opens and closes per Moment.
-- **Skylight** — overhead daylight that furniture cannot block, unlike a window.
-- **Magnetic wall**, **retractable courtyard roof**, **climbing wall / ladder to a play loft** —
-  lower priority.
+- **Sleeping pod** (`sleeping_pod`, 2.0 x 1.1 m, 980) — a closed capsule that sleeps and stores.
+  Tall and opaque: it splits zones, hides what is behind it and shades the side away from the
+  window, so where it stands decides which side stays bright.
+- **Reeded glass screen** (`fluted_glass_panel`) — passes daylight, stops a line of sight, splits
+  zones (`"screen": true`).
+- **Curtain** (`curtain`) — a screen only while drawn (`"screen_when": "extended"`); it is a
+  foldable, so each Moment remembers whether it is drawn.
+- **Skylight** (`skylight`, 0.8 x 1.0 m, 1400) — a shop piece that hangs at the ceiling
+  (`"overhead": true`, z range above the ceiling). It takes no floor, anything can stand under
+  it, it lights its own tiles from above whatever stands there, and it fits under a sloped
+  ceiling. Its daylight follows the Moment's daylight like a window's.
+- **Fold-away wall gym** (`wall_gym`, 1.2 x 0.3 m folded, 1.5 m deep unfolded, 450) — `sport`
+  only while unfolded.
+- **Magnetic wall** (`magnetic_wall`, wall item, 120) — storage with no floor depth.
+
+Fixed on the way: a foldable whose folded side gives nothing (Murphy beds, fold-down desks and
+tables, the pocket bed, the curtain) used to keep its functions and fold state the same in every
+Moment, because `Furniture.gd` only switched them when `folded_functions` was non-empty. Now fold
+state always decides, per Moment.
+
+Still needs real art (placeholders in use):
+- `sleeping_pod` uses `makeitfit/rental_capsule.glb` (the Capsule Pod rental box).
+- `wall_gym` uses `old/WallPegboard.glb`, stretched; it has no unfold animation.
+- `skylight` has no model: the 3D view draws a plain pane styled as window glass.
+- `magnetic_wall` uses `makeitfit/whiteboard.glb`.
+
+Not done:
+- **Retractable courtyard roof** — level geometry, not a prop.
+- **Climbing wall / ladder to a play loft** — would be a narrow `is_stair` entry, but the 3D
+  stairs are drawn from the stair entries' own step sizes and lofts are level geometry; worth
+  doing together with the split-level work, not as a catalogue entry alone.
+- Skylights don't check for a floor above them; on a multi-storey level one could go in under
+  the upper floor.
 
 Not furniture, and a separate and much larger decision: **sloped ceilings** and **split-level
 floors**, both of which are recurring devices in the source material and would be level geometry

@@ -103,6 +103,10 @@ var stack_z: int = 0
 # max_support_weight; over 1 = what is being carried over it would break it).
 var _strain: float = 0.0
 var walkable: bool = false           # a rug: on the floor, but walked over (see Floor pathing)
+# Hangs at the ceiling (a skylight): it takes no floor, stands over whatever is
+# below it (its z range starts at the ceiling), and lights its own tiles from
+# above, which nothing on the floor can shade (see Floor._compute_light_map).
+var overhead: bool = false
 # A screen hides what is behind it without darkening the room: reeded glass,
 # a curtain. It stops a line of sight and divides zones like tall storage
 # does, but daylight passes it. "screen_when": "extended" makes that true
@@ -345,7 +349,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	# A foldable piece starts folded (is_extended = false); its live .functions
 	# must reflect that from the start, not the full base list, so moment/need
 	# checks don't count a state the player hasn't actually set yet.
-	if foldable and not folded_functions_arr.is_empty():
+	if foldable:
 		functions = folded_functions_arr.duplicate()
 	height_category       = data.get("height_category",   "medium") as String
 	z_bottom = data.get("z_bottom", 0.0) as float
@@ -380,6 +384,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	requires_surface      = data.get("requires_surface",  false)    as bool
 	body_h                = data.get("wall_h",            8.0)      as float
 	walkable              = data.get("walkable",          false)    as bool
+	overhead              = data.get("overhead",          false)    as bool
 	screen                = data.get("screen",            false)    as bool
 	screen_when           = data.get("screen_when",       "always") as String
 	needs_daylight        = data.get("needs_daylight",    false)    as bool
@@ -476,7 +481,7 @@ func has_own_moment_position() -> bool:
 # for THIS moment specifically. Called when the player switches which moment
 # they're viewing.
 func set_moment_view(moment_id: String) -> void:
-	if foldable and not folded_functions_arr.is_empty():
+	if foldable:
 		var want_extended: bool = moment_fold_state.get(moment_id, false) as bool
 		if want_extended != is_extended:
 			if not _apply_fold_state(want_extended):
@@ -503,7 +508,7 @@ func _is_revealed_at(pos: Vector2) -> bool:
 # OWN stored fold state / rail position — independent of whichever moment is
 # on screen right now.
 func functions_for_moment(moment_id: String) -> Array:
-	if foldable and not folded_functions_arr.is_empty():
+	if foldable:
 		var extended: bool = moment_fold_state.get(moment_id, false) as bool
 		return extended_functions_arr if extended else folded_functions_arr
 	if rail_axis != "" and not reveal_functions.is_empty():
@@ -525,13 +530,13 @@ func _apply_fold_state(want_extended: bool) -> bool:
 			grid_h = _base_grid_h   # restore — no room
 			return false
 		is_extended = true
-		functions = extended_functions_arr.duplicate() if not extended_functions_arr.is_empty() else functions
+		functions = extended_functions_arr.duplicate()
 		_wall_ref.place_furniture(self, grid_pos)
 	else:
 		# Fold back: shrink footprint
 		grid_h = _base_grid_h
 		is_extended = false
-		functions = folded_functions_arr.duplicate() if not folded_functions_arr.is_empty() else functions
+		functions = folded_functions_arr.duplicate()
 		_wall_ref.place_furniture(self, grid_pos)
 	rect.size = Vector2(grid_w * TILE_SIZE, grid_h * TILE_SIZE)
 	queue_redraw()
@@ -578,6 +583,10 @@ func _draw() -> void:
 	# the fixed-orientation symbol art around its own footprint instead of
 	# just squish-fitting it, so 180° actually reads as inverted rather than
 	# looking identical to 0°.
+	if overhead:
+		_draw_overhead(float(w), float(h), ink)
+		return
+
 	var cw := float(w if rot_steps % 2 == 0 else h)
 	var ch := float(h if rot_steps % 2 == 0 else w)
 	var theta := deg_to_rad(rot_steps * 90.0)
@@ -819,6 +828,23 @@ func _draw() -> void:
 	# Architectural dimension cotes while dragging
 	if _dragging and _wall_ref:
 		_draw_cotes(float(w), float(h))
+
+
+# A piece up at the ceiling is drawn the way a plan shows what is overhead:
+# a dashed outline with its diagonals, so the furniture under it stays
+# readable, and a pale wash of the daylight it lets in.
+func _draw_overhead(w: float, h: float, ink: Color) -> void:
+	draw_rect(Rect2(0, 0, w, h), Color(1.0, 0.96, 0.70, 0.18))
+	var c := Color(ink.r, ink.g, ink.b, 0.85)
+	var pts := [Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h), Vector2(0, 0)]
+	for i in range(pts.size() - 1):
+		draw_dashed_line(pts[i], pts[i + 1], c, 1.2, 5.0)
+	draw_dashed_line(Vector2(0, 0), Vector2(w, h), Color(c, 0.45), 1.0, 5.0)
+	draw_dashed_line(Vector2(w, 0), Vector2(0, h), Color(c, 0.45), 1.0, 5.0)
+	draw_string_outline(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1, 1, 1, 0.90))
+	draw_string(ThemeDB.fallback_font, Vector2(3, 9), furniture_name,
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, GameTheme.NAVY)
 
 
 func _draw_symbol(w: int, h: int, ink: Color) -> void:
