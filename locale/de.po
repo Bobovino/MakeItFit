@@ -77,8 +77,8 @@ msgid " Settings"
 msgstr " Einstellungen"
 
 #: scripts/CityMap.gd:593
-msgid " Menu"
-msgstr " Menü"
+msgid " Menu"
+msgstr " Menü"
 
 #: scripts/CityMap.gd:594
 msgid "Back to the title screen"
@@ -218,7 +218,6 @@ msgstr "Komfort %d%%"
 
 #: scripts/CreditsMenu.gd:27
 #: scripts/MainMenu.gd:102
-#: scripts/PauseMenu.gd:62
 msgid "Credits"
 msgstr "Mitwirkende"
 
@@ -287,7 +286,7 @@ msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr "%.1f° Neigung  |  %.2f m → %.2f m auf %.1f m  (Felder %d–%d)"
 
 #: scripts/HowToPlay.gd:28
-#: scripts/PauseMenu.gd:60
+#: scripts/PauseMenu.gd:59
 msgid "How to Play"
 msgstr "Spielanleitung"
 
@@ -1030,7 +1029,7 @@ msgid "Make every tenant fit in their apartment, one piece of furniture at a tim
 msgstr "Bring jeden Mieter in seiner Wohnung unter, Möbelstück für Möbelstück."
 
 #: scripts/MainMenu.gd:85
-#: scripts/PauseMenu.gd:58
+#: scripts/PauseMenu.gd:57
 msgid "Continue"
 msgstr "Weiter"
 
@@ -1044,7 +1043,7 @@ msgid "Start Game"
 msgstr "Spiel starten"
 
 #: scripts/MainMenu.gd:98
-#: scripts/PauseMenu.gd:59
+#: scripts/PauseMenu.gd:58
 #: scripts/SettingsMenu.gd:35
 msgid "Settings"
 msgstr "Einstellungen"
@@ -1123,43 +1122,47 @@ msgstr "Zu langgezogen — max. Verhältnis %.0f:1"
 msgid "  Valid — costs %d€"
 msgstr "  Gültig — kostet %d€"
 
-#: scripts/PauseMenu.gd:50
+#: scripts/PauseMenu.gd:49
 msgid "Menu"
 msgstr "Menü"
 
-#: scripts/PauseMenu.gd:65
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:63
+msgid "Title screen"
+msgstr "Titelbildschirm"
+
+#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:166
 #: scripts/ResultScreen.gd:167
 msgid "Restart Level"
 msgstr "Level neu starten"
 
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:167
 msgid "Discard this layout and start over?"
 msgstr "Diese Einrichtung verwerfen und von vorn beginnen?"
 
-#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:69
 #: scripts/ResultScreen.gd:167
 msgid "Yes, restart"
 msgstr "Ja, neu starten"
 
-#: scripts/PauseMenu.gd:71
+#: scripts/PauseMenu.gd:73
 #: scripts/ResultScreen.gd:117
 #: scripts/ResultScreen.gd:139
 msgid "Back to Projects"
 msgstr "Zurück zu den Projekten"
 
-#: scripts/PauseMenu.gd:74
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:76
+#: scripts/PauseMenu.gd:77
 msgid "Quit Game"
 msgstr "Spiel beenden"
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Quit for real?"
 msgstr "Wirklich beenden?"
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Yes, quit"
 msgstr "Ja, beenden"
 
@@ -3262,90 +3265,3 @@ msgstr "Maß-Stauraum"
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr "Maßbad"
-
-#~ msgid " Quit"
-#~ msgstr " Beenden"
-
-#~ msgid "Quit to desktop"
-#~ msgstr "Zum Desktop beenden"
-
-#~ msgid "Budget: %d€"
-#~ msgstr "Budget: %d€"
-
-#~ msgid "←  Back to %s"
-#~ msgstr "←  Zurück nach %s"
-
-#~ msgid "Options"
-#~ msgstr "Optionen"
-
-#~ msgid "Music Volume"
-#~ msgstr "Musiklautstärke"
-
-#~ msgid "The background music."
-#~ msgstr "Die Hintergrundmusik."
-
-#~ msgid "Wall Inspector"
-#~ msgstr "Wandansicht"
-
-#~ msgid "Wall: %s  (scroll to zoom, middle-drag to pan)"
-#~ msgstr "Wand: %s  (Mausrad zoomt, Ziehen mit mittlerer Taste verschiebt)"
-
-#~ msgid "MEZZ"
-#~ msgstr "HOCH"
-
-#~ msgid "North (windows)"
-#~ msgstr "Norden (Fenster)"
-
-#~ msgid "North"
-#~ msgstr "Norden"
-
-#~ msgid "South (entrance)"
-#~ msgstr "Süden (Eingang)"
-
-#~ msgid "South"
-#~ msgstr "Süden"
-
-#~ msgid "East"
-#~ msgstr "Osten"
-
-#~ msgid "West"
-#~ msgstr "Westen"
-
-#~ msgid "Click a highlighted wall edge to inspect it."
-#~ msgstr "Klick eine hervorgehobene Wandkante an, um sie anzusehen."
-
-#~ msgid "Wand"
-#~ msgstr "Wand"
-
-#~ msgid "Streams twelve hours a day and buys frozen pizza by the pallet. The three freezers are not negotiable."
-#~ msgstr "Streamt zwölf Stunden am Tag und kauft Tiefkühlpizza palettenweise. Über die drei Gefriertruhen wird nicht verhandelt."
-
-#~ msgid "Keepsakes, and going up"
-#~ msgstr "Erbstücke, und ab nach oben"
-
-#~ msgid "A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three chest freezers are staying.\n\nThey take up most of the floor, but they are low. A Loft Bed sleeps above head height, and anything low enough fits under it: a chest freezer, a desk, a chair.\n\nThere is no room for a desk yet. Move the freezers around until there is."
-#~ msgstr "Ein Stück mit einem Herz hinter dem Namen ist ein Erbstück. Du kannst es bewegen, aber der Mieter lässt es dich nie verkaufen. Danis drei Gefriertruhen bleiben.\n\nSie nehmen fast den ganzen Boden ein, aber sie sind niedrig. Ein Hochbett schläft über Kopfhöhe, und darunter passt alles, was niedrig genug ist: eine Gefriertruhe, ein Schreibtisch, ein Stuhl.\n\nFür einen Schreibtisch ist noch kein Platz. Schieb die Truhen herum, bis er da ist."
-
-#~ msgid "The freezers come with me. All three. This is not up for discussion."
-#~ msgstr "Die Gefriertruhen kommen mit. Alle drei. Darüber wird nicht diskutiert."
-
-#~ msgid "Busy street"
-#~ msgstr "Belebte Straße"
-
-#~ msgid "Quiet courtyard"
-#~ msgstr "Ruhiger Innenhof"
-
-#~ msgid "Bins alley"
-#~ msgstr "Mülltonnengasse"
-
-#~ msgid "−%d%%"
-#~ msgstr "−%d%%"
-
-#~ msgid "Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n\nEvery other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n\nShort on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it."
-#~ msgstr "Danis Wohnung ist leer, bis auf drei Gefriertruhen. Das Herz hinter ihrem Namen heißt, dass sie Erbstücke sind: Du kannst sie verschieben, aber nie verkaufen. Sie zählen schon als Stauraum.\n\nAlle anderen Bedürfnisse in der Leiste haben noch ein Kreuz. Jedes wird abgehakt, sobald die Wohnung ein Stück hat, das es erfüllt: ein Bett zum Schlafen, eine Toilette oder ein Waschbecken zum Waschen, einen Herd zum Kochen, einen Schreibtisch zum Arbeiten und einen Stuhl zum Sitzen. Der Katalog öffnet sich bei dem, was noch fehlt, und es gibt Platz und Geld für alles.\n\nTrotzdem zu wenig Boden? Ein Hochbett schläft über Kopfhöhe, und die niedrigen Truhen passen darunter."
-
-#~ msgid "Three freezers"
-#~ msgstr "Drei Gefriergeräte"
-
-#~ msgid "Freezers"
-#~ msgstr "Gefriergeräte"

@@ -3,16 +3,15 @@ class_name PauseMenu
 
 # What Esc (or the gear) opens, in a level and on the project map: a short
 # list, the way games have it, with going back to what you were doing
-# first and selected, so Esc-Enter or Esc-Esc both return you. Settings,
-# How to Play and Credits open over it and come back to it; leaving or
-# restarting the level is here too, and what can't be undone asks first.
+# first and selected, so Esc-Enter or Esc-Esc both return you. Settings
+# and How to Play open over it and come back to it; leaving or restarting
+# the level is here too, and what can't be undone asks first. Credits live
+# on the title screen, which the map's menu goes back to.
 #
 # The host decides what is on offer: a level (Main) has _restart_level and
 # _go_back; any host may have more.
 
 signal closed
-
-const CreditsMenuScript := preload("res://scripts/CreditsMenu.gd")
 
 var _host: Node
 var _first: Button
@@ -58,9 +57,12 @@ func _build() -> void:
 	_first = _entry(vb, tr("Continue"), "primary", _close)
 	_entry(vb, tr("Settings"), "", func(): _over(SettingsMenu.open(self)))
 	_entry(vb, tr("How to Play"), "", func(): _over(HowToPlay.open(self)))
-	if not in_level:
-		_entry(vb, tr("Credits"), "", func(): _over(CreditsMenuScript.open(self)))
 	_gap(vb)
+	# On the map: back to the title screen (Continue, Credits and the rest).
+	if not in_level:
+		_entry(vb, tr("Title screen"), "", func():
+			_close()
+			Transition.change_scene("res://scenes/MainMenu.tscn"))
 	if in_level:
 		_entry(vb, tr("Restart Level"), "", func():
 			MenuKit.dialog(self, tr("Restart Level"), tr("Discard this layout and start over?"),

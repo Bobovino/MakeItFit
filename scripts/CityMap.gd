@@ -590,7 +590,7 @@ func _build_ui() -> void:
 	keys.add_child(settings_btn)
 	# Back to the title screen, where Continue, Credits and Quit are.
 	var quit_btn := Button.new()
-	quit_btn.text = tr("\ueb0d Menu")
+	quit_btn.text = tr("\ueac1 Menu")
 	quit_btn.tooltip_text = tr("Back to the title screen")
 	quit_btn.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
 	quit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL

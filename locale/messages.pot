@@ -75,7 +75,7 @@ msgid " Settings"
 msgstr ""
 
 #: scripts/CityMap.gd:593
-msgid " Menu"
+msgid " Menu"
 msgstr ""
 
 #: scripts/CityMap.gd:594
@@ -216,7 +216,6 @@ msgstr ""
 
 #: scripts/CreditsMenu.gd:27
 #: scripts/MainMenu.gd:102
-#: scripts/PauseMenu.gd:62
 msgid "Credits"
 msgstr ""
 
@@ -285,7 +284,7 @@ msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr ""
 
 #: scripts/HowToPlay.gd:28
-#: scripts/PauseMenu.gd:60
+#: scripts/PauseMenu.gd:59
 msgid "How to Play"
 msgstr ""
 
@@ -1022,7 +1021,7 @@ msgid "Make every tenant fit in their apartment, one piece of furniture at a tim
 msgstr ""
 
 #: scripts/MainMenu.gd:85
-#: scripts/PauseMenu.gd:58
+#: scripts/PauseMenu.gd:57
 msgid "Continue"
 msgstr ""
 
@@ -1036,7 +1035,7 @@ msgid "Start Game"
 msgstr ""
 
 #: scripts/MainMenu.gd:98
-#: scripts/PauseMenu.gd:59
+#: scripts/PauseMenu.gd:58
 #: scripts/SettingsMenu.gd:35
 msgid "Settings"
 msgstr ""
@@ -1115,43 +1114,47 @@ msgstr ""
 msgid "  Valid — costs %d€"
 msgstr ""
 
-#: scripts/PauseMenu.gd:50
+#: scripts/PauseMenu.gd:49
 msgid "Menu"
 msgstr ""
 
-#: scripts/PauseMenu.gd:65
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:63
+msgid "Title screen"
+msgstr ""
+
+#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:166
 #: scripts/ResultScreen.gd:167
 msgid "Restart Level"
 msgstr ""
 
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:167
 msgid "Discard this layout and start over?"
 msgstr ""
 
-#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:69
 #: scripts/ResultScreen.gd:167
 msgid "Yes, restart"
 msgstr ""
 
-#: scripts/PauseMenu.gd:71
+#: scripts/PauseMenu.gd:73
 #: scripts/ResultScreen.gd:117
 #: scripts/ResultScreen.gd:139
 msgid "Back to Projects"
 msgstr ""
 
-#: scripts/PauseMenu.gd:74
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:76
+#: scripts/PauseMenu.gd:77
 msgid "Quit Game"
 msgstr ""
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Quit for real?"
 msgstr ""
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Yes, quit"
 msgstr ""
 

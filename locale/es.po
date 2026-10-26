@@ -77,8 +77,8 @@ msgid " Settings"
 msgstr " Ajustes"
 
 #: scripts/CityMap.gd:593
-msgid " Menu"
-msgstr " Menú"
+msgid " Menu"
+msgstr " Menú"
 
 #: scripts/CityMap.gd:594
 msgid "Back to the title screen"
@@ -218,7 +218,6 @@ msgstr "Comodidad %d%%"
 
 #: scripts/CreditsMenu.gd:27
 #: scripts/MainMenu.gd:102
-#: scripts/PauseMenu.gd:62
 msgid "Credits"
 msgstr "Créditos"
 
@@ -287,7 +286,7 @@ msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr "%.1f° de pendiente  |  %.2f m → %.2f m en %.1f m  (casillas %d–%d)"
 
 #: scripts/HowToPlay.gd:28
-#: scripts/PauseMenu.gd:60
+#: scripts/PauseMenu.gd:59
 msgid "How to Play"
 msgstr "Cómo se juega"
 
@@ -1030,7 +1029,7 @@ msgid "Make every tenant fit in their apartment, one piece of furniture at a tim
 msgstr "Haz que cada inquilino quepa en su piso, mueble a mueble."
 
 #: scripts/MainMenu.gd:85
-#: scripts/PauseMenu.gd:58
+#: scripts/PauseMenu.gd:57
 msgid "Continue"
 msgstr "Continuar"
 
@@ -1044,7 +1043,7 @@ msgid "Start Game"
 msgstr "Empezar partida"
 
 #: scripts/MainMenu.gd:98
-#: scripts/PauseMenu.gd:59
+#: scripts/PauseMenu.gd:58
 #: scripts/SettingsMenu.gd:35
 msgid "Settings"
 msgstr "Ajustes"
@@ -1123,43 +1122,47 @@ msgstr "Demasiado alargado: proporción máx. %.0f:1"
 msgid "  Valid — costs %d€"
 msgstr "  Válido — cuesta %d€"
 
-#: scripts/PauseMenu.gd:50
+#: scripts/PauseMenu.gd:49
 msgid "Menu"
 msgstr "Menú"
 
-#: scripts/PauseMenu.gd:65
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:63
+msgid "Title screen"
+msgstr "Pantalla de título"
+
+#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:166
 #: scripts/ResultScreen.gd:167
 msgid "Restart Level"
 msgstr "Reiniciar nivel"
 
-#: scripts/PauseMenu.gd:66
+#: scripts/PauseMenu.gd:68
 #: scripts/ResultScreen.gd:167
 msgid "Discard this layout and start over?"
 msgstr "¿Descartar esta distribución y empezar de nuevo?"
 
-#: scripts/PauseMenu.gd:67
+#: scripts/PauseMenu.gd:69
 #: scripts/ResultScreen.gd:167
 msgid "Yes, restart"
 msgstr "Sí, reiniciar"
 
-#: scripts/PauseMenu.gd:71
+#: scripts/PauseMenu.gd:73
 #: scripts/ResultScreen.gd:117
 #: scripts/ResultScreen.gd:139
 msgid "Back to Projects"
 msgstr "Volver a los proyectos"
 
-#: scripts/PauseMenu.gd:74
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:76
+#: scripts/PauseMenu.gd:77
 msgid "Quit Game"
 msgstr "Salir del juego"
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Quit for real?"
 msgstr "¿Salir de verdad?"
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:77
 msgid "Yes, quit"
 msgstr "Sí, salir"
 
@@ -3262,90 +3265,3 @@ msgstr "Almacenaje a medida"
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr "Baño a medida"
-
-#~ msgid " Quit"
-#~ msgstr " Salir"
-
-#~ msgid "Quit to desktop"
-#~ msgstr "Salir al escritorio"
-
-#~ msgid "Budget: %d€"
-#~ msgstr "Presupuesto: %d€"
-
-#~ msgid "←  Back to %s"
-#~ msgstr "←  Volver a %s"
-
-#~ msgid "Options"
-#~ msgstr "Opciones"
-
-#~ msgid "Music Volume"
-#~ msgstr "Volumen de la música"
-
-#~ msgid "The background music."
-#~ msgstr "La música de fondo."
-
-#~ msgid "Wall Inspector"
-#~ msgstr "Inspector de paredes"
-
-#~ msgid "Wall: %s  (scroll to zoom, middle-drag to pan)"
-#~ msgstr "Pared: %s  (rueda para zoom, arrastre central para desplazar)"
-
-#~ msgid "MEZZ"
-#~ msgstr "ALT."
-
-#~ msgid "North (windows)"
-#~ msgstr "Norte (ventanas)"
-
-#~ msgid "North"
-#~ msgstr "Norte"
-
-#~ msgid "South (entrance)"
-#~ msgstr "Sur (entrada)"
-
-#~ msgid "South"
-#~ msgstr "Sur"
-
-#~ msgid "East"
-#~ msgstr "Este"
-
-#~ msgid "West"
-#~ msgstr "Oeste"
-
-#~ msgid "Click a highlighted wall edge to inspect it."
-#~ msgstr "Haz clic en un borde de pared resaltado para inspeccionarlo."
-
-#~ msgid "Wand"
-#~ msgstr "Pared"
-
-#~ msgid "Streams twelve hours a day and buys frozen pizza by the pallet. The three freezers are not negotiable."
-#~ msgstr "Hace streaming doce horas al día y compra pizza congelada por palés. Los tres congeladores no se negocian."
-
-#~ msgid "Keepsakes, and going up"
-#~ msgstr "Recuerdos, y hacia arriba"
-
-#~ msgid "A piece with a heart after its name is a keepsake. You can move it, but the tenant will never let you sell it. Dani's three chest freezers are staying.\n\nThey take up most of the floor, but they are low. A Loft Bed sleeps above head height, and anything low enough fits under it: a chest freezer, a desk, a chair.\n\nThere is no room for a desk yet. Move the freezers around until there is."
-#~ msgstr "Una pieza con un corazón tras su nombre es un recuerdo. Puedes moverla, pero el inquilino nunca te dejará venderla. Los tres arcones congeladores de Dani se quedan.\n\nOcupan casi todo el suelo, pero son bajos. Una cama alta se duerme por encima de la cabeza, y debajo cabe todo lo que sea bajo: un arcón, un escritorio, una silla.\n\nTodavía no hay sitio para un escritorio. Mueve los arcones hasta que lo haya."
-
-#~ msgid "The freezers come with me. All three. This is not up for discussion."
-#~ msgstr "Los congeladores vienen conmigo. Los tres. Esto no se discute."
-
-#~ msgid "Busy street"
-#~ msgstr "Calle con tráfico"
-
-#~ msgid "Quiet courtyard"
-#~ msgstr "Patio tranquilo"
-
-#~ msgid "Bins alley"
-#~ msgstr "Callejón de los contenedores"
-
-#~ msgid "−%d%%"
-#~ msgstr "−%d%%"
-
-#~ msgid "Dani's flat is empty, apart from three chest freezers. The heart after their name means they are keepsakes: you can move them, but never sell them. They already count as storage.\n\nEvery other need on the bar is still a cross. Each one ticks as soon as the flat has a piece that provides it: a bed to sleep in, a toilet or a sink to wash, a stove to cook on, a desk to work at and a chair to sit on. The catalogue opens on what is still missing, and there is room and money for all of it.\n\nShort on floor anyway? A Loft Bed sleeps above head height, and the low freezers fit under it."
-#~ msgstr "El piso de Dani está vacío, salvo por tres arcones congeladores. El corazón tras su nombre significa que son recuerdos: puedes moverlos, pero nunca venderlos. Ya cuentan como almacenaje.\n\nTodas las demás necesidades de la barra siguen en cruz. Cada una se marca en cuanto el piso tiene una pieza que la cubre: una cama para dormir, un váter o un lavabo para asearse, una cocina para cocinar, un escritorio para trabajar y una silla para sentarse. El catálogo se abre en lo que aún falta, y hay sitio y dinero para todo.\n\n¿Aun así te falta suelo? Una cama alta se duerme por encima de la cabeza, y los arcones, que son bajos, caben debajo."
-
-#~ msgid "Three freezers"
-#~ msgstr "Tres congeladores"
-
-#~ msgid "Freezers"
-#~ msgstr "Congeladores"
