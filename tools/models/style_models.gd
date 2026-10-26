@@ -31,8 +31,19 @@ extends SceneTree
 const OUT_DIR := "res://assets/models/furniture/styletest/"
 const SEG := 4   # facets per quarter turn of a rounded corner: 22.5 degrees each
 
-# Godot draws a triangle's front where its corners run clockwise.
-var _parts := {}   # material name -> {"st": SurfaceTool, "color": Color}
+# A model is one or more parts. "Body" is fixed; a moving part (a bed panel
+# that swings down, the legs that fold out under it) gets its own node with
+# a pivot, a parent part and two rotations: as stored (closed) and at the
+# end of the "open" clip. The game shows a folding piece's open state by
+# posing that clip at its end (Room3DView._apply_item_model), and fits each
+# pose to its own footprint, so the clip only needs the right first and last
+# frame.
+#
+# A part's shapes are given where they would be with every part's rotation
+# at zero, in the model's own space.
+var _groups := {}  # part name -> {parts, pivot, parent, closed, open}
+var _cur := ""
+var _parts := {}   # the current part's material name -> {"st": SurfaceTool, "color": Color}
 var _colors := {
 	"M_ceramic": Color("f4f4f0"),
 	"M_chrome": Color("a8b0b8"),
@@ -43,6 +54,9 @@ var _colors := {
 	"M_teal": Color("2a7a78"),
 	"M_cream": Color("e8dcc0"),
 	"M_coral": Color("c85a40"),
+	"M_mattress": Color("f0ece0"),
+	"M_blanket": Color("6a8eb8"),
+	"M_pillow": Color("fafaf6"),
 }
 
 
@@ -53,35 +67,107 @@ func _init() -> void:
 	_build("bathtub", _bathtub)
 	_build("sink", _sink)
 	_build("toilet", _toilet)
+	_build("murphy_bed", _murphy_bed)
 	quit()
 
 
 func _build(id: String, shape: Callable) -> void:
-	_parts.clear()
+	_groups.clear()
+	_part("Body")
 	shape.call()
 	var root := Node3D.new()
 	root.name = "MIF_" + id
-	var body := MeshInstance3D.new()
-	body.name = id + "_Body"
-	var mesh := ArrayMesh.new()
-	for mat_name in _parts:
-		var st: SurfaceTool = _parts[mat_name]["st"]
-		var mat := StandardMaterial3D.new()
-		mat.resource_name = mat_name
-		mat.albedo_color = _parts[mat_name]["color"]
-		mat.roughness = 1.0
-		st.set_material(mat)
-		st.commit(mesh)
-	body.mesh = mesh
-	root.add_child(body)
-	body.owner = root
+	var nodes := {}
+	var mats := {}   # one material per name, shared by every part
+	var anim := Animation.new()
+	anim.length = 1.0
+	for gname in _groups:
+		var g: Dictionary = _groups[gname]
+		var mi := MeshInstance3D.new()
+		mi.name = "%s_%s" % [id, gname]
+		var mesh := ArrayMesh.new()
+		for mat_name in g["parts"]:
+			var st: SurfaceTool = g["parts"][mat_name]["st"]
+			if not mats.has(mat_name):
+				var m := StandardMaterial3D.new()
+				m.resource_name = mat_name
+				m.albedo_color = g["parts"][mat_name]["color"]
+				m.roughness = 1.0
+				mats[mat_name] = m
+			st.set_material(mats[mat_name])
+			st.commit(mesh)
+		mi.mesh = mesh
+		var parent_pivot := Vector3.ZERO
+		var parent: Node = root
+		if g["parent"] != "":
+			parent = nodes[g["parent"]]
+			parent_pivot = _groups[g["parent"]]["pivot"]
+		mi.position = (g["pivot"] as Vector3) - parent_pivot
+		mi.rotation_degrees = g["closed"]
+		parent.add_child(mi)
+		mi.owner = root
+		nodes[gname] = mi
+		if g["open"] != g["closed"]:
+			var t := anim.add_track(Animation.TYPE_ROTATION_3D)
+			anim.track_set_path(t, NodePath(str(root.get_path_to(mi))))
+			anim.rotation_track_insert_key(t, 0.0, Quaternion.from_euler((g["closed"] as Vector3) * PI / 180.0))
+			anim.rotation_track_insert_key(t, 1.0, Quaternion.from_euler((g["open"] as Vector3) * PI / 180.0))
+	if anim.get_track_count() > 0:
+		var ap := AnimationPlayer.new()
+		ap.name = "AnimationPlayer"
+		var lib := AnimationLibrary.new()
+		lib.add_animation("open", anim)
+		ap.add_animation_library("", lib)
+		root.add_child(ap)
+		ap.owner = root
+	var closed_box := _pose_aabb(root, nodes, "closed")
+	var open_box := _pose_aabb(root, nodes, "open")
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
 	var err := doc.append_from_scene(root, state)
 	if err == OK:
 		err = doc.write_to_filesystem(state, OUT_DIR + id + ".glb")
-	print("%s: %s, aabb %s" % [id, error_string(err), mesh.get_aabb()])
+	if anim.get_track_count() > 0:
+		print("%s: %s, closed %s, open %s, %d moving parts" % [id, error_string(err), closed_box, open_box, anim.get_track_count()])
+	else:
+		print("%s: %s, aabb %s" % [id, error_string(err), closed_box])
 	root.free()
+
+
+# Starts a part: what follows goes into it. `pivot` is where it turns, in
+# the model's space; `closed` and `open` are its rotations in degrees.
+func _part(gname: String, pivot := Vector3.ZERO, parent := "", closed := Vector3.ZERO, open := Vector3.ZERO) -> void:
+	if not _groups.has(gname):
+		_groups[gname] = {"parts": {}, "pivot": pivot, "parent": parent, "closed": closed, "open": open}
+	_cur = gname
+	_parts = _groups[gname]["parts"]
+
+
+# The model's bounds with every part in its closed or open rotation.
+func _pose_aabb(root: Node3D, nodes: Dictionary, pose: String) -> AABB:
+	var box := AABB()
+	var first := true
+	for gname in nodes:
+		var xf := Transform3D.IDENTITY
+		var n: Node3D = nodes[gname]
+		var walk: Node = n
+		while walk != root:
+			var w3 := walk as Node3D
+			var g: Dictionary = _groups.get(_group_of(nodes, w3), {})
+			var rot: Vector3 = g.get(pose, Vector3.ZERO)
+			xf = Transform3D(Basis.from_euler(rot * PI / 180.0), w3.position) * xf
+			walk = walk.get_parent()
+		var b := xf * (n.mesh as ArrayMesh).get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	return box
+
+
+func _group_of(nodes: Dictionary, n: Node3D) -> String:
+	for k in nodes:
+		if nodes[k] == n:
+			return k
+	return ""
 
 
 # ── primitives ──────────────────────────────────────────────────────────────
@@ -108,9 +194,10 @@ func _tri(mat: String, a: Vector3, b: Vector3, c: Vector3, outward: Vector3) -> 
 		c = t
 	n = -(b - a).cross(c - a).normalized()
 	var st := _st(mat)
+	var pivot: Vector3 = _groups[_cur]["pivot"]
 	for v in [a, b, c]:
 		st.set_normal(n)
-		st.add_vertex(v)
+		st.add_vertex(v - pivot)
 
 
 func _quad(mat: String, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3) -> void:
@@ -251,8 +338,8 @@ func _bathtub() -> void:
 	var floor := _rr(0, 0, 0.74, 0.36, 0.16)
 	_cap("M_ceramic", foot, 0.12, false)
 	_band("M_ceramic", foot, 0.12, shoulder, 0.56)
-	_band("M_ceramic", shoulder, 0.56, lip, 0.58)
-	_band("M_ceramic", lip, 0.58, lip, 0.62)
+	_ring("M_ceramic", lip, shoulder, 0.56, false)
+	_band("M_ceramic", lip, 0.56, lip, 0.62)
 	_ring("M_ceramic", lip, inner, 0.62, true)
 	_band("M_ceramic", inner, 0.62, floor, 0.24, true)
 	_cap("M_ceramic", floor, 0.24, true)
@@ -274,11 +361,12 @@ func _sink() -> void:
 	var flare := _rr(0, pz, 0.30, 0.24, 0.11)
 	_cap("M_ceramic", base, 0.0, false)
 	_band("M_ceramic", base, 0.0, base, 0.06)
-	_band("M_ceramic", base, 0.06, waist, 0.16)
-	_band("M_ceramic", waist, 0.16, waist, 0.58)
-	_band("M_ceramic", waist, 0.58, flare, 0.70)
-	var bz := 0.0
-	var under := _rr(0, bz, 0.42, 0.32, 0.14)
+	_band("M_ceramic", base, 0.06, waist, 0.26)
+	_band("M_ceramic", waist, 0.26, waist, 0.46)
+	_band("M_ceramic", waist, 0.46, flare, 0.70)
+	_cap("M_ceramic", flare, 0.70, true)
+	var bz := 0.03
+	var under := _rr(0, bz, 0.46, 0.36, 0.16)
 	var outer := _rr(0, bz, 0.56, 0.44, 0.20)
 	var inner := _rr(0, bz, 0.46, 0.34, 0.15)
 	var bottom := _rr(0, bz, 0.34, 0.24, 0.10)
@@ -300,7 +388,7 @@ func _sink() -> void:
 # bowl on a narrow base and a seat.
 func _toilet() -> void:
 	_box("M_ceramic", Vector3(-0.21, 0.40, -0.30), Vector3(0.21, 0.76, -0.12))
-	_box("M_ceramic", Vector3(-0.23, 0.76, -0.30), Vector3(0.23, 0.80, -0.10))
+	_box("M_ceramic", Vector3(-0.25, 0.76, -0.30), Vector3(0.25, 0.80, -0.10))
 	_box("M_chrome", Vector3(-0.04, 0.80, -0.24), Vector3(0.04, 0.82, -0.18))
 	var cz := 0.03
 	var base := _rr(0, cz - 0.02, 0.22, 0.32, 0.10)
@@ -309,7 +397,7 @@ func _toilet() -> void:
 	_cap("M_ceramic", base, 0.0, false)
 	_band("M_ceramic", base, 0.0, waist, 0.22)
 	_band("M_ceramic", waist, 0.22, bowl, 0.38)
-	var seat_out := _rr(0, cz + 0.005, 0.40, 0.54, 0.19)
+	var seat_out := _rr(0, cz + 0.005, 0.40, 0.53, 0.19)
 	var seat_in := _rr(0, cz + 0.02, 0.24, 0.32, 0.11)
 	var throat := _rr(0, cz + 0.02, 0.14, 0.18, 0.06)
 	_ring("C_d4dde8", seat_out, bowl, 0.38, false)
@@ -318,3 +406,35 @@ func _toilet() -> void:
 	_band("M_ceramic", seat_in, 0.42, throat, 0.20, true)
 	_cap("M_water", _rr(0, cz + 0.02, 0.19, 0.25, 0.085), 0.30, true)
 	_cap("M_ceramic", throat, 0.20, true)
+
+
+# 150 x 200 x 60 cm closed; 230 cm deep open. A cabinet against the wall
+# whose bed panel swings down on a hinge low at its front, with a pair of
+# legs that fold out under the foot end.
+func _murphy_bed() -> void:
+	var body := "C_5a7ea0"
+	var dark := "C_3f5870"
+	var front := "C_8fa8c4"
+	# Cabinet: back, two sides, a top and a low base under the hinge.
+	_box(dark, Vector3(-0.75, 0.0, -0.30), Vector3(0.75, 2.00, -0.27))
+	_box(body, Vector3(-0.75, 0.0, -0.27), Vector3(-0.71, 2.00, 0.30))
+	_box(body, Vector3(0.71, 0.0, -0.27), Vector3(0.75, 2.00, 0.30))
+	_box(body, Vector3(-0.75, 1.94, -0.27), Vector3(0.75, 2.00, 0.30))
+	_box(body, Vector3(-0.71, 0.0, -0.27), Vector3(0.71, 0.20, 0.27))
+	# The bed panel, standing up inside the cabinet: hinge 20 cm up at its
+	# front, 1.72 m long, its underside (the cabinet's face when closed)
+	# towards +Z, the mattress towards the back. It swings 90 degrees forward
+	# to lie on the floor side, mattress up.
+	var hinge := Vector3(0.0, 0.20, 0.27)
+	_part("Bed", hinge, "Body", Vector3.ZERO, Vector3(90.0, 0.0, 0.0))
+	_box(front, Vector3(-0.70, 0.20, 0.19), Vector3(0.70, 1.92, 0.27))            # underside board
+	_box("M_mattress", Vector3(-0.66, 0.24, 0.01), Vector3(0.66, 1.88, 0.19))     # mattress
+	_box("M_blanket", Vector3(-0.66, 0.70, 0.007), Vector3(0.66, 1.88, 0.01))    # blanket stripe
+	_box("M_pillow", Vector3(-0.50, 0.28, -0.03), Vector3(0.50, 0.58, 0.01))     # pillow at the head
+	_box("M_brass", Vector3(-0.25, 1.70, 0.27), Vector3(0.25, 1.74, 0.29))       # handle
+	# Legs at the foot end: built standing out of the underside (+Z), as they
+	# are when the bed is down; folded flat along it when closed.
+	_part("Legs", Vector3(0.0, 1.84, 0.27), "Bed", Vector3(90.0, 0.0, 0.0), Vector3.ZERO)
+	_box(dark, Vector3(-0.66, 1.82, 0.27), Vector3(-0.60, 1.86, 0.47))
+	_box(dark, Vector3(0.60, 1.82, 0.27), Vector3(0.66, 1.86, 0.47))
+	_box(dark, Vector3(-0.66, 1.82, 0.43), Vector3(0.66, 1.86, 0.47))
