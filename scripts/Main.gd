@@ -2410,8 +2410,12 @@ var _outside_walls: Array = []   # what _show_outside_walls() last showed, for a
 func _show_outside_walls(carried: Furniture = null, at: Variant = null) -> void:
 	var by_wall := gm.external_restrictions.get("by_wall", {}) as Dictionary
 	var walls: Array = []
+	var looped: Array = []   # sides that are all seam on a looped floor: no outside there
+	for lfid in _floors:
+		if (_floors[lfid] as Floor).loop != null:
+			looped.append_array((_floors[lfid] as Floor).loop.looped_sides())
 	for side in ["north", "east", "south", "west"]:
-		if not by_wall.has(side):
+		if not by_wall.has(side) or side in looped:
 			continue
 		var p := by_wall[side] as Dictionary
 		var rules := _wall_rules_text(p)
@@ -2445,6 +2449,16 @@ func _closest_wall_side(fl: Floor, box: Furniture, at: Variant = null) -> String
 	var d_east  := (b.position.x + b.size.x) - cx
 	var d_north := cy - b.position.y
 	var d_south := (b.position.y + b.size.y) - cy
+	# A side of a looped flat that is all seam has no outside behind it: the
+	# box takes the rules of the nearest wall that does. None at all: "".
+	if fl.loop != null:
+		var looped := fl.loop.looped_sides()
+		if looped.size() >= 4:
+			return ""
+		if "west" in looped: d_west = INF
+		if "east" in looped: d_east = INF
+		if "north" in looped: d_north = INF
+		if "south" in looped: d_south = INF
 	var m := minf(minf(d_west, d_east), minf(d_north, d_south))
 	if m == d_west:
 		return "west"

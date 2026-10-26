@@ -29,6 +29,12 @@ uniform float plank_width = 0.2;
 uniform vec3 emission : source_color = vec3(0.0);
 uniform float emission_energy = 0.0;
 
+#ifdef MATTE_CLIP
+// matte_gradient_clip.gdshader: world X/Z box outside which nothing is drawn.
+uniform vec2 clip_min = vec2(-100000.0);
+uniform vec2 clip_max = vec2(100000.0);
+#endif
+
 #ifdef MATTE_ALPHA
 uniform float alpha : hint_range(0.0, 1.0) = 1.0;
 // Optional dissolve by world height: fully faded at fade_y_min, solid from
@@ -63,6 +69,11 @@ void vertex() {
 }
 
 void fragment() {
+#ifdef MATTE_CLIP
+	if (world_pos.x < clip_min.x || world_pos.x > clip_max.x || world_pos.z < clip_min.y || world_pos.z > clip_max.y) {
+		discard;
+	}
+#endif
 	float world_y = world_pos.y;
 	float g = smoothstep(grad_y_min, grad_y_max, world_y);
 	ALBEDO = tint * COLOR.rgb * mix(grad_bottom, grad_top, g);

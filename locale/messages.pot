@@ -1204,6 +1204,10 @@ msgstr ""
 msgid "Ceiling too low here"
 msgstr ""
 
+#: scripts/Wall.gd:1130
+msgid "Longer than the loop: it runs into itself"
+msgstr ""
+
 #: scripts/Room3DView.gd:1654
 msgid "Blocked by furniture on the floor"
 msgstr ""

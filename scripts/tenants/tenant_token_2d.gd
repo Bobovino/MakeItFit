@@ -119,9 +119,14 @@ func walk(points: Array, step_time: float) -> Tween:
 		var t := p as Vector2
 		var a := from
 		var b := center_of(t)
-		_move_tween.tween_method(func(k: float):
-			position = a.lerp(b, k)
-			_body.position = Vector2(0, -sin(k * PI) * TILE * 0.9), 0.0, 1.0, step_time)
+		if a.distance_to(b) > TILE * 8.0:
+			# Through a seam of a looped flat: out of one opening, straight in
+			# at the other.
+			_move_tween.tween_callback(func(): position = b)
+		else:
+			_move_tween.tween_method(func(k: float):
+				position = a.lerp(b, k)
+				_body.position = Vector2(0, -sin(k * PI) * TILE * 0.9), 0.0, 1.0, step_time)
 		_move_tween.tween_callback(func(): tile = t)
 		from = b
 	return _move_tween

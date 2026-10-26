@@ -416,7 +416,9 @@ func update_sightlines(apt_floor) -> void:
 		if not ok:
 			sightline_ok = false
 		sightline_status.append({"from": from_tile, "to": to_tile, "must_be_clear": must_be_clear,
-			"block": block, "ok": ok, "label": r.get("label", "") as String, "short": r.get("short", "") as String})
+			"block": block, "ok": ok, "label": r.get("label", "") as String, "short": r.get("short", "") as String,
+			# Round a looped flat: the way the eye goes when not straight.
+			"route": apt_floor.sightline_route(from_tile, to_tile) if block == null else []})
 
 
 # Every rule of the level that is not a furniture need — lines of sight and

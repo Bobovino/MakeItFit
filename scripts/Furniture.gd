@@ -591,6 +591,80 @@ func _draw() -> void:
 	var ch := float(h if rot_steps % 2 == 0 else w)
 	var theta := deg_to_rad(rot_steps * 90.0)
 	var origin := Vector2(w, h) * 0.5 - Vector2(cw, ch).rotated(theta) * 0.5
+	var parts := _body_parts(float(w), float(h))
+	if parts.size() > 1:
+		_draw_split_body(parts, origin, theta, Vector2(cw, ch), ink)
+	else:
+		_draw_body(origin, theta, cw, ch, ink)
+
+	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
+	# only the fill/hatch/symbol need to actually spin.
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_overlays(w, h, ink, parts)
+
+
+# Where the piece's body is drawn, in its own pixels: [{dst: Rect2, src:
+# Rect2}], src being that part of the piece as if nothing wrapped. Just the
+# piece itself, except across a seam of a looped floor (LoopSeams), where
+# the part past the seam is drawn at the opening opposite.
+func _body_parts(w: float, h: float) -> Array:
+	var whole := [{"dst": Rect2(0, 0, w, h), "src": Rect2(0, 0, w, h)}]
+	if _wall_ref == null or _wall_ref.loop == null:
+		return whole
+	var corner := position / TILE_SIZE
+	var cut := _wall_ref.loop.split_rect(Rect2(corner, Vector2(grid_w, grid_h)))
+	if cut.size() < 2:
+		return whole
+	var out: Array = []
+	for p in cut:
+		var r: Rect2 = p["rect"]
+		var shift: Vector2 = p["shift"]
+		var dst := Rect2((r.position - corner) * TILE_SIZE, r.size * TILE_SIZE)
+		out.append({"dst": dst, "src": Rect2(dst.position - shift * TILE_SIZE, dst.size)})
+	return out
+
+
+# A piece across a seam: each part filled, hatched and outlined where it is
+# drawn, with its share of the top-down render. The cut edges are dashed.
+func _draw_split_body(parts: Array, origin: Vector2, theta: float, canon: Vector2, ink: Color) -> void:
+	var hatch := Color(ink.r, ink.g, ink.b, 0.07)
+	for part in parts:
+		var dst: Rect2 = part["dst"]
+		var src: Rect2 = part["src"]
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_rect(dst, Color(_color.r, _color.g, _color.b, 0.45))
+		var hd := 6.0
+		while hd < dst.size.x + dst.size.y:
+			draw_line(dst.position + Vector2(maxf(0.0, hd - dst.size.y), minf(hd, dst.size.y)),
+				dst.position + Vector2(minf(hd, dst.size.x), maxf(0.0, hd - dst.size.x)), hatch, 1.0, true)
+			hd += 6.0
+		if _topdown_icon:
+			# The bit of the (turned) render that falls in this part.
+			var a := (src.position - origin).rotated(-theta)
+			var b := (src.end - origin).rotated(-theta)
+			var creg := Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs())
+			var tex := Vector2(_topdown_icon.get_size())
+			draw_set_transform(origin + dst.position - src.position, theta, Vector2.ONE)
+			draw_texture_rect_region(_topdown_icon, creg,
+				Rect2(creg.position / canon * tex, creg.size / canon * tex))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# Outline: solid where it is the piece's own edge, dashed where the
+		# seam cuts it.
+		var full := Rect2(Vector2.ZERO, Vector2(grid_w, grid_h) * TILE_SIZE)
+		var c := [src.position, Vector2(src.end.x, src.position.y), src.end, Vector2(src.position.x, src.end.y)]
+		for i in 4:
+			var p0: Vector2 = c[i]
+			var p1: Vector2 = c[(i + 1) % 4]
+			var own := (is_equal_approx(p0.x, p1.x) and (is_equal_approx(p0.x, full.position.x) or is_equal_approx(p0.x, full.end.x))) \
+				or (is_equal_approx(p0.y, p1.y) and (is_equal_approx(p0.y, full.position.y) or is_equal_approx(p0.y, full.end.y)))
+			var d := dst.position - src.position
+			if own:
+				draw_line(p0 + d, p1 + d, ink, 1.5)
+			else:
+				draw_dashed_line(p0 + d, p1 + d, Color(0.45, 0.80, 1.0, 0.95), 1.5, 3.0)
+
+
+func _draw_body(origin: Vector2, theta: float, cw: float, ch: float, ink: Color) -> void:
 	draw_set_transform(origin, theta, Vector2.ONE)
 
 	draw_rect(Rect2(0, 0, cw, ch), Color(_color.r, _color.g, _color.b, 0.45))
@@ -612,9 +686,16 @@ func _draw() -> void:
 	else:
 		_draw_symbol(int(cw), int(ch), ink)
 
-	# Reset so everything below (label, overlays, cotes) stays axis-aligned —
-	# only the fill/hatch/symbol need to actually spin.
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _draw_overlays(w: int, h: int, ink: Color, parts: Array) -> void:
+	# Across a seam: name, badges and marks go on the part that holds the
+	# piece's corner, not out past the wall.
+	if parts.size() > 1:
+		for part in parts:
+			var dst: Rect2 = part["dst"]
+			if dst.position == Vector2.ZERO:
+				w = int(dst.size.x)
+				h = int(dst.size.y)
 	if is_surface:
 		_draw_strain(float(w), float(h))
 	if is_nested_box and _shade < 0.99:
@@ -776,8 +857,9 @@ func _draw() -> void:
 		var ok := Furniture.transfer_hover == 1 or (Furniture.transfer_hover == 0 and _wall_ref.can_place(self, at))
 		var pulse := 0.14 + 0.06 * sin(Time.get_ticks_msec() * 0.008)
 		var vc := Color(0.35, 0.80, 0.38, pulse) if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
-		draw_rect(Rect2(0, 0, w, h), vc)
-		draw_rect(Rect2(0, 0, w, h), Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
+		for part in parts:
+			draw_rect(part["dst"] as Rect2, vc)
+			draw_rect(part["dst"] as Rect2, Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
 		var glyph_col := Color(0.16, 0.42, 0.18, 0.9) if ok else Color(0.55, 0.10, 0.08, 0.9)
 		draw_string(ThemeDB.fallback_font, Vector2(4, 12),
 			"\uea5e" if ok else "\ueb55", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
@@ -1825,7 +1907,7 @@ func _drag(mouse_pos: Vector2) -> void:
 		var mn_y := 0.0                              if rail_start < 0 else float(rail_start)
 		var mx_y := float(_wall_ref.grid_h - grid_h) if rail_end   < 0 else float(rail_end)
 		ty = clampf(ty, mn_y, mx_y)
-	else:
+	elif _wall_ref.loop == null:
 		tx = clampf(tx, 0.0, float(_wall_ref.grid_w - grid_w))
 		ty = clampf(ty, 0.0, float(_wall_ref.grid_h - grid_h))
 	# The 2D top-down plan snaps to whole tiles (matching the drawn grid) —
@@ -1834,6 +1916,12 @@ func _drag(mouse_pos: Vector2) -> void:
 	# gridlines, making the grid purely decorative here.
 	tx = round(tx)
 	ty = round(ty)
+	if rail_axis == "" and _wall_ref.loop != null:
+		# A looped floor: pushed past a seam, the piece carries on from the
+		# opening opposite (drawn in two parts while it stands across).
+		var wrapped := _wall_ref.wrap_point(Vector2(tx, ty))
+		tx = clampf(wrapped.x, 0.0, float(_wall_ref.grid_w - 1))
+		ty = clampf(wrapped.y, 0.0, float(_wall_ref.grid_h - 1))
 	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
 	_wall_ref.set_floor_drag_ghost(self, tx, ty)
 	queue_redraw()

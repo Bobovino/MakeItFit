@@ -1641,7 +1641,9 @@ func _rebuild_floor() -> void:
 		"reveal_zones":    reveal_arr,
 		"stair_openings":  _preview_so,
 		"segments": _segments.duplicate(true),
-		"columns":  _cols.duplicate(true)
+		"columns":  _cols.duplicate(true),
+		# A looped floor's seams (authored in levels.json; kept as they are on save)
+		"loop":     _afed.get("loop", {}),
 	})
 	_floor.grid_draw.show_grid = true
 

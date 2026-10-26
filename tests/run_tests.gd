@@ -58,6 +58,16 @@ func _run_all() -> void:
 	_test("a sleeping pod sleeps, stores, splits and shades", func(): _t_sleeping_pod())
 	_test("a foldable gives only what its fold state gives, per moment", func(): _t_fold_gives_per_moment())
 	_test("kit modules: every module is in the shop, with its model", func(): _t_kit_modules_catalogue())
+	_test("loop: a tile past a seam is the tile on the other side", func(): _t_loop_wrap_tile())
+	_test("loop: a piece can stand across a seam, and collides there", func(): _t_loop_straddle())
+	_test("loop: a piece longer than the loop runs into itself", func(): _t_loop_too_long())
+	_test("loop: a door-sized seam only lets through what fits the opening", func(): _t_loop_door_span())
+	_test("loop: a piece dragged past a seam comes out the other side", func(): _t_loop_wrap_origin())
+	_test("loop: a seam joins two rooms into one zone", func(): _t_loop_zones())
+	_test("loop: the eye sees round the loop", func(): _t_loop_sightline())
+	_test("loop: the tenant walks through a seam", func(): _t_loop_pathing())
+	_test("loop: daylight comes round through a seam", func(): _t_loop_light())
+	_test("loop: only opposite walls can be joined", func(): _t_loop_bad_pairs())
 
 
 # ── Tiny assertion helpers ───────────────────────────────────────────────────
@@ -116,6 +126,180 @@ func _make_furniture(fl: Floor, w: int = 2, h: int = 2) -> Furniture:
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
+
+# ── Looped apartments (LoopSeams.gd, docs/design_recursive_apartments.md §2) ──
+# A 30 x 20 room: walls at x 1 and 31, y 1 and 21, so the interior is tiles
+# 2..30 across (29 round) and 2..20 down (19 round). `extra` adds segments
+# (an inner wall), `north` replaces the north wall; `loop` is the floor's
+# loop data, {} for none.
+func _make_loop_floor(loop: Dictionary, extra: Array = [], north: Array = []) -> Floor:
+	var segs: Array = [
+		{"x1": 31, "y1": 1, "x2": 31, "y2": 21, "primary": true, "demolished": false},
+		{"x1": 31, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+		{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+	]
+	if north.is_empty():
+		segs.append({"x1": 1, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false})
+	else:
+		segs.append_array(north)
+	segs.append_array(extra)
+	var data := {"id": "loop_floor", "label": "Loop", "grid_w": 34, "grid_h": 24, "floor_tiles": [], "segments": segs}
+	if not loop.is_empty():
+		data["loop"] = loop
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup(data)
+	return fl
+
+
+const TORUS_X := {"pairs": [{"a": "west", "b": "east"}]}
+
+
+func _make_piece(fl: Floor, w: int, h: int, extra: Dictionary = {}) -> Furniture:
+	var fdata := {"id": "test_item", "name": "Test Item", "size": {"w": w, "h": h}, "functions": [],
+		"buy_price": 100, "sell_price": 50}
+	fdata.merge(extra, true)
+	var f := load("res://scenes/Furniture.tscn").instantiate() as Furniture
+	fl.add_child(f)
+	f.setup(fdata, fl)
+	return f
+
+
+func _t_loop_wrap_tile() -> void:
+	var fl := _make_loop_floor(TORUS_X)
+	_eq(fl.wrap_tile(Vector2i(1, 5)), Vector2i(30, 5), "west wall line is the last column:")
+	_eq(fl.wrap_tile(Vector2i(31, 5)), Vector2i(2, 5), "east wall line is the first column:")
+	_eq(fl.wrap_tile(Vector2i(-2, 5)), Vector2i(27, 5), "further out:")
+	_eq(fl.wrap_tile(Vector2i(5, 0)), Vector2i(5, 0), "north has no seam:")
+	var plain := _make_loop_floor({})
+	_eq(plain.wrap_tile(Vector2i(1, 5)), Vector2i(1, 5), "no loop, no wrap:")
+	fl.queue_free()
+	plain.queue_free()
+
+
+func _t_loop_straddle() -> void:
+	var fl := _make_loop_floor(TORUS_X)
+	var sofa := _make_piece(fl, 6, 2)
+	_ok(fl.can_place(sofa, Vector2(27, 5)), "a sofa across the east-west seam: %s" % fl.get_block_reason())
+	fl.place_furniture(sofa, Vector2(27, 5))
+	var tiles := fl._rect_tiles(sofa.grid_pos, sofa.grid_w, sofa.grid_h)
+	_ok(Vector2i(2, 5) in tiles and Vector2i(3, 6) in tiles and Vector2i(30, 5) in tiles and tiles.size() == 12,
+		"stands on both sides: %s" % str(tiles))
+	var stool := _make_piece(fl, 2, 2)
+	_ok(not fl.can_place(stool, Vector2(3, 5)), "the far end is in the way on the west side")
+	_eq(fl.get_block_reason(), "Overlaps Test Item")
+	_ok(fl.can_place(stool, Vector2(4, 5)), "just past its end is free: %s" % fl.get_block_reason())
+	var plain := _make_loop_floor({})
+	var sofa2 := _make_piece(plain, 6, 2)
+	_ok(not plain.can_place(sofa2, Vector2(27, 5)), "without a loop the wall is in the way")
+	fl.queue_free()
+	plain.queue_free()
+
+
+func _t_loop_too_long() -> void:
+	var fl := _make_loop_floor(TORUS_X)
+	var exact := _make_piece(fl, 29, 1)
+	_ok(fl.can_place(exact, Vector2(10, 5)), "exactly once round fits: %s" % fl.get_block_reason())
+	var long := _make_piece(fl, 30, 1)
+	_ok(not fl.can_place(long, Vector2(2, 5)), "a tile longer than the loop doesn't")
+	_eq(fl.get_block_reason(), "Longer than the loop: it runs into itself")
+	var deep := _make_piece(fl, 1, 20)
+	_ok(not fl.can_place(deep, Vector2(5, 2)), "north-south is not looped: too deep is just outside")
+	fl.queue_free()
+
+
+# The north wall's x 4..12 leads to the south wall's x 16..24.
+func _t_loop_door_span() -> void:
+	var fl := _make_loop_floor({"pairs": [{"a": {"side": "north", "from": 4, "to": 12},
+		"b": {"side": "south", "from": 16, "to": 24}}]})
+	_eq(fl.wrap_tile(Vector2i(5, 1)), Vector2i(17, 20), "out of the north door, in at the south one:")
+	_eq(fl.wrap_tile(Vector2i(13, 1)), Vector2i(13, 1), "beside the door is wall:")
+	var shelf := _make_piece(fl, 4, 3)
+	_ok(fl.can_place(shelf, Vector2(18, 19)), "through the south door into the north one: %s" % fl.get_block_reason())
+	_ok(not fl.can_place(shelf, Vector2(22, 19)), "only half in the opening")
+	fl.queue_free()
+
+
+func _t_loop_wrap_origin() -> void:
+	var fl := _make_loop_floor(TORUS_X)
+	var f := _make_piece(fl, 3, 2)
+	fl.place_furniture(f, Vector2(-1, 6))
+	_eq(f.grid_pos, Vector2(28, 6), "corner moved round the loop:")
+	fl.queue_free()
+
+
+# An inner wall at x 16 with no door splits the room in two.
+func _t_loop_zones() -> void:
+	var wall := [{"x1": 16, "y1": 1, "x2": 16, "y2": 21, "primary": false, "demolished": false}]
+	var plain := _make_loop_floor({"pairs": [{"a": "north", "b": "south"}]}, wall)
+	plain._recalculate_zones()   # (done when furniture changes; none here)
+	_eq(plain.zones.size(), 2, "a wall between, looped the other way:")
+	var fl := _make_loop_floor(TORUS_X, wall)
+	fl._recalculate_zones()
+	_eq(fl.zones.size(), 1, "joined round the back:")
+	fl.queue_free()
+	plain.queue_free()
+
+
+func _t_loop_sightline() -> void:
+	var fl := _make_loop_floor(TORUS_X)
+	var tall := {"height_category": "tall"}
+	var screen := _make_piece(fl, 2, 2, tall)
+	fl.place_furniture(screen, Vector2(15, 9))
+	_ok(fl.sightline_block(Vector2i(4, 10), Vector2i(26, 10)) == null, "blocked straight on, clear the long way round")
+	_ok(not fl.sightline_route(Vector2i(4, 10), Vector2i(26, 10)).is_empty(), "and the route goes through the seam")
+	var other := _make_piece(fl, 2, 2, tall)
+	fl.place_furniture(other, Vector2(29, 9))
+	_ok(fl.sightline_block(Vector2i(4, 10), Vector2i(26, 10)) != null, "blocked both ways round")
+	var plain := _make_loop_floor({})
+	var s2 := _make_piece(plain, 2, 2, tall)
+	plain.place_furniture(s2, Vector2(15, 9))
+	_ok(plain.sightline_block(Vector2i(4, 10), Vector2i(26, 10)) != null, "no loop: blocked")
+	fl.queue_free()
+	plain.queue_free()
+
+
+# The inner wall at x 16 again; the front door is in the north wall's
+# western half, so the eastern room is reached only round the loop.
+func _t_loop_pathing() -> void:
+	Floor.pathing_enabled = true
+	var wall := [{"x1": 16, "y1": 1, "x2": 16, "y2": 21, "primary": false, "demolished": false}]
+	var north := [
+		{"x1": 1, "y1": 1, "x2": 16, "y2": 1, "primary": true, "demolished": false, "has_door": true, "door_pos": 3},
+		{"x1": 16, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false},
+	]
+	var plain := _make_loop_floor({}, wall, north)
+	var p1 := _make_piece(plain, 2, 2)
+	plain.place_furniture(p1, Vector2(24, 10))
+	_ok(not plain.is_reachable(p1), "no loop: the eastern room has no way in")
+	var fl := _make_loop_floor(TORUS_X, wall, north)
+	var p2 := _make_piece(fl, 2, 2)
+	fl.place_furniture(p2, Vector2(24, 10))
+	_ok(fl.is_reachable(p2), "round the loop it can be walked to")
+	Floor.pathing_enabled = false
+	fl.queue_free()
+	plain.queue_free()
+
+
+# A window at the east end of the north wall lights the first columns too,
+# through the seam.
+func _t_loop_light() -> void:
+	var north := [{"x1": 1, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false,
+		"has_window": true, "window_pos": 26, "window_len": 4}]
+	var fl := _make_loop_floor(TORUS_X, [], north)
+	var plain := _make_loop_floor({}, [], north)
+	_ok(fl.get_light(Vector2i(2, 2)) > plain.get_light(Vector2i(2, 2)) + 0.05,
+		"looped %.2f vs plain %.2f" % [fl.get_light(Vector2i(2, 2)), plain.get_light(Vector2i(2, 2))])
+	fl.queue_free()
+	plain.queue_free()
+
+
+func _t_loop_bad_pairs() -> void:
+	var fl := _make_loop_floor({"pairs": [{"a": "west", "b": "north"},
+		{"a": {"side": "north", "from": 4, "to": 8}, "b": {"side": "south", "from": 4, "to": 10}}]})
+	_ok(fl.loop == null, "a turning pair and a mismatched one are both left out")
+	fl.queue_free()
+
 
 # A loft over the room's left half: a chest freezer (0.9 m) fits under it, a
 # fridge (1.8 m) doesn't; and a window in the top wall is still wall.

@@ -146,9 +146,13 @@ func walk(points: Array, step_time: float) -> Tween:
 			var d := b - a
 			if d.length() > 0.001:
 				_heading = atan2(d.x, d.z))
-		_move_tween.tween_method(func(k: float):
-			position = a.lerp(b, k)
-			_figure.position.y = sin(k * PI) * bob, 0.0, 1.0, step_time)
+		if a.distance_to(b) > 0.8:
+			# Through a seam of a looped flat (see TenantToken2D.walk()).
+			_move_tween.tween_callback(func(): position = b)
+		else:
+			_move_tween.tween_method(func(k: float):
+				position = a.lerp(b, k)
+				_figure.position.y = sin(k * PI) * bob, 0.0, 1.0, step_time)
 		from = b
 	_move_tween.tween_callback(func():
 		_settle()
