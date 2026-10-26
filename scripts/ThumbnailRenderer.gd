@@ -22,6 +22,20 @@ var _cache: Dictionary = {}       # cache_key ("cat:id" / "top:id" / "front:id")
 var _pending: Dictionary = {}     # cache_key -> Array[Callable] awaiting this key's render
 var _busy: bool = false
 
+# Thumbnails rendered ahead of time (tools/bake_thumbnails): rendering ~190
+# of them live after a level opened loaded every model one by one, and the
+# game stuttered for its first ten seconds. A piece without a baked image
+# (one added since the last bake) is still rendered live. The baking tool
+# turns use_baked off so it renders fresh.
+const BAKED_DIR := "res://assets/thumbs/"
+var use_baked := true
+
+
+# Where cache_key's baked image lives ("cat:bed" -> .../cat/bed.png).
+static func baked_path(cache_key: String) -> String:
+	var parts := cache_key.split(":", true, 1)
+	return BAKED_DIR + parts[0] + "/" + parts[1].replace(":", "_") + ".png"
+
 
 func _ready() -> void:
 	_sub_vp = SubViewport.new()
@@ -113,6 +127,10 @@ func get_elevation_icon_async(fdata: Dictionary) -> Texture2D:
 # (the shared SubViewport/holder can't render two models at once).
 func _dispatch(cache_key: String, kind: String, model_path: String, span_a: float = 0.0, span_b: float = 0.0) -> Texture2D:
 	if _cache.has(cache_key):
+		return _cache[cache_key]
+	var baked := baked_path(cache_key)
+	if use_baked and ResourceLoader.exists(baked):
+		_cache[cache_key] = load(baked) as Texture2D
 		return _cache[cache_key]
 	if _pending.has(cache_key):
 		# GDScript lambdas capture locals by value, so a plain bool/var written
