@@ -24,6 +24,8 @@ signal open_requested
 const RIM := 2.0
 const TICKS := 12
 const COMPACT_MAX := 4
+const DONE_FILL := Color("bfe3cc")      # a moment with every need met
+const MISSING_FILL := Color("f6c7c4")   # a moment still missing a need
 
 var show_labels := false          # the large clock: names under the icons
 
@@ -71,8 +73,8 @@ func set_active(moment_id: String) -> void:
 	queue_redraw()
 
 
-# Which moments have all their needs met: a green mark on the rim of their
-# slice, a red one where something is missing.
+# Which moments have all their needs met: their slices fill green, or red
+# where something is missing.
 func set_status(done: Dictionary) -> void:
 	if done == _done:
 		return
@@ -162,16 +164,25 @@ func _draw() -> void:
 	if n == 0:
 		return
 	var step := TAU / n
-	# Slices: the active one filled navy, the hovered one tinted.
+	# Slices: the active one navy; the others green when all their needs are
+	# met, red when one is missing, white until known. Hover darkens a little.
 	for k in n:
-		if k != _active and k != _hover:
+		var mid := (_moments[k] as Dictionary).get("id", "") as String
+		var col := GameTheme.CARD
+		if k == _active:
+			col = GameTheme.NAVY
+		elif _done.has(mid):
+			col = DONE_FILL if _done[mid] else MISSING_FILL
+		if k == _hover and k != _active:
+			col = col.darkened(0.08)
+		if col == GameTheme.CARD:
 			continue
 		var a0 := _slice_angle(k) - step * 0.5
 		var pts := PackedVector2Array([c])
 		var segs := maxi(6, int(24.0 / n))
 		for s in segs + 1:
 			pts.append(_point(a0 + step * s / segs, r))
-		draw_colored_polygon(pts, GameTheme.NAVY if k == _active else GameTheme.CARD_DIM)
+		draw_colored_polygon(pts, col)
 	# Dividers between slices.
 	if n > 1:
 		for k in n:
@@ -182,17 +193,6 @@ func _draw() -> void:
 		var a := TAU * t / TICKS
 		draw_line(_point(a, r - 4.0), _point(a, r), GameTheme.INK, 1.5, true)
 	draw_arc(c, r, 0.0, TAU, 64, GameTheme.NAVY, RIM * 2.0, true)
-	# Status marks on the rim, one per slice.
-	var mr := clampf(r * 0.13, 4.0, 11.0)
-	for k in n:
-		var mid := (_moments[k] as Dictionary).get("id", "") as String
-		if not _done.has(mid):
-			continue
-		# Done is also smaller, so the two read apart without colour.
-		var at := _point(_slice_angle(k), r)
-		var dr := mr * (0.6 if _done[mid] else 1.0)
-		draw_circle(at, dr + 1.5, GameTheme.CARD)
-		draw_circle(at, dr, GameTheme.OK if _done[mid] else GameTheme.RED)
 	# Icons, out in each slice; on the large clock, each with its name.
 	var font := GameTheme.font("icons")
 	var fs := int(clampf(r * (0.62 if n <= 2 else 0.52 if n <= 4 else 0.40), 12.0, 30.0))
