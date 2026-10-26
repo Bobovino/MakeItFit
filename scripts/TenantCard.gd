@@ -37,6 +37,7 @@ var _moment_clock: MomentClock = null
 var _moment_icon: Label = null
 var _moment_name: Label = null
 const CLOCK_SIZE := 64.0
+const CLOCK_SIZE_MANY := 80.0   # more moments than icons fit: bigger slices to click
 var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
 
 # Every chip by the requirement id(s) it shows (see Requirements): one chip
@@ -242,10 +243,9 @@ func _build_moment_checklist() -> void:
 	_moment_clock = MomentClock.new()
 	_moment_clock.name = "MomentClock"
 	_moment_clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_moment_clock.setup(_moments, CLOCK_SIZE)
+	_moment_clock.setup(_moments, CLOCK_SIZE_MANY if _moments.size() > MomentClock.COMPACT_MAX else CLOCK_SIZE)
 	_moment_clock.tooltip_text = " "   # turns on _get_tooltip(): it names the slice under the pointer
 	_moment_clock.moment_chosen.connect(func(mid: String): moment_selected.emit(mid))
-	_moment_clock.open_requested.connect(_open_moment_picker)
 	checklist_container.add_child(_moment_clock)
 	# With too many moments for icons on the small dial, the active one's
 	# icon sits here instead.
@@ -552,8 +552,6 @@ func update_moments(results: Dictionary) -> void:
 				_set_need_chip(chips[func_name] as PanelContainer, func_name in mfulfilled)
 	if is_instance_valid(_moment_clock):
 		_moment_clock.set_status(done)
-	if is_instance_valid(_picker_clock):
-		_picker_clock.set_status(done)
 
 
 # ── Requirement ids, hidden requirements, the application ───────────────────
@@ -707,64 +705,3 @@ func set_project_status(done: int, total: int, pending: Array) -> void:
 	_project_chip.tooltip_text = (tr("Still to furnish: %s") % Loc.join_list(pending)) if not pending.is_empty() \
 		else tr("Every apartment is ready")
 	_set_need_chip(_project_chip, done == total)
-
-
-# The large clock, over the whole screen: every moment's icon and name round
-# the dial. Choosing one switches to it and closes; a click outside or Esc
-# closes without a change.
-var _picker: CanvasLayer = null
-var _picker_clock: MomentClock = null
-
-func _open_moment_picker() -> void:
-	if is_instance_valid(_picker) or not is_instance_valid(_moment_clock):
-		return
-	_picker = CanvasLayer.new()
-	_picker.layer = 60
-	add_child(_picker)
-	var dim := ColorRect.new()
-	dim.color = Color(GameTheme.NAVY, 0.55)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_picker.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.add_child(center)
-	var big := MomentClock.new()
-	big.show_labels = true
-	var side := clampf(minf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 0.62, 280.0, 480.0)
-	big.setup(_moments, side)
-	big.set_active(_moments[_moment_clock_active_index()]["id"] as String)
-	big.set_status(_moment_clock._done)
-	_picker_clock = big
-	big.tooltip_text = " "
-	big.moment_chosen.connect(func(mid: String):
-		moment_selected.emit(mid)
-		_close_moment_picker())
-	center.add_child(big)
-	dim.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-			_close_moment_picker())
-	if not GameState.reduce_motion:
-		big.pivot_offset = Vector2(side, side) * 0.5
-		big.scale = Vector2(0.85, 0.85)
-		dim.modulate.a = 0.0
-		var tw := big.create_tween().set_parallel()
-		tw.tween_property(big, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(dim, "modulate:a", 1.0, 0.12)
-
-
-func _moment_clock_active_index() -> int:
-	return maxi(0, _moment_clock._active)
-
-
-func _close_moment_picker() -> void:
-	if is_instance_valid(_picker):
-		_picker.queue_free()
-	_picker = null
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if is_instance_valid(_picker) and event.is_action_pressed("ui_cancel"):
-		_close_moment_picker()
-		get_viewport().set_input_as_handled()

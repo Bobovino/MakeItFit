@@ -12,22 +12,17 @@ class_name MomentClock
 # set_active(), so a switch made any other way (Q/E, loading) turns the hand
 # too.
 #
-# The small clock in the bar holds icons for up to COMPACT_MAX moments. With
-# more (a week, a dozen routines) the slices are too thin for icons: it
-# shows the slices alone, and a click asks for the large clock instead
-# (open_requested), which TenantCard shows over the screen with every
-# moment's icon and name (show_labels).
+# The clock holds icons for up to COMPACT_MAX moments. With more (a week, a
+# dozen routines) the slices are too thin for icons: it shows the slices
+# alone, and TenantCard puts the active moment's icon beside it.
 
 signal moment_chosen(moment_id: String)
-signal open_requested
 
 const RIM := 2.0
 const TICKS := 12
 const COMPACT_MAX := 4
 const DONE_FILL := Color("bfe3cc")      # a moment with every need met
 const MISSING_FILL := Color("f6c7c4")   # a moment still missing a need
-
-var show_labels := false          # the large clock: names under the icons
 
 var _moments: Array = []          # [{id, label, icon}]
 var _active := 0
@@ -126,15 +121,12 @@ func _gui_input(event: InputEvent) -> void:
 		var k := _slice_at((event as InputEventMouseButton).position)
 		if k >= 0:
 			accept_event()
-			if is_compact():
-				open_requested.emit()
-			else:
-				moment_chosen.emit((_moments[k] as Dictionary)["id"] as String)
+			moment_chosen.emit((_moments[k] as Dictionary)["id"] as String)
 
 
-# Too many moments for icons in the small clock.
+# Too many moments for icons on the dial.
 func is_compact() -> bool:
-	return not show_labels and _moments.size() > COMPACT_MAX
+	return _moments.size() > COMPACT_MAX
 
 
 func active_icon() -> String:
@@ -193,32 +185,17 @@ func _draw() -> void:
 		var a := TAU * t / TICKS
 		draw_line(_point(a, r - 4.0), _point(a, r), GameTheme.INK, 1.5, true)
 	draw_arc(c, r, 0.0, TAU, 64, GameTheme.NAVY, RIM * 2.0, true)
-	# Icons, out in each slice; on the large clock, each with its name.
+	# Icons, halfway out in each slice.
 	var font := GameTheme.font("icons")
-	var fs := int(clampf(r * (0.62 if n <= 2 else 0.52 if n <= 4 else 0.40), 12.0, 30.0))
-	if show_labels:
-		fs = int(clampf(r * 1.5 / maxf(n, 4.0), 22.0, 44.0))
-	var text_font := GameTheme.font("ui")
-	var tfs := GameTheme.FS_CAPTION
+	var fs := int(clampf(r * (0.62 if n <= 2 else 0.52), 12.0, 30.0))
 	for k in n:
 		if is_compact():
 			break
 		var col := GameTheme.CHALK if k == _active else GameTheme.INK
 		var glyph := MomentClock.icon_for(_moments[k] as Dictionary)
-		var at := _point(_slice_angle(k), r * (0.62 if show_labels else 0.64 if n > 1 else 0.0))
+		var at := _point(_slice_angle(k), r * (0.64 if n > 1 else 0.0))
 		var w := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(font, at + Vector2(-w * 0.5, fs * 0.36), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
-		if show_labels:
-			var label := tr((_moments[k] as Dictionary).get("label", "") as String)
-			# As wide as the slice where the name sits, shrinking a long name
-			# to fit rather than cutting it.
-			var room := 2.0 * r * 0.66 * sin(minf(step * 0.5, PI * 0.5)) - 14.0
-			var lfs := tfs
-			while lfs > 11 and text_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x > room:
-				lfs -= 1
-			var tw := minf(text_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x, room)
-			draw_string(text_font, at + Vector2(-tw * 0.5, fs * 0.36 + lfs + 6.0), label,
-				HORIZONTAL_ALIGNMENT_LEFT, room, lfs, col)
 	# The hand, short like an hour hand so it points at the icon without
 	# covering it, in the main-action red so it shows on navy and white.
 	var tip := _point(_hand_angle, r * 0.38)
