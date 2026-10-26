@@ -86,6 +86,13 @@ func _init() -> void:
 		"upright_freezer": _upright_freezer, "mini_fridge": _mini_fridge, "washer": _washer,
 		"washer_dryer_stack": _washer_dryer_stack, "sink_square": _sink_square, "shower": _shower,
 		"rolling_kitchen_cart": _rolling_kitchen_cart,
+		# Batch 3: tables, desks and seating.
+		"desk": _desk, "small_desk": _small_desk, "dining_table": _dining_table,
+		"coffee_table": _coffee_table, "outdoor_table": _outdoor_table, "rolling_desk": _rolling_desk,
+		"dining_chair": _dining_chair, "office_chair": _office_chair, "stool": _stool, "bench": _bench,
+		"cushioned_bench": _cushioned_bench, "low_bench": _low_bench, "puff": _puff, "ottoman": _ottoman,
+		"lounge_chair": _lounge_chair, "sofa": _sofa, "design_sofa": _design_sofa,
+		"sun_lounger": _sun_lounger, "banquette_bench": _banquette_bench,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -1191,3 +1198,305 @@ func _rolling_kitchen_cart() -> void:
 	_jar(-0.16, 0.0, 0.14, 0.10, 0.16, "M_teal", "M_walnut")
 	_jar(0.0, 0.0, 0.14, 0.10, 0.12, "M_sage", "M_walnut")
 	_jar(0.16, 0.0, 0.14, 0.10, 0.18, "M_orange", "M_walnut")
+
+
+# ── seating building blocks ─────────────────────────────────────────────────
+
+# A cushion: a block with softened corners, from (x0, y0, z0) to (x1, y1, z1).
+func _cushion(mat: String, x0: float, y0: float, z0: float, x1: float, y1: float, z1: float, r := 0.05) -> void:
+	_rblock(mat, (x0 + x1) * 0.5, (z0 + z1) * 0.5, x1 - x0, z1 - z0, minf(r, minf(x1 - x0, z1 - z0) * 0.45), y0, y1)
+
+
+# A table top on four legs, the legs set in by `inset`.
+func _table(top: String, leg: String, x0: float, x1: float, z0: float, z1: float, y: float, t := 0.04, inset := 0.04, leg_t := 0.05) -> void:
+	_box(top, Vector3(x0, y - t, z0), Vector3(x1, y, z1))
+	_legs(leg, x0 + inset, x1 - inset, z0 + inset, z1 - inset, y - t, leg_t)
+
+
+# A closed laptop: a black base, a steel lid.
+func _laptop(cx: float, cz: float, y: float) -> void:
+	_box("M_black", Vector3(cx - 0.17, y, cz - 0.12), Vector3(cx + 0.17, y + 0.03, cz + 0.12))
+	_box("M_steel", Vector3(cx - 0.16, y + 0.03, cz - 0.11), Vector3(cx + 0.16, y + 0.034, cz + 0.11))
+
+
+# A mug.
+func _mug(cx: float, cz: float, y: float, mat := "M_coral") -> void:
+	_rblock(mat, cx, cz, 0.08, 0.08, 0.04, y, y + 0.10)
+
+
+# A sofa along X from x0 to x1, its back at z0 and seat front at z1: legs, a
+# base, arms at both ends, `n` seat cushions and back cushions.
+func _sofa_run(base: String, seat: String, back: String, legs: String, x0: float, x1: float, z0: float, z1: float, n: int, arms := [true, true]) -> void:
+	for x in [x0 + 0.05, x1 - 0.10]:
+		for z in [z0 + 0.05, z1 - 0.10]:
+			_box(legs, Vector3(x, 0.0, z), Vector3(x + 0.05, 0.10, z + 0.05))
+	_box(base, Vector3(x0, 0.10, z0), Vector3(x1, 0.34, z1))
+	_box(base, Vector3(x0, 0.34, z0), Vector3(x1, 0.80, z0 + 0.18))     # back frame
+	var a0 := x0 + (0.16 if arms[0] else 0.0)
+	var a1 := x1 - (0.16 if arms[1] else 0.0)
+	if arms[0]:
+		_cushion(base, x0, 0.34, z0, x0 + 0.16, 0.62, z1, 0.04)
+	if arms[1]:
+		_cushion(base, x1 - 0.16, 0.34, z0, x1, 0.62, z1, 0.04)
+	var w := (a1 - a0) / n
+	for k in n:
+		_cushion(seat, a0 + k * w + 0.01, 0.34, z0 + 0.18, a0 + (k + 1) * w - 0.01, 0.46, z1 - 0.01, 0.05)
+		_cushion(back, a0 + k * w + 0.01, 0.46, z0 + 0.06, a0 + (k + 1) * w - 0.01, 0.84, z0 + 0.26, 0.06)
+
+
+# ── batch 3: tables, desks and seating ──────────────────────────────────────
+
+# 120 x 80 x 60 cm with what's on it: an oak top on a drawer pedestal and a
+# pair of iron legs, a laptop, a mug and books.
+func _desk() -> void:
+	_box("M_oak", Vector3(-0.60, 0.72, -0.30), Vector3(0.60, 0.76, 0.30))
+	_box("C_6a9e78", Vector3(0.18, 0.0, -0.28), Vector3(0.58, 0.72, 0.27))
+	for k in 3:
+		var y0 := 0.04 + k * 0.225
+		_front("C_8fb89a", 0.20, y0, 0.56, y0 + 0.20, 0.27)
+		_knob(0.38, y0 + 0.15, 0.273, 0.10, 0.025, "M_steel")
+	_box("M_iron", Vector3(-0.58, 0.0, -0.26), Vector3(-0.53, 0.72, -0.21))
+	_box("M_iron", Vector3(-0.58, 0.0, 0.21), Vector3(-0.53, 0.72, 0.26))
+	_box("M_iron", Vector3(-0.58, 0.04, -0.21), Vector3(-0.53, 0.08, 0.21))
+	_laptop(-0.15, 0.02, 0.76)
+	_mug(0.25, 0.10, 0.76)
+	_box("M_navy", Vector3(0.30, 0.76, -0.22), Vector3(0.52, 0.80, -0.04))
+	_box("M_white", Vector3(0.32, 0.80, -0.20), Vector3(0.50, 0.83, -0.06))
+
+
+# 80 x 60 x 80 cm: a low desk on a frame, papers and a mug.
+func _small_desk() -> void:
+	_table("M_oak", "C_7aae88", -0.40, 0.40, -0.40, 0.40, 0.55, 0.04, 0.03, 0.05)
+	_box("C_7aae88", Vector3(-0.37, 0.10, -0.37), Vector3(0.37, 0.13, -0.32))
+	_box("M_paper", Vector3(-0.25, 0.55, -0.15), Vector3(0.05, 0.555, 0.15))
+	_mug(0.20, -0.10, 0.55)
+
+
+# 160 x 70 x 100 cm: a dining table with a runner and a dish of fruit. (The
+# catalogue's 60 cm is low for a table; 70 is as far as the game lets a
+# model differ before stretching it, with the fruit on top.)
+func _dining_table() -> void:
+	_table("C_b09060", "C_846c48", -0.80, 0.80, -0.50, 0.50, 0.68, 0.05, 0.08, 0.07)
+	_box("C_846c48", Vector3(-0.70, 0.55, -0.40), Vector3(0.70, 0.63, -0.36))
+	_box("C_846c48", Vector3(-0.70, 0.55, 0.36), Vector3(0.70, 0.63, 0.40))
+	_box("M_cream", Vector3(-0.60, 0.68, -0.15), Vector3(0.60, 0.683, 0.15))
+	_rblock("M_teal", 0.0, 0.0, 0.14, 0.14, 0.07, 0.683, 0.71)
+	_rblock("M_teal", 0.0, 0.0, 0.30, 0.30, 0.15, 0.71, 0.74)
+	_rblock("M_red", -0.06, -0.03, 0.08, 0.08, 0.04, 0.74, 0.80)
+	_rblock("M_orange", 0.05, -0.04, 0.08, 0.08, 0.04, 0.74, 0.80)
+	_rblock("M_leaf_lime", 0.0, 0.06, 0.08, 0.08, 0.04, 0.74, 0.79)
+
+
+# 80 x 40 x 50 cm: a low table with a shelf of books under it.
+func _coffee_table() -> void:
+	_table("C_b09870", "C_7b6a4e", -0.40, 0.40, -0.25, 0.25, 0.40, 0.04, 0.03, 0.05)
+	_box("C_7b6a4e", Vector3(-0.35, 0.10, -0.20), Vector3(0.35, 0.13, 0.20))
+	_box("M_navy", Vector3(-0.28, 0.13, -0.12), Vector3(-0.02, 0.17, 0.10))
+	_box("M_coral", Vector3(-0.25, 0.17, -0.10), Vector3(-0.05, 0.20, 0.08))
+	_box("M_mustard", Vector3(0.05, 0.40, -0.08), Vector3(0.25, 0.43, 0.10))
+
+
+# 130 x 110 x 60 cm: a slatted balcony table on a metal frame, a potted
+# plant on it. The slats are one top with stripes of a lighter tone: real
+# gaps between them were inked as dotted lines.
+func _outdoor_table() -> void:
+	_legs("C_607050", -0.62, 0.62, -0.27, 0.27, 0.70, 0.04)
+	_box("C_607050", Vector3(-0.60, 0.62, -0.26), Vector3(0.60, 0.66, -0.22))
+	_box("C_607050", Vector3(-0.60, 0.62, 0.22), Vector3(0.60, 0.66, 0.26))
+	_box("M_oak", Vector3(-0.65, 0.70, -0.30), Vector3(0.65, 0.74, 0.30))
+	for k in 4:
+		var z := -0.18 + k * 0.12
+		_box("M_pine", Vector3(-0.65, 0.74, z - 0.012), Vector3(0.65, 0.743, z + 0.012))
+	_plant(0.30, 0.0, 0.743, 0.36)
+
+
+# 80 x 40 x 30 cm: a small desk on castors, a laptop and a mug on it.
+func _rolling_desk() -> void:
+	var y0 := _castors(-0.40, 0.40, -0.15, 0.15)
+	_box("M_steel", Vector3(-0.38, y0, -0.13), Vector3(-0.35, 0.30, -0.10))
+	_box("M_steel", Vector3(0.35, y0, -0.13), Vector3(0.38, 0.30, -0.10))
+	_box("C_6a9e78", Vector3(-0.40, 0.30, -0.15), Vector3(0.40, 0.33, 0.15))
+	_box("M_oak", Vector3(-0.40, 0.33, -0.15), Vector3(0.40, 0.35, 0.15))
+	_laptop(-0.12, 0.0, 0.35)
+	_mug(0.25, 0.0, 0.35)
+
+
+# 50 x 80 x 50 cm: a wooden chair with a cushion, its back to -Z.
+func _dining_chair() -> void:
+	_legs("C_8a6848", -0.24, 0.24, -0.24, 0.24, 0.43, 0.045)
+	_box("C_8a6848", Vector3(-0.25, 0.43, -0.25), Vector3(0.25, 0.47, 0.25))
+	_cushion("M_cream", -0.21, 0.47, -0.19, 0.21, 0.51, 0.22, 0.04)
+	_box("C_8a6848", Vector3(-0.24, 0.47, -0.25), Vector3(-0.195, 0.80, -0.21))
+	_box("C_8a6848", Vector3(0.195, 0.47, -0.25), Vector3(0.24, 0.80, -0.21))
+	_box("C_8a6848", Vector3(-0.24, 0.66, -0.25), Vector3(0.24, 0.80, -0.22))
+
+
+# 70 x 90 x 70 cm: a swivel chair: a star of feet on castors, a column, a
+# seat, a back and arms.
+func _office_chair() -> void:
+	_box("M_iron", Vector3(-0.35, 0.06, -0.025), Vector3(0.35, 0.10, 0.025))
+	_box("M_iron", Vector3(-0.025, 0.06, -0.35), Vector3(0.025, 0.10, 0.35))
+	for p: Vector2 in [Vector2(0.32, 0), Vector2(-0.32, 0), Vector2(0, 0.32), Vector2(0, -0.32)]:
+		_rblock("M_black", p.x, p.y, 0.06, 0.06, 0.03, 0.0, 0.06)
+	_rblock("M_chrome", 0.0, 0.0, 0.05, 0.05, 0.025, 0.10, 0.40)
+	_cushion("C_506070", -0.25, 0.40, -0.24, 0.25, 0.50, 0.26, 0.06)
+	_cushion("C_506070", -0.22, 0.52, -0.31, 0.22, 0.90, -0.24, 0.05)
+	_box("M_black", Vector3(-0.03, 0.42, -0.31), Vector3(0.03, 0.55, -0.24))
+	for x in [-0.30, 0.25]:
+		_box("M_black", Vector3(x, 0.50, -0.05), Vector3(x + 0.05, 0.62, 0.0))
+		_box("M_black", Vector3(x, 0.62, -0.18), Vector3(x + 0.05, 0.65, 0.12))
+
+
+# 30 x 50 x 30 cm: a round seat on four legs with a ring.
+func _stool() -> void:
+	for p: Vector2 in [Vector2(-0.10, -0.10), Vector2(0.06, -0.10), Vector2(-0.10, 0.06), Vector2(0.06, 0.06)]:
+		_box("M_walnut", Vector3(p.x, 0.0, p.y), Vector3(p.x + 0.04, 0.46, p.y + 0.04))
+	_box("M_walnut", Vector3(-0.10, 0.16, -0.10), Vector3(0.10, 0.18, 0.10))
+	_rblock("C_c09060", 0.0, 0.0, 0.30, 0.30, 0.15, 0.46, 0.50)
+
+
+# 120 x 60 x 40 cm: a shoe bench: two end panels, a slatted seat with a
+# cushion, a shelf of shoes underneath.
+func _bench() -> void:
+	_box("C_68543c", Vector3(-0.60, 0.0, -0.20), Vector3(-0.56, 0.44, 0.20))
+	_box("C_68543c", Vector3(0.56, 0.0, -0.20), Vector3(0.60, 0.44, 0.20))
+	_box("C_8a7050", Vector3(-0.56, 0.40, -0.19), Vector3(0.56, 0.44, 0.19))
+	for k in 3:
+		var z := -0.12 + k * 0.12
+		_box("C_68543c", Vector3(-0.56, 0.44, z - 0.012), Vector3(0.56, 0.443, z + 0.012))
+	_box("C_8a7050", Vector3(-0.56, 0.10, -0.19), Vector3(0.56, 0.13, 0.19))
+	_cushion("C_a7947c", -0.52, 0.443, -0.16, 0.10, 0.50, 0.16, 0.05)
+	var shoes := ["M_coral", "M_cream", "M_navy"]
+	for k in 3:
+		var x := -0.45 + k * 0.32
+		_cushion(shoes[k], x, 0.13, -0.10, x + 0.10, 0.20, 0.14, 0.04)
+		_cushion(shoes[k], x + 0.12, 0.13, -0.10, x + 0.22, 0.20, 0.14, 0.04)
+
+
+# 250 x 210 x 60 cm: a window-seat nook: shelving towers of books at both
+# ends, a row of cupboards across the top, and between them a storage bench
+# with a long cushion and pillows.
+func _cushioned_bench() -> void:
+	var body := "C_9a7858"
+	var front := "C_b8a08a"
+	for side in [-1.0, 1.0]:
+		var x0: float = -1.25 if side < 0 else 0.90
+		var tops := _shelf_box(body, "C_7a5e44", x0, x0 + 0.35, 0.0, 2.10, -0.30, 0.28, 5)
+		for k in tops.size():
+			if k == 2:
+				_plant(x0 + 0.175, -0.01, tops[k], 0.30, "M_ceramic")
+			else:
+				_books(x0 + 0.03, x0 + 0.33, tops[k], -0.30, 0.28, 0.30, k + (3 if side > 0 else 0))
+	_box(body, Vector3(-0.90, 1.70, -0.30), Vector3(0.90, 2.10, 0.20))
+	for k in 3:
+		var x0 := -0.88 + k * 0.59
+		_front(front, x0, 1.73, x0 + 0.57, 2.07, 0.20)
+		_knob(x0 + 0.285, 1.78, 0.203, 0.10, 0.025)
+	_box(body, Vector3(-0.90, 0.42, -0.30), Vector3(0.90, 1.70, -0.26))
+	_box("M_walnut", Vector3(-0.88, 0.0, -0.28), Vector3(0.88, 0.08, 0.24))
+	_box(body, Vector3(-0.90, 0.08, -0.30), Vector3(0.90, 0.42, 0.26))
+	for k in 2:
+		var x0 := -0.87 + k * 0.88
+		_front(front, x0, 0.11, x0 + 0.86, 0.39, 0.26)
+		_knob(x0 + 0.43, 0.32, 0.263, 0.10, 0.025)
+	_cushion("M_teal", -0.88, 0.42, -0.26, 0.88, 0.52, 0.26, 0.05)
+	var pillows := ["M_cream", "M_mustard", "M_coral", "M_sage"]
+	for k in 4:
+		var x := -0.80 + k * 0.42
+		_cushion(pillows[k], x, 0.52, -0.26, x + 0.32, 0.84, -0.13, 0.05)
+
+
+# 120 x 90 x 60 cm: a bench with a back, a cushion on its seat.
+func _low_bench() -> void:
+	_legs("C_907048", -0.58, 0.58, -0.28, 0.28, 0.40, 0.06)
+	_box("C_907048", Vector3(-0.60, 0.40, -0.30), Vector3(0.60, 0.44, 0.30))
+	_box("C_907048", Vector3(-0.60, 0.44, -0.30), Vector3(0.60, 0.90, -0.24))
+	_front("C_a68d6d", -0.55, 0.50, 0.55, 0.85, -0.24)
+	_cushion("M_sage", -0.56, 0.44, -0.22, 0.56, 0.52, 0.28, 0.05)
+
+
+# 50 x 120 x 50 cm: three poufs stacked into a tower, big to small.
+func _puff() -> void:
+	_rblock("C_d07848", 0.0, 0.0, 0.50, 0.50, 0.20, 0.0, 0.42)
+	_rblock("C_9c5a36", 0.0, 0.0, 0.52, 0.52, 0.21, 0.19, 0.23)
+	_rblock("C_dea07f", 0.0, 0.0, 0.44, 0.44, 0.18, 0.42, 0.80)
+	_rblock("C_9c5a36", 0.0, 0.0, 0.46, 0.46, 0.19, 0.59, 0.63)
+	_rblock("C_d07848", 0.0, 0.0, 0.36, 0.36, 0.15, 0.80, 1.20)
+	_rblock("C_9c5a36", 0.0, 0.0, 0.38, 0.38, 0.16, 0.98, 1.02)
+
+
+# 70 x 50 x 70 cm: a storage ottoman on feet, its lid a cushion.
+func _ottoman() -> void:
+	for x in [-0.30, 0.25]:
+		for z in [-0.30, 0.25]:
+			_box("M_walnut", Vector3(x, 0.0, z), Vector3(x + 0.05, 0.08, z + 0.05))
+	_cushion("C_c8a060", -0.35, 0.08, -0.35, 0.35, 0.38, 0.35, 0.06)
+	_cushion("C_8c7043", -0.355, 0.38, -0.355, 0.355, 0.41, 0.355, 0.06)
+	_cushion("C_d3b380", -0.34, 0.41, -0.34, 0.34, 0.50, 0.34, 0.07)
+
+
+# 80 x 80 x 80 cm: a wooden armchair: an open walnut frame, arms on posts, a
+# seat cushion, a back cushion and a pillow.
+func _lounge_chair() -> void:
+	for x in [-0.40, 0.35]:
+		_box("M_walnut", Vector3(x, 0.0, 0.28), Vector3(x + 0.05, 0.58, 0.33))
+		_box("M_walnut", Vector3(x, 0.0, -0.40), Vector3(x + 0.05, 0.58, -0.35))
+		_box("M_walnut", Vector3(x, 0.58, -0.40), Vector3(x + 0.05, 0.62, 0.39))   # a hair short of square: see _stove
+		_box("M_walnut", Vector3(x, 0.20, -0.35), Vector3(x + 0.05, 0.24, 0.28))
+	_box("M_walnut", Vector3(-0.35, 0.24, -0.38), Vector3(0.35, 0.28, 0.30))
+	_cushion("C_a87050", -0.34, 0.28, -0.30, 0.34, 0.40, 0.30, 0.05)
+	_cushion("C_a87050", -0.34, 0.40, -0.40, 0.34, 0.80, -0.26, 0.05)
+	_cushion("M_cream", -0.18, 0.40, -0.26, 0.14, 0.62, -0.16, 0.05)
+
+
+# 200 x 90 x 90 cm: a three-seat sofa with two throw pillows.
+func _sofa() -> void:
+	_sofa_run("C_9c5e38", "C_c87848", "C_d29069", "M_walnut", -1.00, 1.00, -0.45, 0.45, 3)
+	_cushion("M_mustard", -0.80, 0.46, -0.20, -0.52, 0.72, -0.08, 0.05)
+	_cushion("M_cream", 0.52, 0.46, -0.20, 0.80, 0.72, -0.08, 0.05)
+
+
+# 240 x 90 x 160 cm: a corner sofa: a run along the back, an arm at the left
+# and a chaise at the right reaching to the front, on chrome feet.
+func _design_sofa() -> void:
+	_sofa_run("C_2c3238", "C_384048", "C_5c6269", "M_chrome", -1.20, 1.20, -0.80, 0.10, 3, [true, false])
+	_box("C_2c3238", Vector3(0.40, 0.10, 0.10), Vector3(1.20, 0.34, 0.80))
+	_box("M_chrome", Vector3(1.10, 0.0, 0.70), Vector3(1.15, 0.10, 0.75))
+	_box("M_chrome", Vector3(0.45, 0.0, 0.70), Vector3(0.50, 0.10, 0.75))
+	_cushion("C_384048", 0.41, 0.34, 0.11, 1.19, 0.46, 0.79, 0.05)
+	_cushion("C_2c3238", 1.06, 0.34, -0.62, 1.20, 0.62, 0.80, 0.04)
+	_cushion("M_coral", -0.93, 0.46, -0.60, -0.65, 0.74, -0.48, 0.05)
+	_cushion("M_mustard", 0.67, 0.46, -0.55, 0.95, 0.72, -0.43, 0.05)
+
+
+# 70 x 50 x 120 cm, along Z: a balcony lounger, a cushion with a raised head
+# end at -Z and a pillow.
+func _sun_lounger() -> void:
+	_legs("M_oak", -0.33, 0.33, -0.58, 0.58, 0.22, 0.05)
+	_box("M_oak", Vector3(-0.35, 0.22, -0.60), Vector3(0.35, 0.26, 0.60))
+	_cushion("C_d4c070", -0.32, 0.26, -0.20, 0.32, 0.33, 0.58, 0.05)
+	_cushion("C_d4c070", -0.32, 0.26, -0.58, 0.32, 0.42, -0.20, 0.05)
+	_cushion("M_pillow", -0.20, 0.42, -0.56, 0.20, 0.50, -0.34, 0.05)
+
+
+# 220 x 90 x 170 cm: a corner banquette along the back and the right, with
+# a storage base, seat and back cushions and pillows.
+func _banquette_bench() -> void:
+	_box("M_black", Vector3(-1.08, 0.0, -0.83), Vector3(1.08, 0.08, -0.33))
+	_box("C_6a5a48", Vector3(-1.10, 0.08, -0.85), Vector3(1.10, 0.42, -0.30))
+	_box("C_4a3f32", Vector3(-1.10, 0.42, -0.85), Vector3(1.10, 0.90, -0.75))
+	_box("M_black", Vector3(0.58, 0.0, -0.33), Vector3(1.08, 0.08, 0.83))
+	_box("C_6a5a48", Vector3(0.55, 0.08, -0.30), Vector3(1.10, 0.42, 0.85))
+	_box("C_4a3f32", Vector3(1.00, 0.42, -0.75), Vector3(1.10, 0.90, 0.85))
+	_front("M_walnut", -1.06, 0.13, 0.20, 0.37, -0.30)
+	_box("M_walnut", Vector3(0.547, 0.13, -0.10), Vector3(0.55, 0.37, 0.80))
+	_cushion("C_978c7f", -1.08, 0.42, -0.75, 1.00, 0.50, -0.31, 0.05)
+	_cushion("C_978c7f", 0.56, 0.42, -0.30, 1.00, 0.50, 0.83, 0.05)
+	for k in 3:
+		var x := -1.05 + k * 0.68
+		_cushion("C_4a3f32", x, 0.50, -0.75, x + 0.64, 0.84, -0.62, 0.05)
+	for k in 2:
+		var z := -0.55 + k * 0.68
+		_cushion("C_4a3f32", 0.87, 0.50, z, 1.00, 0.84, z + 0.64, 0.05)
+	_cushion("M_mustard", -0.85, 0.50, -0.60, -0.60, 0.74, -0.48, 0.05)
+	_cushion("M_coral", 0.60, 0.50, -0.60, 0.85, 0.74, -0.48, 0.05)

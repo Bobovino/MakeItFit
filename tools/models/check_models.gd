@@ -81,10 +81,14 @@ func _check(id: String, path: String, fdata: Dictionary) -> bool:
 	var ap := inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if animated:
 		if ap == null or not ap.has_animation("open"):
-			errors.append("folds, but has no \"open\" clip")
+			# A pose_open piece is always shown open; built already open, it
+			# needs no clip.
+			if not (fdata.get("pose_open", false) as bool):
+				errors.append("folds, but has no \"open\" clip")
+			animated = false
 			ap = null
 	var closed := _bounds(inst)
-	if not (fdata.get("pose_open", false) as bool):
+	if not (fdata.get("pose_open", false) as bool) or not animated:
 		_check_fit(closed, want, "closed" if animated else "", errors, warnings)
 	if animated and ap != null:
 		_pose(ap, ap.get_animation("open"))
