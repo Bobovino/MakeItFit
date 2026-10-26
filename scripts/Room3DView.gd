@@ -221,7 +221,7 @@ func _setup_style() -> void:
 	_style.palette = _palette if _palette != null else PaletteLibrary.default_palette()
 	_style.quality = GameState.graphics_quality as StyleQuality.Level
 	InkLines.attach(cam, sub_vp)
-	InkLines.set_palette(_style.palette)
+	InkLines.set_palette(cam, _style.palette)
 	GameState.graphics_quality_changed.connect(func(level: int):
 		_style.quality = level as StyleQuality.Level)
 	build_root.get_parent().add_child(_style)
@@ -239,7 +239,7 @@ func set_level_style(level: Dictionary, levels_data: Dictionary) -> void:
 	_palette = PaletteLibrary.for_level(level, levels_data)
 	if _style != null and _palette != null:
 		_style.palette = _palette
-		InkLines.set_palette(_palette)
+		InkLines.set_palette(cam, _palette)
 
 
 func _style_node(node: Node, role: StringName) -> void:
@@ -2611,7 +2611,7 @@ func _update_camera() -> void:
 		_update_buy_ghost(_to_vp(_last_local_mouse))
 	if _style != null:
 		_style.refresh_view()
-		InkLines.set_zoom(_home_dist / maxf(_dist, 0.01))
+		InkLines.set_zoom(cam, _home_dist / maxf(_dist, 0.01))
 
 
 # Keeps a left-drag pan from carrying the camera target out past the room's

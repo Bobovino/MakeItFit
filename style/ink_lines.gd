@@ -43,11 +43,22 @@ static var _post: ShaderMaterial
 static var _mii: ShaderMaterial
 
 
+# The shared defaults. Each inked view gets its own copy (attach()), since
+# its facing pass, zoom and palette are its own: with one material shared, a
+# second view (the catalogue's turning preview) fed its facing pass to the
+# room's ink, and the previewed piece's outline turned in the middle of the
+# room.
 static func post_material() -> ShaderMaterial:
 	if _post == null:
 		_post = ShaderMaterial.new()
 		_post.shader = POST_SHADER
 	return _post
+
+
+# The ink material of the view `camera` was attached to (attach()), or null.
+static func material_of(camera: Camera3D) -> ShaderMaterial:
+	var quad := camera.get_node_or_null(NODE_NAME) as MeshInstance3D if camera != null else null
+	return quad.material_override as ShaderMaterial if quad != null else null
 
 
 static func mii_outline_material() -> ShaderMaterial:
@@ -76,14 +87,15 @@ static func attach(camera: Camera3D, viewport: SubViewport) -> MeshInstance3D:
 	# parent, so the ink reads this frame's pass.
 	viewport.add_child(facing)
 	facing.setup(camera, viewport)
-	post_material().set_shader_parameter("normal_tex", facing.get_texture())
-	post_material().set_shader_parameter("has_normals", true)
+	var mat := post_material().duplicate() as ShaderMaterial
+	mat.set_shader_parameter("normal_tex", facing.get_texture())
+	mat.set_shader_parameter("has_normals", true)
 	var quad := MeshInstance3D.new()
 	quad.name = NODE_NAME
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2.ONE
 	quad.mesh = mesh
-	quad.material_override = post_material()
+	quad.material_override = mat
 	quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	quad.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	# The shader places it over the whole view itself; never cull it.
@@ -97,16 +109,20 @@ static func attach(camera: Camera3D, viewport: SubViewport) -> MeshInstance3D:
 
 # How close the camera is compared with the view the room opens with: line
 # weight follows it a little.
-static func set_zoom(zoom: float) -> void:
-	post_material().set_shader_parameter("zoom", zoom)
+static func set_zoom(camera: Camera3D, zoom: float) -> void:
+	var mat := material_of(camera)
+	if mat:
+		mat.set_shader_parameter("zoom", zoom)
 
 
 # The ink: a deep shade of the palette's shadow tint, so it belongs to the
 # level's colours instead of being a flat black.
-static func set_palette(palette: LevelPalette) -> void:
+static func set_palette(camera: Camera3D, palette: LevelPalette) -> void:
 	if palette == null:
 		return
 	var ink := palette.shadow_tint.darkened(0.55)
 	ink.a = 1.0
-	post_material().set_shader_parameter("ink_color", ink)
+	var mat := material_of(camera)
+	if mat:
+		mat.set_shader_parameter("ink_color", ink)
 	mii_outline_material().set_shader_parameter("outline_color", ink)

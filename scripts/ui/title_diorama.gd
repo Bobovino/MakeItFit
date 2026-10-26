@@ -83,7 +83,7 @@ func _ready() -> void:
 	if backdrop:
 		backdrop.visible = false
 	InkLines.attach(_cam, _vp)
-	InkLines.set_palette(_style.palette)
+	InkLines.set_palette(_cam, _style.palette)
 
 	_frame_camera()
 	var travel := Vector3(-0.8, -0.85, -0.2).normalized()
