@@ -79,6 +79,13 @@ func _init() -> void:
 		"sliding_wardrobe_tall": _sliding_wardrobe_tall, "sliding_bookcase": _sliding_bookcase,
 		"rolling_shelf_wide": _rolling_shelf_wide, "rolling_tv_unit": _rolling_tv_unit,
 		"pocket_pantry": _pocket_pantry, "sliding_bathroom_cabinet": _sliding_bathroom_cabinet,
+		# Batch 2: kitchen and appliances.
+		"kitchen": _kitchen, "kitchen_small": _kitchen_small, "kitchen_island": _kitchen_island,
+		"rolling_island": _rolling_island, "kitchen_sink": _kitchen_sink, "stove": _stove,
+		"fridge": _fridge, "fridge_large": _fridge_large, "chest_freezer": _chest_freezer,
+		"upright_freezer": _upright_freezer, "mini_fridge": _mini_fridge, "washer": _washer,
+		"washer_dryer_stack": _washer_dryer_stack, "sink_square": _sink_square, "shower": _shower,
+		"rolling_kitchen_cart": _rolling_kitchen_cart,
 	}
 	# Pieces named after "--" are built alone: godot ... -s style_models.gd -- nightstand tv_stand
 	var only := OS.get_cmdline_user_args()
@@ -730,7 +737,7 @@ func _moving_box() -> void:
 	_box("C_b89868", Vector3(-0.48, 0.0, -0.48), Vector3(0.48, 0.56, 0.48))
 	_box("C_816a49", Vector3(-0.497, 0.56, -0.497), Vector3(0.497, 0.60, 0.497))
 	_box("M_tape", Vector3(-0.08, 0.60, -0.497), Vector3(0.08, 0.603, 0.497))
-	_front("M_tape", -0.08, 0.40, 0.08, 0.60, 0.497)
+	_front("M_tape", -0.08, 0.40, 0.08, 0.56, 0.48)
 	_front("M_paper", 0.16, 0.18, 0.40, 0.34, 0.48)
 	_front("M_red", 0.19, 0.27, 0.37, 0.30, 0.483)
 
@@ -856,3 +863,331 @@ func _sliding_bathroom_cabinet() -> void:
 	_jar(-0.25, 0.0, 0.84, 0.08, 0.12, "M_teal", "M_chrome")
 	_rblock("M_coral", 0.30, 0.0, 0.18, 0.12, 0.05, 0.84, 0.92)
 	_rblock("M_ceramic", 0.30, 0.0, 0.16, 0.10, 0.04, 0.92, 0.98)
+
+
+# ── more building blocks ────────────────────────────────────────────────────
+
+# A rounded shape standing out of a face along Z: a porthole, a dial. The
+# loop is in X and Y around (cx, cy), from z0 out to z1.
+func _zblock(mat: String, cx: float, cy: float, w: float, h: float, r: float, z0: float, z1: float) -> void:
+	var loop := _rr(cx, cy, w, h, r)
+	var c := Vector2(cx, cy)
+	for i in loop.size():
+		var j := (i + 1) % loop.size()
+		var mid := (loop[i] + loop[j]) * 0.5 - c
+		_quad(mat, Vector3(loop[i].x, loop[i].y, z0), Vector3(loop[j].x, loop[j].y, z0),
+			Vector3(loop[j].x, loop[j].y, z1), Vector3(loop[i].x, loop[i].y, z1), Vector3(mid.x, mid.y, 0.0))
+		_tri(mat, Vector3(cx, cy, z1), Vector3(loop[i].x, loop[i].y, z1), Vector3(loop[j].x, loop[j].y, z1), Vector3.BACK)
+		_tri(mat, Vector3(cx, cy, z0), Vector3(loop[i].x, loop[i].y, z0), Vector3(loop[j].x, loop[j].y, z0), Vector3.FORWARD)
+
+
+# A round dial on the face at z.
+func _dial(cx: float, cy: float, z: float, d := 0.05, mat := "M_chrome") -> void:
+	_zblock(mat, cx, cy, d, d, d * 0.5, z, z + 0.025)
+
+
+# A base cabinet run from x0 to x1: black plinth, body, flush fronts split
+# into `doors` doors (each with a drawer above when `drawers`), handles.
+# The worktop is separate (_worktop). Front face at z1.
+func _base_run(body: String, front: String, x0: float, x1: float, z0: float, z1: float, doors: int, drawers := true) -> void:
+	_box("M_black", Vector3(x0 + 0.02, 0.0, z0 + 0.02), Vector3(x1 - 0.02, 0.10, z1 - 0.04))
+	_box(body, Vector3(x0, 0.10, z0), Vector3(x1, 0.86, z1))
+	var w := (x1 - x0) / doors
+	for d in doors:
+		var a := x0 + d * w + 0.02
+		var b := x0 + (d + 1) * w - 0.02
+		if drawers:
+			_front(front, a, 0.13, b, 0.66, z1)
+			_front(front, a, 0.69, b, 0.83, z1)
+			_knob((a + b) * 0.5, 0.78, z1 + 0.003, minf(0.16, (b - a) * 0.5), 0.025, "M_chrome")
+		else:
+			_front(front, a, 0.13, b, 0.83, z1)
+		_knob(b - 0.05 if d % 2 == 0 else a + 0.05, 0.56, z1 + 0.003, 0.025, 0.12, "M_chrome")
+
+
+# A worktop slab over a base run, 2 cm proud at the front.
+func _worktop(mat: String, x0: float, x1: float, z0: float, z1: float, y := 0.86, t := 0.04) -> void:
+	_box(mat, Vector3(x0, y, z0), Vector3(x1, y + t, z1))
+
+
+# A steel basin let into a worktop whose top is at y, centred on (cx, cz),
+# with a tap behind it.
+func _basin(cx: float, cz: float, y: float, w: float, d: float) -> void:
+	var rim := _rr(cx, cz, w, d, 0.04)
+	var inner := _rr(cx, cz, w - 0.05, d - 0.05, 0.03)
+	var floor := _rr(cx, cz, w - 0.09, d - 0.09, 0.025)
+	_band("M_steel", rim, y - 0.002, rim, y + 0.006)
+	_ring("M_steel", rim, inner, y - 0.002, false)
+	_ring("M_steel", rim, inner, y + 0.006, true)
+	_band("M_steel", inner, y + 0.006, inner, y - 0.002, true)
+	_band("M_steel", inner, y - 0.002, floor, y - 0.14, true)
+	_cap("M_iron", floor, y - 0.14, true)
+	_box("M_chrome", Vector3(cx - 0.02, y, cz - d * 0.5 - 0.06), Vector3(cx + 0.02, y + 0.14, cz - d * 0.5 - 0.02))
+	_box("M_chrome", Vector3(cx - 0.02, y + 0.10, cz - d * 0.5 - 0.06), Vector3(cx + 0.02, y + 0.14, cz - d * 0.2))
+
+
+# A hob: a black glass plate with `n` rings (2 or 4) on top of y.
+func _hob(cx: float, cz: float, y: float, w: float, d: float, n := 4) -> void:
+	_box("M_black", Vector3(cx - w * 0.5, y, cz - d * 0.5), Vector3(cx + w * 0.5, y + 0.02, cz + d * 0.5))
+	var spots := [Vector2(-0.25, -0.25), Vector2(0.25, -0.25), Vector2(-0.25, 0.25), Vector2(0.25, 0.25)]
+	if n == 2:
+		spots = [Vector2(0.0, -0.25), Vector2(0.0, 0.25)]
+	for sp in spots:
+		var px: float = cx + sp.x * w
+		var pz: float = cz + sp.y * d
+		_rblock("M_iron", px, pz, 0.17, 0.17, 0.085, y + 0.02, y + 0.024)
+
+
+# An oven door on the face at z: black, with a window and a bar.
+func _oven(x0: float, y0: float, x1: float, y1: float, z: float) -> void:
+	_front("M_black", x0, y0, x1, y1, z)
+	_front("M_screen", x0 + 0.06, y0 + 0.08, x1 - 0.06, y1 - 0.14, z + 0.003)
+	_box("M_chrome", Vector3(x0 + 0.06, y1 - 0.08, z + 0.003), Vector3(x1 - 0.06, y1 - 0.055, z + 0.035))
+
+
+# An appliance body: a box with softened vertical edges, a black base.
+func _appliance(body: String, x0: float, x1: float, z0: float, z1: float, y1: float) -> void:
+	_box("M_black", Vector3(x0 + 0.02, 0.0, z0 + 0.02), Vector3(x1 - 0.02, 0.04, z1 - 0.03))
+	_rblock(body, (x0 + x1) * 0.5, (z0 + z1) * 0.5, x1 - x0, z1 - z0, 0.03, 0.04, y1)
+
+
+# A washing machine's porthole on the face at z, centred at (cx, cy).
+func _porthole(cx: float, cy: float, z: float, d: float) -> void:
+	_zblock("M_chrome", cx, cy, d, d, d * 0.5, z, z + 0.03)
+	_zblock("M_glass", cx, cy, d * 0.72, d * 0.72, d * 0.36, z + 0.03, z + 0.033)
+
+
+# A laundry machine, front-loading, from y0 to y1 on the face at z.
+func _laundry_machine(body: String, front: String, x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> void:
+	_box(body, Vector3(x0, y0, z0), Vector3(x1, y1, z1))
+	var cx := (x0 + x1) * 0.5
+	_front(front, x0 + 0.02, y1 - 0.13, x1 - 0.02, y1 - 0.02, z1)
+	_front("M_screen", cx - 0.08, y1 - 0.10, cx + 0.08, y1 - 0.05, z1 + 0.003)
+	_dial(x1 - 0.10, y1 - 0.075, z1 + 0.003)
+	_porthole(cx, y0 + (y1 - y0 - 0.13) * 0.5, z1, minf(x1 - x0, y1 - y0) * 0.6)
+
+
+# ── batch 2: kitchen and appliances ─────────────────────────────────────────
+
+# 240 x 220 x 60 cm: a fitted kitchen: base cabinets with a sink and an oven
+# under a hob, a tiled splashback, wall cabinets and a hood.
+func _kitchen() -> void:
+	var body := "C_a09888"
+	var front := "C_bcb7ac"
+	_base_run(body, front, -1.20, 0.20, -0.30, 0.27, 3)
+	_base_run(body, front, 0.80, 1.20, -0.30, 0.27, 1)
+	_box(body, Vector3(0.20, 0.10, -0.30), Vector3(0.80, 0.86, 0.27))
+	_box("M_black", Vector3(0.22, 0.0, -0.28), Vector3(0.78, 0.10, 0.23))
+	_oven(0.23, 0.13, 0.77, 0.80, 0.27)
+	_worktop("M_worktop", -1.20, 1.20, -0.30, 0.30)
+	_basin(-0.75, 0.0, 0.90, 0.50, 0.40)
+	_hob(0.50, 0.0, 0.90, 0.56, 0.46)
+	_box("M_stone", Vector3(-1.20, 0.90, -0.30), Vector3(1.20, 1.45, -0.27))
+	# Wall cabinets, with a hood over the hob.
+	_box(body, Vector3(-1.20, 1.45, -0.30), Vector3(0.18, 2.20, 0.05))
+	_box(body, Vector3(0.82, 1.45, -0.30), Vector3(1.20, 2.20, 0.05))
+	for x in [[-1.18, -0.73], [-0.71, -0.26], [-0.24, 0.16], [0.84, 1.18]]:
+		_front(front, x[0], 1.48, x[1], 2.17, 0.05)
+		_knob(x[1] - 0.05, 1.56, 0.053, 0.025, 0.10, "M_chrome")
+	_box("M_steel", Vector3(0.24, 1.75, -0.30), Vector3(0.76, 2.20, -0.10))
+	_box("M_steel", Vector3(0.20, 1.60, -0.30), Vector3(0.80, 1.75, 0.10))
+	# On the worktop: a board, jars.
+	_box("M_oak", Vector3(-0.30, 0.90, -0.20), Vector3(0.02, 0.93, 0.10))
+	_jar(-1.05, -0.15, 0.90, 0.10, 0.16, "M_teal", "M_iron")
+	_jar(-0.92, -0.18, 0.90, 0.09, 0.13, "M_sage", "M_iron")
+	_jar(1.00, -0.12, 0.90, 0.11, 0.18, "M_mustard", "M_iron")
+
+
+# 120 x 100 x 120 cm: a compact L of counter along the back and the left: a
+# sink on the left arm, two rings and a small oven on the back.
+func _kitchen_small() -> void:
+	var body := "C_908878"
+	var front := "C_bcb7ac"
+	_base_run(body, front, -0.60, 0.60, -0.60, -0.02, 2)
+	_box("M_black", Vector3(-0.58, 0.0, -0.02), Vector3(-0.06, 0.10, 0.56))
+	_box(body, Vector3(-0.60, 0.10, -0.02), Vector3(-0.02, 0.86, 0.60))
+	_front(front, -0.60, 0.13, -0.02, 0.83, -0.02)   # never seen; keeps the corner closed
+	for z in [[0.0, 0.28], [0.32, 0.58]]:
+		_box(front, Vector3(-0.02, 0.13, z[0]), Vector3(-0.017, 0.83, z[1]))
+		_box("M_chrome", Vector3(-0.017, 0.53, z[1] - 0.05), Vector3(0.008, 0.65, z[1] - 0.025))
+	_worktop("M_worktop", -0.60, 0.60, -0.60, 0.0)
+	_worktop("M_worktop", -0.60, 0.0, 0.0, 0.60)
+	_basin(-0.30, 0.30, 0.90, 0.40, 0.36)
+	_hob(0.30, -0.30, 0.90, 0.40, 0.44, 2)
+	_jar(0.45, -0.48, 0.90, 0.09, 0.14, "M_coral", "M_iron")
+
+
+# 140 x 90 x 80 cm: an island of drawers and doors under a stone top that
+# overhangs at the back for stools.
+func _kitchen_island() -> void:
+	_base_run("C_c0b090", "C_d3c8b1", -0.70, 0.70, -0.25, 0.37, 3)
+	_box("M_stone", Vector3(-0.70, 0.86, -0.40), Vector3(0.70, 0.90, 0.40))
+	_box("M_oak", Vector3(-0.20, 0.90, -0.10), Vector3(0.18, 0.93, 0.15))
+
+
+# 90 x 90 x 60 cm: a small island on castors: an oak top, a cupboard and an
+# open shelf of bowls, a towel bar.
+func _rolling_island() -> void:
+	var y0 := _castors(-0.45, 0.45, -0.30, 0.30)
+	_box("C_c0b090", Vector3(-0.45, y0, -0.28), Vector3(-0.42, 0.86, 0.28))
+	_box("C_c0b090", Vector3(0.42, y0, -0.28), Vector3(0.45, 0.86, 0.28))
+	_box("C_c0b090", Vector3(-0.42, y0, -0.28), Vector3(0.42, y0 + 0.03, 0.28))
+	_box("C_c0b090", Vector3(-0.42, 0.42, -0.28), Vector3(0.42, 0.45, 0.28))
+	_box("C_c0b090", Vector3(0.0, 0.45, -0.28), Vector3(0.42, 0.86, 0.25))
+	_front("C_d3c8b1", 0.02, 0.48, 0.40, 0.83, 0.25)
+	_knob(0.07, 0.75, 0.253, 0.025, 0.08, "M_chrome")
+	_box("M_oak", Vector3(-0.45, 0.86, -0.30), Vector3(0.45, 0.90, 0.30))
+	_box("M_chrome", Vector3(-0.45, 0.70, 0.28), Vector3(-0.02, 0.725, 0.30))
+	for k in 3:
+		var x := -0.28 + k * 0.20
+		_jar(x, 0.0, y0 + 0.03, 0.14, 0.10, ["M_ceramic", "M_teal", "M_coral"][k], "M_ceramic")
+	_jar(-0.22, 0.0, 0.45, 0.12, 0.14, "M_teal", "M_iron")
+
+
+# 60 x 80 x 50 cm: a base cabinet with a steel sink and a tap.
+func _kitchen_sink() -> void:
+	_base_run("C_c8ccd0", "M_white", -0.30, 0.30, -0.25, 0.22, 2, false)
+	_worktop("M_worktop", -0.30, 0.30, -0.25, 0.25)
+	_basin(0.0, 0.03, 0.90, 0.46, 0.36)
+
+
+# 60 x 90 x 60 cm: a freestanding cooker: steel sides, four rings on a
+# black top, a strip of red dials and an oven door in a dark front.
+func _stove() -> void:
+	# Kept inside its square: a footprint as deep as it is wide is turned 90
+	# degrees by the game if the model comes out deeper than wide.
+	_appliance("M_steel", -0.30, 0.30, -0.30, 0.26, 0.86)
+	_front("C_303030", -0.28, 0.06, 0.28, 0.84, 0.26)
+	_hob(0.0, -0.02, 0.86, 0.60, 0.54)
+	_box("M_steel", Vector3(-0.30, 0.86, -0.30), Vector3(0.30, 0.92, -0.26))
+	for k in 4:
+		_dial(-0.195 + k * 0.13, 0.785, 0.263, 0.045, "M_red")
+	_front("M_screen", 0.15, 0.77, 0.25, 0.80, 0.263)
+	_oven(-0.26, 0.09, 0.26, 0.72, 0.263)
+
+
+# 70 x 180 x 80 cm: a fridge, fridge above, freezer below, long bars.
+func _fridge() -> void:
+	_appliance("C_c0ccd8", -0.35, 0.35, -0.40, 0.36, 1.80)
+	_front("C_d6dee6", -0.33, 0.06, 0.33, 0.62, 0.36)
+	_front("C_d6dee6", -0.33, 0.65, 0.33, 1.77, 0.36)
+	_knob(0.26, 0.45, 0.363, 0.025, 0.24, "M_chrome")
+	_knob(0.26, 0.95, 0.363, 0.025, 0.40, "M_chrome")
+	_front("M_screen", -0.16, 1.45, 0.0, 1.55, 0.363)
+
+
+# 90 x 220 x 80 cm: a double-door fridge over a freezer drawer.
+func _fridge_large() -> void:
+	_appliance("C_b8c4d0", -0.45, 0.45, -0.40, 0.36, 2.20)
+	_front("C_d1d9e0", -0.43, 0.06, 0.43, 0.72, 0.36)
+	_front("C_d1d9e0", -0.43, 0.75, -0.01, 2.17, 0.36)
+	_front("C_d1d9e0", 0.01, 0.75, 0.43, 2.17, 0.36)
+	_knob(0.0, 0.64, 0.363, 0.40, 0.025, "M_chrome")
+	_knob(-0.06, 1.30, 0.363, 0.025, 0.50, "M_chrome")
+	_knob(0.06, 1.30, 0.363, 0.025, 0.50, "M_chrome")
+	_front("M_screen", -0.32, 1.55, -0.14, 1.68, 0.363)
+
+
+# 110 x 90 x 70 cm: a chest freezer: a white box, a lid with a bar.
+func _chest_freezer() -> void:
+	_appliance("C_dfe6ec", -0.55, 0.55, -0.35, 0.32, 0.84)
+	_box("C_f0f3f6", Vector3(-0.55, 0.84, -0.35), Vector3(0.55, 0.90, 0.33))
+	_box("M_chrome", Vector3(-0.20, 0.80, 0.33), Vector3(0.20, 0.825, 0.35))
+	_front("M_screen", 0.32, 0.62, 0.46, 0.68, 0.32)
+
+
+# 60 x 160 x 70 cm: an upright freezer with one door and a bar.
+func _upright_freezer() -> void:
+	_appliance("C_d4dce4", -0.30, 0.30, -0.35, 0.32, 1.60)
+	_front("C_e2e8ee", -0.28, 0.06, 0.28, 1.57, 0.32)
+	_knob(0.21, 1.10, 0.323, 0.025, 0.40, "M_chrome")
+	_front("M_screen", -0.14, 1.36, 0.0, 1.46, 0.323)
+
+
+# 60 x 90 x 70 cm: a small fridge with a worktop on it.
+func _mini_fridge() -> void:
+	_appliance("C_c8d4e0", -0.29, 0.29, -0.35, 0.32, 0.86)
+	_front("C_dbe3eb", -0.27, 0.06, 0.27, 0.83, 0.32)
+	_knob(0.20, 0.55, 0.323, 0.025, 0.24, "M_chrome")
+	_box("M_worktop", Vector3(-0.30, 0.86, -0.35), Vector3(0.30, 0.90, 0.35))
+
+
+# 70 x 90 x 60 cm: a front-loading washing machine.
+func _washer() -> void:
+	_box("M_black", Vector3(-0.33, 0.0, -0.28), Vector3(0.33, 0.04, 0.24))
+	_laundry_machine("C_d0d0d0", "C_dedede", -0.35, 0.35, 0.04, 0.90, -0.30, 0.27)
+
+
+# 80 x 220 x 70 cm: a dryer stacked on a washer, a shelf of detergent above.
+func _washer_dryer_stack() -> void:
+	_box("M_black", Vector3(-0.38, 0.0, -0.33), Vector3(0.38, 0.04, 0.29))
+	_laundry_machine("C_c8c8c8", "C_d8d8d8", -0.40, 0.40, 0.04, 0.90, -0.35, 0.32)
+	_laundry_machine("C_c8c8c8", "C_d8d8d8", -0.40, 0.40, 0.92, 1.78, -0.35, 0.32)
+	_box("M_iron", Vector3(-0.40, 0.90, -0.35), Vector3(0.40, 0.92, 0.32))
+	_box("M_oak", Vector3(-0.40, 1.90, -0.35), Vector3(0.40, 1.94, 0.05))
+	_jar(-0.25, -0.15, 1.94, 0.10, 0.20, "M_blue", "M_ceramic")
+	_jar(-0.10, -0.15, 1.94, 0.09, 0.16, "M_teal", "M_ceramic")
+	_box("M_ceramic", Vector3(0.05, 1.94, -0.25), Vector3(0.30, 2.00, -0.02))
+
+
+# 70 x 60 x 70 cm: a walnut vanity with a stone top and a square basin
+# standing on it, a tap behind.
+func _sink_square() -> void:
+	_box("M_black", Vector3(-0.33, 0.0, -0.33), Vector3(0.33, 0.06, 0.29))
+	_box("M_walnut", Vector3(-0.35, 0.06, -0.35), Vector3(0.35, 0.42, 0.32))
+	_front("M_oak", -0.32, 0.09, 0.32, 0.39, 0.32)
+	_knob(0.0, 0.33, 0.323, 0.16, 0.025, "M_chrome")
+	_box("M_stone", Vector3(-0.35, 0.42, -0.35), Vector3(0.35, 0.45, 0.35))
+	var outer := _rr(0.0, 0.05, 0.46, 0.40, 0.06)
+	var inner := _rr(0.0, 0.05, 0.38, 0.32, 0.04)
+	var bottom := _rr(0.0, 0.05, 0.32, 0.26, 0.03)
+	_band("C_c8d8e8", outer, 0.45, outer, 0.56)
+	_ring("C_c8d8e8", outer, inner, 0.56, true)
+	_band("C_c8d8e8", inner, 0.56, bottom, 0.48, true)
+	_cap("C_c8d8e8", bottom, 0.48, true)
+	_cap("M_water", _rr(0.0, 0.05, 0.35, 0.29, 0.035), 0.52, true)
+	_box("M_chrome", Vector3(-0.02, 0.45, -0.25), Vector3(0.02, 0.60, -0.21))
+	_box("M_chrome", Vector3(-0.02, 0.56, -0.21), Vector3(0.02, 0.60, -0.10))
+
+
+# 80 x 200 x 80 cm: a corner shower: a tray, two tiled walls at the back
+# and the left, a chrome frame on the other two sides, a head. The frame
+# stands for glass: the style system draws every material solid, so a
+# glass pane would hide the shower.
+func _shower() -> void:
+	_box("M_stone", Vector3(-0.40, 0.0, -0.40), Vector3(0.40, 0.08, 0.40))
+	_box("M_ceramic", Vector3(-0.36, 0.08, -0.36), Vector3(0.40, 0.09, 0.40))
+	_rblock("M_steel", 0.05, 0.05, 0.08, 0.08, 0.04, 0.09, 0.093)
+	_box("C_b8ccd8", Vector3(-0.40, 0.08, -0.40), Vector3(0.40, 2.00, -0.36))
+	_box("C_b8ccd8", Vector3(-0.40, 0.08, -0.36), Vector3(-0.36, 2.00, 0.40))
+	# Glass, framed.
+	_box("M_chrome", Vector3(0.38, 0.08, -0.36), Vector3(0.40, 1.95, -0.34))
+	_box("M_chrome", Vector3(0.38, 0.08, 0.38), Vector3(0.40, 1.95, 0.40))
+	_box("M_chrome", Vector3(-0.36, 0.08, 0.38), Vector3(-0.34, 1.95, 0.40))
+	_box("M_chrome", Vector3(0.38, 1.93, -0.36), Vector3(0.40, 1.95, 0.40))
+	_box("M_chrome", Vector3(-0.36, 1.93, 0.38), Vector3(0.40, 1.95, 0.40))
+	_box("M_chrome", Vector3(0.38, 1.00, -0.34), Vector3(0.40, 1.02, 0.38))
+	_box("M_chrome", Vector3(-0.34, 1.00, 0.38), Vector3(0.38, 1.02, 0.40))
+	# The head, its pipe and a mixer.
+	_box("M_chrome", Vector3(-0.025, 1.00, -0.36), Vector3(0.025, 1.85, -0.335))
+	_box("M_chrome", Vector3(-0.025, 1.82, -0.36), Vector3(0.025, 1.85, -0.15))
+	_rblock("M_chrome", 0.0, -0.12, 0.16, 0.16, 0.08, 1.78, 1.82)
+	_box("M_chrome", Vector3(-0.06, 1.05, -0.36), Vector3(0.06, 1.12, -0.32))
+	_box("M_coral", Vector3(-0.36, 1.20, 0.05), Vector3(-0.32, 1.50, 0.30))
+
+
+# 60 x 100 x 40 cm: a three-tier cart on castors: an oak top, a wicker
+# basket, a shelf of jars.
+func _rolling_kitchen_cart() -> void:
+	var y0 := _castors(-0.30, 0.30, -0.20, 0.20)
+	for x in [-0.30, 0.27]:
+		for z in [-0.20, 0.17]:
+			_box("M_steel", Vector3(x, y0, z), Vector3(x + 0.03, 0.96, z + 0.03))
+	_box("M_steel", Vector3(-0.27, 0.12, -0.17), Vector3(0.27, 0.14, 0.17))
+	_box("M_steel", Vector3(-0.27, 0.48, -0.17), Vector3(0.27, 0.50, 0.17))
+	_box("M_oak", Vector3(-0.30, 0.96, -0.20), Vector3(0.30, 1.00, 0.20))
+	_rblock("M_wicker", 0.0, 0.0, 0.48, 0.30, 0.04, 0.50, 0.70)
+	_rblock("M_coral", -0.08, 0.0, 0.20, 0.16, 0.05, 0.70, 0.74)
+	_jar(-0.16, 0.0, 0.14, 0.10, 0.16, "M_teal", "M_walnut")
+	_jar(0.0, 0.0, 0.14, 0.10, 0.12, "M_sage", "M_walnut")
+	_jar(0.16, 0.0, 0.14, 0.10, 0.18, "M_orange", "M_walnut")

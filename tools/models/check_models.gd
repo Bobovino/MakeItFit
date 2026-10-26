@@ -11,6 +11,8 @@ extends SceneTree
 #
 # Errors (the game would show it wrong):
 #   - footprint not the catalogue's (10 cm a tile, X by Z), by more than 2 cm
+#   - long side not the footprint's long side: the game turns such a model
+#     90 degrees (Room3DView._refit_item_model), front and all
 #   - not standing on y = 0, or not centred on the footprint
 #   - height outside the third either way the game allows before it stretches
 #   - a folding piece without an "open" clip, or whose open pose doesn't fill
@@ -108,6 +110,8 @@ func _check_fit(box: AABB, want: Vector3, label: String, errors: Array, warnings
 	var pre := (label + " ") if label != "" else ""
 	if absf(box.size.x - want.x) > FIT_TOL or absf(box.size.z - want.z) > FIT_TOL:
 		errors.append("%sfootprint %.2f x %.2f m, the catalogue's is %.2f x %.2f" % [pre, box.size.x, box.size.z, want.x, want.z])
+	if (want.x >= want.z) != (box.size.x >= box.size.z):
+		errors.append("%s%.3f wide by %.3f deep, the footprint the other way round: the game would turn it 90 degrees" % [pre, box.size.x, box.size.z])
 	if absf(box.position.y) > 0.01:
 		errors.append("%sbottom at y = %.3f, not 0" % [pre, box.position.y])
 	if absf(box.get_center().x) > FIT_TOL:
