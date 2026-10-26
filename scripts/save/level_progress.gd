@@ -52,6 +52,7 @@ static func capture(main: Node) -> Dictionary:
 		}
 	return {
 		"version": VERSION,
+		"level_fp": GameState.level_fingerprint(main._current_level_id),
 		"budget": gm.budget,
 		"owned": gm.starting_inventory.duplicate(true),
 		"moment": main._active_moment_id,
@@ -69,6 +70,11 @@ static func apply(main: Node, data: Dictionary) -> void:
 	if data.is_empty() or int(data.get("version", 0)) > VERSION:
 		return
 	var gm: GameManager = main.gm
+	# Saved before an update redrew this level: every piece is checked where
+	# it stood, and one that no longer fits (or whose floor is gone, or that
+	# left the catalogue) goes back under "Owned" instead.
+	var redrawn := (data.get("level_fp", "") as String) != GameState.level_fingerprint(main._current_level_id) 		and GameState.level_fingerprint(main._current_level_id) != ""
+	var returned := 0
 	main._restoring_furniture = true
 	main._batch_refresh = true   # one needs check at the end, not one per piece
 	var was_armed: bool = main._rent_auto_armed
@@ -77,6 +83,9 @@ static func apply(main: Node, data: Dictionary) -> void:
 	gm.budget = int(data.get("budget", gm.budget))
 	gm.budget_changed.emit(gm.budget)
 	gm.starting_inventory = (data.get("owned", []) as Array).duplicate(true)
+	if redrawn:
+		gm.starting_inventory = gm.starting_inventory.filter(func(e) -> bool:
+			return not gm.get_furniture_by_id((e as Dictionary).get("id", "") as String).is_empty())
 	main._refresh_owned_ui()
 
 	var floors: Dictionary = data.get("floors", {})
@@ -86,9 +95,12 @@ static func apply(main: Node, data: Dictionary) -> void:
 	order += floors.keys().filter(func(k): return (floors[k] as Dictionary).get("loft", false))
 	for fid in order:
 		var fl: Floor = main._floors.get(fid)
-		if fl == null:
-			continue
 		var fd: Dictionary = floors[fid]
+		if fl == null:
+			if redrawn:
+				for p in fd.get("pieces", []) as Array:
+					returned += _return_to_owned(main, (p as Dictionary).get("id", "") as String)
+			continue
 		fl.begin_batch()
 		main._apply_builder_entry({"floor_id": fid, "data": fd.get("builder", {})})
 		for entry in fl.get_all_furniture().duplicate():
@@ -96,7 +108,10 @@ static func apply(main: Node, data: Dictionary) -> void:
 			(entry as Furniture).queue_free()
 		fl.wall_items.clear()
 		for p in fd.get("pieces", []) as Array:
-			_restore_piece(main, fl, p as Dictionary)
+			var f := _restore_piece(main, fl, p as Dictionary)
+			if redrawn and f != null and not fl.can_place(f, f.grid_pos):
+				fl.remove_furniture(f)
+				returned += _return_to_owned(main, (p as Dictionary).get("id", "") as String)
 		var walls: Dictionary = fd.get("wall_items", {})
 		for edge in walls:
 			for origin in walls[edge]:
@@ -123,9 +138,22 @@ static func apply(main: Node, data: Dictionary) -> void:
 	main._update_rent_btn()
 	if main._view_mode == main.ViewMode.VIEW3D and is_instance_valid(main._mode3d_view):
 		main._ensure_mode3d_view()
+	if returned > 0:
+		main._refresh_owned_ui()
+		main._toast(TranslationServer.translate_plural("This flat changed in an update: %d piece no longer fit and is back under Owned.",
+			"This flat changed in an update: %d pieces no longer fit and are back under Owned.", returned) % returned)
 
 
-static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> void:
+# Puts a piece back under "Owned"; 1 if it went, 0 if the catalogue no
+# longer has it.
+static func _return_to_owned(main: Node, fid: String) -> int:
+	if (main.gm as GameManager).get_furniture_by_id(fid).is_empty():
+		return 0
+	main._add_owned(main.gm.starting_inventory, fid, 1)
+	return 1
+
+
+static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> Furniture:
 	var overrides := {}
 	for key in ["child_level_id", "keepsake"]:
 		if p.has(key):
@@ -133,7 +161,7 @@ static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> void:
 	var pos: Vector2 = p.get("pos", Vector2.ZERO)
 	var f: Furniture = main._spawn_furniture(p["id"] as String, fl, floori(pos.x), floori(pos.y), overrides)
 	if f == null:
-		return
+		return null
 	var rot := int(p.get("rot", 0))
 	if rot != f.rot_steps:
 		f.set_rot_steps(rot)
@@ -143,6 +171,7 @@ static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> void:
 	f.moment_fold_state = (p.get("moment_fold", {}) as Dictionary).duplicate()
 	if bool(p.get("ext", false)) != f.is_extended and f.foldable:
 		f._apply_fold_state(bool(p.get("ext", false)))
+	return f
 
 
 static func _restore_paint(main: Node, fid: String, fl: Floor, paint: Dictionary) -> void:

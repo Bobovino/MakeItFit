@@ -264,6 +264,7 @@ static func menu_button(text: String, kind := "") -> Button:
 	b.mouse_entered.connect(func():
 		if not b.has_focus():
 			b.grab_focus())
+	b.pressed.connect(func(): Audio.play("click"))
 	return b
 
 
@@ -297,6 +298,7 @@ static func button(text: String, kind := "") -> Button:
 		b.add_theme_color_override("font_color", GameTheme.RED)
 		b.add_theme_color_override("font_hover_color", GameTheme.RED)
 		b.add_theme_color_override("font_focus_color", GameTheme.RED)
+	b.pressed.connect(func(): Audio.play("click"))
 	return b
 
 

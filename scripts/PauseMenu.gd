@@ -79,9 +79,7 @@ func _build() -> void:
 
 func _entry(vb: VBoxContainer, text: String, kind: String, on_press: Callable) -> Button:
 	var b := MenuKit.menu_button(text, kind)
-	b.pressed.connect(func():
-		Audio.play("click")
-		on_press.call())
+	b.pressed.connect(on_press)   # MenuKit's button clicks by itself
 	vb.add_child(b)
 	return b
 
