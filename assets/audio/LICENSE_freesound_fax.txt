@@ -1,0 +1,8 @@
+fax.wav
+
+"Printer Printing" by haus.the.child, from Freesound:
+https://freesound.org/s/839347/
+Released under Creative Commons Zero (CC0): no attribution required.
+
+Cut to the printer's first burst (1.00 s to 2.55 s of the original), mixed
+to mono, with a 10 ms fade in and a 300 ms fade out, peak at -3 dB.

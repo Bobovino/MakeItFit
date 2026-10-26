@@ -21,7 +21,7 @@ const SOUNDS := {
 	# The game's own (tools/gen_sounds.py), for what the packs had nothing for.
 	"fold":         "res://assets/audio/fold.wav",      # folding or unfolding a piece
 	"whoosh":       "res://assets/audio/whoosh.wav",    # stepping into or out of a box
-	"fax":          "res://assets/audio/fax.wav",       # the rental application coming in
+	"fax":          "res://assets/audio/fax.wav",       # a sheet printing: an application coming in, the map's fax (recorded; LICENSE_freesound_fax.txt)
 	"grumble":      "res://assets/audio/grumble.wav",   # a tenant annoyed by a placement
 	"happy":        "res://assets/audio/happy.wav",     # a tenant enjoying a need that's met
 	"huh":          "res://assets/audio/huh.wav",       # a tenant finding a need unmet
@@ -44,7 +44,7 @@ const GAIN_DB := {
 	"rail_detach": -4.0,
 	"fold": -3.0,
 	"whoosh": 1.0,
-	"fax": -3.0,
+	"fax": -5.0,
 	"grumble": -2.5,
 	"happy": -1.0,
 	"huh": -2.5,

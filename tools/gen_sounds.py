@@ -106,17 +106,6 @@ def whoosh():
     return lowpass(rng.standard_normal(n), cutoff) * shape
 
 
-def fax():
-    # A fax picking up: answer tone, two handshake chirps, then paper feeding.
-    def beep(f, sec):
-        return tone(f, sec, (1.0, 0.0, 0.25)) * env(int(SR * sec), 0.005, sec * 0.8)
-    n_feed = int(SR * 0.4)
-    feed = lowpass(rng.standard_normal(n_feed), 900) * (0.55 + 0.45 * np.sign(np.sin(2 * np.pi * 26 * t(0.4))))
-    feed *= env(n_feed, 0.03, 0.25)
-    return place_at(0.95, [(0.0, beep(1100, 0.13)), (0.17, beep(2100, 0.1)), (0.3, beep(1650, 0.05)),
-                           (0.37, beep(1850, 0.05)), (0.44, beep(1650, 0.05)), (0.53, feed * 0.6)])
-
-
 def grumble():
     # "Hmph": a short voiced grunt, falling, a little rough.
     sec = 0.32
@@ -146,7 +135,6 @@ def huh():
 if __name__ == "__main__":
     save("fold", fold(), 0.55)
     save("whoosh", whoosh(), 0.4)
-    save("fax", fax(), 0.35)
     save("grumble", grumble(), 0.45)
     save("happy", happy(), 0.35)
     save("huh", huh(), 0.4)
