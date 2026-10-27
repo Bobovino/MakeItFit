@@ -94,6 +94,7 @@ var _stars_label:   Label
 
 
 func _ready() -> void:
+	Transition.prewarm("res://scenes/Main.tscn")   # ready by the time a home is entered
 	_levels_data = Loc.localize_levels(_load_json("res://data/levels.json"))
 	_load_furniture_catalog()
 	_build_ui()
@@ -448,8 +449,11 @@ func _build_ui() -> void:
 	ip.z_index = 2
 	add_child(ip)
 
+	# The sheet runs down into the slot on the machine's top edge: the slot is
+	# drawn over its bottom edge (see the machine below), so it reads as
+	# coming out of the machine rather than lying on it.
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", -10)   # the sheet tucks into the slot
+	column.add_theme_constant_override("separation", -SLOT_H)
 	ip.add_child(column)
 
 	# The printout slides up out of the slot inside this clip.
@@ -460,8 +464,8 @@ func _build_ui() -> void:
 
 	_fax_paper = PanelContainer.new()
 	_fax_paper.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_fax_paper.offset_left = 16
-	_fax_paper.offset_right = -16
+	_fax_paper.offset_left = PAPER_INSET
+	_fax_paper.offset_right = -PAPER_INSET
 	_fax_paper.add_theme_stylebox_override("panel", FaxStyle.paper())
 	_fax_clip.add_child(_fax_paper)
 
@@ -546,14 +550,28 @@ func _build_ui() -> void:
 	_info_cost.visible = false   # hidden for now, not needed yet
 
 	# ── the machine ──
+	# Its body starts halfway down the slot; the slot, a little wider than
+	# the sheet, sits across the top edge and over the sheet's end.
+	var housing := Control.new()
+	column.add_child(housing)
 	var machine := PanelContainer.new()
 	machine.add_theme_stylebox_override("panel", FaxStyle.machine())
-	column.add_child(machine)
+	machine.set_anchors_preset(Control.PRESET_FULL_RECT)
+	machine.offset_top = SLOT_H * 0.5
+	housing.add_child(machine)
+	var slot := FaxStyle.slot()
+	slot.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	slot.offset_left = PAPER_INSET - 8
+	slot.offset_right = -(PAPER_INSET - 8)
+	slot.offset_bottom = SLOT_H
+	housing.add_child(slot)
+	var fit_housing := func(): housing.custom_minimum_size.y = machine.get_combined_minimum_size().y + SLOT_H * 0.5
+	machine.minimum_size_changed.connect(fit_housing)
 	vb = VBoxContainer.new()                 # from here on, things go on the machine
 	vb.add_theme_constant_override("separation", 9)
 	machine.add_child(vb)
+	fit_housing.call_deferred()
 
-	vb.add_child(FaxStyle.slot())            # the slot the paper comes out of
 	var lcd := FaxStyle.lcd(tr("READY"))     # the little green display
 	vb.add_child(lcd)
 	_fax_lcd = lcd
@@ -600,6 +618,8 @@ func _build_ui() -> void:
 	keys.add_child(quit_btn)
 
 
+const SLOT_H := 14.0        # the slot's height; the sheet runs this far into it
+const PAPER_INSET := 22.0   # the sheet's margin from the machine's sides
 var _fax_clip: Control = null
 var _fax_paper: PanelContainer = null
 var _fax_lcd: Label = null
@@ -666,6 +686,9 @@ func _setup_portrait_viewport() -> void:
 	cam.position = Vector3(0, 0.86, 3.18)
 	cam.fov = 35.0
 	cam.look_at_from_position(Vector3(0, 0.86, 3.18), Vector3(0, 0.86, 0), Vector3.UP)
+	# Not the ink's facing-pass layer: there the Mii's outline paints it solid
+	# black (ink_mask), and the portrait came out as a black silhouette.
+	cam.cull_mask &= ~InkNormalPass.PASS_FLAG
 	_portrait_viewport.add_child(cam)
 
 	var light := DirectionalLight3D.new()

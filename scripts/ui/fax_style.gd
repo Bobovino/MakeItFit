@@ -49,9 +49,14 @@ static func machine() -> StyleBoxFlat:
 static func slot() -> Panel:
 	var s := Panel.new()
 	s.custom_minimum_size = Vector2(0, 10)
+	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = GameTheme.NAVY.darkened(0.6)
-	sb.set_corner_radius_all(4)
+	sb.set_corner_radius_all(6)
+	# A lighter lip along the bottom: the machine's top edge the sheet slides
+	# out over.
+	sb.border_color = GameTheme.NAVY.lightened(0.15)
+	sb.border_width_bottom = 3
 	s.add_theme_stylebox_override("panel", sb)
 	return s
 
