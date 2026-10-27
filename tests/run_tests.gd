@@ -45,6 +45,7 @@ func _run_all() -> void:
 	_test("a wall tile is rejected", func(): _t_wall_blocked())
 	_test("snap_to_wall lands flush against the wall", func(): _t_snap_to_wall())
 	_test("a piece that must stand against a wall goes to the nearest one", func(): _t_snap_flush_far())
+	_test("a wall-bound piece needs its back to a wall, not just any side", func(): _t_back_to_wall())
 	_test("remove_furniture frees the tiles it occupied", func(): _t_remove_furniture())
 	_test("rotation cycles 0/1/2/3 and swaps footprint each step", func(): _t_rotation_cycle())
 	_test("pathing: a piece beside open floor is reachable", func(): _t_path_open())
@@ -486,18 +487,38 @@ func _t_snap_to_wall() -> void:
 	fl.queue_free()
 
 
+# A 6 x 2 piece used from a long side (a wardrobe, say) in the 25 x 19 room
+# of _window_floor (tiles 2..26 x 2..20): its back, the other long side,
+# against the north wall is fine; touching the west wall with only its
+# short end is not, and neither is the middle of the room.
+func _t_back_to_wall() -> void:
+	var fl := _window_floor()
+	var w := _make_furniture(fl, 6, 2)
+	w.wall_flush_required = true
+	w.front = "long"
+	_ok(fl.can_place(w, Vector2(10, 2)), "back to the north wall: %s" % fl.get_block_reason())
+	_ok(fl.can_place(w, Vector2(10, 19)), "back to the south wall: %s" % fl.get_block_reason())
+	_ok(not fl.can_place(w, Vector2(2, 10)), "only its short end to the west wall")
+	_ok(not fl.can_place(w, Vector2(10, 10)), "in the middle of the room")
+	w.set_rot_steps(1)
+	_ok(fl.can_place(w, Vector2(2, 10)), "turned, back to the west wall: %s" % fl.get_block_reason())
+	fl.queue_free()
+
+
 func _t_snap_flush_far() -> void:
 	var fl := _make_floor()
-	var a := _make_furniture(fl)
+	# 1 x 1 in the middle of the 7 x 5 room: two tiles or more from every
+	# wall (one tile, 10 cm, still counts as against it).
+	var a := _make_furniture(fl, 1, 1)
 	a.wall_flush_required = true
-	_ok(not fl.can_place(a, Vector2(4, 3)), "away from every wall it can't go")
-	var snapped := fl.snap_to_wall(a, Vector2(4, 3))
-	_ok(snapped != Vector2(4, 3), "it is moved instead of refused")
+	_ok(not fl.can_place(a, Vector2(5, 4)), "away from every wall it can't go")
+	var snapped := fl.snap_to_wall(a, Vector2(5, 4))
+	_ok(snapped != Vector2(5, 4), "it is moved instead of refused")
 	_ok(fl.can_place(a, snapped), "to a spot against a wall where it fits")
 	fl.place_furniture(a, snapped)
-	var b := _make_furniture(fl)
+	var b := _make_furniture(fl, 1, 1)
 	b.wall_flush_required = true
-	var second := fl.snap_to_wall(b, Vector2(4, 3))
+	var second := fl.snap_to_wall(b, Vector2(5, 4))
 	_ok(fl.can_place(b, second), "a second one finds the next free spot against a wall")
 	fl.queue_free()
 
@@ -927,6 +948,7 @@ func _t_box_on_a_surface() -> void:
 		and level_box.stack_z == 1, str(level_box))
 
 	var dresser: Furniture = main._spawn_furniture("dresser", fl, 0, 0)
+	dresser.wall_flush_required = false   # not what this checks: stands in the room
 	var placed_dresser := fl.can_place(dresser, Vector2(10, 14))
 	fl.place_furniture(dresser, Vector2(10, 14))
 	var box: Furniture = main._spawn_furniture("rental_capsule", fl, 0, 0)
@@ -956,6 +978,7 @@ func _t_box_on_a_surface() -> void:
 	_current = "surface box: the dresser under it doesn't shade it"
 	_ok(is_equal_approx(main._compute_box_occlusion(box), 1.0), str(main._compute_box_occlusion(box)))
 	var washer: Furniture = main._spawn_furniture("washer", fl, 0, 0)
+	washer.wall_flush_required = false   # not what this checks: stands in the room
 	var placed_washer := fl.can_place(washer, Vector2(3, 14))
 	fl.place_furniture(washer, Vector2(3, 14))
 	_current = "surface box: a washer below it is heard but doesn't shade it"
@@ -968,6 +991,7 @@ func _t_box_on_a_surface() -> void:
 	main._refresh_functions()
 	# Holding a bookshelf beside the box already shows the shade it would cast.
 	var held_shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	held_shelf.wall_flush_required = false   # not what this checks: stands in the room
 	fl.forget_furniture(held_shelf)
 	held_shelf._placement_mode = true
 	fl.set_floor_drag_ghost(held_shelf, 2, 14)
@@ -978,6 +1002,7 @@ func _t_box_on_a_surface() -> void:
 	_ok(shade_held < 0.2 and is_equal_approx(box._shade, 1.0), "held %s, after %s" % [shade_held, box._shade])
 	held_shelf.queue_free()
 	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	shelf.wall_flush_required = false   # not what this checks: stands in the room
 	var placed_shelf := fl.can_place(shelf, Vector2(2, 14))
 	fl.place_furniture(shelf, Vector2(2, 14))
 	main._refresh_functions()
@@ -1000,6 +1025,8 @@ func _t_box_on_a_surface() -> void:
 	boxes = boxes.filter(func(b): return b.grid_pos == Vector2(10, 14))
 	box = boxes[0] if boxes.size() == 1 else null
 	dresser = fl.support_under(box) if box else null
+	if dresser:
+		dresser.wall_flush_required = false   # rebuilt on the way back out: still not what this checks
 	_current = "surface box: back out, the box is still on the dresser"
 	_ok(box != null and box.grid_pos == Vector2(10, 14) and dresser != null and dresser.furniture_id == "dresser",
 		"%s on %s" % [box, dresser])
@@ -1045,7 +1072,7 @@ func _t_box_on_a_surface() -> void:
 
 		_current = "surface box: moving the dresser takes the box along"
 		var moved := fl.can_place(dresser, dresser.grid_pos + Vector2(1, 1)) and fl.move_with_riders(dresser, dresser.grid_pos + Vector2(1, 1))
-		_ok(moved and box.grid_pos == Vector2(11, 15) and fl.support_under(box) == dresser, "%s %s" % [moved, box.grid_pos])
+		_ok(moved and box.grid_pos == Vector2(11, 15) and fl.support_under(box) == dresser, "%s %s %s" % [moved, box.grid_pos, fl.get_block_reason()])
 
 		# A quarter turn takes the box round with the dresser (11x7 at 11,15,
 		# box in its top-left corner): it ends up bottom-left, turned too.
@@ -1359,6 +1386,7 @@ func _t_three_freezers() -> void:
 # the checker; returns it, or null if no such spot was found.
 func _put_beside(main: Node, fl: Floor, box: Furniture, id: String, wanted: Callable) -> Furniture:
 	var f: Furniture = main._spawn_furniture(id, fl, 0, 0)
+	f.wall_flush_required = false   # beside the box, wherever that is: walls aren't what's checked
 	for dy in range(-10, box.grid_h + 10):
 		for dx in range(-14, box.grid_w + 14):
 			var at := box.grid_pos + Vector2(dx, dy)
@@ -1628,6 +1656,7 @@ func _t_sloped_split_levels() -> void:
 		await get_tree().process_frame
 	var fl: Floor = main._floors[main._current_floor_id]
 	var wardrobe: Furniture = main._spawn_furniture("wardrobe", fl, 0, 0)
+	wardrobe.wall_flush_required = false   # not what this checks: stands in the room
 	fl.forget_furniture(wardrobe)
 	_current = "attic: a wardrobe is refused under the eaves and fits under the ridge"
 	_ok(not fl.can_place(wardrobe, Vector2(24, 2)) and fl.get_block_reason() == "Ceiling too low here"
@@ -1675,8 +1704,10 @@ func _t_sloped_split_levels() -> void:
 		if (f as Furniture).furniture_id == "normal_bed": bed = f
 		if (f as Furniture).furniture_id == "sofa": sofa = f
 	var shelf: Furniture = main._spawn_furniture("bookshelf", fl, 0, 0)
+	shelf.wall_flush_required = false   # not what this checks: stands in the room
 	fl.forget_furniture(shelf)
 	var wr: Furniture = main._spawn_furniture("wardrobe", fl, 0, 0)
+	wr.wall_flush_required = false   # not what this checks: stands in the room
 	fl.forget_furniture(wr)
 	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
 	fl.forget_furniture(stool)

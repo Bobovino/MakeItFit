@@ -1248,7 +1248,7 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 		snap_pos.y = bounds.position.y + 1.0
 	elif (bounds.position.y + bounds.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP:
 		snap_pos.y = bounds.position.y + bounds.size.y - furniture.grid_h
-	if furniture.wall_flush_required and snap_pos == at:
+	if furniture.wall_flush_required and snap_pos == at and not on_a_rail(furniture, at) and not backs_onto_wall(furniture, at):
 		# A piece that has to stand against a wall (a fold-down bed, the
 		# balcony window, a folding stair) and was put down away from every
 		# wall goes to the nearest wall it fits against, instead of being
@@ -1319,17 +1319,10 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 			_block_reason = tr("Blocked by a wall")
 			return false
 
-	if furniture.wall_flush_required:
-		var b := get_room_bounds()
-		var touches_wall := (
-			at.x - b.position.x <= WALL_SNAP
-			or (b.position.x + b.size.x) - (at.x + furniture.grid_w) <= WALL_SNAP
-			or at.y - b.position.y <= WALL_SNAP
-			or (b.position.y + b.size.y) - (at.y + furniture.grid_h) <= WALL_SNAP
-		)
-		if not touches_wall:
-			_block_reason = tr("Must be placed against a wall")
-			return false
+	# (A piece on a rail is meant to slide out into the room: exempt.)
+	if furniture.wall_flush_required and not on_a_rail(furniture, at) and not backs_onto_wall(furniture, at):
+		_block_reason = tr("Its back has to be against a wall")
+		return false
 
 	# Weight & structural support (see Furniture.gd's weight/is_surface/
 	# requires_surface fields). Two independent checks:
@@ -2762,6 +2755,75 @@ func _flood_patches(seeds: Array[int], clear: PackedByteArray, seen: PackedByteA
 
 # The sides a piece is used from, as indices 0 north (top of the plan),
 # 1 east, 2 south, 3 west — for the way it is turned right now.
+# ── Against a wall ───────────────────────────────────────────────────────────
+# Pieces that stand against a wall in any real flat (wardrobes, kitchens,
+# toilets, a fridge: wall_flush_required) have to have their back to one:
+# the side opposite the one they are used from (front), or for a piece used
+# from any side, any side. Every wall counts, inside walls too, window or
+# not; a doorway doesn't. Half the back touching is enough.
+
+var _contact_key := 0
+var _contact_tiles: Dictionary = {}
+
+func _wall_contact_tiles() -> Dictionary:
+	var key := segments.hash() if _use_new_format else partitions.hash()
+	if key == _contact_key and not _contact_tiles.is_empty():
+		return _contact_tiles
+	var out: Dictionary = {}
+	for p in (segments if _use_new_format else partitions):
+		if p.get("demolished", false):
+			continue
+		var x1: int = p["x1"]; var y1: int = p["y1"]
+		var x2: int = p["x2"]; var y2: int = p["y2"]
+		var has_door := p.get("has_door", false) as bool
+		var dp := p.get("door_pos", -1) as int
+		var vertical := x1 == x2
+		var lo := mini(y1, y2) if vertical else mini(x1, x2)
+		var hi := maxi(y1, y2) if vertical else maxi(x1, x2)
+		for c in range(lo, hi + 1):
+			if has_door and dp >= 0 and c - lo >= dp and c - lo < dp + 10:
+				continue
+			out[Vector2i(x1, c) if vertical else Vector2i(c, y1)] = true
+	_contact_key = key
+	_contact_tiles = out
+	return out
+
+
+# Mounted on a rail: given its own run along one (rail_start..rail_end, as
+# a level authors it) or standing over one of the floor's rail tracks. Most
+# storage can be put on a rail (rail_axis comes with it), which alone
+# doesn't count.
+func on_a_rail(f: Furniture, at: Vector2) -> bool:
+	if f.rail_axis == "":
+		return false
+	if f.rail_start >= 0:
+		return true
+	return not rails.is_empty() and find_rail_near((at + Vector2(f.grid_w, f.grid_h) * 0.5) * TILE_SIZE, maxf(f.grid_w, f.grid_h) * 0.5) >= 0
+
+
+func backs_onto_wall(f: Furniture, at: Vector2) -> bool:
+	var walls := _wall_contact_tiles()
+	var x0 := roundi(at.x)
+	var y0 := roundi(at.y)
+	for front in _front_sides(f):
+		var side := (front + 2) % 4 if f.front != "any" else front
+		# Flush, or up to WALL_SNAP away (the gap snapping already allows).
+		for gap in range(int(WALL_SNAP) + 1):
+			var row: Array[Vector2i] = []
+			match side:
+				0: for x in range(x0, x0 + f.grid_w): row.append(Vector2i(x, y0 - 1 - gap))
+				2: for x in range(x0, x0 + f.grid_w): row.append(Vector2i(x, y0 + f.grid_h + gap))
+				1: for y in range(y0, y0 + f.grid_h): row.append(Vector2i(x0 + f.grid_w + gap, y))
+				3: for y in range(y0, y0 + f.grid_h): row.append(Vector2i(x0 - 1 - gap, y))
+			var touching := 0
+			for t in row:
+				if walls.has(wrap_tile(t)):
+					touching += 1
+			if touching * 2 >= row.size():
+				return true
+	return false
+
+
 func _front_sides(f: Furniture) -> Array[int]:
 	match f.front:
 		"long":

@@ -614,6 +614,7 @@
       "id": "kitchen",
       "name": "Kitchen Unit",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 24,
         "h": 6
@@ -635,6 +636,7 @@
       "id": "kitchen_small",
       "name": "Compact Kitchen",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 12,
         "h": 12
@@ -656,6 +658,7 @@
       "id": "bathtub",
       "name": "Bathtub",
       "placement": "floor",
+      "wall_flush_required": true,
       "color": "b0c8d4",
       "functions": [
         "hygiene"
@@ -668,12 +671,14 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/styletest/bathtub.glb"
+      "model": "res://assets/models/furniture/styletest/bathtub.glb",
+      "front": "long"
     },
     {
       "id": "toilet",
       "name": "Toilet",
       "placement": "floor",
+      "wall_flush_required": true,
       "color": "d4dde8",
       "functions": [
         "hygiene"
@@ -686,12 +691,14 @@
       },
       "floor_category": "bathroom",
       "wall_h": 8,
-      "model": "res://assets/models/furniture/styletest/toilet.glb"
+      "model": "res://assets/models/furniture/styletest/toilet.glb",
+      "front": "short"
     },
     {
       "id": "sink",
       "name": "Sink",
       "placement": "floor",
+      "wall_flush_required": true,
       "color": "c8d8e8",
       "functions": [
         "hygiene"
@@ -704,12 +711,14 @@
       },
       "floor_category": "bathroom",
       "wall_h": 14,
-      "model": "res://assets/models/furniture/styletest/sink.glb"
+      "model": "res://assets/models/furniture/styletest/sink.glb",
+      "front": "long"
     },
     {
       "id": "shower",
       "name": "Shower",
       "placement": "floor",
+      "wall_flush_required": true,
       "color": "b8ccd8",
       "functions": [
         "hygiene"
@@ -747,6 +756,7 @@
       "id": "wardrobe",
       "name": "Wardrobe",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 10,
         "h": 6
@@ -771,6 +781,7 @@
       "id": "bookshelf",
       "name": "Bookshelf",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 8,
         "h": 3
@@ -794,6 +805,7 @@
       "id": "pantry",
       "name": "Pantry",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 5,
         "h": 5
@@ -1116,6 +1128,7 @@
       "id": "bathroom_cabinet",
       "name": "Bathroom Cabinet",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 8,
         "h": 5
@@ -1193,6 +1206,7 @@
       "id": "tv_stand",
       "name": "TV Stand",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 18,
         "h": 5
@@ -1233,6 +1247,7 @@
       "id": "filing_cabinet",
       "name": "Filing Cabinet",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 4,
         "h": 6
@@ -1291,6 +1306,7 @@
       "id": "fridge",
       "name": "Fridge",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 7,
         "h": 8
@@ -1426,6 +1442,7 @@
       "id": "dresser",
       "name": "Dresser",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 11,
         "h": 7
@@ -1491,6 +1508,7 @@
       "id": "sink_square",
       "name": "Square Sink",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 7,
         "h": 7
@@ -1587,6 +1605,7 @@
       "id": "closed_bookcase",
       "name": "Closed Bookcase",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 5,
         "h": 4
@@ -1610,6 +1629,7 @@
       "id": "wide_bookcase",
       "name": "Wide Bookcase",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 14,
         "h": 4
@@ -1727,6 +1747,7 @@
       "id": "kitchen_corner_cabinet_inner",
       "name": "Kitchen Corner Cabinet",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 6,
         "h": 7
@@ -1746,6 +1767,7 @@
       "id": "kitchen_corner_cabinet_round",
       "name": "Rounded Corner Cabinet",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 12,
         "h": 12
@@ -1765,6 +1787,7 @@
       "id": "fridge_large",
       "name": "Large Fridge",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 9,
         "h": 8
@@ -1806,6 +1829,7 @@
       "id": "upright_freezer",
       "name": "Upright Freezer",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 6,
         "h": 7
@@ -1826,6 +1850,7 @@
       "id": "mini_fridge",
       "name": "Mini Fridge",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 6,
         "h": 7
@@ -1838,12 +1863,14 @@
       "buy_price": 180,
       "sell_price": 70,
       "color": "c8d4e0",
-      "model": "res://assets/models/furniture/styletest/mini_fridge.glb"
+      "model": "res://assets/models/furniture/styletest/mini_fridge.glb",
+      "front": "short"
     },
     {
       "id": "kitchen_sink",
       "name": "Kitchen Sink",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 6,
         "h": 5
@@ -1864,6 +1891,7 @@
       "id": "stove",
       "name": "Stove",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 6,
         "h": 6
@@ -1921,6 +1949,7 @@
       "id": "washer",
       "name": "Washer",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 7,
         "h": 6
@@ -1936,12 +1965,14 @@
       "sell_price": 120,
       "color": "d0d0d0",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/styletest/washer.glb"
+      "model": "res://assets/models/furniture/styletest/washer.glb",
+      "front": "long"
     },
     {
       "id": "washer_dryer_stack",
       "name": "Stacked Washer/Dryer",
       "placement": "floor",
+      "wall_flush_required": true,
       "size": {
         "w": 8,
         "h": 7
@@ -1958,7 +1989,8 @@
       "sell_price": 190,
       "color": "c8c8c8",
       "is_noisy": true,
-      "model": "res://assets/models/furniture/styletest/washer_dryer_stack.glb"
+      "model": "res://assets/models/furniture/styletest/washer_dryer_stack.glb",
+      "front": "long"
     },
     {
       "placement": "wall",
@@ -2166,6 +2198,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "cabinet_guest_bed",
       "name": "Cabinet Guest Bed",
       "size": {
@@ -2499,6 +2532,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "secretary_desk",
       "name": "Secretary Desk",
       "size": {
@@ -2636,6 +2670,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "vanity_desk",
       "name": "Convertible Vanity",
       "size": {
@@ -2667,6 +2702,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "bookcase_desk",
       "name": "Bookcase Desk",
       "size": {
@@ -2699,6 +2735,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "sliding_wardrobe_tall",
       "name": "Sliding Wardrobe (Vertical)",
       "size": {
@@ -2858,6 +2895,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "expanding_shelf",
       "name": "Expanding Shelf",
       "size": {
@@ -2886,6 +2924,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "pocket_pantry",
       "name": "Pocket Pantry",
       "size": {
@@ -2933,6 +2972,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "hidden_kitchenette",
       "name": "Hidden Kitchenette",
       "size": {
@@ -3008,6 +3048,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "kitchen_tower",
       "name": "Kitchen Tower",
       "size": {
@@ -3065,6 +3106,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "folding_shower",
       "name": "Folding Shower",
       "size": {
@@ -3117,6 +3159,7 @@
     },
     {
       "placement": "floor",
+      "wall_flush_required": true,
       "id": "sliding_bathroom_cabinet",
       "name": "Sliding Bathroom Cabinet",
       "size": {

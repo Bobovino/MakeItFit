@@ -56,6 +56,9 @@ var _gm: GameManager = null
 var show_subfloor: bool = false
 var show_ceiling:  bool = false
 var show_grid:     bool = false
+# While a piece that has to stand against a wall is dragged (show_grid on),
+# every stretch of wall it can back onto is lit up.
+var wall_cue:      bool = false
 # Set by LevelEditor.gd on its own preview Floor only. Gameplay (Main.gd)
 # leaves this false: the sheet there should hug the actual apartment walls
 # tightly so players get a clear "this is where the apartment ends, you
@@ -585,6 +588,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 
 	_draw_columns(parent)
 	_draw_segments(parent)
+	if show_grid and wall_cue:
+		_draw_wall_cue(parent)
 	GridDraw.draw_loop_seams(self, parent.loop, parent.get_room_bounds(), TILE_SIZE)
 	_draw_split_levels(parent)
 	_draw_sloped_ceiling(parent)
@@ -1442,6 +1447,17 @@ func _draw_ceiling_layer(parent: Floor) -> void:
 		# Duct lines in cardinal directions
 		draw_line(Vector2((vx + 0.5) * TILE_SIZE, vy * TILE_SIZE - 3),
 				  Vector2((vx + 0.5) * TILE_SIZE, 0), HVAC_COL, 2.5)
+
+
+# The walls a wall-bound piece can be put against (Floor.backs_onto_wall):
+# every wall tile but doorways, in a soft glow over the wall.
+const WALL_CUE_COL := Color(0.45, 0.88, 1.0, 0.55)
+
+func _draw_wall_cue(parent: Floor) -> void:
+	var ts := float(TILE_SIZE)
+	for t in parent._wall_contact_tiles():
+		var v := t as Vector2i
+		draw_rect(Rect2(v.x * ts - 1.0, v.y * ts - 1.0, ts + 2.0, ts + 2.0), WALL_CUE_COL)
 
 
 func _draw_natural_light(parent: Floor) -> void:

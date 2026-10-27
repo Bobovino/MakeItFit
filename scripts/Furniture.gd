@@ -1793,6 +1793,7 @@ func _start_drag(mouse_pos: Vector2) -> void:
 	z_index = 10
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = true
+		_wall_ref.grid_draw.wall_cue = wall_flush_required   # light up the walls it can go against
 		_wall_ref.grid_draw.queue_redraw()
 	# Lock rail axis on drag start
 	if rail_axis == "h":
@@ -2121,6 +2122,7 @@ func begin_placement(apt_floor: Floor, mouse_pos: Vector2) -> void:
 	z_index         = 10
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = true
+		_wall_ref.grid_draw.wall_cue = wall_flush_required   # light up the walls it can go against
 		_wall_ref.grid_draw.queue_redraw()
 	_drag(mouse_pos)
 	queue_redraw()

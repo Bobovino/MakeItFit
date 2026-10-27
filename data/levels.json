@@ -226,8 +226,9 @@
 				},
 				{
 					"id": "fridge",
-					"x": 20.0,
-					"y": 3.0
+					"x": 19,
+					"y": 3,
+					"rot_steps": 1
 				},
 				{
 					"id": "pantry",
@@ -241,8 +242,8 @@
 				},
 				{
 					"id": "wardrobe",
-					"x": 49.0,
-					"y": 6.0
+					"x": 49,
+					"y": 3
 				},
 				{
 					"id": "nightstand",
@@ -251,38 +252,40 @@
 				},
 				{
 					"id": "dresser",
-					"x": 70.0,
-					"y": 28.0
+					"x": 70,
+					"y": 32
 				},
 				{
 					"id": "dresser",
-					"x": 4.0,
-					"y": 60.0
+					"x": 4,
+					"y": 62
 				},
 				{
 					"id": "bathtub",
-					"x": 28.0,
-					"y": 43.0
+					"x": 28,
+					"y": 42
 				},
 				{
 					"id": "sink",
-					"x": 28.0,
-					"y": 58.0
+					"x": 27,
+					"y": 57,
+					"rot_steps": 1
 				},
 				{
 					"id": "toilet",
-					"x": 36.0,
-					"y": 58.0
+					"x": 36,
+					"y": 63
 				},
 				{
 					"id": "bathroom_cabinet",
-					"x": 36.0,
-					"y": 52.0
+					"x": 39,
+					"y": 50,
+					"rot_steps": 1
 				},
 				{
 					"id": "wardrobe",
-					"x": 72.0,
-					"y": 44.0
+					"x": 72,
+					"y": 42
 				}
 			],
 			"starting_inventory": [],
@@ -753,15 +756,14 @@
 				{
 					"id": "wardrobe",
 					"keepsake": true,
-					"x": 10,
-					"y": 14
+					"x": 23,
+					"y": 33
 				},
 				{
 					"id": "bookshelf",
 					"keepsake": true,
-					"rot_steps": 1,
-					"x": 20,
-					"y": 2
+					"x": 17,
+					"y": 3
 				},
 				{
 					"id": "floor_mirror",
@@ -790,13 +792,12 @@
 				},
 				{
 					"id": "toilet",
-					"rot_steps": 1,
 					"x": 43,
-					"y": 34
+					"y": 33
 				},
 				{
 					"id": "sink",
-					"x": 26,
+					"x": 48,
 					"y": 34
 				}
 			],
@@ -2611,23 +2612,25 @@
 			"starting_furniture": [
 				{
 					"id": "wardrobe",
-					"x": 12,
-					"y": 22
+					"x": 3,
+					"y": 20,
+					"rot_steps": 1
 				},
 				{
 					"id": "bookshelf",
-					"x": 30,
-					"y": 18
+					"x": 34,
+					"y": 15,
+					"rot_steps": 1
 				},
 				{
 					"id": "toilet",
 					"x": 2,
-					"y": 31
+					"y": 33
 				},
 				{
 					"id": "sink",
 					"x": 9,
-					"y": 32
+					"y": 33
 				}
 			],
 			"starting_inventory": [],
@@ -8043,12 +8046,12 @@
 				{
 					"id": "toilet",
 					"x": 44,
-					"y": 21
+					"y": 22
 				},
 				{
 					"id": "sink",
 					"x": 37,
-					"y": 22
+					"y": 23
 				}
 			],
 			"starting_inventory": [],
@@ -8192,7 +8195,8 @@
 				{
 					"id": "toilet",
 					"x": 27,
-					"y": 7
+					"y": 7,
+					"rot_steps": 1
 				},
 				{
 					"id": "sink",
@@ -39506,8 +39510,8 @@
 				},
 				{
 					"id": "sink",
-					"x": 118.0,
-					"y": 126.0
+					"x": 118,
+					"y": 125
 				},
 				{
 					"id": "wardrobe",
@@ -46456,13 +46460,13 @@
 			"starting_furniture": [
 				{
 					"id": "toilet",
-					"x": 108.0,
-					"y": 126.0
+					"x": 108,
+					"y": 125
 				},
 				{
 					"id": "sink",
-					"x": 114.0,
-					"y": 126.0
+					"x": 114,
+					"y": 125
 				}
 			],
 			"starting_inventory": [],
@@ -79291,8 +79295,8 @@
 				},
 				{
 					"id": "fridge",
-					"x": 55.0,
-					"y": 3.0
+					"x": 56,
+					"y": 3
 				},
 				{
 					"id": "kitchen_island",
@@ -79301,8 +79305,8 @@
 				},
 				{
 					"id": "pantry",
-					"x": 55.0,
-					"y": 12.0
+					"x": 58,
+					"y": 12
 				},
 				{
 					"id": "sofa",
@@ -79316,8 +79320,9 @@
 				},
 				{
 					"id": "tv_stand",
-					"x": 28.0,
-					"y": 31.0
+					"x": 20,
+					"y": 32,
+					"rot_steps": 1
 				},
 				{
 					"id": "desk",
@@ -79361,8 +79366,9 @@
 				},
 				{
 					"id": "dresser",
-					"x": 9.0,
-					"y": 33.0
+					"x": 3,
+					"y": 49,
+					"rot_steps": 1
 				},
 				{
 					"id": "floor_mirror",
@@ -79758,8 +79764,9 @@
 				},
 				{
 					"id": "wardrobe",
-					"x": 20.0,
-					"y": 17.0
+					"x": 26,
+					"y": 15,
+					"rot_steps": 1
 				},
 				{
 					"id": "desk",
@@ -80039,8 +80046,9 @@
 				},
 				{
 					"id": "wardrobe",
-					"x": 2,
-					"y": 14
+					"x": 26,
+					"y": 4,
+					"rot_steps": 1
 				},
 				{
 					"id": "dresser",
@@ -80302,7 +80310,7 @@
 				{
 					"id": "wardrobe",
 					"x": 18,
-					"y": 4
+					"y": 3
 				},
 				{
 					"id": "normal_bed",
@@ -80311,8 +80319,9 @@
 				},
 				{
 					"id": "bookshelf",
-					"x": 24,
-					"y": 23
+					"x": 29,
+					"y": 20,
+					"rot_steps": 1
 				}
 			],
 			"starting_inventory": [],
@@ -80751,12 +80760,12 @@
 				{
 					"id": "bookshelf",
 					"x": 3,
-					"y": 34
+					"y": 37
 				},
 				{
 					"id": "wardrobe",
 					"x": 38,
-					"y": 30
+					"y": 34
 				}
 			],
 			"starting_inventory": [],
@@ -81277,7 +81286,7 @@
 				{
 					"id": "tv_stand",
 					"x": 34,
-					"y": 30
+					"y": 35
 				},
 				{
 					"id": "nightstand",
@@ -81416,12 +81425,13 @@
 				{
 					"id": "wardrobe",
 					"x": 3,
-					"y": 34
+					"y": 32,
+					"rot_steps": 1
 				},
 				{
 					"id": "dresser",
 					"x": 48,
-					"y": 34
+					"y": 37
 				}
 			],
 			"starting_inventory": [],
