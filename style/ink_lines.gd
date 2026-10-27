@@ -37,7 +37,7 @@ const POST_SHADER := preload("res://style/shaders/ink_post.gdshader")
 const MII_SHADER := preload("res://scripts/shaders/tenant_outline.gdshader")
 const MII_MASK_SHADER := preload("res://style/shaders/ink_mask.gdshader")
 const NODE_NAME := "InkPass"
-const MII_WIDTH := 0.008
+const MII_WIDTH := 1.6   # pixels (tenant_outline.gdshader)
 
 static var _post: ShaderMaterial
 static var _mii: ShaderMaterial
@@ -65,7 +65,7 @@ static func mii_outline_material() -> ShaderMaterial:
 	if _mii == null:
 		_mii = ShaderMaterial.new()
 		_mii.shader = MII_SHADER
-		_mii.set_shader_parameter("outline_width", MII_WIDTH)
+		_mii.set_shader_parameter("outline_px", MII_WIDTH)
 		_mii.set_shader_parameter("outline_color", post_material().get_shader_parameter("ink_color"))
 		# In the facing pass the Mii is a black silhouette, so furniture
 		# behind it never gets its corners inked across it.

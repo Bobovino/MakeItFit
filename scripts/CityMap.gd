@@ -527,6 +527,7 @@ func _build_ui() -> void:
 	_tenant_portrait = TextureRect.new()
 	_tenant_portrait.custom_minimum_size = Vector2(64, 64)
 	_tenant_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_tenant_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait_frame.add_child(_tenant_portrait)
 	_setup_portrait_viewport()
 
@@ -722,6 +723,7 @@ func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowra
 func _setup_portrait_viewport() -> void:
 	_portrait_viewport = SubViewport.new()
 	_portrait_viewport.size = Vector2i(128, 128)
+	_portrait_viewport.msaa_3d = Viewport.MSAA_4X   # the Mii's outline and edges stay smooth this small
 	_portrait_viewport.transparent_bg = true
 	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_portrait_viewport)
