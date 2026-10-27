@@ -484,7 +484,9 @@ func _build_ui() -> void:
 	vb.add_child(head_rule)
 	_info_title = _make_info_label(vb, GameTheme.FS_TITLE, FAX_INK, true)
 	_info_title.add_theme_font_override("font", GameTheme.font("display"))
-	_info_district = _make_info_label(vb, GameTheme.FS_CAPTION, FAX_INK_SOFT)
+	# Wraps: a long district name or budget made the sheet wider than its
+	# margins, a different width for each home.
+	_info_district = _make_info_label(vb, GameTheme.FS_CAPTION, FAX_INK_SOFT, true)
 
 	var preview_frame := PanelContainer.new()
 	var pf_sn := StyleBoxFlat.new()
@@ -637,6 +639,8 @@ func _fax_print() -> void:
 	Audio.play("fax", true)
 	if _fax_tween and _fax_tween.is_valid():
 		_fax_tween.kill()
+	if is_instance_valid(_fax_old_sheet):
+		_fax_old_sheet.queue_free()
 	var feed := func(v: float):
 		_fax_paper.offset_top = v
 		_fax_paper.offset_bottom = v
@@ -644,14 +648,60 @@ func _fax_print() -> void:
 		feed.call(0.0)
 		return
 	var from := maxf(_fax_clip.size.y, 200.0)
+	# One continuous roll: the sheet on show (a picture of it, taken before
+	# its text changes) feeds up and out at the top while the new one comes
+	# out of the slot joined to its bottom edge, the two moving as one.
+	_fax_old_sheet = _snapshot_fax_sheet()
 	feed.call(from)
+	var roll := func(v: float):
+		feed.call(v)
+		if is_instance_valid(_fax_old_sheet):
+			_fax_old_sheet.position.y = v - from
 	if is_instance_valid(_fax_lcd):
 		_fax_lcd.text = tr("RECEIVING…")
 	_fax_tween = create_tween()
-	_fax_tween.tween_method(feed, from, 0.0, 0.55).set_trans(Tween.TRANS_LINEAR)
+	_fax_tween.tween_method(roll, from, 0.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_fax_tween.tween_callback(func():
+		if is_instance_valid(_fax_old_sheet):
+			_fax_old_sheet.queue_free()
 		if is_instance_valid(_fax_lcd):
 			_fax_lcd.text = tr("READY"))
+
+
+var _fax_old_sheet: TextureRect = null
+
+# The sheet as it is on screen right now (whatever part of it shows in the
+# clip, mid-feed or not), as a still picture in the clip at the same place;
+# null before the first frame is drawn.
+func _snapshot_fax_sheet() -> TextureRect:
+	var vp := get_viewport()
+	var shot := vp.get_texture().get_image() if vp else null
+	if shot == null or shot.is_empty():
+		return null
+	# Across, the sheet's real width (its contents can make it wider than its
+	# margins ask); down, the whole clip.
+	var local := Rect2(Vector2(_fax_paper.position.x, 0.0), Vector2(_fax_paper.size.x, _fax_clip.size.y))
+	# The slot covers the sheet's last SLOT_H: take the picture above it, and
+	# give that hidden strip the paper's own colour, so the slot doesn't ride
+	# up with the old sheet as a dark band.
+	var seen := Rect2(local.position, local.size - Vector2(0.0, SLOT_H))
+	var to_px := vp.get_final_transform() * _fax_clip.get_global_transform_with_canvas()
+	var px := Rect2i(to_px * seen).intersection(Rect2i(Vector2i.ZERO, shot.get_size()))
+	if px.size.x < 2 or px.size.y < 2:
+		return null
+	var hidden_px := roundi(SLOT_H * px.size.y / seen.size.y)
+	var img := Image.create(px.size.x, px.size.y + hidden_px, false, shot.get_format())
+	img.blit_rect(shot, px, Vector2i.ZERO)
+	img.fill_rect(Rect2i(0, px.size.y, px.size.x, hidden_px), shot.get_pixel(px.position.x + px.size.x / 2, px.end.y - 1))
+	var pic := TextureRect.new()
+	pic.texture = ImageTexture.create_from_image(img)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_SCALE
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pic.position = local.position
+	pic.size = local.size
+	_fax_clip.add_child(pic)
+	return pic
 
 
 func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowrap: bool = false) -> Label:
