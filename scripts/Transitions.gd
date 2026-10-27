@@ -27,6 +27,19 @@ func _on_node_added(node: Node) -> void:
 		tw.tween_property(_rect, "color:a", 0.0, FADE_IN)
 
 
+# Starts loading a scene the player is likely to open next, on a background
+# thread, so change_scene() finds it ready. The level scene's scripts take
+# over a second and a half to load the first time in a session; the title
+# screen and the map ask for it as soon as they open.
+var _warming: Dictionary = {}   # path -> true while requested, then its PackedScene
+
+func prewarm(path: String) -> void:
+	if _warming.has(path) or ResourceLoader.has_cached(path):
+		return
+	if ResourceLoader.load_threaded_request(path) == OK:
+		_warming[path] = true
+
+
 func change_scene(path: String) -> void:
 	if _busy:
 		return
@@ -35,6 +48,15 @@ func change_scene(path: String) -> void:
 	var tw := create_tween()
 	tw.tween_property(_rect, "color:a", 1.0, FADE_OUT)
 	tw.tween_callback(func():
-		get_tree().change_scene_to_file(path)
+		var warmed = _warming.get(path)
+		if warmed is bool:
+			# Still loading, or done: either way take it from the loader
+			# (waits for the rest, if any).
+			warmed = ResourceLoader.load_threaded_get(path)
+			_warming[path] = warmed   # kept, so a later visit is cached too
+		if warmed is PackedScene:
+			get_tree().change_scene_to_packed(warmed)
+		else:
+			get_tree().change_scene_to_file(path)
 		_busy = false
 		_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE)

@@ -392,8 +392,21 @@ func is_floor_tile(tile: Vector2i) -> bool:
 # Real playable extent of this floor, derived from wall segments — the walls
 # are the source of truth for the room's footprint; floor tiles are pruned to
 # fit inside them (see _prune_floor_mask_to_walls), not the other way around.
+#
+# Remembered while the walls stay the same: is_floor_tile() asks for it on
+# every call, and light, zones, access and the plan's drawing ask that of
+# every tile, so working it out from every segment each time was most of a
+# level's loading and of each redraw of the plan. The walls are edited in
+# many places, so the check is their hash (cheap, done natively) rather than
+# a flag each edit would have to remember to set.
+var _bounds_key := 0
+var _bounds_cache := Rect2i()
+
 func get_room_bounds() -> Rect2i:
 	if not segments.is_empty():
+		var key := segments.hash()
+		if key == _bounds_key:
+			return _bounds_cache
 		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
 		for s in segments:
 			var sd := s as Dictionary
@@ -401,7 +414,9 @@ func get_room_bounds() -> Rect2i:
 			maxx = max(maxx, max(sd["x1"] as int, sd["x2"] as int))
 			miny = min(miny, min(sd["y1"] as int, sd["y2"] as int))
 			maxy = max(maxy, max(sd["y1"] as int, sd["y2"] as int))
-		return Rect2i(int(minx), int(miny), int(maxx - minx), int(maxy - miny))
+		_bounds_key = key
+		_bounds_cache = Rect2i(int(minx), int(miny), int(maxx - minx), int(maxy - miny))
+		return _bounds_cache
 	if not floor_mask.is_empty():
 		var minx := INF; var miny := INF; var maxx := -INF; var maxy := -INF
 		for t in floor_mask:

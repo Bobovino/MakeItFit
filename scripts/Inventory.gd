@@ -86,6 +86,8 @@ func setup(game_manager: GameManager) -> void:
 	_gm = game_manager
 	if not _gm.budget_changed.is_connected(_refresh_affordability):
 		_gm.budget_changed.connect(_refresh_affordability)
+	if not visibility_changed.is_connected(_on_visibility_changed):
+		visibility_changed.connect(_on_visibility_changed)
 	_ensure_filter_box()
 	item_list.add_theme_constant_override("separation", 5)
 
@@ -395,7 +397,21 @@ func populate(furniture_list: Array) -> void:
 	_render()
 
 
+# While the catalogue is closed nothing is built: building every card took
+# over half a second each time a level opened. It is marked out of date and
+# built when it opens (visibility_changed, connected in setup()).
+var _stale := false
+
+func _on_visibility_changed() -> void:
+	if _stale and is_visible_in_tree():
+		_render()
+
+
 func _render() -> void:
+	if not is_visible_in_tree():
+		_stale = true
+		return
+	_stale = false
 	# Taken out at once, not just queued: for a frame the old row and the new
 	# one would both count toward the strip's height.
 	for child in item_list.get_children():

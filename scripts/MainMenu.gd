@@ -10,6 +10,7 @@ var _diorama: TitleDiorama = null
 
 
 func _ready() -> void:
+	Transition.prewarm("res://scenes/Main.tscn")   # a level is the next thing most likely opened
 	theme = GameTheme.make()
 	add_child(DeskBackdrop.new())
 	# A little furnished flat in the middle of the board, behind the menu.
