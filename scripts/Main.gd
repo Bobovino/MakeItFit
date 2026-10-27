@@ -129,6 +129,13 @@ var _level_state_cache: Dictionary = {}
 # Together they are what the autosave keeps of a project.
 var _full_level_states: Dictionary = {}
 var _resuming := false          # this load opens a saved project where it was left
+# Phases (GameManager.phases): the phase being played in the level opened
+# from the map, kept across trips into its boxes (which reload it) and
+# saved with the project; what each finished phase left, for going back.
+var _root_phase := 0
+var _phase_level_id := ""
+var _resume_phase := 0
+var _phase_checkpoints: Dictionary = {}   # phase index -> var_to_str(LevelProgress.capture)
 var _autosave_dirty := false    # something changed since the last autosave
 var _autosave_timer: Timer
 # A project (the apartment from the map and every box inside it) is rented
@@ -775,6 +782,8 @@ func _restart_level() -> void:
 		GameState.clear_progress(_current_level_id)
 		_full_level_states.erase(_current_level_id)
 		_level_state_cache.erase(_current_level_id)
+		_root_phase = 0
+		_phase_checkpoints.clear()
 	_autosave_dirty = false
 	_load_level(_current_level_id)
 
@@ -1083,12 +1092,26 @@ func _load_level(level_id: String) -> void:
 	if not paintable.is_empty():
 		_build_paint_panel(paintable)
 
+	# Phases: back in the phase being played (resuming a saved project, or
+	# coming back out of a box), or a new visit starting at the first.
+	if _nested_stack.is_empty():
+		if _resuming:
+			_root_phase = _resume_phase
+			_phase_level_id = level_id
+		elif level_id != _phase_level_id:
+			_phase_level_id = level_id
+			_root_phase = 0
+			_phase_checkpoints.clear()
+		for i in range(1, _root_phase + 1):
+			_apply_phase(i, false)
 	if _resuming:
 		_resuming = false
 		_applications_shown[level_id] = true   # it was already read: no need to print it again
 		_restore_level_state(level_id)
 	_start_tenants()
 	_show_application_if_needed()
+	if SHOW_LEVEL_INTROS and _nested_stack.is_empty() and _root_phase == 0 and not gm.phases().is_empty():
+		_play_phase_scene(0)
 	_refresh_undo_redo_buttons()
 	# Establish the correct disabled/available baseline from however the level
 	# actually loaded (freshly, or via "Revisar Plano Actual" resuming an
@@ -1316,6 +1339,8 @@ func _autosave_now() -> void:
 		"cache": var_to_str(_level_state_cache),
 		"pending": var_to_str(_pending_arrivals),
 		"status": var_to_str({"ok": _level_ok, "box": _box_cond}),
+		"phase": _root_phase,
+		"checkpoints": var_to_str(_phase_checkpoints),
 	})
 
 
@@ -1336,6 +1361,9 @@ func _prepare_resume(entry: Dictionary) -> void:
 	if status is Dictionary:
 		_level_ok = (status as Dictionary).get("ok", {})
 		_box_cond = (status as Dictionary).get("box", {})
+	_resume_phase = int(entry.get("phase", 0))
+	var checkpoints = str_to_var(entry.get("checkpoints", "{}") as String)
+	_phase_checkpoints = checkpoints if checkpoints is Dictionary else {}
 	_resuming = true
 
 
@@ -4526,10 +4554,13 @@ func _refresh_functions() -> void:
 	if apt_floor:
 		gm.update_zones(apt_floor.zones)
 		gm.update_sightlines(apt_floor)
+		gm.update_quiet_routes(apt_floor)
 		gm.update_external_zone(apt_floor, all_entries, _active_moment_id)
 		# The rules that aren't furniture needs, shown where the player looks:
 		# lines on the plan, lines and zone tints in 3D, chips in the bar.
 		apt_floor.set_sight_lines(gm.sightline_status)
+		apt_floor.grid_draw.quiet_routes = gm.quiet_status
+		apt_floor.grid_draw.queue_redraw()
 		apt_floor.set_zone_status(gm.zone_status())
 		tenant_card.update_rules(gm.rule_status())
 		if is_instance_valid(_mode3d_view):
@@ -4640,6 +4671,12 @@ func _on_rent_pressed() -> void:
 		_refresh_undo_redo_buttons()
 		return
 
+	# A level in phases: meeting one that isn't the last moves on to the next,
+	# on the same flat, instead of renting it out.
+	if _nested_stack.is_empty() and not gm.is_last_phase():
+		_advance_phase()
+		return
+
 	Audio.play("success")
 
 	var stars       := gm.calculate_stars()
@@ -4676,6 +4713,63 @@ func _on_rent_pressed() -> void:
 # straight to the results screen. Switches into 3D mode if the player was
 # still on the Floor Plan so there's always something to actually show; skips
 # entirely under Reduce Motion, same as the settings menu's other animations.
+# ── Phases ──────────────────────────────────────────────────────────────────
+
+func _advance_phase() -> void:
+	var done := gm.phase
+	_phase_checkpoints[done] = var_to_str(LevelProgress.capture(self))
+	Audio.play("success")
+	_toast(tr("Phase %d of %d done") % [done + 1, gm.phases().size()])
+	_apply_phase(done + 1, true)
+	_autosave_dirty = true
+	_autosave_soon()
+
+
+# Puts phase `i` in play: what it adds to the tenant (GameManager), the
+# pieces it hands over, the needs bar; and, when `with_scene`, its scene.
+func _apply_phase(i: int, with_scene: bool) -> void:
+	gm.apply_phase(i)
+	if _nested_stack.is_empty():
+		_root_phase = i
+		_phase_level_id = _current_level_id
+	var ph := gm.phases()[i] as Dictionary
+	for e in (ph.get("add", {}) as Dictionary).get("owned", []) as Array:
+		_add_owned(gm.starting_inventory, (e as Dictionary)["id"] as String, int((e as Dictionary).get("count", 1)))
+	_refresh_owned_ui()
+	tenant_card.setup(gm.phase_tenant())
+	tenant_card.setup_moments(gm.moments)
+	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
+	tenant_card.set_application(_application != null, hidden_reqs)
+	_refresh_functions()
+	_update_rent_btn()
+	if with_scene:
+		_play_phase_scene(i)
+
+
+func _play_phase_scene(i: int) -> void:
+	var ph := gm.phases()[i] as Dictionary
+	var lines := ph.get("scene", []) as Array
+	if lines.is_empty():
+		return
+	var title := tr(ph.get("title", "") as String)
+	var header := (tr("Phase %d of %d") % [i + 1, gm.phases().size()]) + ("  ·  " + title if title != "" else "")
+	DialogueScene.play(self, lines, _scene_speakers(), header)
+
+
+# Who can speak in a scene: the household, by resident id, each in the
+# colour of their token on the plan; "you" is the player.
+func _scene_speakers() -> Dictionary:
+	var out := {"you": {"name": tr("You"), "color": GameTheme.NAVY}}
+	if _application:
+		for r in _application.residents:
+			var res := r as TenantResident
+			var col: Color = GameTheme.NAVY
+			if tenant_layer and tenant_layer._tokens.has(res.id) and is_instance_valid(tenant_layer._tokens[res.id]):
+				col = (tenant_layer._tokens[res.id] as Node).get("color")
+			out[String(res.id)] = {"name": tr(res.display_name), "color": col.darkened(0.25)}
+	return out
+
+
 func _play_completion_reveal() -> void:
 	if GameState.reduce_motion:
 		return

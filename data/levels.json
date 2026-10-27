@@ -278,8 +278,8 @@
 				},
 				{
 					"id": "bathroom_cabinet",
-					"x": 39,
-					"y": 50,
+					"x": 26,
+					"y": 48,
 					"rot_steps": 1
 				},
 				{
@@ -301,7 +301,80 @@
 					"sleep",
 					"sit"
 				]
-			}
+			},
+			"phases": [
+				{
+					"id": "family",
+					"title": "The family moves in",
+					"scene": [
+						{
+							"who": "marisol",
+							"text": "Sixty-four square metres, a kitchen, a bathroom and the beach two streets away. Now we just have to live in it."
+						},
+						{
+							"who": "tito",
+							"text": "Where do I sleep? I'm not sleeping on the towels again."
+						},
+						{
+							"who": "lucia",
+							"text": "And the beach stuff goes somewhere that isn't my bed."
+						},
+						{
+							"who": "marisol",
+							"text": "Beds, somewhere to sit, somewhere to put things. And leave the kitchen and the bathroom alone."
+						}
+					]
+				},
+				{
+					"id": "parakeets",
+					"title": "Pipo and Lola",
+					"scene": [
+						{
+							"who": "tito",
+							"text": "Aunt Rosa gave us her parakeets! Pipo and Lola! They're coming to live with us!"
+						},
+						{
+							"who": "marisol",
+							"text": "Birds need daylight. The cage goes where the sun comes in."
+						},
+						{
+							"who": "lucia",
+							"text": "And they wake up screeching if anyone walks past them at night."
+						},
+						{
+							"who": "marisol",
+							"text": "So whoever gets up to go to the toilet goes the long way round. Or the cage moves."
+						},
+						{
+							"who": "tito",
+							"text": "Or my bed moves!"
+						}
+					],
+					"add": {
+						"required_functions": [
+							"pet"
+						],
+						"owned": [
+							{
+								"id": "bird_cage",
+								"count": 1
+							}
+						],
+						"quiet_routes": [
+							{
+								"from_function": "sleep",
+								"to": [
+									"toilet"
+								],
+								"avoid": "bird_cage",
+								"radius": 10,
+								"label": "From every bed to the toilet without passing within 1 m of the birds",
+								"short": "Let the birds sleep"
+							}
+						]
+					}
+				}
+			]
 		},
 		{
 			"acquisition_cost": 0,

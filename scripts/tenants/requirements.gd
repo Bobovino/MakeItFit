@@ -69,6 +69,7 @@ static func glyph(id: String) -> String:
 		"apartments": return "\ueac1"
 		"items": return "\uec0b"   # counted needs; so far only Dani's freezers
 		"reach": return "\uec87"   # can't get there (TenantLayer._try_to_reach)
+		"quiet": return MomentClock.ICONS["zzz"]   # let something asleep sleep (GameManager.quiet_routes)
 	return TenantCard.NEED_GLYPH.get(key, "\uf91d") as String
 
 

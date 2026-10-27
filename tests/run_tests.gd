@@ -46,6 +46,7 @@ func _run_all() -> void:
 	_test("snap_to_wall lands flush against the wall", func(): _t_snap_to_wall())
 	_test("a piece that must stand against a wall goes to the nearest one", func(): _t_snap_flush_far())
 	_test("a wall-bound piece needs its back to a wall, not just any side", func(): _t_back_to_wall())
+	_test("quiet route: a bed's way to the toilet must keep clear of the birds", func(): _t_quiet_route())
 	_test("remove_furniture frees the tiles it occupied", func(): _t_remove_furniture())
 	_test("rotation cycles 0/1/2/3 and swaps footprint each step", func(): _t_rotation_cycle())
 	_test("pathing: a piece beside open floor is reachable", func(): _t_path_open())
@@ -509,6 +510,39 @@ func _t_snap_to_wall() -> void:
 	fl.queue_free()
 
 
+# A 50 x 30 room (tiles 2..51 x 2..31): a bed in the top-left corner, used
+# from its south side, and a toilet in the top-right, used from its south
+# side too, so the way runs along under them. Birds asleep at the bottom
+# leave it quiet; across the way, there's room to go round them; right by
+# the toilet there's no way to it that doesn't pass them.
+func _t_quiet_route() -> void:
+	var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+	add_child(fl)
+	fl.setup({"id": "quiet", "label": "Quiet", "grid_w": 56, "grid_h": 36, "floor_tiles": [], "segments": [
+		{"x1": 1, "y1": 1, "x2": 52, "y2": 1, "primary": true, "demolished": false},
+		{"x1": 52, "y1": 1, "x2": 52, "y2": 32, "primary": true, "demolished": false},
+		{"x1": 52, "y1": 32, "x2": 1, "y2": 32, "primary": true, "demolished": false},
+		{"x1": 1, "y1": 32, "x2": 1, "y2": 1, "primary": true, "demolished": false},
+	]})
+	var bed := _catalog_piece(fl, "normal_bed")
+	fl.place_furniture(bed, Vector2(2, 2))
+	var wc := _catalog_piece(fl, "toilet")
+	fl.place_furniture(wc, Vector2(45, 2))
+	var q := {"from_function": "sleep", "to": ["toilet"], "avoid": "bird_cage", "radius": 10}
+	var none: Dictionary = fl.quiet_route(q)
+	var cage := _catalog_piece(fl, "bird_cage")
+	var at := func(p: Vector2) -> Dictionary:
+		fl.place_furniture(cage, p)
+		return fl.quiet_route(q)
+	var far: Dictionary = at.call(Vector2(24, 26))
+	var across: Dictionary = at.call(Vector2(30, 9))
+	var by_toilet: Dictionary = at.call(Vector2(40, 9))
+	_ok(none["ok"] and far["ok"] and not (far["path"] as Array).is_empty() and across["ok"] and not by_toilet["ok"],
+		"no cage %s, far %s (%d steps), across the way %s, by the toilet %s" % [none["ok"], far["ok"],
+			(far["path"] as Array).size(), across["ok"], by_toilet["ok"]])
+	fl.queue_free()
+
+
 # A 6 x 2 piece used from a long side (a wardrobe, say) in the 25 x 19 room
 # of _window_floor (tiles 2..26 x 2..20): its back, the other long side,
 # against the north wall is fine; touching the west wall with only its
@@ -923,7 +957,9 @@ func _t_project_needs_every_apartment() -> void:
 	_current = "project: back as it was, the box counts as ready again"
 	_ok(main._level_state_label(inner, false) == "ready", main._level_state_label(inner, false))
 
-	# Now the flat too: the project is rented out.
+	# Now the flat too: the project is rented out. (Without its later phases:
+	# those have their own test.)
+	main.gm.current_level["phases"] = []
 	for id in ["normal_bed", "stool"]:
 		_place_somewhere(main, root_floor, id)
 	main._refresh_functions()

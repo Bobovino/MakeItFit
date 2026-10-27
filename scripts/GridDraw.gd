@@ -59,6 +59,9 @@ var show_grid:     bool = false
 # While a piece that has to stand against a wall is dragged (show_grid on),
 # every stretch of wall it can back onto is lit up.
 var wall_cue:      bool = false
+# GameManager.quiet_status (set by Main): the quiet zone round each thing
+# that mustn't be woken and the way from a bed to the toilet.
+var quiet_routes:  Array = []
 # Set by LevelEditor.gd on its own preview Floor only. Gameplay (Main.gd)
 # leaves this false: the sheet there should hug the actual apartment walls
 # tightly so players get a clear "this is where the apartment ends, you
@@ -595,6 +598,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	_draw_segments(parent)
 	if show_grid and wall_cue:
 		_draw_wall_cue(parent)
+	_draw_quiet_routes()
 	GridDraw.draw_loop_seams(self, parent.loop, parent.get_room_bounds(), TILE_SIZE)
 	_draw_split_levels(parent)
 	_draw_sloped_ceiling(parent)
@@ -1452,6 +1456,45 @@ func _draw_ceiling_layer(parent: Floor) -> void:
 		# Duct lines in cardinal directions
 		draw_line(Vector2((vx + 0.5) * TILE_SIZE, vy * TILE_SIZE - 3),
 				  Vector2((vx + 0.5) * TILE_SIZE, 0), HVAC_COL, 2.5)
+
+
+# Quiet routes: a dashed ring round the sleeping birds (the distance to keep)
+# and the night-time way from a bed to the toilet as a line of footsteps,
+# calm when it keeps clear, red when it wakes them.
+const QUIET_RING := Color(0.70, 0.78, 1.0, 0.85)
+const QUIET_OK := Color(0.55, 0.95, 0.70, 0.95)
+const QUIET_BAD := Color(1.0, 0.42, 0.38, 0.95)
+
+func _draw_quiet_routes() -> void:
+	var ts := float(TILE_SIZE)
+	for q in quiet_routes:
+		var st := q as Dictionary
+		var radius := st.get("radius", 10.0) as float
+		for z in st.get("zone", []) as Array:
+			var r := z as Rect2
+			var c := r.get_center() * ts
+			var rr := (radius + maxf(r.size.x, r.size.y) * 0.5) * ts
+			var segs := 48
+			for i in segs:
+				if i % 2 == 1:
+					continue
+				var a0 := TAU * i / segs
+				var a1 := TAU * (i + 1) / segs
+				draw_line(c + Vector2(cos(a0), sin(a0)) * rr, c + Vector2(cos(a1), sin(a1)) * rr, QUIET_RING, 1.4, true)
+			var font := ThemeDB.fallback_font
+			draw_string(font, c + Vector2(r.size.x * ts * 0.5 + 2.0, -r.size.y * ts * 0.5), "z z z", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, QUIET_RING)
+		var path := st.get("path", []) as Array
+		var col := QUIET_OK if (st.get("ok", true) as bool) else QUIET_BAD
+		var zones := st.get("zone", []) as Array
+		for i in range(0, path.size(), 2):
+			var p := (path[i] as Vector2)
+			# Red only where it comes too close; the rest of the way stays calm.
+			var near := false
+			for z in zones:
+				if Floor._rect_gap(Rect2(p - Vector2.ONE * 2.0, Vector2.ONE * 4.0), z as Rect2) < radius:
+					near = true
+			var ok_route := st.get("ok", true) as bool
+			draw_circle(p * ts, 1.6, col if ok_route else (QUIET_BAD if near else QUIET_RING))
 
 
 # The walls a wall-bound piece can be put against (Floor.backs_onto_wall):

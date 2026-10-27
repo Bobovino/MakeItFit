@@ -34,6 +34,19 @@ const COMFORT_COST_PER_ITEM  := 25.0
 const COMFORT_WARN_THRESHOLD := 50.0
 var comfort_pct: float = 100.0
 var zone_separations: Array = []     # [[ [fnsA], [fnsB] ], ...] — groups that must be in separate zones
+
+# Quiet routes: from each bed to a toilet there has to be a way that keeps
+# a quiet distance from something that mustn't be woken (birds asleep in
+# their cage). [{from_function, to:[ids], avoid:id, radius, label, short}].
+# quiet_status mirrors it with what Floor.quiet_route() found.
+var quiet_routes: Array = []
+var quiet_status: Array = []
+
+# Phases: a level can come in acts ("phases" in its data). Each phase after
+# the first adds to what the tenant wants (needs, rules, pieces they bring);
+# meeting a phase that isn't the last opens the next one on the same flat
+# instead of renting it out. phase is the one being played.
+var phase: int = 0
 var current_zones: Array = []        # latest zone snapshot from the active floor
 
 # Sightline requirements: [{from:[x,y], to:[x,y], must_be_clear:bool, label:String}].
@@ -107,6 +120,9 @@ func load_level(level_id: String) -> void:
 		sightline_ok = true
 		required_items = _tenant.get("required_items", []).duplicate(true) as Array
 		items_status = []
+		quiet_routes = _tenant.get("quiet_routes", []).duplicate(true) as Array
+		quiet_status = []
+		phase = 0
 		external_restrictions = (current_level.get("external_zone", {}) as Dictionary).duplicate(true)
 		external_zone_ok = true
 		fulfilled_functions = []
@@ -136,6 +152,9 @@ func load_level(level_id: String) -> void:
 			sightline_ok = true
 			required_items = (level.get("tenant", {}) as Dictionary).get("required_items", []).duplicate(true) as Array
 			items_status = []
+			quiet_routes = (level.get("tenant", {}) as Dictionary).get("quiet_routes", []).duplicate(true) as Array
+			quiet_status = []
+			phase = 0
 			external_restrictions = (level.get("external_zone", {}) as Dictionary).duplicate(true)
 			external_zone_ok = true
 			fulfilled_functions = []
@@ -401,6 +420,50 @@ func update_external_zone(apt_floor, placed_furniture: Array, active_moment_id: 
 # Re-evaluates every sightline_requirements entry against the live floor
 # layout. Called from Main.gd's _refresh_functions() (the only place holding
 # a real Floor reference) every time furniture changes.
+# ── Phases ──────────────────────────────────────────────────────────────────
+
+func phases() -> Array:
+	return current_level.get("phases", []) as Array
+
+
+func is_last_phase() -> bool:
+	return phase >= phases().size() - 1
+
+
+# Moves on to phase `i`, adding what it brings ("add": required_functions,
+# quiet_routes). Pieces it hands over ("add".owned) are Main's to place.
+func apply_phase(i: int) -> void:
+	var all := phases()
+	if i <= 0 or i >= all.size():
+		return
+	var add := (all[i] as Dictionary).get("add", {}) as Dictionary
+	for fn in add.get("required_functions", []) as Array:
+		if fn not in required_functions:
+			required_functions.append(fn)
+	for q in add.get("quiet_routes", []) as Array:
+		quiet_routes.append((q as Dictionary).duplicate(true))
+	phase = i
+	functions_updated.emit(fulfilled_functions, required_functions)
+
+
+# The tenant as of this phase: the level's tenant with what the phases so
+# far added (for the needs bar).
+func phase_tenant() -> Dictionary:
+	var t := (current_level.get("tenant", {}) as Dictionary).duplicate(true)
+	t["required_functions"] = required_functions.duplicate()
+	return t
+
+
+func update_quiet_routes(apt_floor) -> void:
+	quiet_status = []
+	for q in quiet_routes:
+		var r := q as Dictionary
+		var found: Dictionary = apt_floor.quiet_route(r)
+		found["label"] = r.get("label", "") as String
+		found["short"] = r.get("short", "") as String
+		quiet_status.append(found)
+
+
 func update_sightlines(apt_floor) -> void:
 	sightline_status = []
 	sightline_ok = true
@@ -434,6 +497,9 @@ func rule_status() -> Array:
 		var s := sightline_status[i] as Dictionary
 		out.append({"kind": "sight", "number": i + 1, "label": s["label"], "short": s["short"], "ok": s["ok"],
 			"must_be_clear": s["must_be_clear"]})
+	for i in quiet_status.size():
+		var q := quiet_status[i] as Dictionary
+		out.append({"kind": "quiet", "number": i + 1, "label": tr(q["label"] as String), "short": tr(q["short"] as String), "ok": q["ok"]})
 	for sep in zone_separations:
 		var a := Loc.join_list((sep[0] as Array).map(func(f): return Loc.need_name(str(f))))
 		var b := Loc.join_list((sep[1] as Array).map(func(f): return Loc.need_name(str(f))))
@@ -533,6 +599,9 @@ func check_zone_separations() -> bool:
 func check_win() -> bool:
 	if not external_zone_ok:
 		return false
+	for q in quiet_status:
+		if not ((q as Dictionary)["ok"] as bool):
+			return false
 	for st in items_status:
 		if not ((st as Dictionary)["ok"] as bool):
 			return false

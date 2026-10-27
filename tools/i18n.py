@@ -209,6 +209,20 @@ def collect():
         for m in lv.get("moments", []):
             if m.get("label"):
                 add(m["label"], "", ref)
+        # Phases: their titles, the lines of their scenes, and the labels of
+        # the rules they add (the first phase's own rules sit in tenant).
+        quiet = list(t.get("quiet_routes", []))
+        for ph in lv.get("phases", []):
+            if ph.get("title"):
+                add(ph["title"], "", ref)
+            for line in ph.get("scene", []):
+                if line.get("text"):
+                    add(line["text"], "", ref)
+            quiet += ph.get("add", {}).get("quiet_routes", [])
+        for q in quiet:
+            for k in ("label", "short"):
+                if q.get(k):
+                    add(q[k], "", ref)
         for fl in lv.get("apartment", {}).get("floors", []):
             if fl.get("label"):
                 add(fl["label"], "", ref)

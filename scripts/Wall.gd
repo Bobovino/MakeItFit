@@ -2833,6 +2833,156 @@ func backs_onto_wall(f: Furniture, at: Vector2) -> bool:
 	return false
 
 
+# ── Quiet routes ─────────────────────────────────────────────────────────────
+# From every bed (a piece giving `from_function`) to a piece in `to` there
+# has to be a way a person can walk that never comes within `radius` tiles
+# of the `avoid` piece (birds asleep in their cage). Walked as the tenants
+# walk: a WALK_WIDTH square over floor reachable from the door.
+# {ok, path: [Vector2 tile centres], zone: [Rect2] the quiet areas, radius}:
+# path is the way taken when there is one, else the plain shortest way, so
+# the plan can show where it would wake them.
+func quiet_route(q: Dictionary) -> Dictionary:
+	var avoid_id := q.get("avoid", "") as String
+	var radius := float(q.get("radius", 10))
+	var from_fn := q.get("from_function", "sleep") as String
+	var to_ids := q.get("to", []) as Array
+	var zones: Array = []
+	var sources: Array = []
+	var targets: Array = []
+	for item in get_all_furniture():
+		var f := item as Furniture
+		if f.furniture_id == avoid_id:
+			zones.append(Rect2(f.grid_pos, Vector2(f.grid_w, f.grid_h)))
+		elif f.furniture_id in to_ids:
+			targets.append(f)
+		elif from_fn in f.functions:
+			sources.append(f)
+	var out := {"ok": true, "path": [], "zone": zones, "radius": radius}
+	if zones.is_empty() or sources.is_empty() or targets.is_empty():
+		return out
+
+	var b := get_room_bounds()
+	var w := b.size.x
+	var h := b.size.y
+	var n := WALK_WIDTH
+	# Where a person can stand: walked in from the door when the walking
+	# rule is on; otherwise any floor clear of walls and furniture in the way
+	# (as the tenants walk then), or a flat whose rooms the strict rule
+	# doesn't reach (the beach house's bathroom) could never pass.
+	var reached := get_reachable_floor() if Floor.pathing_enabled else {}
+	var walls := {}
+	var in_way := {}
+	if not Floor.pathing_enabled:
+		walls = _partition_tile_set()
+		walls.merge(_window_tile_set())
+		for entry in _placed_continuous:
+			var pf: Furniture = entry["furniture"]
+			if blocks_walking(pf):
+				for t in _rect_tiles(entry["pos"], pf.grid_w, pf.grid_h):
+					in_way[t] = true
+	# Patches (n x n squares, by their top-left tile) a person can stand on.
+	var sums := PackedInt32Array()
+	sums.resize((w + 1) * (h + 1))
+	for y in h:
+		for x in w:
+			var t := Vector2i(b.position.x + x, b.position.y + y)
+			var ok_t := reached.has(t) if Floor.pathing_enabled 				else (is_floor_tile(t) and not walls.has(t) and not in_way.has(t))
+			sums[(y + 1) * (w + 1) + x + 1] = (1 if ok_t else 0) + sums[y * (w + 1) + x + 1] 				+ sums[(y + 1) * (w + 1) + x] - sums[y * (w + 1) + x]
+	var open := PackedByteArray()    # 1 = a person fits here
+	var quiet := PackedByteArray()   # 1 = ...and it is far enough from every zone
+	open.resize(w * h)
+	quiet.resize(w * h)
+	for y in h:
+		for x in w:
+			if x + n > w or y + n > h:
+				continue
+			var cnt := sums[(y + n) * (w + 1) + x + n] - sums[y * (w + 1) + x + n] - sums[(y + n) * (w + 1) + x] + sums[y * (w + 1) + x]
+			if cnt != n * n:
+				continue
+			open[y * w + x] = 1
+			var patch := Rect2(Vector2(b.position.x + x, b.position.y + y), Vector2(n, n))
+			var far := true
+			for z in zones:
+				if _rect_gap(patch, z as Rect2) < radius:
+					far = false
+					break
+			quiet[y * w + x] = 1 if far else 0
+
+	var patches_beside := func(f: Furniture) -> Array:
+		var res: Array = []
+		var x0 := floori(f.grid_pos.x) - b.position.x
+		var y0 := floori(f.grid_pos.y) - b.position.y
+		for side in _front_sides(f):
+			match side:
+				0: for x in range(x0 - n + 1, x0 + f.grid_w): res.append(Vector2i(x, y0 - n))
+				2: for x in range(x0 - n + 1, x0 + f.grid_w): res.append(Vector2i(x, y0 + f.grid_h))
+				1: for y in range(y0 - n + 1, y0 + f.grid_h): res.append(Vector2i(x0 + f.grid_w, y))
+				3: for y in range(y0 - n + 1, y0 + f.grid_h): res.append(Vector2i(x0 - n, y))
+		return res.filter(func(p: Vector2i) -> bool: return p.x >= 0 and p.y >= 0 and p.x < w and p.y < h)
+
+	# Walk out from every toilet-side patch at once; a bed is fine if a patch
+	# beside it is reached. Done on the quiet patches, then (for the picture,
+	# when that fails) on all of them.
+	var walk := func(grid: PackedByteArray) -> Dictionary:
+		var came := {}
+		var queue: Array[Vector2i] = []
+		for t in targets:
+			for p in patches_beside.call(t):
+				if grid[p.y * w + p.x] == 1 and not came.has(p):
+					came[p] = p
+					queue.append(p)
+		var head := 0
+		while head < queue.size():
+			var c: Vector2i = queue[head]
+			head += 1
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nb: Vector2i = c + d
+				if nb.x < 0 or nb.y < 0 or nb.x >= w or nb.y >= h or came.has(nb) or grid[nb.y * w + nb.x] != 1:
+					continue
+				came[nb] = c
+				queue.append(nb)
+		return came
+	var to_path := func(came: Dictionary, from: Vector2i) -> Array:
+		var pts: Array = []
+		var c := from
+		while true:
+			pts.append(Vector2(b.position) + Vector2(c) + Vector2(n, n) * 0.5)
+			var nxt: Vector2i = came[c]
+			if nxt == c:
+				break
+			c = nxt
+		return pts
+	var quiet_came: Dictionary = walk.call(quiet)
+	var open_came: Dictionary = {}
+	for bed in sources:
+		var start := Vector2i(-1, -1)
+		for p in patches_beside.call(bed):
+			if quiet_came.has(p):
+				start = p
+				break
+		if start.x >= 0:
+			if (out["path"] as Array).is_empty():
+				out["path"] = to_path.call(quiet_came, start)
+			continue
+		# No quiet way from this bed: show the way it would take.
+		out["ok"] = false
+		if open_came.is_empty():
+			open_came = walk.call(open)
+		for p in patches_beside.call(bed):
+			if open_came.has(p):
+				out["path"] = to_path.call(open_came, p)
+				break
+		break
+	return out
+
+
+# The gap between two rectangles, in tiles (0 when they touch or overlap).
+static func _rect_gap(a: Rect2, c: Rect2) -> float:
+	var dx := maxf(0.0, maxf(a.position.x - c.end.x, c.position.x - a.end.x))
+	var dy := maxf(0.0, maxf(a.position.y - c.end.y, c.position.y - a.end.y))
+	return sqrt(dx * dx + dy * dy)
+
+
 func _front_sides(f: Furniture) -> Array[int]:
 	match f.front:
 		"long":
