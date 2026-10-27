@@ -732,10 +732,13 @@ func _setup_portrait_viewport() -> void:
 	# portrait cropped off at the shoulders. Pulled back to keep the same
 	# ~1.16x headroom ratio the old framing used, aimed at mid-height rather
 	# than the old fixed 0.49m (which sat at shin height on this taller rig).
+	#
+	# Posed like the family in Young Sheldon's titles: seen from low down,
+	# turned three-quarters and looking up at the sky (_update_portrait picks
+	# the side and raises the head).
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 0.86, 3.18)
 	cam.fov = 35.0
-	cam.look_at_from_position(Vector3(0, 0.86, 3.18), Vector3(0, 0.86, 0), Vector3.UP)
+	cam.look_at_from_position(Vector3(0, 0.75, 2.3), Vector3(0, 1.22, 0), Vector3.UP)   # thighs up: the face reads at portrait size
 	# Not the ink's facing-pass layer: there the Mii's outline paints it solid
 	# black (ink_mask), and the portrait came out as a black silhouette.
 	cam.cull_mask &= ~InkNormalPass.PASS_FLAG
@@ -745,6 +748,7 @@ func _setup_portrait_viewport() -> void:
 	light.rotation_degrees = Vector3(-45, 35, 0)
 	light.light_energy = 1.2
 	_portrait_viewport.add_child(light)
+	_portrait_light = light
 
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
@@ -797,11 +801,27 @@ func _make_shadow_blob_texture() -> ImageTexture:
 
 # tenant_name is the English one (levels.json's "key_name"), so a tenant
 # keeps the same colour in every language.
+const PORTRAIT_TURN := 25.0       # degrees the tenant is turned away from the camera
+const PORTRAIT_LOOK_UP := 15.0    # degrees the head is raised, eyes on the sky
+var _portrait_light: DirectionalLight3D = null
+
 func _update_portrait(tenant_name: String) -> void:
 	if not is_instance_valid(_portrait_mii):
 		return
 	var hue := float(tenant_name.hash() % 360) / 360.0
 	_portrait_mii.set_tint(Color.from_hsv(hue, 0.55, 0.85))
+	# Each tenant looks to one side or the other, by name, always the same.
+	# The light comes from the side they look away from: lit from the side
+	# they turn to, the face washed out to white.
+	var side := 1.0 if tenant_name.hash() % 2 == 0 else -1.0
+	_portrait_mii.rotation_degrees.y = PORTRAIT_TURN * side
+	if is_instance_valid(_portrait_light):
+		_portrait_light.rotation_degrees.y = -35.0 * side
+	for sk in _portrait_mii.find_children("*", "Skeleton3D", true, false):
+		var head := (sk as Skeleton3D).find_bone("head")
+		if head >= 0:
+			var rest := (sk as Skeleton3D).get_bone_rest(head).basis.get_rotation_quaternion()
+			(sk as Skeleton3D).set_bone_pose_rotation(head, rest * Quaternion(Vector3.LEFT, deg_to_rad(PORTRAIT_LOOK_UP)))
 
 
 # ── Archivador tabs ──────────────────────────────────────────────────────────
