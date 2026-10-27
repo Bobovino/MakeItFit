@@ -444,7 +444,7 @@ func _build_ui() -> void:
 	ip.offset_left = -INFO_W
 	ip.add_theme_constant_override("margin_left", 26)
 	ip.add_theme_constant_override("margin_right", 26)
-	ip.add_theme_constant_override("margin_top", 14)
+	ip.add_theme_constant_override("margin_top", 0)   # the roll runs on up past the top of the screen
 	ip.add_theme_constant_override("margin_bottom", 18)
 	ip.z_index = 2
 	add_child(ip)
