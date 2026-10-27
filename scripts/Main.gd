@@ -1363,7 +1363,15 @@ func _notification(what: int) -> void:
 # The tenant's rental application prints the first time a level is opened in
 # a visit (not again on restarting it or coming back out of a box, and not on
 # a level already rented out); the mechanic card, if any, follows it.
+#
+# Off while the game is being built: opening a level goes straight to the
+# plan. The fax button in the needs bar still shows the application. Turn
+# back on for the demo.
+const SHOW_LEVEL_INTROS := false
+
 func _show_application_if_needed() -> void:
+	if not SHOW_LEVEL_INTROS:
+		return
 	var lid := gm.current_level.get("id", "") as String
 	if _application == null or lid in GameState.completed or _applications_shown.has(lid):
 		_show_mechanic_intro_if_needed()
