@@ -601,13 +601,44 @@ func set_external_daylight_factor(factor: float) -> void:
 		grid_draw.queue_redraw()
 
 
-func _compute_light_map() -> void:
-	_light_map.clear()
-	var blocked := _partition_tile_set(true)
-	var queue: Array[Vector2i] = []
+# Daylight, in squares: each window shines a straight beam into the room,
+# as wide as the window and BEAM_DEPTH tiles deep (full for the first half,
+# BEAM_FAR after). A tall piece stops the beam (it is lit; what stands
+# behind it is in its shadow), a medium one lets MEDIUM_PASS through, a low
+# one or a screen (reeded glass, a curtain) none of its own. A skylight lights
+# the tiles under it. Straight on purpose: a wardrobe's shadow is exactly
+# as wide as the wardrobe, so the player can see where light will fall.
+const BEAM_DEPTH := 30
+const BEAM_FAR := 0.65
+const MEDIUM_PASS := 0.5
 
+func _compute_light_map() -> void:
+	_light_map = _cast_light(null, Vector2.ZERO)
+
+
+# The light as it would be with `moving` standing at `at` instead of where
+# it is (or isn't): the plan shows the shadow follow a piece being dragged.
+func light_map_with(moving: Furniture, at: Vector2) -> Dictionary:
+	return _cast_light(moving, at)
+
+
+func _cast_light(moving: Furniture, at: Vector2) -> Dictionary:
+	var out: Dictionary = {}
+	var blocked := _partition_tile_set(true)
+	var moving_tiles: Dictionary = {}
+	if moving != null:
+		for t in _rect_tiles(at, moving.grid_w, moving.grid_h):
+			moving_tiles[wrap_tile(t)] = true
+	var pieces_on := func(t: Vector2i) -> Array:
+		var on: Array = _placed_list(t).filter(func(p): return p != moving and not (p as Furniture).overhead)
+		if moving_tiles.has(t) and not moving.overhead:
+			on.append(moving)
+		return on
+
+	# Where each beam starts (the first tile inside, by the window) and
+	# which way it goes.
+	var beams: Array = []
 	if _use_new_format:
-		# Seed from windows on segments
 		for seg in segments:
 			var sd := seg as Dictionary
 			if sd.get("demolished", false) or not sd.get("has_window", false):
@@ -619,33 +650,46 @@ func _compute_light_map() -> void:
 			var is_horiz := (y1 == y2)
 			var mn_x := mini(x1, x2); var mn_y := mini(y1, y2)
 			for i in range(wl):
-				for side in [-1, 0]:
-					var tile: Vector2i
-					if is_horiz:
-						tile = Vector2i(mn_x + wp + i, y1 + side)
-					else:
-						tile = Vector2i(x1 + side, mn_y + wp + i)
-					if is_floor_tile(tile) and tile not in _light_map:
-						_light_map[tile] = external_daylight_factor
-						queue.append(tile)
+				var wall_tile := Vector2i(mn_x + wp + i, y1) if is_horiz else Vector2i(x1, mn_y + wp + i)
+				for dir in ([Vector2i(0, 1), Vector2i(0, -1)] if is_horiz else [Vector2i(1, 0), Vector2i(-1, 0)]):
+					var first: Vector2i = wall_tile + dir
+					if is_floor_tile(first) and not blocked.has(first):
+						beams.append([first, dir])
 	else:
-		# Seed every window tile at full intensity (old format)
 		for wd in wall_definitions:
 			if not wd.get("has_window", false):
 				continue
-			var edge: String = wd["edge"]
 			var wx: int = wd.get("window_x", 0)
 			var wl: int = wd.get("window_len", 0)
 			for i in range(wl):
-				var tile: Vector2i
-				match edge:
-					"north": tile = Vector2i(wx + i, 0)
-					"south": tile = Vector2i(wx + i, grid_h - 1)
-					"west":  tile = Vector2i(0, wx + i)
-					"east":  tile = Vector2i(grid_w - 1, wx + i)
-				if not (tile in _light_map):
-					_light_map[tile] = external_daylight_factor
-					queue.append(tile)
+				match wd["edge"] as String:
+					"north": beams.append([Vector2i(wx + i, 0), Vector2i(0, 1)])
+					"south": beams.append([Vector2i(wx + i, grid_h - 1), Vector2i(0, -1)])
+					"west":  beams.append([Vector2i(0, wx + i), Vector2i(1, 0)])
+					"east":  beams.append([Vector2i(grid_w - 1, wx + i), Vector2i(-1, 0)])
+
+	for beam in beams:
+		var start: Vector2i = beam[0]
+		var dir: Vector2i = beam[1]
+		var strength := external_daylight_factor
+		var dimmed_by: Dictionary = {}
+		for step in BEAM_DEPTH:
+			var t := wrap_tile(start + dir * step)   # daylight goes round a loop too
+			if not is_floor_tile(t) or blocked.has(t):
+				break
+			var stop := false
+			for p in pieces_on.call(t):
+				var f := p as Furniture
+				if f.blocks_light():
+					stop = true
+				elif not f.screen and f.height_category == "medium" and not dimmed_by.has(f):
+					dimmed_by[f] = true
+					strength *= MEDIUM_PASS
+			var lit := strength * (1.0 if step < BEAM_DEPTH / 2 else BEAM_FAR)
+			if lit > (out.get(t, 0.0) as float):
+				out[t] = lit
+			if stop:
+				break
 
 	# Skylights light their own footprint straight from above: whatever stands
 	# under one is lit, and nothing on the floor can shade it.
@@ -655,43 +699,8 @@ func _compute_light_map() -> void:
 			continue
 		for tile in _rect_tiles(sky.grid_pos, sky.grid_w, sky.grid_h):
 			if is_floor_tile(tile) and tile not in blocked:
-				if tile not in _light_map:
-					queue.append(tile)
-				_light_map[tile] = external_daylight_factor
-
-	# BFS — propagate maximum intensity, skip already-higher tiles
-	var head := 0
-	while head < queue.size():
-		var tile: Vector2i = queue[head]
-		head += 1
-		var intensity: float = _light_map[tile]
-		if intensity < 0.04:
-			continue
-		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var next: Vector2i = wrap_tile(tile + dir)   # daylight goes round a loop too
-			if not is_floor_tile(next):
-				continue
-			if next in blocked:
-				continue
-			var decay := 0.05
-			var _lm := _placed_list(next).filter(func(p): return not (p as Furniture).overhead)
-			if not _lm.is_empty():
-				var f := _lm[0] as Furniture
-				if f.blocks_light():
-					continue
-				if f.screen:
-					decay += 0.05      # reeded glass, a curtain: the light comes through
-				else:
-					match f.height_category:
-						"medium": decay += 0.28
-						"low":    decay += 0.05
-			var next_i: float = intensity - decay
-			if next_i <= 0.0:
-				continue
-			if next_i <= (_light_map.get(next, 0.0) as float):
-				continue
-			_light_map[next] = next_i
-			queue.append(next)
+				out[tile] = maxf(out.get(tile, 0.0) as float, external_daylight_factor)
+	return out
 
 
 func set_active_wall_edge(edge: String) -> void:

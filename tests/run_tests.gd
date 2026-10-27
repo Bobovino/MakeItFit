@@ -287,13 +287,35 @@ func _t_loop_pathing() -> void:
 
 # A window at the east end of the north wall lights the first columns too,
 # through the seam.
+# A window in the west wall (rows 4..7) shines straight across to an opening
+# in the east wall (rows 4..7) that leads back in through the west wall at
+# rows 12..15: the beam comes out there and goes on lighting the floor,
+# where in the same room without the loop it is dark.
 func _t_loop_light() -> void:
-	var north := [{"x1": 1, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false,
-		"has_window": true, "window_pos": 26, "window_len": 4}]
-	var fl := _make_loop_floor(TORUS_X, [], north)
-	var plain := _make_loop_floor({}, [], north)
-	_ok(fl.get_light(Vector2i(2, 2)) > plain.get_light(Vector2i(2, 2)) + 0.05,
-		"looped %.2f vs plain %.2f" % [fl.get_light(Vector2i(2, 2)), plain.get_light(Vector2i(2, 2))])
+	var make := func(looped: bool) -> Floor:
+		var data := {"id": "loop_light", "label": "Loop", "grid_w": 34, "grid_h": 24, "floor_tiles": [], "segments": [
+			{"x1": 1, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false},
+			{"x1": 31, "y1": 1, "x2": 31, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 31, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false,
+				"has_window": true, "window_pos": 3, "window_len": 4},
+		]}
+		if looped:
+			data["loop"] = {"pairs": [{"a": {"side": "east", "from": 4, "to": 8}, "b": {"side": "west", "from": 12, "to": 16}}]}
+		var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
+		add_child(fl)
+		fl.setup(data)
+		return fl
+	var fl: Floor = make.call(true)
+	var plain: Floor = make.call(false)
+	var sum := func(f: Floor) -> float:
+		var total := 0.0
+		for y in range(12, 16):
+			for x in range(2, 6):
+				total += f.get_light(Vector2i(x, y))
+		return total
+	_ok(fl.loop != null and (sum.call(fl) as float) > (sum.call(plain) as float) + 0.05,
+		"looped %.2f vs plain %.2f" % [sum.call(fl), sum.call(plain)])
 	fl.queue_free()
 	plain.queue_free()
 
@@ -1520,7 +1542,9 @@ func _t_skylight() -> void:
 	var tall := _catalog_piece(fl, "bookshelf", 1, 1)
 	var under_slope := fl.can_place(sky, Vector2(2, 2)) and not fl.can_place(tall, Vector2(2, 6))
 	fl.ceiling_ramps = []
-	_ok(dark == 0.0 and fits_over and lit_under > 0.9 and lit_beside > 0.0 and free_with_sky == free_with_pieces
+	# Daylight comes in squares (Floor._cast_light): a skylight lights the
+	# tiles under it and no others.
+	_ok(dark == 0.0 and fits_over and lit_under > 0.9 and lit_beside == 0.0 and free_with_sky == free_with_pieces
 		and free_with_pieces == free_before - 6 and fl.support_under(sky) == null
 		and not (sky in fl.get_inaccessible_furniture()) and not sky.blocks_sight() and under_after and under_slope,
 		"dark %.2f, fits %s, under %.2f, beside %.2f, free %d/%d/%d, support %s, inaccessible %s, under after %s, slope %s" % [
