@@ -9,6 +9,10 @@ class_name ApplicationFax
 # bar's fax button, the sheet is shown already printed, and clicking a line
 # points at its chip again.
 #
+# Above the requests it prints the conversations played so far in the level
+# (each phase's scene), so the button brings them back to read. Every line,
+# said or asked, has the speaker's own Mii beside it, as in the dialogues.
+#
 # Purely presentation: it reads the level's TenantApplication and drives the
 # TenantCard's chips; nothing here touches the checker.
 
@@ -20,14 +24,19 @@ const LINE_FONT_SIZE := GameTheme.FS_BODY
 # gets an equal share (plus one share each for the header and the footer),
 # split between feeding the paper, typing the line and a short pause.
 const PRINT_TIME := 0.9
+const FACE := 48
+const MiiPortraitScript := preload("res://scripts/ui/mii_portrait.gd")
 
 var _app: TenantApplication
 var _card: TenantCard
 var _animate := true
+var _scenes: Array = []       # [{title, lines: [{who, text}]}], the conversations so far
+var _speakers: Dictionary = {}   # {id: {name, color, body, feminine}}, as DialogueScene takes
+var _faces: Dictionary = {}   # speaker id -> portrait texture (null: none)
 
 var _scroll: ScrollContainer
 var _paper: PanelContainer
-var _rows: Array = []        # one per printed line: {row, label, icon, line}
+var _rows: Array = []        # one per printed line: {row, label, icon, line}; icon and line null for something said
 var _footer: Control
 var _lcd: Label
 var _key: Button
@@ -39,10 +48,13 @@ var _step := 0.1             # one share of PRINT_TIME
 
 
 # `animate` false shows the sheet already printed (reopening it).
-static func open(host: Node, app: TenantApplication, card: TenantCard, animate: bool) -> ApplicationFax:
+static func open(host: Node, app: TenantApplication, card: TenantCard, animate: bool,
+		scenes: Array = [], speakers: Dictionary = {}) -> ApplicationFax:
 	var fax := ApplicationFax.new()
 	fax._app = app
 	fax._card = card
+	fax._scenes = scenes
+	fax._speakers = speakers
 	fax._animate = animate and not GameState.reduce_motion
 	host.add_child(fax)
 	return fax
@@ -152,6 +164,20 @@ func _build() -> void:
 	var rule := HSeparator.new()
 	rule.add_theme_color_override("color", FaxStyle.INK_SOFT)
 	vb.add_child(rule)
+	for sc in _scenes:
+		var title := Label.new()
+		title.text = ((sc as Dictionary).get("title", "") as String).to_upper()
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		title.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		title.add_theme_font_size_override("font_size", 12)
+		title.add_theme_color_override("font_color", FaxStyle.INK_SOFT)
+		vb.add_child(title)
+		for l in (sc as Dictionary).get("lines", []) as Array:
+			var said := _speech_row(vb, (l as Dictionary).get("who", "") as String, tr((l as Dictionary).get("text", "") as String))
+			_rows.append({"row": said["row"], "label": said["label"], "icon": null, "line": null})
+		var gap := HSeparator.new()
+		gap.add_theme_color_override("color", FaxStyle.INK_SOFT)
+		vb.add_child(gap)
 	var who := Label.new()
 	who.text = tr_n("Applicant: %s", "Applicants: %s", _app.residents.size()) % _app.signatories()
 	who.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
@@ -160,34 +186,15 @@ func _build() -> void:
 	vb.add_child(who)
 
 	var hand := load("res://assets/fonts/Caveat.ttf") as Font
-	var many := _app.residents.size() > 1
 	for line in _app.printed_lines():
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
+		var speaker := String(line.speaker)
+		if speaker == "" and _app.residents.size() == 1:
+			speaker = String((_app.residents[0] as TenantResident).id)
+		var asked := _speech_row(vb, speaker, tr(line.text))
+		var row := asked["row"] as HBoxContainer
+		var lbl := asked["label"] as Label
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
 		row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		vb.add_child(row)
-		var text_col := VBoxContainer.new()
-		text_col.add_theme_constant_override("separation", -2)
-		text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(text_col)
-		var lbl := Label.new()
-		lbl.text = tr(line.text)
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.add_theme_font_override("font", GameTheme.font("body"))
-		lbl.add_theme_font_size_override("font_size", LINE_FONT_SIZE)
-		lbl.add_theme_color_override("font_color", FaxStyle.INK)
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		text_col.add_child(lbl)
-		if many and line.speaker != &"":
-			var by := Label.new()
-			by.text = "— " + _app.speaker_name(line)
-			by.add_theme_font_override("font", hand)
-			by.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
-			by.add_theme_color_override("font_color", FaxStyle.INK_SOFT)
-			by.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			text_col.add_child(by)
 		# The requirement's icon, stamped at the end of its line.
 		var icon_box := CenterContainer.new()
 		icon_box.custom_minimum_size = Vector2(44, 44)
@@ -226,6 +233,91 @@ func _build() -> void:
 	add_child(_links)
 
 
+# A line said (or asked for) by `who`: their portrait, their name over the
+# words, laid out as the dialogue cards are. {row, label}.
+func _speech_row(parent: Control, who: String, text: String) -> Dictionary:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+	var face := _face_of(who)
+	var frame := PanelContainer.new()
+	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	# A light ground behind the Mii: pale skin and clothes vanished into the
+	# white paper.
+	sb.bg_color = GameTheme.CARD_DIM.darkened(0.06) if face else Color(0, 0, 0, 0)
+	sb.border_color = FaxStyle.INK if face else Color(0, 0, 0, 0)
+	sb.set_border_width_all(1)
+	frame.add_theme_stylebox_override("panel", sb)
+	var pic := TextureRect.new()
+	pic.texture = face
+	pic.custom_minimum_size = Vector2(FACE, FACE)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(pic)
+	row.add_child(frame)
+	var text_col := VBoxContainer.new()
+	text_col.add_theme_constant_override("separation", 0)
+	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(text_col)
+	var speaker := _speaker_name(who)
+	if speaker != "":
+		var by := Label.new()
+		by.text = speaker.to_upper()
+		by.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		by.add_theme_font_size_override("font_size", 12)
+		by.add_theme_color_override("font_color", FaxStyle.INK_SOFT)
+		by.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		text_col.add_child(by)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_override("font", GameTheme.font("body"))
+	lbl.add_theme_font_size_override("font_size", LINE_FONT_SIZE)
+	lbl.add_theme_color_override("font_color", FaxStyle.INK)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_col.add_child(lbl)
+	return {"row": row, "label": lbl}
+
+
+func _speaker_name(who: String) -> String:
+	if who == "":
+		return ""
+	if _speakers.has(who):
+		return (_speakers[who] as Dictionary).get("name", "") as String
+	var r := _app.resident(StringName(who))
+	return tr(r.display_name) if r else (tr("You") if who == "you" else "")
+
+
+# The speaker's Mii, as in the flat: one portrait each, drawn while the
+# sheet is up. Null for the player or an animal.
+func _face_of(who: String) -> Texture2D:
+	if _faces.has(who):
+		return _faces[who]
+	var body := ""
+	var feminine := false
+	if _speakers.has(who):
+		body = (_speakers[who] as Dictionary).get("body", "") as String
+		feminine = (_speakers[who] as Dictionary).get("feminine", false) as bool
+	elif who != "" and _app.resident(StringName(who)) != null:
+		var r := _app.resident(StringName(who))
+		body = r.body
+		feminine = r.is_feminine()
+	var tex: Texture2D = null
+	if body != "" and body != "animal":
+		var p = MiiPortraitScript.create(FACE * 2, "head")
+		add_child(p)
+		p.show_body(body, feminine)
+		p.pose(1.0, 28.0)
+		tex = p.texture()
+	_faces[who] = tex
+	return tex
+
+
 func _max_sheet_height() -> float:
 	var top := _scroll.get_global_transform_with_canvas().origin.y
 	return maxf(120.0, _bar_top() - top - 14.0)
@@ -243,7 +335,8 @@ func _print_sheet() -> void:
 	_lcd.text = tr("RECEIVING…")
 	for r in _rows:
 		(r["row"] as Control).visible = false
-		(r["icon"] as Control).modulate.a = 0.0
+		if r["icon"] != null:
+			(r["icon"] as Control).modulate.a = 0.0
 	_footer.visible = false
 	_step = PRINT_TIME / float(_rows.size() + 2)
 	await get_tree().process_frame
@@ -264,7 +357,8 @@ func _print_sheet() -> void:
 			_active_tween.custom_step(10.0)
 		else:
 			await _active_tween.finished
-		_stamp_row(r, not _skipping)
+		if r["line"] != null:
+			_stamp_row(r, not _skipping)
 		if not _skipping:
 			await get_tree().create_timer(_step * 0.1).timeout
 

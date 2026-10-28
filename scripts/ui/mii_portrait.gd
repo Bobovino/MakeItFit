@@ -23,6 +23,9 @@ static func create(px: int, framing := "fax") -> MiiPortrait:
 	var p := MiiPortrait.new()
 	p._framing = framing
 	p.size = Vector2i(px, px)
+	# A world of its own: sharing the game's, every portrait's Mii stood on
+	# the same spot, seen by every portrait's camera, ghosted on each other.
+	p.own_world_3d = true
 	p.msaa_3d = Viewport.MSAA_4X   # the Mii's outline and edges stay smooth this small
 	p.transparent_bg = true
 	p.render_target_update_mode = SubViewport.UPDATE_ALWAYS

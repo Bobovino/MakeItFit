@@ -1410,14 +1410,14 @@ func _show_application_if_needed() -> void:
 		_show_mechanic_intro_if_needed()
 		return
 	_applications_shown[lid] = true
-	_application_fax = ApplicationFax.open(self, _application, tenant_card, true)
+	_application_fax = ApplicationFax.open(self, _application, tenant_card, true, _scenes_so_far(), _scene_speakers())
 	_application_fax.closed.connect(_show_mechanic_intro_if_needed)
 
 
 func _reopen_application() -> void:
 	if _application == null or is_instance_valid(_application_fax) or _blocking_modal_open():
 		return
-	_application_fax = ApplicationFax.open(self, _application, tenant_card, false)
+	_application_fax = ApplicationFax.open(self, _application, tenant_card, false, _scenes_so_far(), _scene_speakers())
 
 
 func _show_mechanic_intro_if_needed() -> void:
@@ -4810,6 +4810,22 @@ func _set_plan_left_inset(px: float) -> void:
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and _view_mode == ViewMode.TOPDOWN:
 		_fit_floor(fl)
+
+
+# The scenes of the phases played so far, the one in play included, for the
+# application fax to print again: [{title, lines}].
+func _scenes_so_far() -> Array:
+	var out: Array = []
+	var phases := gm.phases()
+	for i in range(mini(gm.phase + 1, phases.size())):
+		var ph := phases[i] as Dictionary
+		var lines := ph.get("scene", []) as Array
+		if lines.is_empty():
+			continue
+		var title := tr(ph.get("title", "") as String)
+		out.append({"title": (tr("Phase %d of %d") % [i + 1, phases.size()]) + ("  ·  " + title if title != "" else ""),
+			"lines": lines})
+	return out
 
 
 # Who can speak in a scene: the household, by resident id, each in the
