@@ -664,13 +664,14 @@ func _bar_row_top(h: float) -> float:
 	return tenant_card.offset_top + 8.0 + (GameTheme.TOUCH_SMALL - h) * 0.5
 
 
-# Every yellow-tier piece that sits away from where it started (and so costs
-# comfort, see GameManager.compute_comfort()) shows where that was: a faint
-# outline of it on its old spot, a line back to it and what it costs, on the
-# plan and in 3D. When a piece starts or stops costing comfort, that is said
-# once (pieces seen for the first time, on loading, are only noted).
+# A piece that stands somewhere else in another moment shows where: a faint
+# copy of it on that spot, named after the moment, with a line to it, on the
+# plan and in 3D. A heavy one (moved by hand every time, which costs comfort:
+# GameManager.compute_comfort) says so, and when it starts or stops costing
+# comfort that is said once (pieces seen for the first time, on loading,
+# are only noted). Without moments there is nothing to show.
 var _moved_names: Array = []           # what is costing comfort right now, for the meter's tooltip
-var _away_seen: Dictionary = {}        # furniture instance id -> whether it was away last time
+var _away_seen: Dictionary = {}        # furniture instance id -> whether it was moved by hand last time
 var _home_marks: Array = []            # what _show_moved_from_home() last showed, for a 3D view built later
 
 func _show_moved_from_home() -> void:
@@ -682,29 +683,33 @@ func _show_moved_from_home() -> void:
 		var marks: Array = []
 		for entry in fl.get_all_furniture():
 			var f := entry as Furniture
-			if f.mobility_tier != "yellow" or f._home_grid_pos == Vector2(-1, -1):
+			if not gm.moves_between_moments(f):
+				_away_seen.erase(f.get_instance_id())
 				continue
-			var at := f.get_moment_position(moment)
-			var away := at != f._home_grid_pos
+			var by_hand := gm.is_moved_by_hand(f)
 			var id := f.get_instance_id()
-			if _away_seen.has(id) and _away_seen[id] != away and not _restoring_furniture:
-				if away:
-					_toast(tr("The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked.") % [f.furniture_name, roundi(gm.COMFORT_COST_PER_ITEM)])
+			if _away_seen.has(id) and _away_seen[id] != by_hand and not _restoring_furniture:
+				if by_hand:
+					_toast(tr("The %s is somewhere else in another moment: the tenant has to move it by hand every time. Comfort −%d%%.") % [f.furniture_name, roundi(gm.COMFORT_COST_PER_ITEM)])
 				else:
-					_toast(tr("The %s is back where it started: comfort restored.") % f.furniture_name)
-			_away_seen[id] = away
-			if not away:
-				continue
-			_moved_names.append(f.furniture_name)
-			var mark := {"home": f._home_grid_pos, "size": Vector2(f.grid_w, f.grid_h), "at": at,
-				"furniture": f, "id": f.furniture_id, "rot": f.rot_steps,
-				# A bare "−25%" on the plan read as nothing in particular: it says
-				# what the spot is and what the percentage is of.
-				"cost": tr("Started here") + "
-" + tr("Comfort −%d%%") % roundi(gm.COMFORT_COST_PER_ITEM)}
-			marks.append(mark)
-			if fid == _current_floor_id:
-				all_marks.append(mark)
+					_toast(tr("The %s stays put in every moment now: comfort restored.") % f.furniture_name)
+			_away_seen[id] = by_hand
+			if by_hand:
+				_moved_names.append(f.furniture_name)
+			var at := f.get_moment_position(moment)
+			for m in gm.moments:
+				var mid := (m as Dictionary)["id"] as String
+				var there := f.get_moment_position(mid)
+				if mid == moment or there == at:
+					continue
+				var label := tr(Furniture.moment_labels.get(mid, mid) as String)
+				var mark := {"home": there, "size": Vector2(f.grid_w, f.grid_h), "at": at,
+					"furniture": f, "id": f.furniture_id, "rot": f.rot_steps,
+					"cost": label + ("
+" + tr("Moved by hand: comfort −%d%%") % roundi(gm.COMFORT_COST_PER_ITEM) if by_hand else "")}
+				marks.append(mark)
+				if fid == _current_floor_id:
+					all_marks.append(mark)
 		fl.set_home_marks(marks)
 	_home_marks = all_marks
 	if is_instance_valid(_mode3d_view):
@@ -4643,7 +4648,7 @@ func _on_rent_pressed() -> void:
 	if not gm.check_win():
 		Audio.play("error")
 		if gm.comfort_pct < gm.COMFORT_WARN_THRESHOLD:
-			result_screen.show_failure(tr("The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started."))
+			result_screen.show_failure(tr("The tenant isn't comfortable with this arrangement.\nToo many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."))
 		else:
 			var unmet: PackedStringArray = []
 			for rule in gm.rule_status():

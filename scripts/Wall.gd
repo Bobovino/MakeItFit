@@ -2383,8 +2383,7 @@ func move_with_riders(support: Furniture, at: Vector2) -> bool:
 		_block_reason = reason
 	elif Furniture.test_mode_active:
 		for r in riders:
-			if (r as Furniture).has_own_moment_position():
-				(r as Furniture).moment_positions[Furniture.active_moment_id] = (r as Furniture).grid_pos
+			(r as Furniture).record_moment_move(old_pos[r], Input.is_key_pressed(KEY_SHIFT))
 	end_batch()
 	return ok
 
@@ -2408,8 +2407,7 @@ func turn_riders(support: Furniture, riders: Array, old_pos: Vector2, old_w: int
 		var rw := rf.grid_w
 		rf.set_rot_steps(rf.rot_steps + 1)   # not registered right now, so this only turns it
 		place_furniture(rf, support.grid_pos + Vector2(off.y, old_w - off.x - rw))
-		if rf.has_own_moment_position() and Furniture.test_mode_active:
-			rf.moment_positions[Furniture.active_moment_id] = rf.grid_pos
+		rf.record_moment_move(old_pos + off)
 	end_batch()
 
 

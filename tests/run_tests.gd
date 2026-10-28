@@ -1295,36 +1295,73 @@ func _t_unreachable_shown() -> void:
 	GameState.reduce_motion = real_motion
 
 
-# ── A piece that costs comfort shows where it came from ────────────────────
-# Debug: Furniture Stacking's desk is yellow-tier: moved away, its old spot is
-# outlined on the plan with what it costs, and the moment is said; moved
-# back, the mark goes and comfort is restored.
+# ── Comfort: what the tenant has to move by hand ──────────────────────────
+# Debug: Mobility Tiers has a day and a night, a heavy (yellow) desk and
+# light (green) chairs. The desk somewhere else at night: the tenant moves it
+# by hand twice a day, comfort drops, and its day spot is marked. A chair
+# moved at night is marked too, but costs nothing. The desk moved to the
+# same place by day too: it stays put, comfort is back. And in a level
+# without moments moving a heavy piece costs nothing at all.
 func _t_moved_from_home() -> void:
 	var real_path := GameState.save_path
 	GameState.save_path = "user://test_home_save.json"
-	GameState.pending_level_id = "debug:_stacking"
+	GameState.pending_level_id = "debug:_mobility_tiers"
 	GameState.pending_resume = false
 	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	for i in 10:
 		await get_tree().process_frame
 	var fl: Floor = main._floors[main._current_floor_id]
-	var desk: Furniture = null
-	for f in fl.get_all_furniture():
-		if (f as Furniture).furniture_id == "desk":
-			desk = f
-	var home := desk.grid_pos
-	fl.place_furniture(desk, home + Vector2(0, 12))
+	var find := func(id: String) -> Furniture:
+		for f in fl.get_all_furniture():
+			if (f as Furniture).furniture_id == id:
+				return f
+		return null
+	var desk: Furniture = find.call("desk")
+	var chair: Furniture = find.call("dining_chair")
+	# What dropping it does: moved for the moment on screen only.
+	var move := func(f: Furniture, mid: String, to: Vector2) -> void:
+		assert(Furniture.active_moment_id == mid)
+		var from := f.grid_pos
+		fl.place_furniture(f, to)
+		f.record_moment_move(from)
+	var day_spot := desk.grid_pos
+	main._on_moment_selected("night", false)
+	var night_spot := day_spot + Vector2(0, 8)
+	move.call(desk, "night", night_spot)
 	main._refresh_functions()
 	var ov: RuleOverlay = fl._rule_overlay
-	var said: String = (main._toast_panel.get_node("Text") as Label).text if is_instance_valid(main._toast_panel) else ""
-	_current = "comfort: a desk moved off its spot leaves its old spot marked, and says what it costs"
-	_ok(ov != null and ov.home_marks.size() == 1 and ov.home_marks[0]["home"] == home and said.contains("Desk"), said)
-	fl.place_furniture(desk, home)
+	_current = "comfort: a heavy desk somewhere else at night costs comfort, and its day spot is marked"
+	_ok(is_equal_approx(main.gm.comfort_pct, 75.0) and ov.home_marks.size() == 1 and ov.home_marks[0]["home"] == day_spot,
+		"comfort %s marks %s" % [main.gm.comfort_pct, ov.home_marks.map(func(m): return m["home"])])
+	move.call(chair, "night", chair.grid_pos + Vector2(4, 0))
 	main._refresh_functions()
-	said = (main._toast_panel.get_node("Text") as Label).text if is_instance_valid(main._toast_panel) else ""
-	_current = "comfort: moved back, the mark goes and comfort is restored"
-	_ok(ov.home_marks.is_empty() and said.contains("back"), said)
+	_current = "comfort: a light chair moved at night is marked but costs nothing"
+	_ok(is_equal_approx(main.gm.comfort_pct, 75.0) and ov.home_marks.size() == 2, "comfort %s marks %d" % [main.gm.comfort_pct, ov.home_marks.size()])
+	main._on_moment_selected("day", false)
+	move.call(desk, "day", night_spot)
+	main._refresh_functions()
+	_current = "comfort: the desk in the same place day and night stays put, comfort is back"
+	_ok(is_equal_approx(main.gm.comfort_pct, 100.0), str(main.gm.comfort_pct))
+	main.queue_free()
+	await get_tree().process_frame
+
+	GameState.pending_level_id = "debug:_stacking"
+	main = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	fl = main._floors[main._current_floor_id]
+	var heavy: Furniture = null
+	for f in fl.get_all_furniture():
+		if (f as Furniture).mobility_tier == "yellow":
+			heavy = f
+	fl.place_furniture(heavy, heavy.grid_pos + Vector2(0, 12))
+	main._refresh_functions()
+	_current = "comfort: without moments, moving a heavy piece costs nothing and leaves no mark"
+	var ro = fl._rule_overlay
+	_ok(is_equal_approx(main.gm.comfort_pct, 100.0) and (ro == null or (ro as RuleOverlay).home_marks.is_empty()),
+		"comfort %s" % main.gm.comfort_pct)
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:

@@ -1546,6 +1546,26 @@ func get_occupied_tiles() -> Array:
 # if it has_own_moment_position() and one's been recorded, else its single
 # shared grid_pos (the correct fallback for both "never moved for this
 # moment yet" and "red, non-rail — always shares one position").
+# Records a move made while a moment is on screen. Moved for that moment
+# only (the default), every other moment that had no place of its own yet
+# keeps the one it had, `from`: moving it at night doesn't move it by day.
+# `everywhere` (Shift held on dropping it) puts it there in every moment.
+# Pieces that share one place in every moment (red ones) have nothing to
+# record. Returns what was done, for the notice: "" when nothing.
+func record_moment_move(from: Vector2, everywhere := false) -> String:
+	if not has_own_moment_position() or not Furniture.test_mode_active or Furniture.all_moment_ids.size() < 2:
+		return ""
+	for mid in Furniture.all_moment_ids:
+		if everywhere:
+			moment_positions[mid] = grid_pos
+		elif not moment_positions.has(mid):
+			moment_positions[mid] = from
+	moment_positions[Furniture.active_moment_id] = grid_pos
+	if everywhere:
+		return tr("Moved for every moment")
+	return tr("Moved for %s only") % tr(Furniture.moment_labels.get(Furniture.active_moment_id, Furniture.active_moment_id) as String)
+
+
 func get_moment_position(moment_id: String) -> Vector2:
 	if has_own_moment_position() and moment_positions.has(moment_id):
 		return moment_positions[moment_id]
@@ -2014,11 +2034,12 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 	if ok and not _wall_ref.move_with_riders(self, snap_pos):
 		ok = false
 	if ok:
-		if has_own_moment_position() and Furniture.test_mode_active:
-			moment_positions[Furniture.active_moment_id] = grid_pos
-		elif mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
+		var said := record_moment_move(_original_pos / TILE_SIZE, Input.is_key_pressed(KEY_SHIFT))
+		if said == "" and mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
 				and Furniture.all_moment_ids.size() > 1:
-			_notice_reason = tr("Moved for every moment")
+			said = tr("Moved for every moment")
+		if said != "":
+			_notice_reason = said
 			_notice_flash_t = NOTICE_FLASH_DURATION
 		_play("place")
 		_pop_on_place()

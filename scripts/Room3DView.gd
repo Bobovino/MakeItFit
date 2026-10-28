@@ -2273,6 +2273,7 @@ func _finish_furniture_drag() -> void:
 	# Whatever stands on it comes along (Floor.move_with_riders); if any of it
 	# can't land, nothing moves.
 	var riders: Array = _apt_floor.riders_of(f) if ok else []
+	var from_grid := f.grid_pos
 	if ok and not _apt_floor.move_with_riders(f, snap_pos):
 		ok = false
 	if ok:
@@ -2288,12 +2289,9 @@ func _finish_furniture_drag() -> void:
 				if is_instance_valid(h) and h.get_meta("furniture", null) == r:
 					h.position.x = rmesh.position.x - rsize.x * 0.5
 					h.position.z = rmesh.position.z - rsize.z * 0.5
-		# Without this, moving a piece in the 3D view moved it for every
-		# moment at once instead of just the one currently being tested,
-		# since set_moment_view() only ever restores a position it finds
-		# recorded in moment_positions.
-		if f.has_own_moment_position() and Furniture.test_mode_active:
-			f.moment_positions[Furniture.active_moment_id] = f.grid_pos
+		# Moved for the moment on screen only, unless Shift is held: the
+		# other moments keep where it was (Main's toast says what it costs).
+		f.record_moment_move(from_grid, Input.is_key_pressed(KEY_SHIFT))
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 		for h in _hitbox_highlights:

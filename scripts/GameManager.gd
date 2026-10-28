@@ -25,11 +25,9 @@ var moment_verified: Dictionary = {}  # moment_id -> bool; true once its needs w
 var moment_zone_ok: Dictionary = {}       # moment_id -> bool, sticky
 var moment_sightline_ok: Dictionary = {}  # moment_id -> bool, sticky
 
-# Mobility/comfort — see Furniture.mobility_tier. A "yellow" piece sitting
-# away from its authored starting position (Furniture._home_grid_pos) costs
-# comfort; current-state based, so moving it back recovers it. comfort_pct
-# always reflects whichever moment is currently on screen (or the single
-# global layout, for a level with no moments) — for the live UI meter.
+# Mobility/comfort — see Furniture.mobility_tier and compute_comfort(): each
+# heavy ("yellow") piece the tenant has to move by hand between moments
+# costs comfort. comfort_pct is the live value, for the meter.
 const COMFORT_COST_PER_ITEM  := 25.0
 const COMFORT_WARN_THRESHOLD := 50.0
 var comfort_pct: float = 100.0
@@ -274,19 +272,36 @@ func _functions_of(entry, moment_id: String = "") -> Array:
 # sitting away from its authored home position. get_moment_position() already
 # degrades to the plain shared grid_pos when moment_id is "" or the piece has
 # no per-moment entry, so this needs no separate no-moments branch.
-func compute_comfort(placed_furniture: Array, moment_id: String) -> float:
+# Comfort is the tenant's effort: a heavy (yellow-tier) piece that stands
+# somewhere else in one moment than in another has to be moved by hand every
+# time the moment changes, and each one costs COMFORT_COST_PER_ITEM. Where
+# the player puts a piece doesn't matter as long as it stays put: moved for
+# every moment, the ajustador moved it once and the tenant never has to.
+# Without moments nothing is ever moved by hand. Light (green) pieces move
+# between moments for free; red ones can't. The same for every moment.
+func compute_comfort(placed_furniture: Array, _moment_id: String = "") -> float:
 	var pct := 100.0
+	if moments.size() < 2:
+		return pct
 	for entry in placed_furniture:
-		if not (entry is Furniture):
-			continue
-		var fur := entry as Furniture
-		if fur.mobility_tier != "yellow":
-			continue
-		if fur._home_grid_pos == Vector2(-1, -1):
-			continue   # never had a home recorded — don't penalize
-		if fur.get_moment_position(moment_id) != fur._home_grid_pos:
+		if entry is Furniture and is_moved_by_hand(entry as Furniture):
 			pct -= COMFORT_COST_PER_ITEM
 	return clampf(pct, 0.0, 100.0)
+
+
+# A heavy piece that isn't in the same place in every moment.
+func is_moved_by_hand(fur: Furniture) -> bool:
+	return fur.mobility_tier == "yellow" and moves_between_moments(fur)
+
+
+func moves_between_moments(fur: Furniture) -> bool:
+	if moments.size() < 2 or not fur.has_own_moment_position():
+		return false
+	var first: Vector2 = fur.get_moment_position((moments[0] as Dictionary)["id"] as String)
+	for m in moments:
+		if fur.get_moment_position((m as Dictionary)["id"] as String) != first:
+			return true
+	return false
 
 
 # Called by Main._refresh_functions() right after `moment_id`'s furniture has
