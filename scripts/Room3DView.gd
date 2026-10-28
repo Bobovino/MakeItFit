@@ -1798,6 +1798,7 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	# Where it landed, which may be next to where the ghost was (landing_spot).
 	_buying_mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	_buying_mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+	_buying_mesh.position.y = _lift_m(f) + item_size.y * 0.5
 	if _buying_fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
@@ -2315,6 +2316,9 @@ func _finish_furniture_drag() -> void:
 		f.record_moment_move(from_grid, Input.is_key_pressed(KEY_SHIFT))
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
+		# The height too: held over a wardrobe or a table it was lifted onto
+		# it, and it may have landed beside it (Floor.landing_spot).
+		mesh.position.y = _lift_m(f) + item_size.y * 0.5
 		for h in _hitbox_highlights:
 			if is_instance_valid(h) and h.get_meta("furniture", null) == f:
 				h.position.x = mesh.position.x - item_size.x * 0.5

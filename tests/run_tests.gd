@@ -31,6 +31,8 @@ func _ready() -> void:
 	await _t_unreachable_shown()
 	await _t_moved_from_home()
 	await _t_landing_spot()
+	await _t_landing_3d()
+	_t_translations_load()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1399,6 +1401,57 @@ func _t_landing_spot() -> void:
 	_current = "landing: nothing near fits, so it says why"
 	var far := Vector2(bounds.position.x - 100, bounds.position.y - 100)
 	_ok(fl.landing_spot(piece, far) == Vector2.INF and fl.get_block_reason() != "", fl.get_block_reason())
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+
+
+# Every translation loads in Godot itself: a malformed entry (a msgstr cut
+# short) fails the whole file, and the game falls back to English.
+func _t_translations_load() -> void:
+	for f in DirAccess.get_files_at("res://locale"):
+		if f.ends_with(".po"):
+			var t := load("res://locale/" + f) as Translation
+			_current = "translations: %s loads" % f
+			_ok(t != null and t.get_message_count() > 0)
+
+
+# Dropped in the 3D view where it can't stand, a piece lands beside it at
+# the height of where it landed: lifted onto something while held over it,
+# it used to stay up there, out of sight, at its new spot.
+func _t_landing_3d() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_landing3d_save.json"
+	GameState.pending_level_id = "debug:_stacking"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	main._set_view_mode(main.ViewMode.VIEW3D)
+	for i in 5:
+		await get_tree().process_frame
+	var view = main._mode3d_view
+	var piece: Furniture = null
+	for f in fl.get_all_furniture():
+		if (f as Furniture).furniture_id == "rental_capsule":
+			piece = f
+	var entry: Dictionary = view._entry_of(piece)
+	var mesh := entry["mesh"] as MeshInstance3D
+	var size: Vector3 = entry["size"]
+	view._begin_furniture_drag(entry, Vector2.ZERO)
+	var b := fl.get_room_bounds()
+	view._drag_last_tile = Vector2(b.position.x - piece.grid_w * 0.5, piece.grid_pos.y).round()
+	mesh.position.y = 2.0   # held up high, as over a wardrobe
+	view._finish_furniture_drag()
+	_current = "landing 3D: dropped half through a wall, it lands inside, on the floor"
+	_ok(fl.can_place(piece, piece.grid_pos) and piece.grid_pos.x >= b.position.x + 1.0
+		and is_equal_approx(mesh.position.y, view._lift_m(piece) + size.y * 0.5)
+		and is_equal_approx(mesh.position.x, (piece.grid_pos.x - view._room_bounds.position.x) * view.TILE_M + size.x * 0.5),
+		"at %s, y %.2f (should be %.2f)" % [piece.grid_pos, mesh.position.y, view._lift_m(piece) + size.y * 0.5])
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:

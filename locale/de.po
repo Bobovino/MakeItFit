@@ -968,7 +968,9 @@ msgstr "Diese Wohnung ist fertig. Noch einzurichten: %s"
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
-msgstr "Zu viele schwere Möbel müssen beim Momentwechsel von Hand verschoben werden: Lass einige in jedem Moment am selben Platz."
+msgstr ""
+"Diese Einrichtung ist für die Mieter unbequem.\n"
+"Zu viele schwere Möbel müssen beim Momentwechsel von Hand verschoben werden: Lass einige in jedem Moment am selben Platz."
 
 #: scripts/Main.gd:4657
 msgid "Not every need on the bar is ticked yet."
