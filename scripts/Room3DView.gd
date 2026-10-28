@@ -1387,6 +1387,7 @@ func _begin_furniture_drag(hit: Dictionary, vp_pos: Vector2) -> void:
 	_hide_hover_highlight()
 	_drag_target        = hit
 	_dragging_furniture = true
+	_landing_key        = []   # the room may have changed since the last drag
 	_drag_orig_pos       = hit["pos"]
 	var f: Furniture     = hit["furniture"]
 	_restore_wall_hole(f)   # picking up a balcony window to move it opens the wall back up until it's dropped somewhere new
@@ -1513,16 +1514,7 @@ func _update_furniture_drag(vp_pos: Vector2) -> void:
 	mesh.position.y = lift + item_size.y * 0.5
 	_drag_target["pos"] = mesh.position
 	_sync_echoes(_drag_target)
-	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(item_size.x, item_size.z))
-	if is_instance_valid(_drag_highlight):
-		_drag_highlight.position.y = lift
-
-	if Furniture.transfer_hover != 0:
-		_hide_reason()     # Main's tag by the pointer says what will happen
-	elif _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, tile)):
-		_show_reason(_apt_floor.get_block_reason())
-	else:
-		_hide_reason()
+	_preview_landing(f, tile, item_size)
 
 
 # R while an existing item is being dragged: same call as the 2D view's
@@ -1568,9 +1560,33 @@ func _rotate_dragged_furniture() -> void:
 	mesh.position.z = (_drag_last_tile.y - _room_bounds.position.y) * TILE_M + new_size.z * 0.5
 	_drag_target["pos"] = mesh.position
 	_show_drag_highlight(Vector2(new_size.x, new_size.z))
-	_update_drag_highlight_pos(mesh.position.x, mesh.position.z, Vector2(new_size.x, new_size.z))
-	if _apt_floor and not _apt_floor.can_place(f, _apt_floor.snap_to_wall(f, _drag_last_tile)):
-		_show_reason(_apt_floor.get_block_reason())
+	_preview_landing(f, _drag_last_tile, new_size)
+
+
+var _landing_key: Array = []           # [piece, tile, rot_steps] _landing was worked out for
+var _landing := Vector2.INF            # where the dragged piece would land (Floor.landing_spot)
+var _landing_why := ""                 # why it would land nowhere
+
+# Where the piece being dragged would land if let go now: the outline on the
+# floor sits there, not under the piece, whenever the drop would nudge it
+# out of a wall or off another piece. Only when it would land nowhere is
+# the reason shown. Worked out again only when the tile or turn changes.
+func _preview_landing(f: Furniture, tile: Vector2, item_size: Vector3) -> void:
+	if _apt_floor == null:
+		return
+	var key := [f, tile, f.rot_steps]
+	if key != _landing_key:
+		_landing_key = key
+		_landing = _apt_floor.landing_spot(f, _apt_floor.snap_to_wall(f, tile), true)
+		_landing_why = _apt_floor.get_block_reason() if _landing == Vector2.INF else ""
+	# Over a box or Back: Main's tag by the pointer says what will happen.
+	var at := tile if _landing == Vector2.INF or Furniture.transfer_hover != 0 else _landing
+	_update_drag_highlight_pos((at.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5,
+		(at.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5, Vector2(item_size.x, item_size.z))
+	if is_instance_valid(_drag_highlight):
+		_drag_highlight.position.y = _lift_m(f, at)
+	if _landing == Vector2.INF and Furniture.transfer_hover == 0:
+		_show_reason(_landing_why)
 	else:
 		_hide_reason()
 

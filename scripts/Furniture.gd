@@ -294,6 +294,9 @@ var _dragging: bool = false
 var _placement_mode: bool = false   # true while waiting for initial click-to-place
 var _drag_offset: Vector2 = Vector2.ZERO
 var _original_pos: Vector2 = Vector2.ZERO
+var _landing_key := Vector3.INF   # tile and turn _landing was worked out for, while dragged
+var _landing := Vector2.INF       # where it would land if let go now (Floor.landing_spot); INF: nowhere
+var _landing_why := ""            # why it would land nowhere
 var _press_ms := 0                       # when the current press began, for a touch long-press
 var _press_moved := false                # the pointer has left the press spot since
 # Main's handler for a touch long-press on a piece (TouchControls shows its
@@ -853,22 +856,38 @@ func _draw_overlays(w: int, h: int, ink: Color, parts: Array) -> void:
 	# tenant-needs chips already use elsewhere, so it doesn't need its own
 	# legend.
 	if _dragging and _wall_ref:
+		# Let go here, it lands at _landing (Floor.landing_spot): right here,
+		# next to here (out of a wall, off another piece), or nowhere.
 		var at := Vector2(position.x / TILE_SIZE, position.y / TILE_SIZE)
-		var ok := Furniture.transfer_hover == 1 or (Furniture.transfer_hover == 0 and _wall_ref.can_place(self, at))
+		var on_floor := Furniture.transfer_hover == 0
+		var nudged := on_floor and _landing != Vector2.INF and _landing != at
+		var ok := Furniture.transfer_hover == 1 or (on_floor and _landing != Vector2.INF)
 		var pulse := 0.14 + 0.06 * sin(Time.get_ticks_msec() * 0.008)
-		var vc := Color(0.35, 0.80, 0.38, pulse) if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
+		var green := Color(0.35, 0.80, 0.38, pulse)
+		var vc := green if ok else Color(0.90, 0.35, 0.28, pulse + 0.12)
+		if nudged:
+			vc = Color(0.55, 0.62, 0.70, pulse)   # where it is held: not where it goes
 		for part in parts:
 			draw_rect(part["dst"] as Rect2, vc)
 			draw_rect(part["dst"] as Rect2, Color(vc.r, vc.g, vc.b, 0.85), false, 2.0)
+		var glyph_at := Vector2(4, 12)
+		if nudged:
+			# Where it will land, and a dashed line from the piece to it.
+			var off := (_landing - at) * TILE_SIZE
+			var land := Rect2(off, Vector2(w, h))
+			draw_rect(land, Color(green.r, green.g, green.b, green.a + 0.12))
+			draw_rect(land, Color(green.r, green.g, green.b, 0.9), false, 2.5)
+			draw_dashed_line(Vector2(w, h) * 0.5, off + Vector2(w, h) * 0.5, Color(0.16, 0.42, 0.18, 0.8), 2.0, 5.0)
+			glyph_at += off
 		var glyph_col := Color(0.16, 0.42, 0.18, 0.9) if ok else Color(0.55, 0.10, 0.08, 0.9)
-		draw_string(ThemeDB.fallback_font, Vector2(4, 12),
+		draw_string(ThemeDB.fallback_font, glyph_at,
 			"\uea5e" if ok else "\ueb55", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, glyph_col)
 
 		# Say *why* it's blocked, not just that it is — a bare red ✗ never told
 		# the player whether it was overlap, wrong floor type, a low ceiling,
 		# or another item's clearance zone, so every miss looked identical.
-		if not ok and Furniture.transfer_hover == 0 and _wall_ref.has_method("get_block_reason"):
-			var reason := _wall_ref.get_block_reason() as String
+		if not ok and on_floor:
+			var reason := _landing_why
 			if reason != "":
 				var rfont := ThemeDB.fallback_font
 				const RSIZE := 10
@@ -1810,6 +1829,9 @@ func _start_drag(mouse_pos: Vector2) -> void:
 	_dragging = true
 	_drag_offset = position - _wall_ref.to_local(mouse_pos)
 	_original_pos = position
+	_landing_key = Vector3.INF   # the room may have changed since the last drag
+	_landing = grid_pos   # picked up from where it stands
+	_landing_why = ""
 	z_index = 10
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = true
@@ -1944,7 +1966,16 @@ func _drag(mouse_pos: Vector2) -> void:
 		tx = clampf(wrapped.x, 0.0, float(_wall_ref.grid_w - 1))
 		ty = clampf(wrapped.y, 0.0, float(_wall_ref.grid_h - 1))
 	position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
-	_wall_ref.set_floor_drag_ghost(self, tx, ty)
+	# Where it would land if let go here (Floor.landing_spot, as the drop
+	# does), worked out again only when the tile or the turn changes. The
+	# floor's own previews (light, weight on a table) follow the landing spot.
+	var key := Vector3(tx, ty, rot_steps)
+	if key != _landing_key:
+		_landing_key = key
+		_landing = _wall_ref.landing_spot(self, _wall_ref.snap_to_wall(self, Vector2(tx, ty)), not _placement_mode)
+		_landing_why = _wall_ref.get_block_reason() if _landing == Vector2.INF else ""
+	var lands := _landing if _landing != Vector2.INF and Furniture.transfer_hover == 0 else Vector2(tx, ty)
+	_wall_ref.set_floor_drag_ghost(self, lands.x, lands.y)
 	queue_redraw()
 
 
@@ -2148,6 +2179,7 @@ func begin_placement(apt_floor: Floor, mouse_pos: Vector2) -> void:
 	_placement_mode = true
 	_dragging       = true
 	_drag_offset    = -Vector2(grid_w, grid_h) * TILE_SIZE * 0.5
+	_landing_key    = Vector3.INF
 	z_index         = 10
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = true
