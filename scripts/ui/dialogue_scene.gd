@@ -1,20 +1,23 @@
 extends CanvasLayer
 class_name DialogueScene
 
-# A short conversation over the plan: the tenants (or a tenant and the
+# A short conversation beside the plan: the tenants (or a tenant and the
 # player, the ajustador) talking a change through, one line at a time, in a
-# card above the needs bar. Click, Enter or Space for the next line; Esc
-# skips the rest. It doesn't cover the flat or stop the game.
+# panel at the left, the speaker's portrait on top, like an adviser in a
+# management game. The flat stays in view (the lines are mostly about it)
+# and the game goes on. Click, Enter or Space for the next line; Esc skips
+# the rest.
 #
 # lines: [{who, text}], `who` a resident id, or "you" for the player.
 # speakers: {id: {name, color, body, feminine}} (Main builds it from the
-# household). Whoever has a Mii (a body other than "animal") is shown beside
+# household). Whoever has a Mii (a body other than "animal") is shown above
 # their line, the same Mii as in the flat, nodding as they say it.
 
 signal finished
 
-const CARD_W := 620.0
-const FACE_PX := 92
+const PANEL_W := 300.0
+const MARGIN := 20.0
+const FACE_PX := 150
 const MiiPortraitScript := preload("res://scripts/ui/mii_portrait.gd")
 
 var _lines: Array = []
@@ -51,7 +54,7 @@ func _build(title: String) -> void:
 	_card = PanelContainer.new()
 	_card.theme = GameTheme.make()
 	_card.add_theme_stylebox_override("panel", GameTheme.card_style(GameTheme.CARD, 12, 18, Vector2(4, 5)))
-	_card.custom_minimum_size.x = CARD_W
+	_card.custom_minimum_size.x = PANEL_W
 	_card.mouse_filter = Control.MOUSE_FILTER_STOP
 	_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_card.gui_input.connect(func(e: InputEvent):
@@ -59,24 +62,34 @@ func _build(title: String) -> void:
 				and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 			_next())
 	anchor.add_child(_card)
-	# Centred, just above the needs bar, or above the shop while it is open
-	# (_process keeps it there).
-	_card.anchor_left = 0.5
-	_card.anchor_right = 0.5
+	# At the left, its foot just above the needs bar, or above the shop
+	# while it is open (_process keeps it there); it grows upwards.
+	_card.anchor_left = 0.0
+	_card.anchor_right = 0.0
 	_card.anchor_top = 1.0
 	_card.anchor_bottom = 1.0
-	_card.offset_left = -CARD_W * 0.5
-	_card.offset_right = CARD_W * 0.5
+	_card.offset_left = MARGIN
+	_card.offset_right = MARGIN + PANEL_W
 	_card.offset_bottom = -110.0
 	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	_card.add_child(row)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	_card.add_child(vb)
+	_header = Label.new()
+	_header.text = title.to_upper()
+	_header.visible = title != ""
+	_header.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_header.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	_header.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	_header.add_theme_color_override("font_color", GameTheme.INK_SOFT)
+	vb.add_child(_header)
+	# The portrait's place is kept for every line once anyone in the scene
+	# has a Mii, so the panel doesn't jump when the player speaks.
 	_face_frame = PanelContainer.new()
-	_face_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_face_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_face_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_face_frame)
+	vb.add_child(_face_frame)
 	_face = TextureRect.new()
 	_face.custom_minimum_size = Vector2(FACE_PX, FACE_PX)
 	_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # rendered at twice the size, for sharpness
@@ -84,18 +97,7 @@ func _build(title: String) -> void:
 	_face.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_face_frame.add_child(_face)
-	_face_frame.visible = false
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(vb)
-	_header = Label.new()
-	_header.text = title.to_upper()
-	_header.visible = title != ""
-	_header.add_theme_font_override("font", GameTheme.font("mono_bold"))
-	_header.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	_header.add_theme_color_override("font_color", GameTheme.INK_SOFT)
-	vb.add_child(_header)
+	_face_frame.visible = _lines.any(func(l): return _has_mii(_speakers.get((l as Dictionary).get("who", ""), {}) as Dictionary))
 	_who = Label.new()
 	_who.add_theme_font_override("font", GameTheme.font("display"))
 	_who.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
@@ -107,10 +109,16 @@ func _build(title: String) -> void:
 	vb.add_child(_text)
 	var hint := Label.new()
 	hint.text = tr("Click or Enter to go on · Esc to skip")
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hint.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
 	hint.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 	vb.add_child(hint)
+
+
+static func _has_mii(sp: Dictionary) -> bool:
+	var body := sp.get("body", "") as String
+	return body != "" and body != "animal"
 
 
 func _next() -> void:
@@ -132,12 +140,12 @@ func _next() -> void:
 		create_tween().tween_property(_card, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-# The speaker's Mii beside the line, turned towards it, framed in their
-# colour; none for the player or an animal.
+# The speaker's Mii above the line, turned towards the flat, framed in
+# their colour; an empty place for the player or an animal.
 func _show_face(who: String, sp: Dictionary) -> void:
 	var body := sp.get("body", "") as String
-	_face_frame.visible = body != "" and body != "animal"
-	if not _face_frame.visible:
+	_face_frame.modulate.a = 1.0 if _has_mii(sp) else 0.0
+	if not _has_mii(sp):
 		return
 	var frame := GameTheme.card_style(Color(1, 1, 1, 0.6), 10, 2, Vector2.ZERO)
 	frame.border_color = sp.get("color", GameTheme.NAVY) as Color
@@ -156,7 +164,19 @@ func _show_face(who: String, sp: Dictionary) -> void:
 
 func _process(_delta: float) -> void:
 	if _plan_bottom.is_valid():
-		_card.offset_bottom = (_plan_bottom.call() as float) - get_viewport().get_visible_rect().size.y - 14.0
+		var bottom := (_plan_bottom.call() as float) - 14.0
+		# Short of room (the shop open on a small screen): a smaller portrait
+		# rather than a panel running off the top.
+		if _face_frame.visible:
+			var rest := _card.get_combined_minimum_size().y - _face.custom_minimum_size.y
+			var face := clampf(bottom - MARGIN - rest, 72.0, FACE_PX)
+			if absf(face - _face.custom_minimum_size.x) > 1.0:
+				_face.custom_minimum_size = Vector2(face, face)
+		# Exactly as tall as it needs, its foot on `bottom`.
+		var h := _card.get_combined_minimum_size().y
+		var vh := get_viewport().get_visible_rect().size.y
+		_card.offset_bottom = bottom - vh
+		_card.offset_top = bottom - vh - h
 
 
 func _end() -> void:

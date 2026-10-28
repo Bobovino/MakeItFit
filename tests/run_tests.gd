@@ -1460,7 +1460,7 @@ func _t_first_person_doorway() -> void:
 
 
 # A dialogue shows the speaker's own Mii beside the line (the body they have
-# in the flat); the player, who has none, gets no portrait.
+# in the flat); the player, who has none, gets an empty place.
 func _t_dialogue_portrait() -> void:
 	var lines := [{"who": "ana", "text": "Hello."}, {"who": "you", "text": "Hi."}, {"who": "bo", "text": "Hey."}]
 	var speakers := {"ana": {"name": "Ana", "color": Color.RED, "body": "adult", "feminine": true},
@@ -1471,11 +1471,11 @@ func _t_dialogue_portrait() -> void:
 	_current = "dialogue: a resident speaking is shown beside the line"
 	_ok(d._face_frame.visible and d._portrait != null and d._face.texture != null)
 	d._next()
-	_current = "dialogue: the player has no portrait"
-	_ok(not d._face_frame.visible)
+	_current = "dialogue: the player has no portrait, its place kept so the panel doesn't jump"
+	_ok(d._face_frame.visible and d._face_frame.modulate.a == 0.0)
 	d._next()
 	_current = "dialogue: the next resident's own body is shown"
-	_ok(d._face_frame.visible and d._face_who == "bo" and d._portrait._skeleton() != null)
+	_ok(d._face_frame.modulate.a == 1.0 and d._face_who == "bo" and d._portrait._skeleton() != null)
 	d._end()
 	await get_tree().process_frame
 

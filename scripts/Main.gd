@@ -3067,7 +3067,7 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	# on sloped-ceiling levels). Fitting the plan from the very top put those
 	# on top of each other.
 	const HEADER_H := 40.0
-	var avail_w := (RIGHT_X - LEFT_X) - H_PAD * 2
+	var avail_w := (RIGHT_X - LEFT_X - _plan_left_inset) - H_PAD * 2
 	var avail_h := (_floor_pane_bottom_y() - TOP_Y - HEADER_H) - V_PAD * 2
 
 	var fw: float; var fh: float
@@ -3089,7 +3089,7 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 
 	_base_scale    = s
 	_base_position = Vector2(
-		LEFT_X + H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
+		LEFT_X + _plan_left_inset + H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
 		TOP_Y + HEADER_H + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
 	)
 	if reset_view:
@@ -4793,7 +4793,23 @@ func _play_phase_scene(i: int) -> void:
 		return
 	var title := tr(ph.get("title", "") as String)
 	var header := (tr("Phase %d of %d") % [i + 1, gm.phases().size()]) + ("  ·  " + title if title != "" else "")
-	DialogueScene.play(self, lines, _scene_speakers(), header, _floor_pane_bottom_y)
+	# Its panel stands at the left, its foot on the needs bar; the plan
+	# makes room for it while it is up.
+	var d := DialogueScene.play(self, lines, _scene_speakers(), header,
+		func() -> float: return tenant_card.get_global_rect().position.y)
+	_set_plan_left_inset(DialogueScene.MARGIN + DialogueScene.PANEL_W)
+	d.finished.connect(func(): _set_plan_left_inset(0.0))
+
+
+# Room kept free at the left of the plan (a dialogue's panel): the flat is
+# fitted, and centred, in what is left.
+var _plan_left_inset := 0.0
+
+func _set_plan_left_inset(px: float) -> void:
+	_plan_left_inset = px
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl and _view_mode == ViewMode.TOPDOWN:
+		_fit_floor(fl)
 
 
 # Who can speak in a scene: the household, by resident id, each in the
