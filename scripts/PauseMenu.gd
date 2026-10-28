@@ -71,6 +71,15 @@ func _build() -> void:
 			tr("Yes, restart"), func():
 				_close()
 				_host.call("_restart_level")))
+	# A level in phases: back to one already played, or this one from its start.
+	if _host.has_method("phase_choices"):
+		for choice in _host.call("phase_choices"):
+			var c := choice as Dictionary
+			_entry(vb, c["label"] as String, "", func():
+				MenuKit.dialog(self, c["label"] as String, tr("Go back to the start of this phase? What was done after it is lost."),
+					tr("Yes, go back"), func():
+						_close()
+						_host.call("_replay_phase", c["index"] as int)))
 	if _host.has_method("_go_back"):
 		_entry(vb, tr("Back to Projects"), "", func():
 			_close()

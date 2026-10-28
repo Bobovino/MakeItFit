@@ -4746,6 +4746,48 @@ func _apply_phase(i: int, with_scene: bool) -> void:
 		_play_phase_scene(i)
 
 
+# The phases the menu can go back to: every one played so far, the one in
+# play included (from its start). [{index, label}]; none outside a level in
+# phases or inside a box.
+func phase_choices() -> Array:
+	var out: Array = []
+	if not _nested_stack.is_empty() or gm.phases().size() < 2 or gm.phase == 0:
+		return out
+	for i in range(gm.phase + 1):
+		var title := tr((gm.phases()[i] as Dictionary).get("title", "") as String)
+		var label := (tr("Restart phase %d") % (i + 1)) if i == gm.phase else (tr("Back to phase %d") % (i + 1))
+		out.append({"index": i, "label": label + ("  ·  " + title if title != "" else "")})
+	return out
+
+
+# Plays phase `i` again from its start: the flat as phase i - 1 left it (its
+# checkpoint; the level's own start for the first), with what phase i hands
+# over, and its scene. What was done after that is dropped.
+func _replay_phase(i: int) -> void:
+	var lid := _current_level_id
+	var start = _phase_checkpoints.get(i - 1) if i > 0 else null
+	for k in _phase_checkpoints.keys():
+		if int(k) >= i:
+			_phase_checkpoints.erase(k)
+	_full_level_states.erase(lid)
+	_level_state_cache.erase(lid)
+	_phase_level_id = lid
+	_root_phase = i
+	_load_level(lid)
+	if start is String:
+		LevelProgress.apply(self, str_to_var(start as String))
+		# The checkpoint holds what was owned before phase i handed its pieces over.
+		var add := (gm.phases()[i] as Dictionary).get("add", {}) as Dictionary
+		for e in add.get("owned", []) as Array:
+			_add_owned(gm.starting_inventory, (e as Dictionary)["id"] as String, int((e as Dictionary).get("count", 1)))
+		_refresh_owned_ui()
+		_refresh_functions()
+		_update_rent_btn()
+	_play_phase_scene(i)
+	_autosave_dirty = true
+	_autosave_soon()
+
+
 func _play_phase_scene(i: int) -> void:
 	var ph := gm.phases()[i] as Dictionary
 	var lines := ph.get("scene", []) as Array

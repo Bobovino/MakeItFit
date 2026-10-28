@@ -164,6 +164,9 @@ func setup(tenant: Dictionary) -> void:
 	_stamping = false
 	_setup_ticks = Time.get_ticks_msec()
 	_build_checklist(tenant["required_functions"])
+	_queue_fit()
+	if not get_viewport().size_changed.is_connected(_queue_fit):
+		get_viewport().size_changed.connect(_queue_fit)
 
 
 func setup_moments(moments: Array) -> void:
@@ -360,6 +363,7 @@ func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") ->
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(badge)
 
+	chip.set_meta("satisfied", satisfied)
 	_paint_need_chip(chip, satisfied)
 	return chip
 
@@ -378,7 +382,7 @@ func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = f
 	# the tooltip): what is still to do is what takes the room.
 	var name_lbl := chip.find_child("Name", true, false) as Label
 	if name_lbl:
-		name_lbl.visible = not satisfied
+		name_lbl.visible = not satisfied and not (chip.get_meta("squeezed", false) as bool)
 	var badge := chip.find_child("Badge", true, false) as Label
 	if satisfied:
 		badge.text = "\uea5e"
@@ -419,6 +423,57 @@ func _set_need_chip(chip: PanelContainer, satisfied: bool) -> void:
 	_paint_need_chip(chip, satisfied, chip.get_meta("showcased", false) as bool)
 	if satisfied and not was_satisfied and Time.get_ticks_msec() - _setup_ticks > 800:
 		_pop_chip(chip)
+	if satisfied != was_satisfied:
+		_queue_fit()
+
+
+# ── Keeping the bar on one row ──────────────────────────────────────────────
+# Needs that are met already fold down to their icon and tick. When what is
+# still to do doesn't fit on one row either (a phase adds a need and a rule,
+# say), the rules still to do fold down to icon and cross first, then the
+# needs: the name stays in each chip's tooltip. Unfolded again whenever
+# there is room.
+var _fit_queued := false
+
+func _queue_fit() -> void:
+	if _fit_queued or not is_inside_tree():
+		return
+	_fit_queued = true
+	_fit_bar.call_deferred()
+
+
+func _bar_chips() -> Array:
+	return checklist_container.find_children("*", "PanelContainer", true, false).filter(
+		func(c): return (c as Node).find_child("Badge", true, false) != null)
+
+
+func _bar_wraps() -> bool:
+	for flow in checklist_container.find_children("*", "FlowContainer", true, false):
+		if (flow as FlowContainer).visible and (flow as FlowContainer).get_line_count() > 1:
+			return true
+	# Without a wrapping row, too wide for the bar.
+	return checklist_container.get_combined_minimum_size().x > checklist_container.size.x + 1.0
+
+
+func _fit_bar() -> void:
+	_fit_queued = false
+	var chips := _bar_chips()
+	for c in chips:
+		_squeeze(c, false)
+	for step in ["rule", "need"]:
+		await get_tree().process_frame
+		if not is_inside_tree() or not _bar_wraps():
+			return
+		for c in chips:
+			if is_instance_valid(c) and (step == "need" or (c as Node).get_meta("rule", false)):
+				_squeeze(c, true)
+
+
+func _squeeze(chip: PanelContainer, on: bool) -> void:
+	chip.set_meta("squeezed", on)
+	var name_lbl := chip.find_child("Name", true, false) as Label
+	if name_lbl:
+		name_lbl.visible = not (chip.get_meta("satisfied", false) as bool) and not on
 
 
 # Called by Main whenever the post-win 3D showcase moves the tenant to a new
@@ -495,6 +550,7 @@ func update_rules(rules: Array) -> void:
 			var req_id := ("sight:%d" % rule["number"]) if is_sight else (("items:%d" % rule["number"]) if is_items \
 				else (("quiet:%d" % rule["number"]) if is_quiet else ("zones:%d" % zone_number)))
 			var chip := _make_need_chip("rule", false, req_id)
+			chip.set_meta("rule", true)
 			var text := rule.get("short", "") as String
 			if text == "":
 				text = rule["label"] as String
@@ -518,6 +574,7 @@ func update_rules(rules: Array) -> void:
 			_rule_chips.append(chip)
 			_register_chip(req_id, chip)
 		_apply_requirement_state()
+		_queue_fit()
 	for i in rules.size():
 		var rule_i := rules[i] as Dictionary
 		_set_need_chip(_rule_chips[i] as PanelContainer, rule_i["ok"] as bool)

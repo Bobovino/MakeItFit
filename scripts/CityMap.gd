@@ -633,6 +633,19 @@ func _fax_key(btn: Button, face: Color, text: Color) -> void:
 	FaxStyle.key(btn, face, text)
 
 
+# A level in phases says so on its sheet: how many, or which one the saved
+# project is in. "" for a level without phases, or one already rented out.
+func _phase_note(ld: Dictionary) -> String:
+	var count := (ld.get("phases", []) as Array).size()
+	var lid := ld.get("id", "") as String
+	if count < 2 or lid in GameState.completed:
+		return ""
+	var at := int(GameState.get_progress(lid).get("phase", 0)) if GameState.has_progress(lid) else 0
+	if at > 0:
+		return "  ·  " + tr("Phase %d of %d") % [at + 1, count]
+	return "  ·  " + tr("%d phases") % count
+
+
 # The machine prints the chosen home: the sheet feeds up out of the slot.
 func _fax_print() -> void:
 	if not is_instance_valid(_fax_paper) or not is_instance_valid(_fax_clip):
@@ -1835,7 +1848,7 @@ func _select_level(ld: Dictionary) -> void:
 		ld.get("district", "?") as String,
 		_sqm_label(ld),
 		ld.get("starting_budget", 0) as int,
-	]
+	] + _phase_note(ld)
 
 	var plan := _floor_plan_data(ld)
 	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld), plan.get("loop", {}) as Dictionary)

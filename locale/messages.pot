@@ -5,47 +5,47 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8-bit\n"
 
-#: scripts/CityMap.gd:1012
+#: scripts/CityMap.gd:1025
 msgid "Park"
 msgstr ""
 
-#: scripts/CityMap.gd:1012
+#: scripts/CityMap.gd:1025
 msgid "Lake"
 msgstr ""
 
-#: scripts/CityMap.gd:1012
+#: scripts/CityMap.gd:1025
 msgid "Plaza"
 msgstr ""
 
-#: scripts/CityMap.gd:1012
+#: scripts/CityMap.gd:1025
 msgid "Monument"
 msgstr ""
 
-#: scripts/CityMap.gd:1013
+#: scripts/CityMap.gd:1026
 msgid "Church"
 msgstr ""
 
-#: scripts/CityMap.gd:1013
+#: scripts/CityMap.gd:1026
 msgid "Fountain"
 msgstr ""
 
-#: scripts/CityMap.gd:1013
+#: scripts/CityMap.gd:1026
 msgid "Parking"
 msgstr ""
 
-#: scripts/CityMap.gd:1014
+#: scripts/CityMap.gd:1027
 msgid "Sports Field"
 msgstr ""
 
-#: scripts/CityMap.gd:1014
+#: scripts/CityMap.gd:1027
 msgid "Cemetery"
 msgstr ""
 
-#: scripts/CityMap.gd:1014
+#: scripts/CityMap.gd:1027
 msgid "Building"
 msgstr ""
 
-#: scripts/CityMap.gd:1015
+#: scripts/CityMap.gd:1028
 msgid "Roundabout"
 msgstr ""
 
@@ -58,7 +58,7 @@ msgid "FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1"
 msgstr ""
 
 #: scripts/CityMap.gd:578
-#: scripts/CityMap.gd:669
+#: scripts/CityMap.gd:682
 #: scripts/ui/ApplicationFax.gd:107
 #: scripts/ui/ApplicationFax.gd:314
 #: scripts/ui/ApplicationFax.gd:319
@@ -66,7 +66,7 @@ msgid "READY"
 msgstr ""
 
 #: scripts/CityMap.gd:593
-#: scripts/CityMap.gd:1889
+#: scripts/CityMap.gd:1902
 msgid "Redesign from Scratch"
 msgstr ""
 
@@ -82,122 +82,131 @@ msgstr ""
 msgid "Back to the title screen"
 msgstr ""
 
-#: scripts/CityMap.gd:662
+#: scripts/CityMap.gd:645
+#: scripts/Main.gd:4797
+msgid "Phase %d of %d"
+msgstr ""
+
+#: scripts/CityMap.gd:646
+msgid "%d phases"
+msgstr ""
+
+#: scripts/CityMap.gd:675
 #: scripts/ui/ApplicationFax.gd:243
 msgid "RECEIVING…"
 msgstr ""
 
-#: scripts/CityMap.gd:1371
+#: scripts/CityMap.gd:1384
 msgid "BLOCK %d — %s"
 msgstr ""
 
-#: scripts/CityMap.gd:1697
+#: scripts/CityMap.gd:1710
 msgid "Locked — needs %d "
 msgstr ""
 
-#: scripts/CityMap.gd:1701
+#: scripts/CityMap.gd:1714
 msgid "Available"
 msgstr ""
 
-#: scripts/CityMap.gd:1703
+#: scripts/CityMap.gd:1716
 msgid "Locked — %d€"
 msgstr ""
 
-#: scripts/CityMap.gd:1834
+#: scripts/CityMap.gd:1847
 msgid "%s  ·  %s  ·  Budget: %d€"
 msgstr ""
 
-#: scripts/CityMap.gd:1862
+#: scripts/CityMap.gd:1875
 msgid "Requires: (see Moments)"
 msgstr ""
 
-#: scripts/CityMap.gd:1864
-#: scripts/CityMap.gd:2477
+#: scripts/CityMap.gd:1877
+#: scripts/CityMap.gd:2490
 msgid "Requires: %s"
 msgstr ""
 
-#: scripts/CityMap.gd:1866
+#: scripts/CityMap.gd:1879
 #: scripts/TenantCard.gd:162
 msgid "%d€ / month"
 msgstr ""
 
-#: scripts/CityMap.gd:1869
+#: scripts/CityMap.gd:1882
 msgid "Locked — need %d total "
 msgstr ""
 
-#: scripts/CityMap.gd:1870
+#: scripts/CityMap.gd:1883
 msgid "LOCKED"
 msgstr ""
 
-#: scripts/CityMap.gd:1875
+#: scripts/CityMap.gd:1888
 msgid "Reward: ~%d€ Studio Funds"
 msgstr ""
 
-#: scripts/CityMap.gd:1878
+#: scripts/CityMap.gd:1891
 msgid "CONTINUE  →"
 msgstr ""
 
-#: scripts/CityMap.gd:1880
+#: scripts/CityMap.gd:1893
 msgid "Start Over"
 msgstr ""
 
-#: scripts/CityMap.gd:1887
+#: scripts/CityMap.gd:1900
 msgid "Review Current Plan"
 msgstr ""
 
-#: scripts/CityMap.gd:1893
+#: scripts/CityMap.gd:1906
 msgid "ENTER  →"
 msgstr ""
 
-#: scripts/CityMap.gd:1897
+#: scripts/CityMap.gd:1910
 msgid "Acquisition: %d€ Studio Funds"
 msgstr ""
 
-#: scripts/CityMap.gd:1898
+#: scripts/CityMap.gd:1911
 msgid "BUY — %d€"
 msgstr ""
 
-#: scripts/CityMap.gd:1912
+#: scripts/CityMap.gd:1925
 msgid "Studio Funds: %d€"
 msgstr ""
 
-#: scripts/CityMap.gd:2293
+#: scripts/CityMap.gd:2306
 msgid "Debug"
 msgstr ""
 
-#: scripts/CityMap.gd:2294
+#: scripts/CityMap.gd:2307
 msgid "DEBUG LEVELS  (Ctrl+Shift+Alt+D)"
 msgstr ""
 
-#: scripts/CityMap.gd:2330
+#: scripts/CityMap.gd:2343
 msgid "MY LEVELS"
 msgstr ""
 
-#: scripts/CityMap.gd:2371
+#: scripts/CityMap.gd:2384
 msgid "Unnamed"
 msgstr ""
 
-#: scripts/CityMap.gd:2378
+#: scripts/CityMap.gd:2391
 msgid "CUSTOM"
 msgstr ""
 
-#: scripts/CityMap.gd:2432
+#: scripts/CityMap.gd:2445
 msgid "New Level"
 msgstr ""
 
-#: scripts/CityMap.gd:2454
+#: scripts/CityMap.gd:2467
 msgid "Unnamed Level"
 msgstr ""
 
-#: scripts/CityMap.gd:2455
+#: scripts/CityMap.gd:2468
 msgid "Custom Level  ·  %s  ·  Budget: %d€"
 msgstr ""
 
-#: scripts/CityMap.gd:2464
+#: scripts/CityMap.gd:2477
 msgid "No tenant defined"
 msgstr ""
 
-#: scripts/CityMap.gd:2482
+#: scripts/CityMap.gd:2495
 msgid "PLAY →"
 msgstr ""
 
@@ -978,36 +987,40 @@ msgstr ""
 msgid "Phase %d of %d done"
 msgstr ""
 
-#: scripts/Main.gd:4755
-msgid "Phase %d of %d"
+#: scripts/Main.gd:4758
+msgid "Restart phase %d"
 msgstr ""
 
-#: scripts/Main.gd:4762
+#: scripts/Main.gd:4758
+msgid "Back to phase %d"
+msgstr ""
+
+#: scripts/Main.gd:4804
 #: scripts/ui/dialogue_scene.gd:97
 msgid "You"
 msgstr ""
 
-#: scripts/Main.gd:5024
+#: scripts/Main.gd:5066
 msgid " Back to Results"
 msgstr ""
 
-#: scripts/Main.gd:5154
+#: scripts/Main.gd:5196
 msgid "CUSTOM BUILD"
 msgstr ""
 
-#: scripts/Main.gd:5166
+#: scripts/Main.gd:5208
 msgid "LMB paint · RMB erase"
 msgstr ""
 
-#: scripts/Main.gd:5178
+#: scripts/Main.gd:5220
 msgid "Move"
 msgstr ""
 
-#: scripts/Main.gd:5202
+#: scripts/Main.gd:5244
 msgid "%s  %d€/tile"
 msgstr ""
 
-#: scripts/Main.gd:5844
+#: scripts/Main.gd:5886
 msgid "Paint tiles on the floor"
 msgstr ""
 
@@ -1152,22 +1165,30 @@ msgstr ""
 msgid "Yes, restart"
 msgstr ""
 
-#: scripts/PauseMenu.gd:75
+#: scripts/PauseMenu.gd:79
+msgid "Go back to the start of this phase? What was done after it is lost."
+msgstr ""
+
+#: scripts/PauseMenu.gd:80
+msgid "Yes, go back"
+msgstr ""
+
+#: scripts/PauseMenu.gd:84
 #: scripts/ResultScreen.gd:117
 #: scripts/ResultScreen.gd:139
 msgid "Back to Projects"
 msgstr ""
 
-#: scripts/PauseMenu.gd:78
-#: scripts/PauseMenu.gd:79
+#: scripts/PauseMenu.gd:87
+#: scripts/PauseMenu.gd:88
 msgid "Quit Game"
 msgstr ""
 
-#: scripts/PauseMenu.gd:79
+#: scripts/PauseMenu.gd:88
 msgid "Quit for real?"
 msgstr ""
 
-#: scripts/PauseMenu.gd:79
+#: scripts/PauseMenu.gd:88
 msgid "Yes, quit"
 msgstr ""
 
@@ -1503,56 +1524,56 @@ msgstr ""
 msgid "Press any key…"
 msgstr ""
 
-#: scripts/TenantCard.gd:205
-#: scripts/TenantCard.gd:594
+#: scripts/TenantCard.gd:208
+#: scripts/TenantCard.gd:651
 msgid "%s NEEDS"
 msgstr ""
 
-#: scripts/TenantCard.gd:205
+#: scripts/TenantCard.gd:208
 msgid "NEEDS"
 msgstr ""
 
-#: scripts/TenantCard.gd:211
+#: scripts/TenantCard.gd:214
 msgid "Furnish the apartment so every need here is ticked"
 msgstr ""
 
-#: scripts/TenantCard.gd:329
+#: scripts/TenantCard.gd:332
 msgid "%s — click to see the furniture that provides it"
 msgstr ""
 
-#: scripts/TenantCard.gd:505
+#: scripts/TenantCard.gd:561
 msgid "The numbered line on the plan shows it."
 msgstr ""
 
-#: scripts/TenantCard.gd:506
+#: scripts/TenantCard.gd:562
 msgid "Put them all down in the flat."
 msgstr ""
 
-#: scripts/TenantCard.gd:507
+#: scripts/TenantCard.gd:563
 msgid "The footsteps on the plan show the way, red where it wakes them."
 msgstr ""
 
-#: scripts/TenantCard.gd:508
+#: scripts/TenantCard.gd:564
 msgid "Tall storage splits a room into zones."
 msgstr ""
 
-#: scripts/TenantCard.gd:513
+#: scripts/TenantCard.gd:569
 msgid "Click to see the pieces that count"
 msgstr ""
 
-#: scripts/TenantCard.gd:593
+#: scripts/TenantCard.gd:650
 msgid "Read the tenant's rental application again"
 msgstr ""
 
-#: scripts/TenantCard.gd:708
+#: scripts/TenantCard.gd:765
 msgid "Apartments %d/%d"
 msgstr ""
 
-#: scripts/TenantCard.gd:709
+#: scripts/TenantCard.gd:766
 msgid "Still to furnish: %s"
 msgstr ""
 
-#: scripts/TenantCard.gd:710
+#: scripts/TenantCard.gd:767
 msgid "Every apartment is ready"
 msgstr ""
 
