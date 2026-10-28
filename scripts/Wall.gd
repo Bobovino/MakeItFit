@@ -2569,14 +2569,12 @@ func min_distance_to_wall(tile: Vector2i) -> int:
 	return maxi(best, 0)
 
 
+# The pieces the tenant can't walk to from the door (is_reachable()): what
+# the blocked-piece marker, the win condition and the level validator use.
 func get_inaccessible_furniture() -> Array:
-	if Floor.pathing_enabled:
-		return get_unreachable_furniture()
 	var result: Array = []
 	for f in get_all_furniture():
-		if (f as Furniture).overhead:
-			continue   # nobody needs to reach a skylight
-		if not _has_adjacent_free(_ground_piece(f)):
+		if not is_reachable(f as Furniture):
 			result.append(f)
 	return result
 
@@ -2594,7 +2592,7 @@ func _ground_piece(f: Furniture) -> Furniture:
 	return cur
 
 
-# ── Pathing (experimental — only in force while Floor.pathing_enabled) ──────
+# ── Pathing ─────────────────────────────────────────────────────────────────
 # Can the tenant walk from the front door to every piece of furniture?
 #
 #   1. Walkable map: a person needs a WALK_WIDTH x WALK_WIDTH patch of clear
@@ -2604,10 +2602,8 @@ func _ground_piece(f: Furniture) -> Furniture:
 #   2. Reachability: a piece is reachable when the side it is used from
 #      (Furniture.front) has reached floor right next to it.
 #
-# With the flag on, get_inaccessible_furniture() answers with this instead of
-# the older "one free tile beside it" rule, so the game's blocked-piece
+# get_inaccessible_furniture() answers with this, so the game's blocked-piece
 # marker, the win condition and the level validator all follow it.
-static var pathing_enabled := false
 
 # Set by Main while the player is inside a box that stands on a table or
 # shelf: how much (in this apartment's own, unshrunk weight) everything in it
@@ -2900,28 +2896,15 @@ func quiet_route(q: Dictionary) -> Dictionary:
 	var w := b.size.x
 	var h := b.size.y
 	var n := WALK_WIDTH
-	# Where a person can stand: walked in from the door when the walking
-	# rule is on; otherwise any floor clear of walls and furniture in the way
-	# (as the tenants walk then), or a flat whose rooms the strict rule
-	# doesn't reach (the beach house's bathroom) could never pass.
-	var reached := get_reachable_floor() if Floor.pathing_enabled else {}
-	var walls := {}
-	var in_way := {}
-	if not Floor.pathing_enabled:
-		walls = _partition_tile_set()
-		walls.merge(_window_tile_set())
-		for entry in _placed_continuous:
-			var pf: Furniture = entry["furniture"]
-			if blocks_walking(pf):
-				for t in _rect_tiles(entry["pos"], pf.grid_w, pf.grid_h):
-					in_way[t] = true
+	# Where a person can stand: the floor walked in from the door.
+	var reached := get_reachable_floor()
 	# Patches (n x n squares, by their top-left tile) a person can stand on.
 	var sums := PackedInt32Array()
 	sums.resize((w + 1) * (h + 1))
 	for y in h:
 		for x in w:
 			var t := Vector2i(b.position.x + x, b.position.y + y)
-			var ok_t := reached.has(t) if Floor.pathing_enabled 				else (is_floor_tile(t) and not walls.has(t) and not in_way.has(t))
+			var ok_t := reached.has(t)
 			sums[(y + 1) * (w + 1) + x + 1] = (1 if ok_t else 0) + sums[y * (w + 1) + x + 1] 				+ sums[(y + 1) * (w + 1) + x] - sums[y * (w + 1) + x]
 	var open := PackedByteArray()    # 1 = a person fits here
 	var quiet := PackedByteArray()   # 1 = ...and it is far enough from every zone
@@ -3062,44 +3045,4 @@ func is_reachable(f: Furniture) -> bool:
 			3:
 				for y in range(fy, fy + f.grid_h):
 					if ok.call(wrap_tile(Vector2i(fx - 1, y))): return true
-	return false
-
-
-func get_unreachable_furniture() -> Array:
-	var result: Array = []
-	for f in get_all_furniture():
-		if not is_reachable(f as Furniture):
-			result.append(f)
-	return result
-
-
-func _has_adjacent_free(f: Furniture) -> bool:
-	var x0 := floori(f.grid_pos.x)
-	var y0 := floori(f.grid_pos.y)
-	var x1 := x0 + f.grid_w
-	var y1 := y0 + f.grid_h
-	if loop != null:
-		# Round a loop the free tile can be across a seam.
-		var b := get_room_bounds()
-		var walls := _partition_tile_set()
-		var around: Array[Vector2i] = []
-		for x in range(x0, x1):
-			around.append_array([Vector2i(x, y0 - 1), Vector2i(x, y1)])
-		for y in range(y0, y1):
-			around.append_array([Vector2i(x0 - 1, y), Vector2i(x1, y)])
-		for t in around:
-			var w := loop.wrap_tile(t)
-			if is_floor_tile(w) and not walls.has(w) and b.has_point(w) and not _placed_any_at(w):
-				return true
-		return false
-	for x in range(x0, x1):
-		if y0 > 0 and not _placed_any_at(Vector2i(x, y0 - 1)):
-			return true
-		if y1 < grid_h and not _placed_any_at(Vector2i(x, y1)):
-			return true
-	for y in range(y0, y1):
-		if x0 > 0 and not _placed_any_at(Vector2i(x0 - 1, y)):
-			return true
-		if x1 < grid_w and not _placed_any_at(Vector2i(x1, y)):
-			return true
 	return false

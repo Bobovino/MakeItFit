@@ -83,7 +83,7 @@ msgid "Back to the title screen"
 msgstr ""
 
 #: scripts/CityMap.gd:645
-#: scripts/Main.gd:4799
+#: scripts/Main.gd:4795
 msgid "Phase %d of %d"
 msgstr ""
 
@@ -256,24 +256,24 @@ msgstr ""
 msgid "Original work created for this project — no attribution required."
 msgstr ""
 
-#: scripts/Furniture.gd:765
+#: scripts/Furniture.gd:768
 msgid "▲ FOLD"
 msgstr ""
 
-#: scripts/Furniture.gd:779
+#: scripts/Furniture.gd:782
 msgid "▼ CLICK TO UNFOLD"
 msgstr ""
 
-#: scripts/Furniture.gd:1565
-#: scripts/Furniture.gd:2044
+#: scripts/Furniture.gd:1584
+#: scripts/Furniture.gd:2075
 msgid "Moved for every moment"
 msgstr ""
 
-#: scripts/Furniture.gd:1566
+#: scripts/Furniture.gd:1585
 msgid "Moved for %s only"
 msgstr ""
 
-#: scripts/Furniture.gd:2046
+#: scripts/Furniture.gd:2077
 msgid "Moved to where it fits"
 msgstr ""
 
@@ -579,7 +579,7 @@ msgid "Buy: %d€"
 msgstr ""
 
 #: scripts/Inventory.gd:1008
-#: scripts/Main.gd:451
+#: scripts/Main.gd:450
 msgid "Floor Plan"
 msgstr ""
 
@@ -711,325 +711,319 @@ msgstr ""
 msgid "%s and %s"
 msgstr ""
 
-#: scripts/Main.gd:429
+#: scripts/Main.gd:428
 msgid "Test Layout"
 msgstr ""
 
-#: scripts/Main.gd:451
+#: scripts/Main.gd:450
 msgid "Blueprint view — place and move furniture from above"
 msgstr ""
 
-#: scripts/Main.gd:452
+#: scripts/Main.gd:451
 msgid "Walk around and place items in 3D — drag onto a wall to hang them"
 msgstr ""
 
-#: scripts/Main.gd:494
+#: scripts/Main.gd:493
 msgid "Menu — settings, back to projects, quit"
 msgstr ""
 
-#: scripts/Main.gd:517
+#: scripts/Main.gd:516
 msgid "← Back to Editor"
 msgstr ""
 
-#: scripts/Main.gd:518
+#: scripts/Main.gd:517
 msgid "Return to the Level Editor, resuming the level you were testing"
 msgstr ""
 
-#: scripts/Main.gd:535
-#: scripts/Main.gd:3497
+#: scripts/Main.gd:534
+#: scripts/Main.gd:3496
 #: scenes/Furniture.tscn:18
 msgid "Furniture"
 msgstr ""
 
-#: scripts/Main.gd:536
+#: scripts/Main.gd:535
 msgid "Open or close the furniture catalogue (F)"
 msgstr ""
 
-#: scripts/Main.gd:558
+#: scripts/Main.gd:557
 msgid "Undo last action (Ctrl+%s)"
 msgstr ""
 
-#: scripts/Main.gd:567
+#: scripts/Main.gd:566
 msgid "Redo (Ctrl+Shift+%s)"
 msgstr ""
 
-#: scripts/Main.gd:693
+#: scripts/Main.gd:692
 msgid "The %s is somewhere else in another moment: the tenant has to move it by hand every time. Comfort −%d%%."
 msgstr ""
 
-#: scripts/Main.gd:695
+#: scripts/Main.gd:694
 msgid "The %s stays put in every moment now: comfort restored."
 msgstr ""
 
-#: scripts/Main.gd:709
+#: scripts/Main.gd:708
 msgid "Moved by hand: comfort −%d%%"
 msgstr ""
 
-#: scripts/Main.gd:1043
+#: scripts/Main.gd:1042
 msgid "Budget"
 msgstr ""
 
-#: scripts/Main.gd:1470
+#: scripts/Main.gd:1469
 msgid "NEW MECHANIC"
 msgstr ""
 
-#: scripts/Main.gd:1498
+#: scripts/Main.gd:1497
 msgid "Got it — let's go!"
 msgstr ""
 
-#: scripts/Main.gd:1580
+#: scripts/Main.gd:1579
 msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
 msgstr ""
 
-#: scripts/Main.gd:1664
+#: scripts/Main.gd:1663
 msgid "Little daylight gets in here: the %s outside stands in front of the box."
 msgstr ""
 
-#: scripts/Main.gd:1666
+#: scripts/Main.gd:1665
 msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
 msgstr ""
 
-#: scripts/Main.gd:1668
+#: scripts/Main.gd:1667
 msgid "This box stands by the %s: %s."
 msgstr ""
 
-#: scripts/Main.gd:2402
+#: scripts/Main.gd:2401
 msgid "This box"
 msgstr ""
 
-#: scripts/Main.gd:2413
+#: scripts/Main.gd:2412
 msgid "%s is lighter again: easier to move."
 msgstr ""
 
-#: scripts/Main.gd:2415
+#: scripts/Main.gd:2414
 msgid "%s is getting heavy: moving it away from where it started now costs comfort."
 msgstr ""
 
-#: scripts/Main.gd:2417
+#: scripts/Main.gd:2416
 msgid "%s is packed full: it now stays in one place for every moment of the day."
 msgstr ""
 
-#: scripts/Main.gd:2426
+#: scripts/Main.gd:2425
 msgid "No %s"
 msgstr ""
 
-#: scripts/Main.gd:2429
+#: scripts/Main.gd:2428
 msgid "%s at least %.1f m from the wall"
 msgstr ""
 
-#: scripts/Main.gd:2440
+#: scripts/Main.gd:2439
 msgid "North side"
 msgstr ""
 
-#: scripts/Main.gd:2441
+#: scripts/Main.gd:2440
 msgid "East side"
 msgstr ""
 
-#: scripts/Main.gd:2442
+#: scripts/Main.gd:2441
 msgid "South side"
 msgstr ""
 
-#: scripts/Main.gd:2443
+#: scripts/Main.gd:2442
 msgid "West side"
 msgstr ""
 
-#: scripts/Main.gd:2465
+#: scripts/Main.gd:2464
 msgid "boxes here: %s"
 msgstr ""
 
-#: scripts/Main.gd:2465
+#: scripts/Main.gd:2464
 msgid "nothing extra for boxes here"
 msgstr ""
 
-#: scripts/Main.gd:2705
+#: scripts/Main.gd:2704
 msgid "%s can't be slept in: the %s is too noisy."
 msgstr ""
 
-#: scripts/Main.gd:2803
+#: scripts/Main.gd:2802
 msgid "%s (Loft)"
 msgstr ""
 
-#: scripts/Main.gd:2919
+#: scripts/Main.gd:2918
 msgid "Drag furniture to move it · hold a piece to rotate, fold or sell it · pinch to zoom"
 msgstr ""
 
-#: scripts/Main.gd:2920
+#: scripts/Main.gd:2919
 msgid "Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"
 msgstr ""
 
-#: scripts/Main.gd:2925
+#: scripts/Main.gd:2924
 msgid "Drag items onto the floor or a wall · hold a piece for its options · pinch to zoom, twist to turn"
 msgstr ""
 
-#: scripts/Main.gd:2926
+#: scripts/Main.gd:2925
 msgid "Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"
 msgstr ""
 
-#: scripts/Main.gd:3678
+#: scripts/Main.gd:3677
 msgid "Map"
 msgstr ""
 
-#: scripts/Main.gd:3680
+#: scripts/Main.gd:3679
 msgid "See every apartment in this project and jump to any of them"
 msgstr ""
 
-#: scripts/Main.gd:3684
+#: scripts/Main.gd:3683
 #: scripts/ui/menu_kit.gd:134
 msgid "Back"
 msgstr ""
 
-#: scripts/Main.gd:3686
+#: scripts/Main.gd:3685
 msgid "Step back out to the apartment this box sits in"
 msgstr ""
 
-#: scripts/Main.gd:3719
+#: scripts/Main.gd:3718
 msgid "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
 msgstr ""
 
-#: scripts/Main.gd:3723
+#: scripts/Main.gd:3722
 msgid "Drop a piece on “Back” to send it out · R rotates a piece"
 msgstr ""
 
-#: scripts/Main.gd:3895
+#: scripts/Main.gd:3894
 msgid "No wall inspected on this floor yet"
 msgstr ""
 
-#: scripts/Main.gd:3991
+#: scripts/Main.gd:3990
 msgid "%s needs daylight: stand it where the window's light reaches."
 msgstr ""
 
-#: scripts/Main.gd:4024
+#: scripts/Main.gd:4023
 msgid "Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr ""
 
-#: scripts/Main.gd:4025
+#: scripts/Main.gd:4024
 msgid "Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr ""
 
-#: scripts/Main.gd:4085
+#: scripts/Main.gd:4084
 msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned”."
 msgstr ""
 
-#: scripts/Main.gd:4146
+#: scripts/Main.gd:4145
 msgid " %s is a keepsake: it stays in this flat"
 msgstr ""
 
-#: scripts/Main.gd:4148
+#: scripts/Main.gd:4147
 msgid "A box can't go inside another apartment"
 msgstr ""
 
-#: scripts/Main.gd:4150
+#: scripts/Main.gd:4149
 msgid "Stairs can't move to another apartment"
 msgstr ""
 
-#: scripts/Main.gd:4195
+#: scripts/Main.gd:4194
 msgid "%s  Buy it for %s  ·  %d€ from this budget"
 msgstr ""
 
-#: scripts/Main.gd:4197
+#: scripts/Main.gd:4196
 msgid "←  Take out to %s"
 msgstr ""
 
-#: scripts/Main.gd:4197
+#: scripts/Main.gd:4196
 msgid "→  Take into %s"
 msgstr ""
 
-#: scripts/Main.gd:4198
+#: scripts/Main.gd:4197
 msgid "Shift: send it without going"
 msgstr ""
 
-#: scripts/Main.gd:4226
+#: scripts/Main.gd:4225
 msgid "←  Click here to buy it for %s"
 msgstr ""
 
-#: scripts/Main.gd:4226
+#: scripts/Main.gd:4225
 msgid "←  Drop here to send to %s"
 msgstr ""
 
-#: scripts/Main.gd:4390
+#: scripts/Main.gd:4389
 msgid "%s is already renting here — pick a different box."
 msgstr ""
 
-#: scripts/Main.gd:4476
+#: scripts/Main.gd:4475
 msgid " %s is a keepsake: it can be moved, not sold."
 msgstr ""
 
-#: scripts/Main.gd:4481
+#: scripts/Main.gd:4480
 msgid "Removing %s means repaying its %d€ rent — you only have %d€."
 msgstr ""
 
-#: scripts/Main.gd:4620
+#: scripts/Main.gd:4619
 msgid "This apartment is ready. Still to furnish: %s"
 msgstr ""
 
-#: scripts/Main.gd:4651
+#: scripts/Main.gd:4650
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
 msgstr ""
 
-#: scripts/Main.gd:4658
+#: scripts/Main.gd:4657
 msgid "Not every need on the bar is ticked yet."
 msgstr ""
 
-#: scripts/Main.gd:4660
+#: scripts/Main.gd:4659
 msgid "Still missing:"
 msgstr ""
 
-#: scripts/Main.gd:4670
+#: scripts/Main.gd:4668
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
 msgstr ""
 
-#: scripts/Main.gd:4672
-msgid ""
-"Some furniture is completely blocked.\n"
-"Leave at least 1 tile of walking space around it."
-msgstr ""
-
-#: scripts/Main.gd:4724
+#: scripts/Main.gd:4720
 msgid "Phase %d of %d done"
 msgstr ""
 
-#: scripts/Main.gd:4760
+#: scripts/Main.gd:4756
 msgid "Restart phase %d"
 msgstr ""
 
-#: scripts/Main.gd:4760
+#: scripts/Main.gd:4756
 msgid "Back to phase %d"
 msgstr ""
 
-#: scripts/Main.gd:4806
+#: scripts/Main.gd:4802
 #: scripts/ui/dialogue_scene.gd:97
 msgid "You"
 msgstr ""
 
-#: scripts/Main.gd:5068
+#: scripts/Main.gd:5064
 msgid " Back to Results"
 msgstr ""
 
-#: scripts/Main.gd:5198
+#: scripts/Main.gd:5194
 msgid "CUSTOM BUILD"
 msgstr ""
 
-#: scripts/Main.gd:5210
+#: scripts/Main.gd:5206
 msgid "LMB paint · RMB erase"
 msgstr ""
 
-#: scripts/Main.gd:5222
+#: scripts/Main.gd:5218
 msgid "Move"
 msgstr ""
 
-#: scripts/Main.gd:5246
+#: scripts/Main.gd:5242
 msgid "%s  %d€/tile"
 msgstr ""
 
-#: scripts/Main.gd:5888
+#: scripts/Main.gd:5884
 msgid "Paint tiles on the floor"
 msgstr ""
 
-#: scripts/Main.gd:4335
+#: scripts/Main.gd:4334
 msgid "%d piece is waiting for you here: open Furniture, it is first under “Owned”."
 msgid_plural "%d pieces are waiting for you here: open Furniture, they are first under “Owned”."
 msgstr[0] ""
@@ -1067,7 +1061,7 @@ msgstr ""
 
 #: scripts/MainMenu.gd:99
 #: scripts/PauseMenu.gd:58
-#: scripts/SettingsMenu.gd:35
+#: scripts/SettingsMenu.gd:36
 msgid "Settings"
 msgstr ""
 
@@ -1319,67 +1313,67 @@ msgstr ""
 msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr ""
 
-#: scripts/Room3DView.gd:1715
+#: scripts/Room3DView.gd:1731
 #: scripts/Wall.gd:1355
 msgid "Outside the room"
 msgstr ""
 
-#: scripts/Room3DView.gd:1736
+#: scripts/Room3DView.gd:1752
 msgid "Can't place here"
 msgstr ""
 
-#: scripts/Room3DView.gd:1844
+#: scripts/Room3DView.gd:1860
 msgid " %s is a keepsake: it can be moved, not sold"
 msgstr ""
 
-#: scripts/Room3DView.gd:1847
+#: scripts/Room3DView.gd:1863
 msgid "Removing %s means repaying its %d€ rent"
 msgstr ""
 
-#: scripts/Room3DView.gd:2165
+#: scripts/Room3DView.gd:2181
 msgid "Too close to a window or door"
 msgstr ""
 
-#: scripts/Room3DView.gd:2170
+#: scripts/Room3DView.gd:2186
 #: scripts/RuleOverlay.gd:136
 #: scripts/Wall.gd:1470
 msgid "Ceiling too low here"
 msgstr ""
 
-#: scripts/Room3DView.gd:2173
+#: scripts/Room3DView.gd:2189
 msgid "Blocked by furniture on the floor"
 msgstr ""
 
-#: scripts/Room3DView.gd:2177
+#: scripts/Room3DView.gd:2193
 msgid "Doesn't fit on this wall"
 msgstr ""
 
-#: scripts/Room3DView.gd:2195
+#: scripts/Room3DView.gd:2211
 #: scripts/Wall.gd:1450
 msgid "Overlaps %s"
 msgstr ""
 
-#: scripts/Room3DView.gd:2195
+#: scripts/Room3DView.gd:2211
 msgid "another item"
 msgstr ""
 
-#: scripts/Room3DView.gd:4582
+#: scripts/Room3DView.gd:4598
 msgid "Double-click to step inside"
 msgstr ""
 
-#: scripts/Room3DView.gd:5098
+#: scripts/Room3DView.gd:5114
 msgid "Ceiling / Ducts"
 msgstr ""
 
-#: scripts/Room3DView.gd:5099
+#: scripts/Room3DView.gd:5115
 msgid "Building Subfloor"
 msgstr ""
 
-#: scripts/Room3DView.gd:5100
+#: scripts/Room3DView.gd:5116
 msgid "Floor Subfloor / Pipes"
 msgstr ""
 
-#: scripts/Room3DView.gd:5101
+#: scripts/Room3DView.gd:5117
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1388,144 +1382,132 @@ msgstr ""
 msgid "Roof"
 msgstr ""
 
-#: scripts/Room3DView.gd:5104
+#: scripts/Room3DView.gd:5120
 msgid "(view in 2D for detail)"
 msgstr ""
 
-#: scripts/Room3DView.gd:6527
+#: scripts/Room3DView.gd:6543
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:36
-#: scripts/SettingsMenu.gd:203
+#: scripts/SettingsMenu.gd:37
+#: scripts/SettingsMenu.gd:202
 msgid "Restore defaults"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:40
-#: scripts/SettingsMenu.gd:202
+#: scripts/SettingsMenu.gd:41
+#: scripts/SettingsMenu.gd:201
 msgid "General"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:40
-#: scripts/SettingsMenu.gd:202
+#: scripts/SettingsMenu.gd:41
+#: scripts/SettingsMenu.gd:201
 msgid "Audio"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:40
-#: scripts/SettingsMenu.gd:202
+#: scripts/SettingsMenu.gd:41
+#: scripts/SettingsMenu.gd:201
 msgid "Graphics"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:40
-#: scripts/SettingsMenu.gd:202
+#: scripts/SettingsMenu.gd:41
+#: scripts/SettingsMenu.gd:201
 msgid "Accessibility"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:75
+#: scripts/SettingsMenu.gd:78
 msgid "Device language"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:79
+#: scripts/SettingsMenu.gd:82
 msgid "The language of all the game's text. Device language follows your phone or computer."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:81
+#: scripts/SettingsMenu.gd:84
 msgid "The rest of the level changes language when you leave it."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:82
+#: scripts/SettingsMenu.gd:85
 msgid "Language"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:83
-msgid "Experimental"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:84
-msgid "Walking paths"
-msgstr ""
-
-#: scripts/SettingsMenu.gd:85
-msgid "The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."
-msgstr ""
-
-#: scripts/SettingsMenu.gd:93
+#: scripts/SettingsMenu.gd:92
 msgid "Master Volume"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:93
+#: scripts/SettingsMenu.gd:92
 msgid "How loud the whole game is."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:98
+#: scripts/SettingsMenu.gd:97
 msgid "SFX Volume"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:99
+#: scripts/SettingsMenu.gd:98
 msgid "Clicks, placing, folding, selling and the other sounds of what you do."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:113
+#: scripts/SettingsMenu.gd:112
 msgid "Mute all sound"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:113
+#: scripts/SettingsMenu.gd:112
 msgid "Silences the game without touching the volumes above."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:132
+#: scripts/SettingsMenu.gd:131
 msgid "3D Quality"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:143
+#: scripts/SettingsMenu.gd:142
 msgid "UI Scale"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:143
+#: scripts/SettingsMenu.gd:142
 msgid "Makes all text and buttons bigger or smaller."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:154
+#: scripts/SettingsMenu.gd:153
 msgid "Reduce motion"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:155
+#: scripts/SettingsMenu.gd:154
 msgid "Skips the pop, bounce and pulse animations. Everything still happens, just without the movement."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:157
+#: scripts/SettingsMenu.gd:156
 msgid "Undo key"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:158
+#: scripts/SettingsMenu.gd:157
 msgid "Ctrl with this key undoes, Ctrl+Shift with it redoes. Press Enter, then the new key."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:164
+#: scripts/SettingsMenu.gd:163
 msgid "Fastest. Flat lighting and shadows only."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:165
+#: scripts/SettingsMenu.gd:164
 msgid "Adds glow on lamps and windows, and a soft vignette."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:166
+#: scripts/SettingsMenu.gd:165
 msgid "Adds contact shading in corners. Needs a dedicated GPU."
 msgstr ""
 
-#: scripts/SettingsMenu.gd:204
+#: scripts/SettingsMenu.gd:203
 msgid "Put every %s setting back the way the game came?"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:205
+#: scripts/SettingsMenu.gd:204
 msgid "Restore"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:230
+#: scripts/SettingsMenu.gd:227
 msgid "Ctrl+%s  (Shift+ = Redo)"
 msgstr ""
 
-#: scripts/SettingsMenu.gd:235
+#: scripts/SettingsMenu.gd:232
 msgid "Press any key…"
 msgstr ""
 

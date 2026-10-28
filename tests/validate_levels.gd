@@ -33,10 +33,6 @@ func _ready() -> void:
 			only = arg.trim_prefix("--level=")
 		elif arg == "--strict":
 			strict = true
-		elif arg == "--pathing":
-			Floor.pathing_enabled = true
-		elif arg == "--no-pathing":
-			Floor.pathing_enabled = false
 
 	# Main reads the level to open from GameState; point it at one that
 	# exists before it is created.
@@ -123,7 +119,7 @@ func _ready() -> void:
 					errors += 1
 					lines.append("    ERROR  loop on %s: outside rules for the %s wall, which is all seam" % [lfd["id"], side])
 		# Split levels: every raised or sunken stretch has to be reachable
-		# over steps, whatever the walking-paths setting (tenants walk there).
+		# over steps, (tenants walk there).
 		for fid in main._floors:
 			var sfl: Floor = main._floors[fid]
 			if not sfl.has_split_levels():
@@ -137,16 +133,14 @@ func _ready() -> void:
 					errors += 1
 					lines.append("    ERROR  the %+d cm level around (%d, %d) on %s: no steps lead onto it" % [
 						(rd["level"] as int) * 10, int((rd["center"] as Vector2).x), int((rd["center"] as Vector2).y), fid])
-		# With the walking-paths rule on (--pathing, or the saved setting),
-		# a starting piece the tenant can't walk to is an error too.
-		if Floor.pathing_enabled:
-			for fid in main._floors:
-				var pfl: Floor = main._floors[fid]
-				for entry in pfl.get_unreachable_furniture():
-					var pf: Furniture = entry
-					errors += 1
-					lines.append("    ERROR  %s at (%d, %d) on %s: Can't be walked to from the door" % [
-						pf.furniture_name, int(pf.grid_pos.x), int(pf.grid_pos.y), fid])
+		# A starting piece the tenant can't walk to is an error too.
+		for fid in main._floors:
+			var pfl: Floor = main._floors[fid]
+			for entry in pfl.get_inaccessible_furniture():
+				var pf: Furniture = entry
+				errors += 1
+				lines.append("    ERROR  %s at (%d, %d) on %s: Can't be walked to from the door" % [
+					pf.furniture_name, int(pf.grid_pos.x), int(pf.grid_pos.y), fid])
 		if not lines.is_empty():
 			print("%s  (%s)" % [id, (lv as Dictionary).get("name", "")])
 			for line in lines:
@@ -157,7 +151,6 @@ func _ready() -> void:
 	warnings += app_counts[1]
 
 	var failed := errors > 0 or (strict and warnings > 0)
-	print("\nWalking-paths rule: %s" % ("ON" if Floor.pathing_enabled else "off"))
 	print("%d level(s) checked: %d error(s), %d warning(s)" % [checked, errors, warnings])
 	# Read this line, not the process exit code: the engine can crash while
 	# shutting down after a level has been loaded, which replaces the code.

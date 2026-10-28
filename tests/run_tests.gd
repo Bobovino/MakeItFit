@@ -268,7 +268,6 @@ func _t_loop_sightline() -> void:
 # The inner wall at x 16 again; the front door is in the north wall's
 # western half, so the eastern room is reached only round the loop.
 func _t_loop_pathing() -> void:
-	Floor.pathing_enabled = true
 	var wall := [{"x1": 16, "y1": 1, "x2": 16, "y2": 21, "primary": false, "demolished": false}]
 	var north := [
 		{"x1": 1, "y1": 1, "x2": 16, "y2": 1, "primary": true, "demolished": false, "has_door": true, "door_pos": 3},
@@ -282,7 +281,6 @@ func _t_loop_pathing() -> void:
 	var p2 := _make_piece(fl, 2, 2)
 	fl.place_furniture(p2, Vector2(24, 10))
 	_ok(fl.is_reachable(p2), "round the loop it can be walked to")
-	Floor.pathing_enabled = false
 	fl.queue_free()
 	plain.queue_free()
 
@@ -428,13 +426,11 @@ func _t_other_moment() -> void:
 # The test room's interior is 7 x 5 tiles (x 2..8, y 2..6) and has no door,
 # so the walk starts from its largest stretch of open floor.
 func _t_path_open() -> void:
-	Floor.pathing_enabled = true
 	var fl := _make_floor()
 	var a := _make_furniture(fl, 1, 1)
 	fl.place_furniture(a, Vector2(2, 2))
 	_ok(fl.is_reachable(a), "open floor right beside it")
 	_eq(fl.get_inaccessible_furniture().size(), 0)
-	Floor.pathing_enabled = false
 	fl.queue_free()
 
 
@@ -444,15 +440,11 @@ func _t_path_blocked() -> void:
 	fl.place_furniture(a, Vector2(2, 2))
 	var b := _make_furniture(fl, 3, 3)
 	fl.place_furniture(b, Vector2(3, 2))   # leaves no 4 x 4 patch anywhere
-	_eq(fl.get_inaccessible_furniture().size(), 0, "old rule (flag off):")
-	Floor.pathing_enabled = true
-	_eq(fl.get_inaccessible_furniture().size(), 2, "pathing rule:")
-	Floor.pathing_enabled = false
+	_eq(fl.get_inaccessible_furniture().size(), 2)
 	fl.queue_free()
 
 
 func _t_path_front() -> void:
-	Floor.pathing_enabled = true
 	var fl := _make_floor()
 	var a := _make_furniture(fl, 3, 1)
 	fl.place_furniture(a, Vector2(2, 2))   # back against the north wall
@@ -461,7 +453,6 @@ func _t_path_front() -> void:
 	_ok(fl.is_reachable(a), "used from any side: its east end is open")
 	a.front = "long"
 	_ok(not fl.is_reachable(a), "used from a long side: one is the wall, the other is covered")
-	Floor.pathing_enabled = false
 	fl.queue_free()
 
 func _t_place_and_overlap() -> void:
@@ -1503,16 +1494,15 @@ func _t_three_freezers() -> void:
 	_current = "three freezers: the freezers are a need on the bar, not yet met"
 	_ok(Requirements.status(gm).get("items:1", true) == false, str(Requirements.status(gm)))
 	for cheapest in shopping:
-		var f: Furniture = main._spawn_furniture(cheapest, fl, 0, 0)
-		fl.forget_furniture(f)
-		var at = first_spot.call(f)
-		if at != null:
-			fl.place_furniture(f, at)
+		var f := _place_somewhere(main, fl, cheapest)
+		if f != null and fl.is_registered(f):
 			spent += gm.get_furniture_by_id(cheapest)["buy_price"] as int
 			if gm.get_furniture_by_id(cheapest).get("creates_loft", false):
 				main._promote_to_loft(f, fl)
+			if gm.get_furniture_by_id(cheapest).get("creates_loft", false):
+				main._promote_to_loft(f, fl)
 	main._refresh_functions()
-	_current = "three freezers: one of each, put down anywhere, rents it out within the budget"
+	_current = "three freezers: one of each, put down where it can be walked to, rents it out within the budget"
 	_ok(gm.check_win() and main._all_furniture_accessible() and spent <= gm.current_level["starting_budget"],
 		"win %s reach %s spent %d of %d status %s" % [gm.check_win(), main._all_furniture_accessible(), spent,
 		gm.current_level["starting_budget"], Requirements.status(gm)])
@@ -1547,12 +1537,22 @@ func _place_somewhere(main: Node, fl: Floor, id: String) -> Furniture:
 	var f: Furniture = main._spawn_furniture(id, fl, 0, 0)
 	if f == null:
 		return null
+	fl.forget_furniture(f)
 	var b := fl.get_room_bounds()
-	for y in range(b.position.y, b.end.y):
-		for x in range(b.position.x, b.end.x):
-			if fl.can_place(f, Vector2(x, y)):
-				fl.place_furniture(f, Vector2(x, y))
-				return f
+	# As a player would: where the tenant can still walk to it and to
+	# everything else (either way round), else anywhere it fits.
+	var stuck_before := fl.get_inaccessible_furniture().size()
+	for walkable in [true, false]:
+		for turn in 2:
+			for y in range(b.position.y, b.end.y):
+				for x in range(b.position.x, b.end.x):
+					if not fl.can_place(f, Vector2(x, y)):
+						continue
+					fl.place_furniture(f, Vector2(x, y))
+					if not walkable or fl.get_inaccessible_furniture().size() <= stuck_before:
+						return f
+					fl.forget_furniture(f)
+			f._rotate(true)
 	return f
 
 
@@ -1860,10 +1860,8 @@ func _t_sloped_split_levels() -> void:
 	_current = "split level: nothing stands on the steps or across the platform's edge"
 	_ok(not fl.can_place(shelf, Vector2(11, 15)) and fl.get_block_reason() == "Keep the steps clear", fl.get_block_reason())
 	_ok(not fl.can_place(wr, Vector2(18, 11)) and fl.get_block_reason() == "Can't stand across a step", fl.get_block_reason())
-	Floor.pathing_enabled = true
 	_current = "split level: the bed on the platform and the sofa in the pit can both be walked to"
 	_ok(bed != null and sofa != null and fl.is_reachable(bed) and fl.is_reachable(sofa))
-	Floor.pathing_enabled = false
 	main._set_view_mode(main.ViewMode.VIEW3D)
 	for i in 5:
 		await get_tree().process_frame

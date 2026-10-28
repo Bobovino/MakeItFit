@@ -282,7 +282,6 @@ func _ready() -> void:
 	desk_layer.add_child(DeskBackdrop.new())
 	_fit_to_window()
 	get_viewport().size_changed.connect(func(): _fit_to_window.call_deferred())
-	GameState.pathing_rule_changed.connect(func(_on: bool): _refresh_functions())
 	tenant_card.need_clicked.connect(_on_need_clicked)
 	tenant_card.items_clicked.connect(_on_items_clicked)
 	tenant_card.application_requested.connect(_reopen_application)
@@ -4662,14 +4661,11 @@ func _on_rent_pressed() -> void:
 		return
 	if not _all_furniture_accessible():
 		Audio.play("error")
-		if Floor.pathing_enabled:
-			var stuck: PackedStringArray = []
-			for fid in _floors:
-				for f in (_floors[fid] as Floor).get_inaccessible_furniture():
-					stuck.append((f as Furniture).furniture_name)
-			result_screen.show_failure(tr("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from.") % ", ".join(stuck))
-		else:
-			result_screen.show_failure(tr("Some furniture is completely blocked.\nLeave at least 1 tile of walking space around it."))
+		var stuck: PackedStringArray = []
+		for fid in _floors:
+			for f in (_floors[fid] as Floor).get_inaccessible_furniture():
+				stuck.append((f as Furniture).furniture_name)
+		result_screen.show_failure(tr("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from.") % Loc.join_list(Array(stuck)))
 		_refresh_undo_redo_buttons()
 		return
 

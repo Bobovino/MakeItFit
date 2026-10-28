@@ -19,6 +19,7 @@ var _host: Node
 var _capturing_rebind := false
 var _rebind_row: SettingRow = null
 var _page_index := 0
+var _reset_btn: Button
 var _step_category: Callable
 
 
@@ -33,16 +34,18 @@ static func open(host: Node) -> SettingsMenu:
 func _build() -> void:
 	layer = 26  # over the pause menu (24) and the mechanic-intro card (20)
 	_w = MenuKit.screen(self, tr("Settings"), _close, true, true)
-	var reset := MenuKit.button(tr("Restore defaults"))
-	reset.focus_mode = Control.FOCUS_NONE
-	reset.pressed.connect(_ask_reset)
-	(_w["actions"] as Control).add_child(reset)
+	_reset_btn = MenuKit.button(tr("Restore defaults"))
+	_reset_btn.focus_mode = Control.FOCUS_NONE
+	_reset_btn.pressed.connect(_ask_reset)
+	(_w["actions"] as Control).add_child(_reset_btn)
 	_step_category = MenuKit.categories(_w["nav"], [tr("General"), tr("Audio"), tr("Graphics"), tr("Accessibility")],
 		func(i: int): _show_page(i))
 
 
 func _show_page(i: int) -> void:
 	_page_index = i
+	# General has only the language, which is never reset (see _reset_page).
+	_reset_btn.visible = i != 0
 	_capturing_rebind = false
 	var page: VBoxContainer = _w["page"]
 	for c in page.get_children():
@@ -80,10 +83,6 @@ func _general(page: VBoxContainer) -> void:
 	if in_level:
 		about += " " + tr("The rest of the level changes language when you leave it.")
 	_add(page, SettingRow.choice(tr("Language"), about, langs, GameState.language, _set_language))
-	MenuKit.heading(page, tr("Experimental"))
-	_add(page, SettingRow.toggle(tr("Walking paths"),
-		tr("The tenant has to be able to walk from the door to every piece of furniture, through gaps of at least 40 cm."),
-		GameState.pathing_rule, func(on: bool): GameState.set_pathing_rule(on)))
 
 
 func _audio(page: VBoxContainer) -> void:
@@ -208,8 +207,6 @@ func _ask_reset() -> void:
 func _reset_page() -> void:
 	var audio := get_node_or_null("/root/Audio")
 	match _page_index:
-		0:
-			GameState.set_pathing_rule(false)
 		1:
 			if audio:
 				audio.set_master_volume(1.0)

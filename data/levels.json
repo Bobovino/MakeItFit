@@ -805,8 +805,8 @@
 				{
 					"id": "double_bed",
 					"keepsake": true,
-					"x": 28,
-					"y": 16
+					"x": 28.0,
+					"y": 16.0
 				},
 				{
 					"id": "dining_table",
@@ -829,8 +829,8 @@
 				{
 					"id": "wardrobe",
 					"keepsake": true,
-					"x": 23,
-					"y": 33
+					"x": 45.0,
+					"y": 33.0
 				},
 				{
 					"id": "bookshelf",
@@ -860,18 +860,18 @@
 				{
 					"id": "floor_lamp",
 					"keepsake": true,
-					"x": 36,
-					"y": 36
+					"x": 2.0,
+					"y": 30.0
 				},
 				{
 					"id": "toilet",
-					"x": 43,
-					"y": 33
+					"x": 26.0,
+					"y": 33.0
 				},
 				{
 					"id": "sink",
-					"x": 48,
-					"y": 34
+					"x": 20.0,
+					"y": 34.0
 				}
 			],
 			"starting_inventory": [],
@@ -2686,7 +2686,7 @@
 				{
 					"id": "wardrobe",
 					"x": 3,
-					"y": 20,
+					"y": 19,
 					"rot_steps": 1
 				},
 				{
@@ -8267,14 +8267,15 @@
 			"starting_furniture": [
 				{
 					"id": "toilet",
-					"x": 27,
-					"y": 7,
+					"x": 27.0,
+					"y": 8.0,
 					"rot_steps": 1
 				},
 				{
 					"id": "sink",
-					"x": 27,
-					"y": 2
+					"x": 28.0,
+					"y": 2.0,
+					"rot_steps": 1
 				},
 				{
 					"id": "sofa_bed",
@@ -8414,7 +8415,7 @@
 				},
 				{
 					"id": "sink",
-					"x": 8.0,
+					"x": 21.0,
 					"y": 2.0
 				},
 				{
@@ -78267,6 +78268,16 @@
 								"x1": 26.0,
 								"x2": 26.0,
 								"y1": 21.0,
+								"y2": 44.0
+							},
+							{
+								"demolished": false,
+								"door_pos": 5.0,
+								"has_door": true,
+								"primary": false,
+								"x1": 26.0,
+								"x2": 26.0,
+								"y1": 44.0,
 								"y2": 77.0
 							},
 							{
@@ -78295,7 +78306,7 @@
 							},
 							{
 								"demolished": false,
-								"door_pos": 7.0,
+								"door_pos": 5.0,
 								"door_side": -1,
 								"has_door": true,
 								"primary": false,
@@ -79394,7 +79405,7 @@
 				{
 					"id": "tv_stand",
 					"x": 20,
-					"y": 32,
+					"y": 59,
 					"rot_steps": 1
 				},
 				{
@@ -79410,12 +79421,12 @@
 				{
 					"id": "toilet",
 					"x": 28,
-					"y": 46
+					"y": 45
 				},
 				{
 					"id": "sink",
-					"x": 33,
-					"y": 46
+					"x": 34,
+					"y": 45
 				},
 				{
 					"id": "shower",
@@ -79424,8 +79435,8 @@
 				},
 				{
 					"id": "bathtub",
-					"x": 28.0,
-					"y": 54.0
+					"x": 39,
+					"y": 54
 				},
 				{
 					"id": "normal_bed",
@@ -80119,14 +80130,14 @@
 				},
 				{
 					"id": "wardrobe",
-					"x": 26,
-					"y": 4,
+					"x": 26.0,
+					"y": 4.0,
 					"rot_steps": 1
 				},
 				{
 					"id": "dresser",
-					"x": 17,
-					"y": 14
+					"x": 10.0,
+					"y": 14.0
 				},
 				{
 					"id": "desk",
