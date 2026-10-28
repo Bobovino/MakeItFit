@@ -267,13 +267,17 @@ msgid "▼ CLICK TO UNFOLD"
 msgstr "▼ KLICKEN ZUM AUSKLAPPEN"
 
 #: scripts/Furniture.gd:1565
-#: scripts/Furniture.gd:2040
+#: scripts/Furniture.gd:2044
 msgid "Moved for every moment"
 msgstr "Für jeden Moment verschoben"
 
 #: scripts/Furniture.gd:1566
 msgid "Moved for %s only"
 msgstr "Nur für %s verschoben"
+
+#: scripts/Furniture.gd:2046
+msgid "Moved to where it fits"
+msgstr "Dorthin gestellt, wo es passt"
 
 #: scripts/GameManager.gd:521
 msgid "%s and %s must be in different zones"
@@ -964,10 +968,7 @@ msgstr "Diese Wohnung ist fertig. Noch einzurichten: %s"
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
-msgstr ""
-"Diese Einrichtung ist für die Mieter unbequem.
-"
-"Zu viele schwere Möbel müssen beim Momentwechsel von Hand verschoben werden: Lass einige in jedem Moment am selben Platz."
+msgstr "Zu viele schwere Möbel müssen beim Momentwechsel von Hand verschoben werden: Lass einige in jedem Moment am selben Platz."
 
 #: scripts/Main.gd:4658
 msgid "Not every need on the bar is ticked yet."
@@ -1329,7 +1330,7 @@ msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr "Hochebene: %.0f / %.0f, das hier bringt %.0f dazu"
 
 #: scripts/Room3DView.gd:1715
-#: scripts/Wall.gd:1318
+#: scripts/Wall.gd:1355
 msgid "Outside the room"
 msgstr "Außerhalb des Raums"
 
@@ -1337,58 +1338,58 @@ msgstr "Außerhalb des Raums"
 msgid "Can't place here"
 msgstr "Kann hier nicht platziert werden"
 
-#: scripts/Room3DView.gd:1841
+#: scripts/Room3DView.gd:1844
 msgid " %s is a keepsake: it can be moved, not sold"
 msgstr " %s ist ein Erbstück: Es lässt sich bewegen, aber nicht verkaufen"
 
-#: scripts/Room3DView.gd:1844
+#: scripts/Room3DView.gd:1847
 msgid "Removing %s means repaying its %d€ rent"
 msgstr "%s zu entfernen heißt, seine %d€ Miete zurückzuzahlen"
 
-#: scripts/Room3DView.gd:2162
+#: scripts/Room3DView.gd:2165
 msgid "Too close to a window or door"
 msgstr "Zu nah an einem Fenster oder einer Tür"
 
-#: scripts/Room3DView.gd:2167
+#: scripts/Room3DView.gd:2170
 #: scripts/RuleOverlay.gd:136
-#: scripts/Wall.gd:1433
+#: scripts/Wall.gd:1470
 msgid "Ceiling too low here"
 msgstr "Decke hier zu niedrig"
 
-#: scripts/Room3DView.gd:2170
+#: scripts/Room3DView.gd:2173
 msgid "Blocked by furniture on the floor"
 msgstr "Von Möbeln auf dem Boden blockiert"
 
-#: scripts/Room3DView.gd:2174
+#: scripts/Room3DView.gd:2177
 msgid "Doesn't fit on this wall"
 msgstr "Passt nicht an diese Wand"
 
-#: scripts/Room3DView.gd:2192
-#: scripts/Wall.gd:1413
+#: scripts/Room3DView.gd:2195
+#: scripts/Wall.gd:1450
 msgid "Overlaps %s"
 msgstr "Überschneidet sich mit %s"
 
-#: scripts/Room3DView.gd:2192
+#: scripts/Room3DView.gd:2195
 msgid "another item"
 msgstr "einem anderen Gegenstand"
 
-#: scripts/Room3DView.gd:4577
+#: scripts/Room3DView.gd:4582
 msgid "Double-click to step inside"
 msgstr "Doppelklick zum Hineingehen"
 
-#: scripts/Room3DView.gd:5093
+#: scripts/Room3DView.gd:5098
 msgid "Ceiling / Ducts"
 msgstr "Decke / Lüftungskanäle"
 
-#: scripts/Room3DView.gd:5094
+#: scripts/Room3DView.gd:5099
 msgid "Building Subfloor"
 msgstr "Gebäude-Unterboden"
 
-#: scripts/Room3DView.gd:5095
+#: scripts/Room3DView.gd:5100
 msgid "Floor Subfloor / Pipes"
 msgstr "Unterboden / Leitungen"
 
-#: scripts/Room3DView.gd:5096
+#: scripts/Room3DView.gd:5101
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1397,11 +1398,11 @@ msgstr "Unterboden / Leitungen"
 msgid "Roof"
 msgstr "Dach"
 
-#: scripts/Room3DView.gd:5099
+#: scripts/Room3DView.gd:5104
 msgid "(view in 2D for detail)"
 msgstr "(Details in der 2D-Ansicht)"
 
-#: scripts/Room3DView.gd:6522
+#: scripts/Room3DView.gd:6527
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr "W A S D zum Gehen · Maus zum Umsehen · Umschalt für schneller · Esc zum Verlassen"
 
@@ -1595,64 +1596,64 @@ msgstr "Jede Wohnung ist fertig"
 msgid "needs %s flooring"
 msgstr "braucht %s-Boden"
 
-#: scripts/Wall.gd:1312
+#: scripts/Wall.gd:1349
 msgid "Longer than the loop: it runs into itself"
 msgstr "Länger als die Schleife: stößt an sich selbst"
 
-#: scripts/Wall.gd:1325
+#: scripts/Wall.gd:1362
 msgid "Needs %s flooring"
 msgstr "Braucht %s-Boden"
 
-#: scripts/Wall.gd:1328
+#: scripts/Wall.gd:1365
 msgid "Blocked by a wall"
 msgstr "Von einer Wand blockiert"
 
-#: scripts/Wall.gd:1333
+#: scripts/Wall.gd:1370
 msgid "Its back has to be against a wall"
 msgstr "Muss mit der Rückseite an einer Wand stehen"
 
-#: scripts/Wall.gd:1356
+#: scripts/Wall.gd:1393
 msgid "Too tall to go under the loft"
 msgstr "Zu hoch für unter die Hochebene"
 
-#: scripts/Wall.gd:1361
+#: scripts/Wall.gd:1398
 msgid "Too heavy for this loft (%.0f / %.0f)"
 msgstr "Zu schwer für diese Hochebene (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1369
+#: scripts/Wall.gd:1406
 msgid "Too heavy: what this box stands on would break (%s)"
 msgstr "Zu schwer: was unter dieser Kiste steht, würde brechen (%s)"
 
-#: scripts/Wall.gd:1374
+#: scripts/Wall.gd:1411
 msgid "Needs a table or shelf underneath"
 msgstr "Braucht einen Tisch oder ein Regal darunter"
 
-#: scripts/Wall.gd:1379
+#: scripts/Wall.gd:1416
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr "Zu schwer für %s — es würde brechen (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1421
+#: scripts/Wall.gd:1458
 msgid "Keep the steps clear"
 msgstr "Die Stufen freihalten"
 
-#: scripts/Wall.gd:1424
+#: scripts/Wall.gd:1461
 msgid "Can't stand across a step"
 msgstr "Kann nicht über einer Stufe stehen"
 
-#: scripts/Wall.gd:1454
+#: scripts/Wall.gd:1491
 msgid "Needs clearance around %s"
 msgstr "Braucht Platz um %s herum"
 
-#: scripts/Wall.gd:1463
+#: scripts/Wall.gd:1500
 msgid "In the way of the door"
 msgstr "Steht der Tür im Weg"
 
-#: scripts/Wall.gd:1538
-#: scripts/Wall.gd:1586
+#: scripts/Wall.gd:1575
+#: scripts/Wall.gd:1623
 msgid "Would overlap %s during \"%s\""
 msgstr "Würde sich bei %s während „%s“ überschneiden"
 
-#: scripts/Wall.gd:1541
+#: scripts/Wall.gd:1578
 msgid "Needs clearance around %s during \"%s\""
 msgstr "Braucht Platz um %s während \"%s\""
 
@@ -3361,18 +3362,3 @@ msgstr "Maß-Stauraum"
 #: data/furniture.json:painted_bathroom
 msgid "Custom Bathroom"
 msgstr "Maßbad"
-
-#~ msgid "The %s was fine where it was: moving it costs %d%% comfort. Its old spot is marked."
-#~ msgstr "%s stand gut, wo es war: Es zu verrücken kostet %d%% Komfort. Sein alter Platz ist markiert."
-
-#~ msgid "The %s is back where it started: comfort restored."
-#~ msgstr "%s ist wieder an seinem Platz: Komfort zurück."
-
-#~ msgid "Started here"
-#~ msgstr "Stand hier"
-
-#~ msgid "Comfort −%d%%"
-#~ msgstr "Komfort −%d%%"
-
-#~ msgid "The tenant isn't comfortable with this arrangement.\nToo much furniture has been rearranged — try keeping heavier pieces closer to where they started."
-#~ msgstr "Der Mieter fühlt sich mit dieser Einrichtung nicht wohl.\nZu viele Möbel wurden umgestellt — lass schwerere Stücke näher an ihrem Ausgangsplatz."

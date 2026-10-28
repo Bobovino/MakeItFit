@@ -1766,8 +1766,8 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 			get_viewport().get_mouse_position(), cursor_tile):
 		return
 	var tile := (cursor_tile - Vector2(_buying_furniture.grid_w, _buying_furniture.grid_h) * 0.5).round()
-	var snap_pos := _apt_floor.snap_to_wall(_buying_furniture, tile)
-	if not _apt_floor.can_place(_buying_furniture, snap_pos):
+	var snap_pos := _apt_floor.landing_spot(_buying_furniture, _apt_floor.snap_to_wall(_buying_furniture, tile))
+	if snap_pos == Vector2.INF:
 		_flash_reason(_apt_floor.get_block_reason())
 		return
 	_hide_reason()
@@ -1779,6 +1779,9 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 		ghost_mat.albedo_color.a = 1.0   # drop the semi-transparent "ghost" look now that it's placed
 	var rs: int = f.rot_steps
 	var canon_size := Vector3(item_size.z, item_size.y, item_size.x) if rs % 2 == 1 else item_size
+	# Where it landed, which may be next to where the ghost was (landing_spot).
+	_buying_mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
+	_buying_mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	if _buying_fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
@@ -2263,13 +2266,15 @@ func _finish_furniture_drag() -> void:
 		return
 	var snap_pos := _apt_floor.snap_to_wall(f, _drag_last_tile) if _apt_floor else _drag_last_tile
 	# Mirrors Furniture.gd's own 2D drag-end (see there for the full
-	# rationale): a red (heavy), non-rail piece shares ONE position across
-	# every Moment, so a move also has to clear every OTHER Moment's layout,
-	# not just whichever one is being previewed in 3D right now.
-	var ok := _apt_floor != null and _apt_floor.can_place(f, snap_pos)
-	if ok and f.mobility_tier == "red" and f.rail_axis == "" and Furniture.test_mode_active \
-			and Furniture.all_moment_ids.size() > 1:
-		ok = _apt_floor.can_place_across_moments(f, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+	# rationale): put down where it can't stand, it lands at the nearest spot
+	# where it can, and a red (heavy), non-rail piece also has to clear every
+	# OTHER Moment's layout, not just the one previewed in 3D right now.
+	var ok := false
+	if _apt_floor:
+		var land := _apt_floor.landing_spot(f, snap_pos, true)
+		ok = land != Vector2.INF
+		if ok:
+			snap_pos = land
 	# Whatever stands on it comes along (Floor.move_with_riders); if any of it
 	# can't land, nothing moves.
 	var riders: Array = _apt_floor.riders_of(f) if ok else []

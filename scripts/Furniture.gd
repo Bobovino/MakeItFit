@@ -2020,15 +2020,19 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 		return
 	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(snapped_x, snapped_y)) if _wall_ref else Vector2(snapped_x, snapped_y)
 
-	# A red (heavy), non-rail piece shares ONE position across every Moment
-	# (see mobility_tier/has_own_moment_position()) — moving it is a global
-	# edit, so on top of the ordinary can_place() check it also has to stay
-	# clear of wherever any OTHER piece sits during every OTHER Moment, not
-	# just whichever one is currently on screen.
-	var ok := _wall_ref != null and _wall_ref.can_place(self, snap_pos)
-	if ok and mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
-			and Furniture.all_moment_ids.size() > 1:
-		ok = _wall_ref.can_place_across_moments(self, snap_pos, Furniture.all_moment_ids, Furniture.active_moment_id)
+	# Put down where it can't stand, it lands at the nearest spot where it
+	# can (Floor.landing_spot). A red (heavy), non-rail piece shares ONE
+	# position across every Moment (see mobility_tier/has_own_moment_position())
+	# — moving it is a global edit, so it also has to stay clear of wherever
+	# any OTHER piece sits during every OTHER Moment.
+	var ok := false
+	var nudged := false
+	if _wall_ref:
+		var land := _wall_ref.landing_spot(self, snap_pos, true)
+		ok = land != Vector2.INF
+		if ok:
+			nudged = land != snap_pos
+			snap_pos = land
 
 	# Whatever stands on it comes along; if any of that can't land, nothing moves.
 	if ok and not _wall_ref.move_with_riders(self, snap_pos):
@@ -2038,6 +2042,8 @@ func _end_drag(_mouse_pos: Vector2) -> void:
 		if said == "" and mobility_tier == "red" and rail_axis == "" and Furniture.test_mode_active \
 				and Furniture.all_moment_ids.size() > 1:
 			said = tr("Moved for every moment")
+		if said == "" and nudged:
+			said = tr("Moved to where it fits")
 		if said != "":
 			_notice_reason = said
 			_notice_flash_t = NOTICE_FLASH_DURATION
@@ -2086,7 +2092,9 @@ func confirm_placement(screen_pos: Vector2 = Vector2.INF) -> bool:
 			Vector2(sx + grid_w * 0.5, sy + grid_h * 0.5)):
 		return true
 	var snap_pos := _wall_ref.snap_to_wall(self, Vector2(sx, sy)) if _wall_ref else Vector2(sx, sy)
-	if not (_wall_ref and _wall_ref.can_place(self, snap_pos)):
+	if _wall_ref:
+		snap_pos = _wall_ref.landing_spot(self, snap_pos)
+	if not _wall_ref or snap_pos == Vector2.INF:
 		_play("error")
 		if _wall_ref:
 			_error_reason = _wall_ref.get_block_reason()

@@ -1277,6 +1277,43 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 	return at
 
 
+const LANDING_SLACK := 4   # tiles, past half the piece's own size, landing_spot() looks around
+
+# Where a piece put down at `at` (already snap_to_wall()ed) actually lands:
+# `at` itself if it can stand there, otherwise the nearest spot around it
+# where it can — half through a wall, over another piece, its back off the
+# wall: it lands next to that instead of jumping back. Vector2.INF when
+# nothing near enough fits; get_block_reason() then says why `at` didn't.
+# `across_moments`: the piece is being moved, and a red non-rail one (one
+# place for every moment) also has to clear every other moment's layout.
+func landing_spot(furniture: Furniture, at: Vector2, across_moments := false) -> Vector2:
+	var fits := func(p: Vector2) -> bool:
+		if not can_place(furniture, p):
+			return false
+		if across_moments and furniture.mobility_tier == "red" and furniture.rail_axis == "" \
+				and Furniture.test_mode_active and Furniture.all_moment_ids.size() > 1:
+			return can_place_across_moments(furniture, p, Furniture.all_moment_ids, Furniture.active_moment_id)
+		return true
+	if fits.call(at):
+		return at
+	var why := _block_reason
+	var reach := ceili(maxf(furniture.grid_w, furniture.grid_h) * 0.5) + LANDING_SLACK
+	var offsets: Array[Vector2i] = []
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			if dx != 0 or dy != 0:
+				offsets.append(Vector2i(dx, dy))
+	offsets.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.length_squared() < b.length_squared())
+	for o in offsets:
+		var spot := at + Vector2(o)
+		if fits.call(spot):
+			# Close to a wall: flush against it, as any drop there would be.
+			var flush := snap_to_wall(furniture, spot)
+			return flush if flush != spot and fits.call(flush) else spot
+	_block_reason = why
+	return Vector2.INF
+
+
 # The spot against a wall closest to `at` where `furniture` can go: each of
 # the four walls is tried, nearest first, sliding along it from `at` if the
 # spot right opposite is taken. `at` itself when none has room.

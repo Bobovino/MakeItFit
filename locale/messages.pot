@@ -265,12 +265,16 @@ msgid "▼ CLICK TO UNFOLD"
 msgstr ""
 
 #: scripts/Furniture.gd:1565
-#: scripts/Furniture.gd:2040
+#: scripts/Furniture.gd:2044
 msgid "Moved for every moment"
 msgstr ""
 
 #: scripts/Furniture.gd:1566
 msgid "Moved for %s only"
+msgstr ""
+
+#: scripts/Furniture.gd:2046
+msgid "Moved to where it fits"
 msgstr ""
 
 #: scripts/GameManager.gd:521
@@ -1316,7 +1320,7 @@ msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr ""
 
 #: scripts/Room3DView.gd:1715
-#: scripts/Wall.gd:1318
+#: scripts/Wall.gd:1355
 msgid "Outside the room"
 msgstr ""
 
@@ -1324,58 +1328,58 @@ msgstr ""
 msgid "Can't place here"
 msgstr ""
 
-#: scripts/Room3DView.gd:1841
+#: scripts/Room3DView.gd:1844
 msgid " %s is a keepsake: it can be moved, not sold"
 msgstr ""
 
-#: scripts/Room3DView.gd:1844
+#: scripts/Room3DView.gd:1847
 msgid "Removing %s means repaying its %d€ rent"
 msgstr ""
 
-#: scripts/Room3DView.gd:2162
+#: scripts/Room3DView.gd:2165
 msgid "Too close to a window or door"
 msgstr ""
 
-#: scripts/Room3DView.gd:2167
+#: scripts/Room3DView.gd:2170
 #: scripts/RuleOverlay.gd:136
-#: scripts/Wall.gd:1433
+#: scripts/Wall.gd:1470
 msgid "Ceiling too low here"
 msgstr ""
 
-#: scripts/Room3DView.gd:2170
+#: scripts/Room3DView.gd:2173
 msgid "Blocked by furniture on the floor"
 msgstr ""
 
-#: scripts/Room3DView.gd:2174
+#: scripts/Room3DView.gd:2177
 msgid "Doesn't fit on this wall"
 msgstr ""
 
-#: scripts/Room3DView.gd:2192
-#: scripts/Wall.gd:1413
+#: scripts/Room3DView.gd:2195
+#: scripts/Wall.gd:1450
 msgid "Overlaps %s"
 msgstr ""
 
-#: scripts/Room3DView.gd:2192
+#: scripts/Room3DView.gd:2195
 msgid "another item"
 msgstr ""
 
-#: scripts/Room3DView.gd:4577
+#: scripts/Room3DView.gd:4582
 msgid "Double-click to step inside"
 msgstr ""
 
-#: scripts/Room3DView.gd:5093
+#: scripts/Room3DView.gd:5098
 msgid "Ceiling / Ducts"
 msgstr ""
 
-#: scripts/Room3DView.gd:5094
+#: scripts/Room3DView.gd:5099
 msgid "Building Subfloor"
 msgstr ""
 
-#: scripts/Room3DView.gd:5095
+#: scripts/Room3DView.gd:5100
 msgid "Floor Subfloor / Pipes"
 msgstr ""
 
-#: scripts/Room3DView.gd:5096
+#: scripts/Room3DView.gd:5101
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1384,11 +1388,11 @@ msgstr ""
 msgid "Roof"
 msgstr ""
 
-#: scripts/Room3DView.gd:5099
+#: scripts/Room3DView.gd:5104
 msgid "(view in 2D for detail)"
 msgstr ""
 
-#: scripts/Room3DView.gd:6522
+#: scripts/Room3DView.gd:6527
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr ""
 
@@ -1582,64 +1586,64 @@ msgstr ""
 msgid "needs %s flooring"
 msgstr ""
 
-#: scripts/Wall.gd:1312
+#: scripts/Wall.gd:1349
 msgid "Longer than the loop: it runs into itself"
 msgstr ""
 
-#: scripts/Wall.gd:1325
+#: scripts/Wall.gd:1362
 msgid "Needs %s flooring"
 msgstr ""
 
-#: scripts/Wall.gd:1328
+#: scripts/Wall.gd:1365
 msgid "Blocked by a wall"
 msgstr ""
 
-#: scripts/Wall.gd:1333
+#: scripts/Wall.gd:1370
 msgid "Its back has to be against a wall"
 msgstr ""
 
-#: scripts/Wall.gd:1356
+#: scripts/Wall.gd:1393
 msgid "Too tall to go under the loft"
 msgstr ""
 
-#: scripts/Wall.gd:1361
+#: scripts/Wall.gd:1398
 msgid "Too heavy for this loft (%.0f / %.0f)"
 msgstr ""
 
-#: scripts/Wall.gd:1369
+#: scripts/Wall.gd:1406
 msgid "Too heavy: what this box stands on would break (%s)"
 msgstr ""
 
-#: scripts/Wall.gd:1374
+#: scripts/Wall.gd:1411
 msgid "Needs a table or shelf underneath"
 msgstr ""
 
-#: scripts/Wall.gd:1379
+#: scripts/Wall.gd:1416
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr ""
 
-#: scripts/Wall.gd:1421
+#: scripts/Wall.gd:1458
 msgid "Keep the steps clear"
 msgstr ""
 
-#: scripts/Wall.gd:1424
+#: scripts/Wall.gd:1461
 msgid "Can't stand across a step"
 msgstr ""
 
-#: scripts/Wall.gd:1454
+#: scripts/Wall.gd:1491
 msgid "Needs clearance around %s"
 msgstr ""
 
-#: scripts/Wall.gd:1463
+#: scripts/Wall.gd:1500
 msgid "In the way of the door"
 msgstr ""
 
-#: scripts/Wall.gd:1538
-#: scripts/Wall.gd:1586
+#: scripts/Wall.gd:1575
+#: scripts/Wall.gd:1623
 msgid "Would overlap %s during \"%s\""
 msgstr ""
 
-#: scripts/Wall.gd:1541
+#: scripts/Wall.gd:1578
 msgid "Needs clearance around %s during \"%s\""
 msgstr ""
 

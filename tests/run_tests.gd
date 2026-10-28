@@ -30,6 +30,7 @@ func _ready() -> void:
 	await _t_outside_walls()
 	await _t_unreachable_shown()
 	await _t_moved_from_home()
+	await _t_landing_spot()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1362,6 +1363,51 @@ func _t_moved_from_home() -> void:
 	var ro = fl._rule_overlay
 	_ok(is_equal_approx(main.gm.comfort_pct, 100.0) and (ro == null or (ro as RuleOverlay).home_marks.is_empty()),
 		"comfort %s" % main.gm.comfort_pct)
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+
+
+# ── Put down where it can't stand, a piece lands next to it ──────────────
+# Debug: Furniture Stacking. A piece put down half through the west wall
+# lands inside, close by; put down right on top of another piece, it lands
+# beside that one, close by. Where it fits, it stays put.
+func _t_landing_spot() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_landing_save.json"
+	GameState.pending_level_id = "debug:_stacking"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	var pieces: Array = fl.get_all_furniture().filter(func(f): return not (f as Furniture).is_surface \
+		and not (f as Furniture).requires_surface and not (f as Furniture).wall_flush_required)
+	var piece: Furniture = pieces[0]
+	var other: Furniture = null
+	for f in fl.get_all_furniture():
+		if f != piece and other == null:
+			other = f
+	var bounds := fl.get_room_bounds()
+	_current = "landing: where it fits, it stays put"
+	_ok(fl.landing_spot(piece, piece.grid_pos) == piece.grid_pos)
+	var through := Vector2(bounds.position.x - piece.grid_w * 0.5, piece.grid_pos.y).round()
+	var t0 := Time.get_ticks_usec()
+	var land := fl.landing_spot(piece, through)
+	var took := (Time.get_ticks_usec() - t0) / 1000.0
+	_current = "landing: half through the west wall, it lands inside, close by"
+	_ok(land != Vector2.INF and fl.can_place(piece, land) and land.x >= bounds.position.x + 1.0
+		and land.distance_to(through) <= piece.grid_w * 0.5 + Floor.LANDING_SLACK, "landed %s from %s (%.1f ms)" % [land, through, took])
+	_current = "landing: on top of another piece, it lands beside it"
+	land = fl.landing_spot(piece, other.grid_pos)
+	_ok(land != Vector2.INF and fl.can_place(piece, land) and land.distance_to(other.grid_pos) <= maxf(piece.grid_w, piece.grid_h) + 4.0,
+		"landed %s from %s" % [land, other.grid_pos])
+	_current = "landing: nothing near fits, so it says why"
+	var far := Vector2(bounds.position.x - 100, bounds.position.y - 100)
+	_ok(fl.landing_spot(piece, far) == Vector2.INF and fl.get_block_reason() != "", fl.get_block_reason())
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
