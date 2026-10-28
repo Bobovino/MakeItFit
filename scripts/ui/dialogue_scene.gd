@@ -7,11 +7,15 @@ class_name DialogueScene
 # skips the rest. It doesn't cover the flat or stop the game.
 #
 # lines: [{who, text}], `who` a resident id, or "you" for the player.
-# speakers: {id: {name, color}} (Main builds it from the household).
+# speakers: {id: {name, color, body, feminine}} (Main builds it from the
+# household). Whoever has a Mii (a body other than "animal") is shown beside
+# their line, the same Mii as in the flat, nodding as they say it.
 
 signal finished
 
 const CARD_W := 620.0
+const FACE_PX := 92
+const MiiPortraitScript := preload("res://scripts/ui/mii_portrait.gd")
 
 var _lines: Array = []
 var _speakers: Dictionary = {}
@@ -20,6 +24,10 @@ var _card: PanelContainer
 var _who: Label
 var _text: Label
 var _header: Label
+var _face_frame: PanelContainer
+var _face: TextureRect
+var _portrait = null   # MiiPortrait, made for the first speaker who has a Mii
+var _face_who := ""
 
 
 static func play(host: Node, lines: Array, speakers: Dictionary, title := "") -> DialogueScene:
@@ -59,9 +67,25 @@ func _build(title: String) -> void:
 	_card.offset_bottom = -110.0
 	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	_card.add_child(row)
+	_face_frame = PanelContainer.new()
+	_face_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_face_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_face_frame)
+	_face = TextureRect.new()
+	_face.custom_minimum_size = Vector2(FACE_PX, FACE_PX)
+	_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # rendered at twice the size, for sharpness
+	_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_face.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_face_frame.add_child(_face)
+	_face_frame.visible = false
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
-	_card.add_child(vb)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(vb)
 	_header = Label.new()
 	_header.text = title.to_upper()
 	_header.visible = title != ""
@@ -97,11 +121,34 @@ func _next() -> void:
 	_who.text = sp.get("name", tr("You") if who == "you" else who.capitalize()) as String
 	_who.add_theme_color_override("font_color", sp.get("color", GameTheme.NAVY) as Color)
 	_text.text = tr(line.get("text", "") as String)
+	_show_face(who, sp)
 	Audio.play("click")
 	if not GameState.reduce_motion:
 		_card.pivot_offset = _card.size * 0.5
 		_card.scale = Vector2(0.97, 0.97)
 		create_tween().tween_property(_card, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# The speaker's Mii beside the line, turned towards it, framed in their
+# colour; none for the player or an animal.
+func _show_face(who: String, sp: Dictionary) -> void:
+	var body := sp.get("body", "") as String
+	_face_frame.visible = body != "" and body != "animal"
+	if not _face_frame.visible:
+		return
+	var frame := GameTheme.card_style(Color(1, 1, 1, 0.6), 10, 2, Vector2.ZERO)
+	frame.border_color = sp.get("color", GameTheme.NAVY) as Color
+	_face_frame.add_theme_stylebox_override("panel", frame)
+	if _portrait == null:
+		_portrait = MiiPortraitScript.create(FACE_PX * 2, "head")
+		add_child(_portrait)
+		_face.texture = _portrait.texture()
+	if who != _face_who:
+		_face_who = who
+		_portrait.show_body(body, sp.get("feminine", false) as bool)
+		_portrait.pose(1.0, 28.0)
+	if not GameState.reduce_motion:
+		_portrait.nod()
 
 
 func _end() -> void:

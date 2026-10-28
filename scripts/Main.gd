@@ -4806,7 +4806,8 @@ func _scene_speakers() -> Dictionary:
 			var col: Color = GameTheme.NAVY
 			if tenant_layer and tenant_layer._tokens.has(res.id) and is_instance_valid(tenant_layer._tokens[res.id]):
 				col = (tenant_layer._tokens[res.id] as Node).get("color")
-			out[String(res.id)] = {"name": tr(res.display_name), "color": col.darkened(0.25)}
+			out[String(res.id)] = {"name": tr(res.display_name), "color": col.darkened(0.25),
+				"body": res.body, "feminine": res.is_feminine()}
 	return out
 
 

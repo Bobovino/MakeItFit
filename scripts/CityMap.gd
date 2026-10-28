@@ -1,7 +1,7 @@
 extends Control
 class_name CityMap
 
-const TenantMiiScript := preload("res://scripts/TenantMii.gd")
+const MiiPortraitScript := preload("res://scripts/ui/mii_portrait.gd")
 
 # ── Layout constants ────────────────────────────────────────────────────────
 const MAP_W    := 860
@@ -80,8 +80,7 @@ var _info_title:    Label
 var _info_district: Label
 var _blueprint_preview   # untyped: BlueprintPreview.gd isn't referenced by class name (avoids relying on the global script class cache), so calls to its set_data() go through dynamic dispatch
 var _tenant_portrait:   TextureRect
-var _portrait_viewport: SubViewport = null
-var _portrait_mii:      Node3D     = null   # a real TenantMii, recolored per-tenant — same face the 3D win showcase uses
+var _portrait = null   # MiiPortrait: the tenant's real Mii, as in the flat
 var _info_tenant:   Label
 var _info_reqs:     Label
 var _info_budget:   Label
@@ -728,115 +727,27 @@ func _make_info_label(parent: VBoxContainer, font_size: int, col: Color, autowra
 	return lbl
 
 
-# Offscreen render of a real TenantMii — same model, same outline shader,
-# same happy face as the post-win 3D showcase — framed to show the whole
-# body rather than a tight headshot crop. Built once; _update_portrait()
-# just recolors and re-frames the existing Mii instead of rebuilding
-# per-selection.
+# Offscreen render of a real TenantMii (MiiPortrait): same model, outline and
+# face as the tenants in the flat, framed thighs up. Built once;
+# _update_portrait() re-dresses and turns it for each tenant.
 func _setup_portrait_viewport() -> void:
-	_portrait_viewport = SubViewport.new()
-	_portrait_viewport.size = Vector2i(128, 128)
-	_portrait_viewport.msaa_3d = Viewport.MSAA_4X   # the Mii's outline and edges stay smooth this small
-	_portrait_viewport.transparent_bg = true
-	_portrait_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(_portrait_viewport)
-
-	# Model's full-body world AABB measures ~1.72m tall (real-world scale
-	# now, not the old ~0.975m stylised mii), feet at y=0 — this was still
-	# calibrated for the shorter model until an actual playthrough showed the
-	# portrait cropped off at the shoulders. Pulled back to keep the same
-	# ~1.16x headroom ratio the old framing used, aimed at mid-height rather
-	# than the old fixed 0.49m (which sat at shin height on this taller rig).
-	#
-	# Posed like the family in Young Sheldon's titles: seen from low down,
-	# turned three-quarters and looking up at the sky (_update_portrait picks
-	# the side and raises the head).
-	var cam := Camera3D.new()
-	cam.fov = 35.0
-	cam.look_at_from_position(Vector3(0, 0.75, 2.3), Vector3(0, 1.22, 0), Vector3.UP)   # thighs up: the face reads at portrait size
-	# Not the ink's facing-pass layer: there the Mii's outline paints it solid
-	# black (ink_mask), and the portrait came out as a black silhouette.
-	cam.cull_mask &= ~InkNormalPass.PASS_FLAG
-	_portrait_viewport.add_child(cam)
-
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-45, 35, 0)
-	light.light_energy = 1.2
-	_portrait_viewport.add_child(light)
-	_portrait_light = light
-
-	var env_node := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0, 0, 0, 0)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(1, 1, 1)
-	env.ambient_light_energy = 1.0
-	env_node.environment = env
-	_portrait_viewport.add_child(env_node)
-
-	_portrait_mii = TenantMiiScript.new()
-	_portrait_viewport.add_child(_portrait_mii)
-	_portrait_mii.set_animating(false)   # static portrait — no idle bounce/animation needed here
-
-	# A soft contact shadow right under the feet — with transparent_bg and no
-	# floor mesh, the full-body framing above left the figure looking like it
-	# was floating in empty space rather than standing on anything.
-	var shadow := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.42, 0.42)
-	shadow.mesh = quad
-	var shadow_mat := StandardMaterial3D.new()
-	shadow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	shadow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	shadow_mat.albedo_texture = _make_shadow_blob_texture()
-	shadow.material_override = shadow_mat
-	shadow.rotation.x = deg_to_rad(-90.0)
-	shadow.position = Vector3(0, 0.01, 0)
-	_portrait_viewport.add_child(shadow)
-
-	_tenant_portrait.texture = _portrait_viewport.get_texture()
-
-
-# A soft radial dark blob fading to transparent at the edges, for the
-# portrait's ground-contact shadow — plain alpha falloff from center to rim.
-func _make_shadow_blob_texture() -> ImageTexture:
-	var size := 64
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var center := Vector2(size / 2.0, size / 2.0)
-	var radius := size / 2.0
-	for x in range(size):
-		for y in range(size):
-			var d := Vector2(x, y).distance_to(center) / radius
-			var a := clampf(1.0 - d, 0.0, 1.0) * 0.45
-			img.set_pixel(x, y, Color(0, 0, 0, a))
-	return ImageTexture.create_from_image(img)
+	_portrait = MiiPortraitScript.create(128, "fax")
+	add_child(_portrait)
+	_tenant_portrait.texture = _portrait.texture()
 
 
 # tenant_name is the English one (levels.json's "key_name"), so a tenant
 # keeps the same colour in every language.
 const PORTRAIT_TURN := 25.0       # degrees the tenant is turned away from the camera
 const PORTRAIT_LOOK_UP := 15.0    # degrees the head is raised, eyes on the sky
-var _portrait_light: DirectionalLight3D = null
 
 func _update_portrait(tenant_name: String) -> void:
-	if not is_instance_valid(_portrait_mii):
+	if not is_instance_valid(_portrait):
 		return
 	var hue := float(tenant_name.hash() % 360) / 360.0
-	_portrait_mii.set_tint(Color.from_hsv(hue, 0.55, 0.85))
+	_portrait.show_tint(Color.from_hsv(hue, 0.55, 0.85))
 	# Each tenant looks to one side or the other, by name, always the same.
-	# The light comes from the side they look away from: lit from the side
-	# they turn to, the face washed out to white.
-	var side := 1.0 if tenant_name.hash() % 2 == 0 else -1.0
-	_portrait_mii.rotation_degrees.y = PORTRAIT_TURN * side
-	if is_instance_valid(_portrait_light):
-		_portrait_light.rotation_degrees.y = -35.0 * side
-	for sk in _portrait_mii.find_children("*", "Skeleton3D", true, false):
-		var head := (sk as Skeleton3D).find_bone("head")
-		if head >= 0:
-			var rest := (sk as Skeleton3D).get_bone_rest(head).basis.get_rotation_quaternion()
-			(sk as Skeleton3D).set_bone_pose_rotation(head, rest * Quaternion(Vector3.LEFT, deg_to_rad(PORTRAIT_LOOK_UP)))
+	_portrait.pose(1.0 if tenant_name.hash() % 2 == 0 else -1.0, PORTRAIT_TURN, PORTRAIT_LOOK_UP)
 
 
 # ── Archivador tabs ──────────────────────────────────────────────────────────

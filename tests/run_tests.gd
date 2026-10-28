@@ -34,6 +34,7 @@ func _ready() -> void:
 	await _t_landing_3d()
 	_t_translations_load()
 	await _t_first_person_doorway()
+	await _t_dialogue_portrait()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1456,6 +1457,27 @@ func _t_first_person_doorway() -> void:
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path
+
+
+# A dialogue shows the speaker's own Mii beside the line (the body they have
+# in the flat); the player, who has none, gets no portrait.
+func _t_dialogue_portrait() -> void:
+	var lines := [{"who": "ana", "text": "Hello."}, {"who": "you", "text": "Hi."}, {"who": "bo", "text": "Hey."}]
+	var speakers := {"ana": {"name": "Ana", "color": Color.RED, "body": "adult", "feminine": true},
+		"bo": {"name": "Bo", "color": Color.BLUE, "body": "child", "feminine": false},
+		"you": {"name": "You", "color": Color.BLACK}}
+	var d := DialogueScene.play(self, lines, speakers)
+	await get_tree().process_frame
+	_current = "dialogue: a resident speaking is shown beside the line"
+	_ok(d._face_frame.visible and d._portrait != null and d._face.texture != null)
+	d._next()
+	_current = "dialogue: the player has no portrait"
+	_ok(not d._face_frame.visible)
+	d._next()
+	_current = "dialogue: the next resident's own body is shown"
+	_ok(d._face_frame.visible and d._face_who == "bo" and d._portrait._skeleton() != null)
+	d._end()
+	await get_tree().process_frame
 
 
 # Every translation loads in Godot itself: a malformed entry (a msgstr cut
