@@ -83,3 +83,32 @@ Also deferred, for the same "not a single footprint prop" reason:
 - `godot_glb/architecture/` (`FoldOutBalconyWindow`, `RoofBalconyWindow`) — upgrades to the
   existing `balcony_window` mechanic; needs a decision on whether it replaces or supplements the
   current balcony item.
+
+## Special moves: crawl, climb, squeeze, tried by the player in first person
+
+Idea, not built. Reaching things in a small flat sometimes takes moves the walking check doesn't
+know: crawling under a loft, climbing over the bed to the window, squeezing sideways past a
+wardrobe. Rather than simulating those, let the player do them.
+
+- **Ordinary moves stay automatic.** Walking (and probably sidestepping) is checked instantly as
+  now; nobody walks those routes by hand.
+- **Hard spots become a "maybe".** When the only way through needs a special move, the check
+  answers neither yes nor no: the need's chip gets a "try it" (footprint) icon and the stretch is
+  outlined on the plan. Only where it is plausible: a 10 cm gap is just blocked.
+- **The player tries it.** The chip drops them into first person (`Room3DView.enter_first_person`)
+  at the start of that stretch, with the special controls shown (crouch, crawl, climb). Through:
+  confirmed. Stuck: blocked, back to the plan to rearrange.
+- **A confirmed stretch stays confirmed** until a piece next to it moves; then it is "try it"
+  again. Moving something across the room doesn't undo it.
+- **Each move has fixed body sizes**, the same in first person and in the check (say walking
+  ~60 cm wide at full height, sidestepping ~35 cm, crouching ~1.2 m high, crawling ~70 cm high and
+  ~50 cm wide), so the player can't get through what the rules call closed, and a way through the
+  rules don't know is a gap in the rules, not proof.
+- **It costs comfort**, like a heavy piece moved by hand between moments: a route that needs
+  crawling works, but the tenant pays every day ("Crawls to bed: comfort −15%").
+- **A level can't be finished with an untried "maybe".** The level validator counts a "maybe" as
+  solvable, so levels stay checkable without playing them.
+
+First prototype: the beach house. A spot reachable only by crawling or climbing over the bed,
+crouch and crawl in the walk-through, the check marking that route "try it", the chip that drops
+you there, and the confirmation kept until something nearby moves.
