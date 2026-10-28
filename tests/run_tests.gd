@@ -1452,6 +1452,21 @@ func _t_landing_3d() -> void:
 		and is_equal_approx(mesh.position.y, view._lift_m(piece) + size.y * 0.5)
 		and is_equal_approx(mesh.position.x, (piece.grid_pos.x - view._room_bounds.position.x) * view.TILE_M + size.x * 0.5),
 		"at %s, y %.2f (should be %.2f)" % [piece.grid_pos, mesh.position.y, view._lift_m(piece) + size.y * 0.5])
+
+	# Bought with the pointer just outside the room, where the ghost is hidden
+	# ("Outside the room"): it lands inside and is seen there.
+	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+	fl.forget_furniture(stool)
+	view.start_buying(stool, main.gm.get_furniture_by_id("stool"))
+	var out_tile := Vector2(b.position.x - 1, b.position.y + b.size.y * 0.5)
+	var out_vp: Vector2 = view.cam.unproject_position(Vector3((out_tile.x - view._room_bounds.position.x) * view.TILE_M, 0.0,
+		(out_tile.y - view._room_bounds.position.y) * view.TILE_M))
+	view._update_buy_ghost(out_vp)
+	var bought_mesh: MeshInstance3D = view._buying_mesh
+	view._confirm_buy(out_vp)
+	_current = "landing 3D: bought just outside the room, it lands inside and can be seen"
+	_ok(fl.is_registered(stool) and fl.can_place(stool, stool.grid_pos) and is_instance_valid(bought_mesh) and bought_mesh.visible,
+		"registered %s at %s visible %s" % [fl.is_registered(stool), stool.grid_pos, bought_mesh.visible if is_instance_valid(bought_mesh) else false])
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:

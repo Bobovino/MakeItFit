@@ -1606,6 +1606,7 @@ func start_buying(furniture: Furniture, fdata: Dictionary) -> void:
 	if _buying_furniture:
 		_cancel_buy()
 	_hide_hover_highlight()
+	_landing_key      = []
 	_buying_furniture = furniture
 	_buying_fdata     = fdata
 	_buying_on_wall   = false
@@ -1717,8 +1718,16 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 			_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, false)
 		else:
 			_refit_item_model(_buying_mesh, canon)
-		if _apt_floor and not _apt_floor.can_place(_buying_furniture, tile):
-			var reason := _apt_floor.get_block_reason()
+		# Where it would land if clicked now (Floor.landing_spot, as
+		# _confirm_buy() does): the floor outline sits there.
+		if _apt_floor:
+			var key := [_buying_furniture, tile, _buying_furniture.rot_steps]
+			if key != _landing_key:
+				_landing_key = key
+				_landing = _apt_floor.landing_spot(_buying_furniture, _apt_floor.snap_to_wall(_buying_furniture, tile))
+				_landing_why = _apt_floor.get_block_reason() if _landing == Vector2.INF else ""
+		if _apt_floor and _landing == Vector2.INF:
+			var reason := _landing_why
 			_show_reason(reason)
 			# The ground-hit raycast isn't clipped to the room's own footprint,
 			# so pointing anywhere past the walls (open ground/sky) computes a
@@ -1736,8 +1745,12 @@ func _update_buy_ghost(vp_pos: Vector2) -> void:
 				_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
 		else:
 			_hide_reason()
+			var lands := _landing if _apt_floor else tile
+			_buying_mesh.visible = true   # near enough to land, even if held just outside
 			_show_drag_highlight(Vector2(box.size.x, box.size.z))
-			_update_drag_highlight_pos(_buying_mesh.position.x, _buying_mesh.position.z, Vector2(box.size.x, box.size.z))
+			_update_drag_highlight_pos((lands.x - _room_bounds.position.x) * TILE_M + box.size.x * 0.5,
+				(lands.y - _room_bounds.position.y) * TILE_M + box.size.z * 0.5, Vector2(box.size.x, box.size.z))
+			buy_lift = _lift_m(_buying_furniture, lands) if _apt_floor else 0.0
 		if is_instance_valid(_drag_highlight):
 			_drag_highlight.position.y = buy_lift
 
@@ -1799,6 +1812,9 @@ func _confirm_buy(vp_pos: Vector2) -> void:
 	_buying_mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 	_buying_mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5
 	_buying_mesh.position.y = _lift_m(f) + item_size.y * 0.5
+	# Clicked just outside the room, where the ghost is hidden: it landed
+	# inside, so it shows again.
+	_buying_mesh.visible = true
 	if _buying_fdata.get("animated_fold", false):
 		_apply_animated_item_model(_buying_mesh, _buying_fdata.get("model", "") as String, f.is_extended, f, true)
 	else:
