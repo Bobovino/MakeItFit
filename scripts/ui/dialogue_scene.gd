@@ -28,12 +28,14 @@ var _face_frame: PanelContainer
 var _face: TextureRect
 var _portrait = null   # MiiPortrait, made for the first speaker who has a Mii
 var _face_who := ""
+var _plan_bottom := Callable()   # -> float: where the plan ends on screen, above the needs bar or the shop
 
 
-static func play(host: Node, lines: Array, speakers: Dictionary, title := "") -> DialogueScene:
+static func play(host: Node, lines: Array, speakers: Dictionary, title := "", plan_bottom := Callable()) -> DialogueScene:
 	var d := DialogueScene.new()
 	d._lines = lines
 	d._speakers = speakers
+	d._plan_bottom = plan_bottom
 	host.add_child(d)
 	d._build(title)
 	d._next()
@@ -57,7 +59,8 @@ func _build(title: String) -> void:
 				and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 			_next())
 	anchor.add_child(_card)
-	# Above the needs bar, centred.
+	# Centred, just above the needs bar, or above the shop while it is open
+	# (_process keeps it there).
 	_card.anchor_left = 0.5
 	_card.anchor_right = 0.5
 	_card.anchor_top = 1.0
@@ -149,6 +152,11 @@ func _show_face(who: String, sp: Dictionary) -> void:
 		_portrait.pose(1.0, 28.0)
 	if not GameState.reduce_motion:
 		_portrait.nod()
+
+
+func _process(_delta: float) -> void:
+	if _plan_bottom.is_valid():
+		_card.offset_bottom = (_plan_bottom.call() as float) - get_viewport().get_visible_rect().size.y - 14.0
 
 
 func _end() -> void:

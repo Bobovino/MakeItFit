@@ -1177,51 +1177,93 @@ func _render_owned_section() -> void:
 			any = true
 			_add_heading("\ueb68", tr("Owned"))
 		for _i in range(count):
-			var card := PanelContainer.new()
-			card.custom_minimum_size = Vector2(116, 132)
-			card.add_theme_stylebox_override("panel",
-				GameTheme.make_card_stylebox(Color(0.12, 0.24, 0.22), Color(0.36, 0.72, 0.56), 8))
-			var vb := VBoxContainer.new()
-			vb.add_theme_constant_override("separation", 3)
-			card.add_child(vb)
-			var icon_row := CenterContainer.new()
-			var holder := Control.new()
-			holder.custom_minimum_size = Vector2(46, 46)
-			holder.add_child(_make_item_icon(fdata, 46.0))
-			icon_row.add_child(holder)
-			vb.add_child(icon_row)
-			var cached := Thumb.get_cached(fid)
-			if cached:
-				for c in holder.get_children():
-					c.queue_free()
-				var tr := TextureRect.new()
-				tr.texture = cached
-				tr.custom_minimum_size = Vector2(46, 46)
-				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				holder.add_child(tr)
-			var name_lbl := Label.new()
-			name_lbl.text = fdata["name"] as String
-			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			name_lbl.clip_text = true
-			name_lbl.add_theme_font_size_override("font_size", 11)
-			name_lbl.add_theme_color_override("font_color", GameTheme.C_TEXT)
-			vb.add_child(name_lbl)
-			var place_btn := Button.new()
-			place_btn.text = tr("Place (free)")
-			place_btn.add_theme_font_size_override("font_size", 11)
-			place_btn.pressed.connect(func(): place_owned_requested.emit(fid))
-			vb.add_child(place_btn)
-			var sell_price := fdata.get("sell_price", fdata.get("buy_price", 0)) as int
-			var sell_btn := Button.new()
-			sell_btn.text = tr("Sell %d€") % sell_price
-			sell_btn.add_theme_font_size_override("font_size", 10)
-			sell_btn.add_theme_color_override("font_color", Color(0.86, 0.62, 0.38))
-			sell_btn.pressed.connect(func():
-				if _gm and _gm.sell_starting_item(fid):
-					_render())
-			vb.add_child(sell_btn)
-			_row.add_child(card)
+			_row.add_child(_owned_card(fid, fdata))
+
+
+# A piece already owned, drawn like the shop's own cards (ItemCell): its
+# picture and name, a green edge, and "Place (free)" where the price
+# goes. Clicking it puts it down, as buying does; Sell is a small link under.
+func _owned_card(fid: String, fdata: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(124, 140)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := GameTheme.card_style(GameTheme.CARD, 10, 6, Vector2(3, 4))
+	style.border_color = GameTheme.OK
+	style.set_border_width_all(3)
+	card.add_theme_stylebox_override("panel", style)
+	card.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and (e as InputEventMouseButton).pressed \
+				and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			place_owned_requested.emit(fid))
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(vb)
+
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(54, 54)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(_make_item_icon(fdata, 54.0))
+	var icon_row := CenterContainer.new()
+	icon_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_row.add_child(holder)
+	vb.add_child(icon_row)
+	_owned_thumb(holder, fdata)
+
+	var name_lbl := Label.new()
+	name_lbl.text = fdata.get("name", "?") as String
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.max_lines_visible = 2
+	name_lbl.custom_minimum_size = Vector2(112, 34)
+	name_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	name_lbl.add_theme_color_override("font_color", GameTheme.INK)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(name_lbl)
+
+	var place_lbl := Label.new()
+	place_lbl.text = tr("Place (free)")
+	place_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	place_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # "Platzieren (gratis)" is wider than a card
+	place_lbl.custom_minimum_size.x = 112
+	place_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	place_lbl.add_theme_color_override("font_color", GameTheme.OK)
+	place_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(place_lbl)
+
+	var sell_btn := Button.new()
+	sell_btn.flat = true
+	sell_btn.text = tr("Sell %d€") % (fdata.get("sell_price", fdata.get("buy_price", 0)) as int)
+	sell_btn.focus_mode = Control.FOCUS_NONE
+	sell_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	sell_btn.add_theme_font_size_override("font_size", 12)
+	for st in ["font_color", "font_hover_color", "font_pressed_color"]:
+		sell_btn.add_theme_color_override(st, GameTheme.INK_SOFT)
+	sell_btn.pressed.connect(func():
+		if _gm and _gm.sell_starting_item(fid):
+			_render())
+	vb.add_child(sell_btn)
+	return card
+
+
+# Its picture, as the shop's cards get theirs: now if it is ready, else when
+# it is.
+func _owned_thumb(holder: Control, fdata: Dictionary) -> void:
+	var tex: Texture2D = Thumb.get_cached(fdata.get("id", "") as String)
+	if tex == null:
+		tex = await Thumb.get_icon_async(fdata)
+	if tex == null or not is_instance_valid(holder):
+		return
+	for c in holder.get_children():
+		c.queue_free()
+	var trect := TextureRect.new()
+	trect.texture = tex
+	trect.custom_minimum_size = Vector2(54, 54)
+	trect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(trect)
 
 
 func _fmt_funcs(funcs: Array) -> String:

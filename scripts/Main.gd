@@ -4793,7 +4793,7 @@ func _play_phase_scene(i: int) -> void:
 		return
 	var title := tr(ph.get("title", "") as String)
 	var header := (tr("Phase %d of %d") % [i + 1, gm.phases().size()]) + ("  ·  " + title if title != "" else "")
-	DialogueScene.play(self, lines, _scene_speakers(), header)
+	DialogueScene.play(self, lines, _scene_speakers(), header, _floor_pane_bottom_y)
 
 
 # Who can speak in a scene: the household, by resident id, each in the
