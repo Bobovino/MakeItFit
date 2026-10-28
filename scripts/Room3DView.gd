@@ -3673,7 +3673,8 @@ func _update_wall_fade(delta: float) -> void:
 		# balcony hole rebuilds it, hence the validity check.)
 		for part in wd.get("decor", []):
 			if is_instance_valid(part):
-				(part as Node3D).visible = h > 0.6
+				(part as Node3D).visible = h > 0.6 \
+					and not (first_person and (part as Node3D).get_meta("interior_doorway", false))
 		# ...and mark where its openings are on the stub's cut face instead.
 		for mark in mesh.get_meta("stub_marks", []):
 			if is_instance_valid(mark):
@@ -5185,20 +5186,51 @@ func _add_balcony_extras(bounds: Rect2i) -> void:
 # A wall as a prism whose top follows `prof` ([Vector2(x, height)] from x=0
 # to x=length, metres) and whose bottom is at `base` (below 0 where the floor
 # has a sunken area). Two points of equal height make a plain box.
+# The wall's mesh with its doorway cut through (null without a door): what
+# _fp_dress_room() puts up while walking round, so an open door shows the
+# room behind it. Not in the orbit view: there a wall near the camera is
+# squashed to a stub, which would leave the lintel hanging over the gap.
+func _doorway_mesh(seg: Dictionary, length: float, h0: float, h1: float, prof: PackedVector2Array) -> ArrayMesh:
+	if not seg.get("has_door", false):
+		return null
+	var x0 := (seg.get("door_pos", 0) as float) * TILE_M
+	var x1 := x0 + DOOR_LEN_TILES * TILE_M
+	var head := minf(DOOR_H_M, _profile_min_over(prof, x0, x1, h0) - 0.06)   # as the door's frame
+	return _wedge_mesh(length, WALL_THICK, h0, h1, prof, _floor_base_m, [Vector3(x0, x1, head)])
+
+
+# `gaps`: doorways cut through it, each Vector3(from, to, head height) along
+# the wall: there it starts at the door's head instead of the floor.
 func _wedge_mesh(length: float, thick: float, h0: float, h1: float,
-		prof: PackedVector2Array = PackedVector2Array(), base: float = 0.0) -> ArrayMesh:
+		prof: PackedVector2Array = PackedVector2Array(), base: float = 0.0, gaps: Array = []) -> ArrayMesh:
 	if prof.size() < 2:
 		prof = PackedVector2Array([Vector2(0.0, h0), Vector2(length, h1)])
+	for g in gaps:
+		prof = _profile_split(_profile_split(prof, (g as Vector3).x), (g as Vector3).y)
+	var gap_head := func(x0: float, x1: float) -> float:   # -1: not in a doorway
+		for g in gaps:
+			var gv := g as Vector3
+			if (x0 + x1) * 0.5 > gv.x and (x0 + x1) * 0.5 < gv.y:
+				return gv.z
+		return -1.0
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var faces := []
+	var head_before := -1.0
 	for i in range(prof.size() - 1):
 		var x0 := prof[i].x
 		var x1 := prof[i + 1].x
-		var a0 := Vector3(x0, base, 0.0); var b0 := Vector3(x0, prof[i].y, 0.0)
-		var c0 := Vector3(x1, prof[i + 1].y, 0.0); var d0 := Vector3(x1, base, 0.0)
-		var a1 := Vector3(x0, base, thick); var b1 := Vector3(x0, prof[i].y, thick)
-		var c1 := Vector3(x1, prof[i + 1].y, thick); var d1 := Vector3(x1, base, thick)
+		var head: float = gap_head.call(x0, x1)
+		var bot := base if head < 0.0 else head
+		# A side of a doorway: the face from the floor up to its head.
+		if (head < 0.0) != (head_before < 0.0) and i > 0:
+			var hh := maxf(head, head_before)
+			faces.append([Vector3(x0, base, 0.0), Vector3(x0, hh, 0.0), Vector3(x0, hh, thick), Vector3(x0, base, thick)])
+		head_before = head
+		var a0 := Vector3(x0, bot, 0.0); var b0 := Vector3(x0, prof[i].y, 0.0)
+		var c0 := Vector3(x1, prof[i + 1].y, 0.0); var d0 := Vector3(x1, bot, 0.0)
+		var a1 := Vector3(x0, bot, thick); var b1 := Vector3(x0, prof[i].y, thick)
+		var c1 := Vector3(x1, prof[i + 1].y, thick); var d1 := Vector3(x1, bot, thick)
 		faces.append([a0, d0, d1, a1])   # bottom
 		faces.append([b0, b1, c1, c0])   # top
 		faces.append([a0, b0, c0, d0])   # front (z=0)
@@ -5343,7 +5375,10 @@ func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, low_h: float,
 	if seg.get("has_door", false) and not _doors.is_empty() and (_doors[-1] as Dictionary)["wall"] == wall:
 		var door := _doors[-1] as Dictionary
 		door["back"] = _pending_door_backs.duplicate()
-		# The doorway behind the leaf: dark, so the open door shows a way through.
+		# The doorway behind the leaf: dark, so the open door shows a way
+		# through. Walking round inside, a door between two of the flat's
+		# rooms shows the next room instead (the wall is cut there, see
+		# _fp_dress_room()), so its dark doorway goes then.
 		var x0d := (seg.get("door_pos", 0) as float) * TILE_M
 		var y1d := minf(DOOR_H_M, door_h - 0.06)
 		var hole := MeshInstance3D.new()
@@ -5357,6 +5392,7 @@ func _add_wall_openings(wall: MeshInstance3D, seg: Dictionary, low_h: float,
 		hole.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		build_root.add_child(hole)
 		hole.transform = wall.transform * Transform3D(Basis.IDENTITY, Vector3(x0d + DOOR_LEN_TILES * TILE_M * 0.5, y1d * 0.5, WALL_THICK * 0.5))
+		hole.set_meta("interior_doorway", not (seg.get("primary", false) as bool))
 		parts.append(hole)
 	_pending_door_backs.clear()
 	return parts
@@ -5580,6 +5616,7 @@ func _add_walls(_w: float, _d: float, bounds: Rect2i) -> void:
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(local_x, 0.0, pos_z), 0.0, wall_col, wall_role, lprof)
 			_wall_data.append({"mesh": mi, "normal": normal, "full_h": h1, "flat": absf(h1 - h0) < 0.005, "role": wall_role,
 				"decor": _add_wall_openings(mi, seg, h0, lprof),
+				"mesh_plain": mi.mesh, "mesh_doors": _doorway_mesh(seg, length, h0, h1, lprof),
 				"interior": y1 != by0 and y1 != by1,
 				"a": Vector3(local_x, 0.0, pos_z + WALL_THICK * 0.5),
 				"b": Vector3(local_x + length, 0.0, pos_z + WALL_THICK * 0.5)})
@@ -5608,6 +5645,7 @@ func _add_walls(_w: float, _d: float, bounds: Rect2i) -> void:
 			var mi := _add_sloped_wall(length, WALL_THICK, h0, h1, Vector3(pos_x, 0.0, local_z), -90.0, wall_col, wall_role, lprof)
 			_wall_data.append({"mesh": mi, "normal": normal, "full_h": h1, "flat": absf(h1 - h0) < 0.005, "role": wall_role,
 				"decor": _add_wall_openings(mi, seg, h0, lprof),
+				"mesh_plain": mi.mesh, "mesh_doors": _doorway_mesh(seg, length, h0, h1, lprof),
 				"interior": x1 != bx0 and x1 != bx1,
 				"a": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z),
 				"b": Vector3(pos_x - WALL_THICK * 0.5, 0.0, local_z + length)})
@@ -5947,6 +5985,20 @@ func _profile_local(prof: PackedVector2Array, offset: float, length: float) -> P
 			out.append(Vector2(p.x - offset, p.y))
 	out.append(Vector2(length, height_at.call(offset + length)))
 	return out
+
+
+# The same profile with a point at `x` (its height there), so a column ends
+# there: for the sides of a doorway (_wedge_mesh). Unchanged outside it or
+# where there already is one.
+func _profile_split(prof: PackedVector2Array, x: float) -> PackedVector2Array:
+	for i in range(1, prof.size()):
+		if absf(prof[i - 1].x - x) < 0.0001 or absf(prof[i].x - x) < 0.0001:
+			return prof
+		if x > prof[i - 1].x and x < prof[i].x:
+			var out := prof.duplicate()
+			out.insert(i, Vector2(x, lerpf(prof[i - 1].y, prof[i].y, (x - prof[i - 1].x) / (prof[i].x - prof[i - 1].x))))
+			return out
+	return prof
 
 
 # ── Stacking: pieces standing on tables and shelves ─────────────────────────
@@ -6503,6 +6555,8 @@ func exit_first_person() -> void:
 	_fp_hint = null
 	if is_instance_valid(_rule_root):
 		_rule_root.visible = true
+	for wd in _wall_data:
+		_fp_cut_doorways(wd, false)
 	if is_instance_valid(_walls_btn):
 		_walls_btn.visible = true
 	if _style != null:
@@ -6518,6 +6572,7 @@ func _fp_dress_room() -> void:
 	for wd in _wall_data:
 		if not wd.get("force_hidden", false):
 			wd["target_h"] = 1.0
+		_fp_cut_doorways(wd, true)
 	for sc in _scenery_nodes:
 		var node: Node3D = sc["node"]
 		if not is_instance_valid(node):
@@ -6534,6 +6589,19 @@ func _fp_dress_room() -> void:
 			Color(0.95, 0.94, 0.91), StyleController.ROLE_PARTITION if _style != null else &"")
 		_fp_ceiling.name = "WalkCeiling"
 		_fp_ceiling.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # RoomLighting has its own shadow-only ceiling
+
+
+# Walking round, a wall's doorway is cut through (_doorway_mesh()) and,
+# between two of the flat's rooms, its dark fill goes: an open door shows
+# the next room. `cut` false puts the plain wall and the fill back.
+func _fp_cut_doorways(wd: Dictionary, cut: bool) -> void:
+	var mi = wd.get("mesh")
+	if wd.get("mesh_doors") == null or not (is_instance_valid(mi) and mi is MeshInstance3D):
+		return
+	(mi as MeshInstance3D).mesh = wd["mesh_doors"] if cut else wd["mesh_plain"]
+	for part in wd.get("decor", []):
+		if is_instance_valid(part) and (part as Node3D).get_meta("interior_doorway", false):
+			(part as Node3D).visible = not cut and (wd.get("h", 1.0) as float) > 0.6
 
 
 # Never leave the pointer captured behind a view that went away mid-walk.

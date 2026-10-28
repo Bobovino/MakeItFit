@@ -33,6 +33,7 @@ func _ready() -> void:
 	await _t_landing_spot()
 	await _t_landing_3d()
 	_t_translations_load()
+	await _t_first_person_doorway()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1401,6 +1402,55 @@ func _t_landing_spot() -> void:
 	_current = "landing: nothing near fits, so it says why"
 	var far := Vector2(bounds.position.x - 100, bounds.position.y - 100)
 	_ok(fl.landing_spot(piece, far) == Vector2.INF and fl.get_block_reason() != "", fl.get_block_reason())
+	main.queue_free()
+	await get_tree().process_frame
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+
+
+# Walking round in first person, the wall with a door between two rooms is
+# cut at the doorway and its dark fill goes, so an open door shows the next
+# room; leaving puts the plain wall back. Overprotective has such a door.
+func _t_first_person_doorway() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_fpdoor_save.json"
+	GameState.pending_level_id = "overprotective"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	main._set_view_mode(main.ViewMode.VIEW3D)
+	for i in 5:
+		await get_tree().process_frame
+	var view = main._mode3d_view
+	var state := func() -> Array:   # [walls cut, interior doorway fills shown]
+		var cut := 0
+		var fills := 0
+		for wd in view._wall_data:
+			if wd.get("mesh_doors") != null and (wd["mesh"] as MeshInstance3D).mesh == wd["mesh_doors"]:
+				cut += 1
+			for part in wd.get("decor", []):
+				if is_instance_valid(part) and (part as Node3D).get_meta("interior_doorway", false) and (part as Node3D).visible:
+					fills += 1
+		return [cut, fills]
+	var doors := 0
+	for wd in view._wall_data:
+		if wd.get("mesh_doors") != null:
+			doors += 1
+	view.enter_first_person()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	for i in 30:
+		await get_tree().process_frame
+	var walking: Array = state.call()
+	_current = "first person: the doorways are cut and the inner one isn't filled dark"
+	_ok(doors > 0 and walking[0] == doors and walking[1] == 0, "%d doors, %s" % [doors, walking])
+	view.exit_first_person()
+	for i in 30:
+		await get_tree().process_frame
+	_current = "first person: leaving puts the plain walls back"
+	_ok((state.call() as Array)[0] == 0, str(state.call()))
 	main.queue_free()
 	await get_tree().process_frame
 	for suffix in ["", ".bak", ".tmp"]:
