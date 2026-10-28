@@ -697,6 +697,7 @@ func _show_moved_from_home() -> void:
 				continue
 			_moved_names.append(f.furniture_name)
 			var mark := {"home": f._home_grid_pos, "size": Vector2(f.grid_w, f.grid_h), "at": at,
+				"furniture": f, "id": f.furniture_id, "rot": f.rot_steps,
 				# A bare "−25%" on the plan read as nothing in particular: it says
 				# what the spot is and what the percentage is of.
 				"cost": tr("Started here") + "
@@ -4399,13 +4400,9 @@ func _on_buy_requested(furniture_id: String) -> void:
 	f.fold_toggled.connect(_refresh_functions)
 	f.fold_toggled.connect(_on_furniture_action_changed)
 	f.placed.connect(func(_n): _on_furniture_action_changed())   # repositioning-drag commits
-	# A freshly bought item has no authored starting position — its "home"
-	# for comfort-scoring purposes is simply wherever the player first sets
-	# it down, so it starts fully comfortable and only costs comfort if
-	# dragged away from there afterward.
-	f.placed.connect(func(_n):
-		if f._home_grid_pos == Vector2(-1, -1):
-			f._home_grid_pos = f.grid_pos)
+	# A piece the player buys has no starting spot: comfort is about the
+	# tenant's own furniture being moved, not about where the ajustador puts
+	# what they brought, so it can be moved freely, leaving no mark.
 	if f.has_own_moment_position():
 		f.placed.connect(func(_n): _refresh_functions())
 

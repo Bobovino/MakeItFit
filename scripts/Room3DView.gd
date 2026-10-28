@@ -408,7 +408,9 @@ func _show_carry_hints(carried: Furniture) -> void:
 
 
 # Pieces moved away from where they started (Main._show_moved_from_home()):
-# a faint outline on the floor of each one's old spot.
+# the piece itself, as a faint ghost, standing on its old spot, with what
+# the move costs lettered on the floor. (An outline on the floor said little
+# about what had been there.)
 var _home_marks: Array = []
 var _home_outlines: Array = []
 
@@ -429,12 +431,25 @@ func _build_home_outlines() -> void:
 	for m in _home_marks:
 		var mark := m as Dictionary
 		var size := (mark["size"] as Vector2) * TILE_M
-		var group := _build_outline_group(size, Color(0.98, 0.82, 0.40, 0.8), HITBOX_Y + 0.002)
 		var home := mark["home"] as Vector2
+		var group := Node3D.new()
 		group.position.x = (home.x - _room_bounds.position.x) * TILE_M
 		group.position.z = (home.y - _room_bounds.position.y) * TILE_M
 		build_root.add_child(group)
 		_home_outlines.append(group)
+		var f = mark.get("furniture")
+		var entry: Dictionary = _entry_of(f) if f is Furniture and is_instance_valid(f) else {}
+		var mesh := entry.get("mesh") as Node3D
+		if is_instance_valid(mesh):
+			var ghost := mesh.duplicate() as Node3D
+			# Where it stands now, moved back by however far it went.
+			var moved := ((mark["at"] as Vector2) - home) * TILE_M
+			ghost.position = mesh.position - Vector3(moved.x, 0.0, moved.y)
+			build_root.add_child(ghost)
+			_home_outlines.append(ghost)
+			_make_home_ghost(ghost)
+		else:
+			group.add_child(_build_outline_group(size, Color(0.98, 0.82, 0.40, 0.8), HITBOX_Y + 0.002))
 		var cost := Label3D.new()
 		cost.text = mark["cost"] as String
 		cost.font_size = 36
@@ -447,6 +462,28 @@ func _build_home_outlines() -> void:
 		cost.position = Vector3(group.position.x + size.x * 0.5, HITBOX_Y + 0.004, group.position.z + size.y * 0.5)
 		build_root.add_child(cost)
 		_home_outlines.append(cost)
+
+
+# A copy of a piece made into its own faint ghost: see-through, warm, casting
+# no shadow, out of the ink pass and of every pick.
+const HOME_GHOST_ALPHA := 0.32
+
+func _make_home_ghost(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.layers = 1
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.98, 0.82, 0.40, HOME_GHOST_ALPHA)
+		mat.no_depth_test = false
+		mi.material_override = mat
+	if node is CollisionObject3D:
+		(node as CollisionObject3D).queue_free()
+		return
+	for child in node.get_children():
+		_make_home_ghost(child)
 
 
 # Outside walls whose rules pass into a box nearest them (Main._show_outside_walls):
@@ -3797,6 +3834,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	if below_floor:
 		_add_ghost_floor(below_floor, bounds)
 
+	# Again now the furniture is in: a moved piece's ghost is a copy of it.
+	_build_home_outlines()
 	_apply_moment_lighting()
 	if _style != null:
 		build_root.add_child(RoomLighting.new(self))   # sun through the windows, lamps at night

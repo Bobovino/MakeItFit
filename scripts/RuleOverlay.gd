@@ -174,6 +174,14 @@ func _draw_home_marks(font: Font) -> void:
 		var now := Rect2((mark["at"] as Vector2) * TILE, (mark["size"] as Vector2) * TILE)
 		var faint := Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.75)
 		draw_rect(home, Color(HOME_COLOR.r, HOME_COLOR.g, HOME_COLOR.b, 0.10))
+		# What stood there: the piece itself seen from above, faint.
+		var icon: Texture2D = Thumb.get_cached_ortho("top", mark.get("id", "") as String)
+		if icon:
+			var turned := int(mark.get("rot", 0)) % 2 == 1
+			draw_set_transform(home.get_center(), PI * 0.5 * int(mark.get("rot", 0)), Vector2.ONE)
+			var sz := Vector2(home.size.y, home.size.x) if turned else home.size
+			draw_texture_rect(icon, Rect2(-sz * 0.5, sz), false, Color(1, 1, 1, 0.35))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		var c := [home.position, Vector2(home.end.x, home.position.y), home.end, Vector2(home.position.x, home.end.y), home.position]
 		for i in 4:
 			draw_dashed_line(c[i], c[i + 1], faint, 1.5, 4.0)
