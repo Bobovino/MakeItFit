@@ -265,7 +265,7 @@ func _fit_to_window() -> void:
 		_breadcrumb_lbl.offset_right = RIGHT_X
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.offset_right = RIGHT_X
-		_mode3d_view.offset_bottom = BOT_Y if _mode3d_view.first_person else _floor_pane_bottom_y()
+		_mode3d_view.offset_bottom = BOT_Y if _mode3d_view.first_person else _view3d_bottom_y()
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl and _view_mode == ViewMode.TOPDOWN:
 		_fit_floor(fl, true)
@@ -3456,7 +3456,7 @@ func _ensure_mode3d_view(if_changed := false) -> void:
 	_mode3d_view.offset_left   = LEFT_X
 	_mode3d_view.offset_top    = TOP_Y
 	_mode3d_view.offset_right  = RIGHT_X
-	_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+	_mode3d_view.offset_bottom = _view3d_bottom_y()
 	var sig := _mode3d_signature(fl)
 	if not (if_changed and reused and sig == _mode3d_built_sig):
 		_build_mode3d_view(fl)
@@ -3618,7 +3618,7 @@ func _relayout_for_catalog() -> void:
 	ui_layer.move_child(inventory, ui_layer.get_child_count() - 1)
 	_position_furniture_menu_btn()
 	if is_instance_valid(_mode3d_view):
-		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+		_mode3d_view.offset_bottom = _view3d_bottom_y()
 	if _view_mode == ViewMode.TOPDOWN:
 		var fl := _floors.get(_current_floor_id) as Floor
 		if fl:
@@ -3636,7 +3636,7 @@ func _relayout_bottom_bar() -> void:
 	if _is_furniture_menu_open():
 		_position_furniture_catalog_modal()
 		if is_instance_valid(_mode3d_view):
-			_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+			_mode3d_view.offset_bottom = _view3d_bottom_y()
 	_position_budget_label()
 	_position_comfort_meter()
 	_bar_relayout_busy = false
@@ -3874,6 +3874,15 @@ func _on_wall_sell_pressed(edge: String, origin: Vector2i, apt_floor: Floor) -> 
 # shows it at all (VIEW3D hides it entirely).
 func _floor_pane_right_x() -> float:
 	return RIGHT_X
+
+
+# The 3D view runs on under the needs bar, its notes and clock lying over
+# the scene, down to the screen's foot, or to the shop when it is open:
+# stopped at the bar, it left a strip of bare board under the scene.
+func _view3d_bottom_y() -> float:
+	if is_instance_valid(inventory) and inventory.visible and is_instance_valid(tenant_card):
+		return tenant_card.offset_bottom
+	return BOT_Y
 
 
 # The plan ends above the needs bar (and the shop under it, when open): the
@@ -5205,7 +5214,7 @@ func _on_walk_through_exited() -> void:
 		_mode3d_view.offset_left   = LEFT_X
 		_mode3d_view.offset_top    = TOP_Y
 		_mode3d_view.offset_right  = RIGHT_X
-		_mode3d_view.offset_bottom = _floor_pane_bottom_y()
+		_mode3d_view.offset_bottom = _view3d_bottom_y()
 		# Back under the HUD it was raised over.
 		ui_layer.move_child(_mode3d_view, mini(_walk_view_index, ui_layer.get_child_count() - 1))
 	_close_watch_again()
