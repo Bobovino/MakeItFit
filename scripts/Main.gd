@@ -4207,6 +4207,11 @@ func _process(_delta: float) -> void:
 	if is_instance_valid(_household_col):
 		_household_col.size = _household_col.get_combined_minimum_size()
 		_household_col.position = Vector2(14.0, tenant_card.get_global_rect().position.y - 14.0 - _household_col.size.y)
+		# Over the 3D view too (added after it, it covered the column), but
+		# not over the walk round in first person, which covers everything.
+		if is_instance_valid(_mode3d_view) and not _mode3d_view.first_person \
+				and _household_col.get_index() < _mode3d_view.get_index():
+			ui_layer.move_child(_household_col, _mode3d_view.get_index())
 	if not _xfer_dragging:
 		return
 	if _xfer_purchase:
