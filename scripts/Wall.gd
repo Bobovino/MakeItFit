@@ -1277,6 +1277,67 @@ func snap_to_wall(furniture: Furniture, at: Vector2) -> Vector2:
 	return at
 
 
+# The track a piece on a rail slides along, in tiles: {h, from, to, at},
+# along its axis from `from` to `to`, its middle line across at `at` (under
+# the piece). Empty for a piece on no rail. The plan and the 3D view both
+# draw it, as a sliding door's floor guide.
+func rail_track(f: Furniture) -> Dictionary:
+	if f.rail_axis == "":
+		return {}
+	var room := get_room_bounds()
+	var is_h := f.rail_axis == "h"
+	var first: float
+	var last: float
+	if is_h:
+		first = float(room.position.x + 1) if f.rail_start < 0 else float(f.rail_start)
+		last = float(room.position.x + room.size.x) if f.rail_end < 0 else float(f.rail_end + f.grid_w)
+	else:
+		first = float(room.position.y + 1) if f.rail_start < 0 else float(f.rail_start)
+		last = float(room.position.y + room.size.y) if f.rail_end < 0 else float(f.rail_end + f.grid_h)
+	# Only as far as it can go: out from the piece, each way, until a wall
+	# (or the floor's edge) stands across its path. A rail left open-ended
+	# otherwise ran through the walls of the rooms beside.
+	var walls := _partition_tile_set()
+	var cross0 := floori(f.grid_pos.y if is_h else f.grid_pos.x)
+	var cross_n := f.grid_h if is_h else f.grid_w
+	var clear := func(a: int) -> bool:
+		for k in cross_n:
+			var t := Vector2i(a, cross0 + k) if is_h else Vector2i(cross0 + k, a)
+			if not is_floor_tile(t) or walls.has(t):
+				return false
+		return true
+	var lo := floori(f.grid_pos.x if is_h else f.grid_pos.y)
+	var hi := lo + (f.grid_w if is_h else f.grid_h)
+	var a := lo - 1
+	while a >= int(first) and clear.call(a):
+		a -= 1
+	first = maxf(first, float(a + 1))
+	var b := hi
+	while b < int(last) and clear.call(b):
+		b += 1
+	last = minf(last, float(b))
+	if last <= first:
+		return {}
+	var at := (f.grid_pos.y + f.grid_h * 0.5) if is_h else (f.grid_pos.x + f.grid_w * 0.5)
+	return {"h": is_h, "from": first, "to": last, "at": at}
+
+
+# Whether a piece rides one of the floor's own rails (`rd`, from `rails`):
+# its track is drawn for it then, not this one too.
+func rail_ridden(rd: Dictionary) -> bool:
+	var is_h := (rd.get("y1", 0) as int) == (rd.get("y2", 0) as int)
+	var line := float((rd.get("y1", 0) as int) if is_h else (rd.get("x1", 0) as int))
+	for item in get_all_furniture():
+		var rider := item as Furniture
+		if rider.rail_axis != ("h" if is_h else "v"):
+			continue
+		var lo := rider.grid_pos.y if is_h else rider.grid_pos.x
+		var span := rider.grid_h if is_h else rider.grid_w
+		if line >= lo and line < lo + span:
+			return true
+	return false
+
+
 const LANDING_SLACK := 4   # tiles, past half the piece's own size, landing_spot() looks around
 
 # Where a piece put down at `at` (already snap_to_wall()ed) actually lands:

@@ -4839,25 +4839,14 @@ func _add_rails(bounds: Rect2i) -> void:
 		var is_h_r := (y1 == y2)
 		# A piece riding this rail draws its own track under itself (see
 		# _add_piece_rail); drawing the authored one too would double it.
-		var ridden := false
-		for item in _apt_floor.get_all_furniture():
-			var rider := item as Furniture
-			if rider.rail_axis != ("h" if is_h_r else "v"):
-				continue
-			var lo := rider.grid_pos.y if is_h_r else rider.grid_pos.x
-			var span := rider.grid_h if is_h_r else rider.grid_w
-			var line := float(y1 if is_h_r else x1)
-			if line >= lo and line < lo + span:
-				ridden = true
-				break
-		if ridden:
+		if _apt_floor.rail_ridden(rd):
 			continue
 		var local_x := (mini(x1, x2) - bounds.position.x) * TILE_M
 		var local_z := (mini(y1, y2) - bounds.position.y) * TILE_M
 		var length := (absi(x2 - x1) + 1) * TILE_M if is_h_r else (absi(y2 - y1) + 1) * TILE_M
 		var channel_w := (absi(y2 - y1) + 1) * TILE_M if is_h_r else (absi(x2 - x1) + 1) * TILE_M
 		var center := (local_z + channel_w * 0.5) if is_h_r else (local_x + channel_w * 0.5)
-		_add_track(is_h_r, local_x if is_h_r else local_z, length, center, 0.16)
+		_add_track(is_h_r, local_x if is_h_r else local_z, length, center)
 
 
 # ── Rule overlays: lines of sight and zones ──────────────────────────────────
@@ -5040,58 +5029,34 @@ func _rebuild_rule_overlays() -> void:
 
 # A piece that slides (a wardrobe, a rolling cart) gets the track it rides
 # drawn on the floor under it, end to end, so it is clear in 3D that it only
-# moves one way and how far. The plan shows the same thing with arrows.
+# moves one way and how far. The plan draws the same track (GridDraw).
 func _add_piece_rail(f: Furniture, bounds: Rect2i) -> void:
-	if f.rail_axis == "" or not _apt_floor:
+	if not _apt_floor:
 		return
-	var room := _apt_floor.get_room_bounds()
-	var is_h := f.rail_axis == "h"
-	var first: float       # tile where the track starts
-	var last: float        # tile just past its end
-	if is_h:
-		first = float(room.position.x + 1) if f.rail_start < 0 else float(f.rail_start)
-		last = float(room.position.x + room.size.x) if f.rail_end < 0 else float(f.rail_end + f.grid_w)
-	else:
-		first = float(room.position.y + 1) if f.rail_start < 0 else float(f.rail_start)
-		last = float(room.position.y + room.size.y) if f.rail_end < 0 else float(f.rail_end + f.grid_h)
-	if last <= first:
+	var tr_d := _apt_floor.rail_track(f)
+	if tr_d.is_empty():
 		return
+	var is_h := tr_d["h"] as bool
 	var origin := float(bounds.position.x if is_h else bounds.position.y)
-	var cross := (f.grid_pos.y - bounds.position.y + f.grid_h * 0.5) if is_h \
-		else (f.grid_pos.x - bounds.position.x + f.grid_w * 0.5)
-	var depth := (f.grid_h if is_h else f.grid_w) * TILE_M
-	_add_track(is_h, (first - origin) * TILE_M, (last - first) * TILE_M, cross * TILE_M, clampf(depth * 0.3, 0.06, 0.2))
+	var cross := (tr_d["at"] as float) - float(bounds.position.y if is_h else bounds.position.x)
+	_add_track(is_h, ((tr_d["from"] as float) - origin) * TILE_M,
+		((tr_d["to"] as float) - (tr_d["from"] as float)) * TILE_M, cross * TILE_M)
 
 
-# Two rails with sleepers between them, lying on the floor. `along0` and
-# `length` run along the track; `center` is its middle line across; `gauge`
-# is how far each rail sits from that line. All in metres, room-local.
-func _add_track(is_h: bool, along0: float, length: float, center: float, gauge: float) -> void:
-	const RAIL_LINE_COLOR := Color(0.10, 0.52, 0.62, 1.0)
-	const RAIL_TIE_COLOR  := Color(0.10, 0.52, 0.62, 0.55)
-	const RAIL_BED_COLOR  := Color(0.22, 0.70, 0.78, 0.16)
-	const Y_LVL      := 0.012   # clear of the floor and its plank pattern
-	const LINE_THICK := 0.028
-	const TIE_EVERY  := 0.2
+# A sliding door's floor guide: one slim metal strip lying on the floor,
+# with a small stop at each end. `along0` and `length` run along the track;
+# `center` is its line across. All in metres, room-local.
+func _add_track(is_h: bool, along0: float, length: float, center: float) -> void:
+	const GUIDE_COLOR := Color(0.36, 0.40, 0.46, 1.0)
+	const Y_LVL := 0.006    # clear of the floor and its plank pattern
+	const WIDE := 0.022
+	const HIGH := 0.006
 	var mid := along0 + length * 0.5
-	var bed_w := gauge * 2.0 + 0.08
-	_add_rail_decal(Vector3(length, 0.002, bed_w) if is_h else Vector3(bed_w, 0.002, length),
-		Vector3(mid, Y_LVL - 0.003, center) if is_h else Vector3(center, Y_LVL - 0.003, mid), RAIL_BED_COLOR)
-	for side in [-1.0, 1.0]:
-		var size := Vector3(length, 0.004, LINE_THICK) if is_h else Vector3(LINE_THICK, 0.004, length)
-		var pos := Vector3(mid, Y_LVL, center + side * gauge) if is_h else Vector3(center + side * gauge, Y_LVL, mid)
-		_add_rail_decal(size, pos, RAIL_LINE_COLOR)
-	var t := TIE_EVERY * 0.5
-	while t < length:
-		var tie_size := Vector3(LINE_THICK * 0.7, 0.003, gauge * 2.0) if is_h else Vector3(gauge * 2.0, 0.003, LINE_THICK * 0.7)
-		var tie_pos := Vector3(along0 + t, Y_LVL - 0.001, center) if is_h else Vector3(center, Y_LVL - 0.001, along0 + t)
-		_add_rail_decal(tie_size, tie_pos, RAIL_TIE_COLOR)
-		t += TIE_EVERY
-	# A buffer stop at each end.
+	_add_rail_decal(Vector3(length, HIGH, WIDE) if is_h else Vector3(WIDE, HIGH, length),
+		Vector3(mid, Y_LVL, center) if is_h else Vector3(center, Y_LVL, mid), GUIDE_COLOR)
 	for end_at in [along0, along0 + length]:
-		var stop_size := Vector3(LINE_THICK, 0.02, gauge * 2.0 + LINE_THICK) if is_h else Vector3(gauge * 2.0 + LINE_THICK, 0.02, LINE_THICK)
-		var stop_pos := Vector3(end_at, Y_LVL + 0.008, center) if is_h else Vector3(center, Y_LVL + 0.008, end_at)
-		_add_rail_decal(stop_size, stop_pos, RAIL_LINE_COLOR)
+		var stop := Vector3(0.016, 0.018, 0.05) if is_h else Vector3(0.05, 0.018, 0.016)
+		_add_rail_decal(stop, Vector3(end_at, Y_LVL + 0.006, center) if is_h else Vector3(center, Y_LVL + 0.006, end_at), GUIDE_COLOR)
 
 
 func _add_rail_decal(size: Vector3, pos: Vector3, color: Color) -> void:

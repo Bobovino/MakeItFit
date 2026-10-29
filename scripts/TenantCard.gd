@@ -52,7 +52,7 @@ var _project_chip: PanelContainer = null   # "Apartments 1/3": shown when the pr
 # The household, a column of portrait tiles Main keeps at the screen's left
 # (household_box, set_household), as in The Sims 3: each says how many of
 # their needs are still to do, and choosing one (its tile grows, framed in
-# white) fades the chips here that aren't theirs.
+# white) leaves the chips here that aren't theirs out of the bar.
 var household_box: Container = null
 var _household: Array = []          # [{id, name, color, body, feminine}]
 var _owners_of := Callable()        # req id -> Array of resident ids; [] = everyone's
@@ -680,11 +680,12 @@ func _apply_requirement_state() -> void:
 			var c := chip as Control
 			if not is_instance_valid(c):
 				continue
-			c.visible = c not in hidden_chips
-			# Someone else's need, while one resident's are shown: faded.
+			# Someone else's need, while one resident's are shown: left out.
 			var theirs := _focus == "" or _is_theirs(req_id, _focus)
-			c.modulate.a = 0.0 if c.get_meta("unstamped", false) else (1.0 if theirs else 0.22)
+			c.visible = c not in hidden_chips and theirs
+			c.modulate.a = 0.0 if c.get_meta("unstamped", false) else 1.0
 	_queue_badges()
+	_queue_fit()
 
 
 # ── The household ───────────────────────────────────────────────────────────

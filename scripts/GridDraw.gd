@@ -502,38 +502,24 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
 
 	# ── 2e. Rail tracks ──────────────────────────────────────────────────────
-	const RAIL_COL  := Color(0.22, 0.70, 0.78, 0.90)
-	const RAIL_DASH := Color(0.22, 0.70, 0.78, 0.45)
+	# A sliding door's floor guide: one thin line with a stop at each end. The
+	# track each piece on a rail runs along (Floor.rail_track), and the
+	# floor's own rails that no piece rides.
+	for item in parent.get_all_furniture():
+		var tr_d := parent.rail_track(item as Furniture)
+		if not tr_d.is_empty():
+			_draw_rail_track(tr_d["h"] as bool, tr_d["from"] as float, tr_d["to"] as float, tr_d["at"] as float)
 	for rail in parent.rails:
 		var rd := rail as Dictionary
+		if parent.rail_ridden(rd):
+			continue
 		var x1: int = rd["x1"]; var y1: int = rd["y1"]
 		var x2: int = rd["x2"]; var y2: int = rd["y2"]
 		var is_h_r := (y1 == y2)
-		var mn_xr := mini(x1, x2); var mn_yr := mini(y1, y2)
-		var mx_xr := maxi(x1, x2); var mx_yr := maxi(y1, y2)
-		var px1 := mn_xr * TILE_SIZE; var py1 := mn_yr * TILE_SIZE
-		var px2 := (mx_xr + 1) * TILE_SIZE; var py2 := (mx_yr + 1) * TILE_SIZE
-		# Filled channel strip
-		draw_rect(Rect2(px1, py1, px2 - px1, py2 - py1), Color(0.22, 0.70, 0.78, 0.18))
-		# Double rail lines (parallel to axis)
-		var margin := 1.5
 		if is_h_r:
-			var cy := (py1 + py2) * 0.5
-			draw_line(Vector2(px1, cy - margin), Vector2(px2, cy - margin), RAIL_COL, 1.0)
-			draw_line(Vector2(px1, cy + margin), Vector2(px2, cy + margin), RAIL_COL, 1.0)
-			# Dash marks across the rail
-			var tx := px1
-			while tx < px2:
-				draw_line(Vector2(tx, py1 + 1.5), Vector2(tx, py2 - 1.5), RAIL_DASH, 0.8)
-				tx += TILE_SIZE
+			_draw_rail_track(true, mini(x1, x2), maxi(x1, x2) + 1, y1 + 0.5)
 		else:
-			var cx := (px1 + px2) * 0.5
-			draw_line(Vector2(cx - margin, py1), Vector2(cx - margin, py2), RAIL_COL, 1.0)
-			draw_line(Vector2(cx + margin, py1), Vector2(cx + margin, py2), RAIL_COL, 1.0)
-			var ty := py1
-			while ty < py2:
-				draw_line(Vector2(px1 + 1.5, ty), Vector2(px2 - 1.5, ty), RAIL_DASH, 0.8)
-				ty += TILE_SIZE
+			_draw_rail_track(false, mini(y1, y2), maxi(y1, y2) + 1, x1 + 0.5)
 
 	# ── 2f. Reveal zones — sub-range of a rail where a piece counts as "revealed"
 	const REVEAL_COL := Color(0.90, 0.30, 0.62, 0.85)
@@ -1509,6 +1495,26 @@ func _draw_wall_cue(parent: Floor) -> void:
 
 
 var _light_layer: Node2D = null
+
+# One rail track, in tiles: along the axis (`horizontal` or not) from `from`
+# to `to`, its line across at `at`. A thin line with a short stop across
+# each end.
+const RAIL_TRACK_COL := Color(0.62, 0.86, 0.92, 0.95)
+
+func _draw_rail_track(horizontal: bool, from: float, to: float, at: float) -> void:
+	var t := float(TILE_SIZE)
+	var stop := t * 0.9
+	if horizontal:
+		var y := at * t
+		draw_line(Vector2(from * t, y), Vector2(to * t, y), RAIL_TRACK_COL, 2.0, true)
+		for x in [from * t, to * t]:
+			draw_line(Vector2(x, y - stop), Vector2(x, y + stop), RAIL_TRACK_COL, 2.0, true)
+	else:
+		var x := at * t
+		draw_line(Vector2(x, from * t), Vector2(x, to * t), RAIL_TRACK_COL, 2.0, true)
+		for y in [from * t, to * t]:
+			draw_line(Vector2(x - stop, y), Vector2(x + stop, y), RAIL_TRACK_COL, 2.0, true)
+
 
 func _draw_natural_light(_parent: Floor) -> void:
 	if is_instance_valid(_light_layer):

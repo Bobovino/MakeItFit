@@ -1524,8 +1524,8 @@ func _t_start_at_phase() -> void:
 
 
 # The household in the bar: a portrait per resident with how many of their
-# needs are still to do, and choosing one fades the chips that aren't
-# theirs. The Beach House: Tito asked for beds, Lucía for storage.
+# needs are still to do, and choosing one leaves the chips that aren't
+# theirs out of the bar. The Beach House: Tito asked for beds, Lucía for storage.
 func _t_household_bar() -> void:
 	GameState.pending_level_id = "beach_house"
 	GameState.pending_resume = false
@@ -1540,12 +1540,12 @@ func _t_household_bar() -> void:
 	var storage_chip := (card._chips_by_req.get("need:storage", []) as Array)[0] as Control
 	card._focus = "tito"
 	card._apply_requirement_state()
-	_current = "household: Tito's needs stay, the others fade"
-	_ok(sleep_chip.modulate.a == 1.0 and storage_chip.modulate.a < 0.5, "sleep %.2f storage %.2f" % [sleep_chip.modulate.a, storage_chip.modulate.a])
+	_current = "household: Tito's needs stay, the others leave the bar"
+	_ok(sleep_chip.visible and not storage_chip.visible, "sleep %s storage %s" % [sleep_chip.visible, storage_chip.visible])
 	card._focus = ""
 	card._apply_requirement_state()
 	_current = "household: no one chosen, every need shows"
-	_ok(storage_chip.modulate.a == 1.0)
+	_ok(storage_chip.visible)
 	main.queue_free()
 	await get_tree().process_frame
 
