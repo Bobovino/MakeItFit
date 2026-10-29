@@ -35,6 +35,7 @@ func _ready() -> void:
 	_t_translations_load()
 	await _t_first_person_doorway()
 	await _t_dialogue_portrait()
+	await _t_start_at_phase()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1478,6 +1479,47 @@ func _t_dialogue_portrait() -> void:
 	_ok(d._face_frame.modulate.a == 1.0 and d._face_who == "bo" and d._portrait._skeleton() != null)
 	d._end()
 	await get_tree().process_frame
+
+
+# The map's phase path: finishing a phase keeps the flat as it left it for
+# good, and a level can be opened straight at a later phase from it, the flat
+# as the phase before left it, with what the new phase hands over.
+func _t_start_at_phase() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_phase_path_save.json"
+	var real_saves := GameState.phase_saves.duplicate(true)
+	GameState.phase_saves.erase("beach_house")
+	GameState.progress.erase("beach_house")
+	_current = "phase path: nothing finished yet, only the first phase can be started"
+	_eq(GameState.phase_reached("beach_house", 2), 0)
+	GameState.pending_level_id = "beach_house"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	main._advance_phase()
+	_current = "phase path: finishing phase 1 keeps its end, and phase 2 can be started"
+	_ok(GameState.phase_reached("beach_house", 2) == 1 and GameState.phase_checkpoint("beach_house", 0) != "")
+	main.queue_free()
+	await get_tree().process_frame
+	GameState.progress.erase("beach_house")
+	GameState.pending_level_id = "beach_house"
+	GameState.pending_phase = 1
+	main = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var owned := (main.gm.starting_inventory as Array).any(func(e): return (e as Dictionary).get("id", "") == "bird_cage")
+	_current = "phase path: opened at phase 2, with the cage it hands over"
+	_ok(main.gm.phase == 1 and owned and GameState.pending_phase == -1, "phase %d owned cage %s" % [main.gm.phase, owned])
+	main.queue_free()
+	await get_tree().process_frame
+	GameState.phase_saves = real_saves
+	GameState.progress.erase("beach_house")
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
 
 
 # Every translation loads in Godot itself: a malformed entry (a msgstr cut

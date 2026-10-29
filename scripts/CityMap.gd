@@ -78,6 +78,11 @@ const BlueprintPreviewScript := preload("res://scripts/BlueprintPreview.gd")
 # Info panel widgets
 var _info_title:    Label
 var _info_district: Label
+var _phase_box: VBoxContainer     # the selected home's phases, when it has some
+var _phase_path: HBoxContainer    # a stop per phase, joined by a line
+var _phase_caption: Label         # the chosen phase's title
+var _chosen_phase := -1           # the phase ENTER starts; -1: the home has none
+var _chosen_for := ""             # the home _chosen_phase was chosen in
 var _blueprint_preview   # untyped: BlueprintPreview.gd isn't referenced by class name (avoids relying on the global script class cache), so calls to its set_data() go through dynamic dispatch
 var _tenant_portrait:   TextureRect
 var _portrait = null   # MiiPortrait: the tenant's real Mii, as in the flat
@@ -487,6 +492,16 @@ func _build_ui() -> void:
 	# margins, a different width for each home.
 	_info_district = _make_info_label(vb, GameTheme.FS_CAPTION, FAX_INK_SOFT, true)
 
+	# A home in phases: its path, one stop per phase (_fill_phase_path).
+	_phase_box = VBoxContainer.new()
+	_phase_box.add_theme_constant_override("separation", 4)
+	vb.add_child(_phase_box)
+	_phase_path = HBoxContainer.new()
+	_phase_path.add_theme_constant_override("separation", 0)
+	_phase_box.add_child(_phase_path)
+	_phase_caption = _make_info_label(_phase_box, GameTheme.FS_CAPTION, FAX_INK, true)
+	_phase_caption.add_theme_font_override("font", GameTheme.font("mono_bold"))
+
 	var preview_frame := PanelContainer.new()
 	var pf_sn := StyleBoxFlat.new()
 	pf_sn.bg_color = Color(0, 0, 0, 0)
@@ -632,17 +647,96 @@ func _fax_key(btn: Button, face: Color, text: Color) -> void:
 	FaxStyle.key(btn, face, text)
 
 
-# A level in phases says so on its sheet: how many, or which one the saved
-# project is in. "" for a level without phases, or one already rented out.
-func _phase_note(ld: Dictionary) -> String:
-	var count := (ld.get("phases", []) as Array).size()
+# ── Phases ───────────────────────────────────────────────────────────────────
+# A home in phases shows them as a path on its sheet, like the lessons of a
+# course: a stop per phase, joined by a line. Every phase reached can be
+# played (again) from its start: finished ones are filled in, the furthest
+# one is ringed, the ones after it are locked. Clicking one chooses it for
+# ENTER; the one the project was left in is chosen to begin with, else the
+# furthest.
+const STOP_D := 34.0
+
+func _progress_phase(lid: String) -> int:
+	return int(GameState.get_progress(lid).get("phase", 0)) if GameState.has_progress(lid) else -1
+
+
+func _fill_phase_path(ld: Dictionary) -> void:
+	for c in _phase_path.get_children():
+		c.queue_free()
+	var phases := ld.get("phases", []) as Array
 	var lid := ld.get("id", "") as String
-	if count < 2 or lid in GameState.completed:
-		return ""
-	var at := int(GameState.get_progress(lid).get("phase", 0)) if GameState.has_progress(lid) else 0
-	if at > 0:
-		return "  ·  " + tr("Phase %d of %d") % [at + 1, count]
-	return "  ·  " + tr("%d phases") % count
+	_phase_box.visible = phases.size() >= 2
+	if phases.size() < 2:
+		_chosen_phase = -1
+		return
+	var reached := GameState.phase_reached(lid, phases.size())
+	var done := lid in GameState.completed
+	if lid != _chosen_for or _chosen_phase < 0 or _chosen_phase > reached:
+		_chosen_phase = _progress_phase(lid) if GameState.has_progress(lid) else reached
+	_chosen_for = lid
+	for i in phases.size():
+		if i > 0:
+			var line := ColorRect.new()
+			line.color = FaxStyle.INK if i <= reached else FaxStyle.INK_SOFT.lerp(Color.WHITE, 0.55)
+			line.custom_minimum_size = Vector2(0, 3)
+			line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_phase_path.add_child(line)
+		var stop := Button.new()
+		stop.text = str(i + 1)
+		stop.custom_minimum_size = Vector2(STOP_D, STOP_D)
+		stop.focus_mode = Control.FOCUS_NONE
+		stop.disabled = i > reached
+		stop.tooltip_text = tr((phases[i] as Dictionary).get("title", "") as String)
+		stop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if i <= reached else Control.CURSOR_FORBIDDEN
+		stop.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		stop.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		stop.set_meta("phase", i)
+		stop.set_meta("finished", done or i < reached)
+		stop.pressed.connect(func():
+			Audio.play("click")
+			_chosen_phase = i
+			_select_level(ld))
+		_phase_path.add_child(stop)
+	_style_phase_stops()
+	var ph := phases[_chosen_phase] as Dictionary
+	var title := tr(ph.get("title", "") as String)
+	_phase_caption.text = (tr("Phase %d of %d") % [_chosen_phase + 1, phases.size()]) + ("  ·  " + title if title != "" else "")
+
+
+# Finished: filled in. The furthest reached: ringed in red. Locked: faint.
+# The chosen one stands out with a thicker ring.
+func _style_phase_stops() -> void:
+	for stop in _phase_path.get_children():
+		if not (stop is Button):
+			continue
+		var b := stop as Button
+		var i := b.get_meta("phase") as int
+		var finished := b.get_meta("finished") as bool
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(int(STOP_D * 0.5))
+		sb.anti_aliasing = true
+		var ink := FaxStyle.INK
+		if b.disabled:
+			sb.bg_color = Color.WHITE
+			sb.border_color = FaxStyle.INK_SOFT.lerp(Color.WHITE, 0.55)
+			ink = sb.border_color
+		elif finished:
+			sb.bg_color = FaxStyle.INK
+			sb.border_color = FaxStyle.INK
+			ink = Color.WHITE
+		else:
+			sb.bg_color = Color.WHITE
+			sb.border_color = FaxStyle.STAMP_INK
+			ink = FaxStyle.STAMP_INK
+		sb.set_border_width_all(4 if i == _chosen_phase else 2)
+		if i == _chosen_phase and finished:
+			sb.border_color = FaxStyle.STAMP_INK
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			b.add_theme_stylebox_override(state, sb)
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
+			b.add_theme_color_override(state, ink)
 
 
 # The machine prints the chosen home: the sheet feeds up out of the slot.
@@ -1759,7 +1853,8 @@ func _select_level(ld: Dictionary) -> void:
 		ld.get("district", "?") as String,
 		_sqm_label(ld),
 		ld.get("starting_budget", 0) as int,
-	] + _phase_note(ld)
+	]
+	_fill_phase_path(ld)
 
 	var plan := _floor_plan_data(ld)
 	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld), plan.get("loop", {}) as Dictionary)
@@ -1797,13 +1892,17 @@ func _select_level(ld: Dictionary) -> void:
 	elif is_owned:
 		var reward := ld.get("funds_base_reward", 0) as int
 		_info_cost.text    = tr("Reward: ~%d€ Studio Funds") % reward
-		if GameState.has_progress(lid):
+		if GameState.has_progress(lid) and (_chosen_phase < 0 or _chosen_phase == _progress_phase(lid)):
 			# Left half-done: carry on where it was left, or start it over.
 			_action_btn.text   = tr("CONTINUE  →")
 			_action_btn.disabled = false
 			_redesign_btn.text = tr("Start Over")
 			_redesign_btn.visible = true
 			_redesign_btn.disabled = false
+		elif _chosen_phase >= 0:
+			_action_btn.text   = tr("PLAY PHASE %d  →") % (_chosen_phase + 1)
+			_action_btn.disabled = false
+			_redesign_btn.visible = false
 		elif stars > 0 and GameState.has_level_layout(lid):
 			# Already won at least once — default to reopening it exactly as
 			# left, with "start over" as an explicit secondary choice rather
@@ -1852,6 +1951,9 @@ func _on_action_pressed() -> void:
 
 	if is_owned:
 		Audio.play("click")
+		if _chosen_phase >= 0 and not (GameState.has_progress(lid) and _chosen_phase == _progress_phase(lid)):
+			_start_at_phase(lid, _chosen_phase)
+			return
 		GameState.pending_level_id = lid
 		# _action_btn doubles as "Revisar Plano Actual" once the level has a
 		# saved layout (see _select_level) — reopen it as-is in that case,
@@ -1869,6 +1971,26 @@ func _on_action_pressed() -> void:
 			_select_level(_selected)
 		else:
 			Audio.play("error")
+
+
+# A phase chosen on the path: the home from that phase's start (the flat as
+# the phase before left it, Main), in place of a project left half-done in
+# another phase, which asks first.
+func _start_at_phase(lid: String, phase: int) -> void:
+	var go := func():
+		GameState.clear_progress(lid)
+		GameState.pending_level_id = lid
+		GameState.pending_resume = false
+		GameState.pending_use_saved_layout = false
+		GameState.pending_phase = phase
+		GameState.set_last_active_level(lid)
+		Transition.change_scene("res://scenes/Main.tscn")
+	if not GameState.has_progress(lid):
+		go.call()
+		return
+	MenuKit.dialog(self, tr("Back to phase %d") % (phase + 1),
+		tr("Go back to the start of this phase? What was done after it is lost."),
+		tr("Yes, go back"), go)
 
 
 # Secondary entry point, only visible for levels with a saved layout — always
@@ -2379,6 +2501,8 @@ func _select_custom_level(ld: Dictionary) -> void:
 	_info_district.text = tr("Custom Level  ·  %s  ·  Budget: %d€") % [
 		_sqm_label(ld), ld.get("starting_budget", 0) as int,
 	]
+	_phase_box.visible = false
+	_chosen_phase = -1
 
 	var plan := _floor_plan_data(ld)
 	_blueprint_preview.set_data(plan["segments"] as Array, plan["bounds"] as Rect2, _furniture_preview_rects(ld), plan.get("loop", {}) as Dictionary)

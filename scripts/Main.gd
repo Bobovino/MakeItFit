@@ -361,7 +361,18 @@ func _ready() -> void:
 		return pos.x > LEFT_X and pos.x < RIGHT_X and pos.y > TOP_Y and pos.y < _floor_pane_bottom_y()
 	_update_split(_split_y)
 	_apply_ui_theme()
-	_load_level(GameState.pending_level_id)
+	# Chosen on the map's phase path: the flat as the phase before left it.
+	var start_phase := GameState.pending_phase
+	GameState.pending_phase = -1
+	if start_phase > 0:
+		_phase_checkpoints.clear()
+		for k in range(start_phase):
+			var cp := GameState.phase_checkpoint(GameState.pending_level_id, k)
+			if cp != "":
+				_phase_checkpoints[k] = cp
+		_replay_phase(start_phase, GameState.pending_level_id)
+	else:
+		_load_level(GameState.pending_level_id)
 
 
 func _apply_ui_theme() -> void:
@@ -4716,6 +4727,8 @@ func _on_rent_pressed() -> void:
 func _advance_phase() -> void:
 	var done := gm.phase
 	_phase_checkpoints[done] = var_to_str(LevelProgress.capture(self))
+	# Kept for good too, for the map to start any phase reached again.
+	GameState.save_phase_checkpoint(_phase_level_id, done, _phase_checkpoints[done])
 	Audio.play("success")
 	_toast(tr("Phase %d of %d done") % [done + 1, gm.phases().size()])
 	_apply_phase(done + 1, true)
@@ -4761,8 +4774,9 @@ func phase_choices() -> Array:
 # Plays phase `i` again from its start: the flat as phase i - 1 left it (its
 # checkpoint; the level's own start for the first), with what phase i hands
 # over, and its scene. What was done after that is dropped.
-func _replay_phase(i: int) -> void:
-	var lid := _current_level_id
+func _replay_phase(i: int, lid: String = "") -> void:
+	if lid == "":
+		lid = _current_level_id
 	var start = _phase_checkpoints.get(i - 1) if i > 0 else null
 	for k in _phase_checkpoints.keys():
 		if int(k) >= i:

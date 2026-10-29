@@ -37,6 +37,14 @@ var progress: Dictionary = {}
 # One-shot, like pending_use_saved_layout: open pending_level_id where the
 # player left it, from `progress`.
 var pending_resume: bool = false
+# Levels in phases: how far the player has got in each, and the flat as each
+# phase they finished left it, so the map can start any phase reached again
+# (CityMap's phase path), even once the apartment is rented out and its
+# `progress` is gone. level id -> {reached: int, checkpoints: {"<phase>":
+# var_to_str(LevelProgress.capture)}}.
+var phase_saves: Dictionary = {}
+# One-shot: open pending_level_id at the start of this phase (-1: as usual).
+var pending_phase: int = -1
 var dev_bonus_stars: int = 0
 
 # ── Accessibility ────────────────────────────────────────────────────────────
@@ -217,6 +225,7 @@ func save_game() -> void:
 		"graphics_quality": graphics_quality,
 		"last_active_level_id": last_active_level_id,
 		"progress":        progress,
+		"phase_saves":     phase_saves,
 		"save_version":    SAVE_VERSION,
 	}
 	var audio := get_node_or_null("/root/Audio")
@@ -277,6 +286,7 @@ func load_game() -> void:
 	last_active_level_id = data.get("last_active_level_id", last_active_level_id) as String
 	# Version 1 saves had no progress; nothing else changed shape.
 	progress = (data.get("progress", {}) as Dictionary).duplicate(true)
+	phase_saves = (data.get("phase_saves", {}) as Dictionary).duplicate(true)
 	_forget_missing_levels()
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -302,6 +312,43 @@ func get_progress(level_id: String) -> Dictionary:
 
 func set_progress(level_id: String, entry: Dictionary) -> void:
 	progress[level_id] = entry
+	save_game()
+
+
+# The furthest phase of `level_id` (of `count`) the player may start: the
+# one after the last they finished, every one once it is rented out.
+func phase_reached(level_id: String, count: int) -> int:
+	if count < 2:
+		return 0
+	if completed.has(level_id):
+		return count - 1
+	var at := int((phase_saves.get(level_id, {}) as Dictionary).get("reached", 0))
+	if progress.has(level_id):   # saves from before phase_saves
+		at = maxi(at, int(get_progress(level_id).get("phase", 0)))
+	return clampi(at, 0, count - 1)
+
+
+# The flat as phase `phase` of `level_id` left it when finished, as
+# var_to_str(LevelProgress.capture); "" if there is none.
+func phase_checkpoint(level_id: String, phase: int) -> String:
+	var saved := ((phase_saves.get(level_id, {}) as Dictionary).get("checkpoints", {}) as Dictionary)
+	if saved.has(str(phase)):
+		return saved[str(phase)] as String
+	if progress.has(level_id):   # saves from before phase_saves
+		var old = str_to_var(get_progress(level_id).get("checkpoints", "{}") as String)
+		if old is Dictionary and (old as Dictionary).has(phase):
+			return (old as Dictionary)[phase] as String
+	return ""
+
+
+# Phase `phase` of `level_id` was just finished, leaving the flat as `capture`.
+func save_phase_checkpoint(level_id: String, phase: int, capture: String) -> void:
+	var entry := (phase_saves.get(level_id, {}) as Dictionary).duplicate(true)
+	var cps := (entry.get("checkpoints", {}) as Dictionary)
+	cps[str(phase)] = capture
+	entry["checkpoints"] = cps
+	entry["reached"] = maxi(int(entry.get("reached", 0)), phase + 1)
+	phase_saves[level_id] = entry
 	save_game()
 
 
@@ -419,7 +466,7 @@ func level_fingerprint(level_id: String) -> String:
 
 
 func _forget_missing_levels() -> void:
-	for dict in [progress, level_layouts]:
+	for dict in [progress, level_layouts, phase_saves]:
 		for lid in (dict as Dictionary).keys():
 			if not level_exists(lid):
 				(dict as Dictionary).erase(lid)
