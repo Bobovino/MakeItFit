@@ -1,8 +1,9 @@
 extends Node2D
 class_name TenantToken2D
 
-# A tenant on the floor plan: a round token seen from above, sized by body
-# (adult, teen, child; animals are an oval), in a colour of their own. Lives
+# A tenant on the floor plan: a round token sized by body (adult, teen,
+# child), their Mii's face in it (MiiPortrait.face) ringed in a colour of
+# their own; an animal is an oval with eyes, having no Mii. Lives
 # under the Floor node so it pans and zooms with the plan, but the Floor
 # never knows about it: it isn't furniture, takes up no tiles and blocks
 # nothing. All motion is tweened: hops from spot to spot, a squash on
@@ -22,11 +23,14 @@ var _bubble: TenantBubble
 var _move_tween: Tween
 var _mood_tween: Tween
 var _shown := false
+var _face: Texture2D = null       # their Mii's face; null for an animal
 
 
 func setup(r: TenantResident, tint: Color) -> void:
 	resident = r
 	color = tint
+	if r.body != "animal":
+		_face = MiiPortrait.face(r.body, r.is_feminine())
 	_r = (RADIUS.get(r.body, 1.9) as float) * TILE
 	z_index = 6
 	_body = Node2D.new()
@@ -219,6 +223,9 @@ func clear_reaction() -> void:
 
 
 func _draw_body() -> void:
+	if _face != null:
+		_draw_face()
+		return
 	var animal := resident and resident.body == "animal"
 	var squash := Vector2(1.35, 0.8) if animal else Vector2.ONE
 	_body.draw_set_transform(Vector2.ZERO, 0.0, squash)
@@ -239,3 +246,20 @@ func _draw_body() -> void:
 			# Brows down toward the middle.
 			_body.draw_line(Vector2(sx * (ex + eye * 1.6), ey - eye * 2.6), Vector2(sx * (ex - eye * 1.2), ey - eye * 1.4),
 				Color(0.08, 0.07, 0.07), 1.4, true)
+
+
+# Shadow, a pale ground, the face cut to a circle (the middle of the
+# portrait: the head), and their colour round it; reddened when annoyed.
+func _draw_face() -> void:
+	_body.draw_circle(Vector2(1.5, 2.5), _r, Color(0, 0, 0, 0.28))
+	_body.draw_circle(Vector2.ZERO, _r, color.lightened(0.6))
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	const CROP := 0.42   # half the portrait's width the circle shows
+	for i in 32:
+		var d := Vector2.from_angle(TAU * i / 32.0)
+		pts.append(d * _r)
+		uvs.append(Vector2(0.5, 0.42) + d * CROP)
+	_body.draw_colored_polygon(pts, Color.WHITE, uvs, _face)
+	var ring := Color(0.85, 0.2, 0.15) if _annoyed else color.darkened(0.15)
+	_body.draw_arc(Vector2.ZERO, _r, 0, TAU, 40, ring, maxf(_r * 0.16, 1.6), true)

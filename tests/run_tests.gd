@@ -36,6 +36,7 @@ func _ready() -> void:
 	await _t_first_person_doorway()
 	await _t_dialogue_portrait()
 	await _t_start_at_phase()
+	await _t_household_bar()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -1520,6 +1521,33 @@ func _t_start_at_phase() -> void:
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
 	GameState.save_path = real_path
+
+
+# The household in the bar: a portrait per resident with how many of their
+# needs are still to do, and choosing one fades the chips that aren't
+# theirs. The Beach House: Tito asked for beds, Lucía for storage.
+func _t_household_bar() -> void:
+	GameState.pending_level_id = "beach_house"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var card: TenantCard = main.tenant_card
+	_current = "household: a portrait per resident in the bar"
+	_ok(card._badges.size() == 3, str(card._badges.keys()))
+	var sleep_chip := (card._chips_by_req.get("need:sleep", []) as Array)[0] as Control
+	var storage_chip := (card._chips_by_req.get("need:storage", []) as Array)[0] as Control
+	card._focus = "tito"
+	card._apply_requirement_state()
+	_current = "household: Tito's needs stay, the others fade"
+	_ok(sleep_chip.modulate.a == 1.0 and storage_chip.modulate.a < 0.5, "sleep %.2f storage %.2f" % [sleep_chip.modulate.a, storage_chip.modulate.a])
+	card._focus = ""
+	card._apply_requirement_state()
+	_current = "household: no one chosen, every need shows"
+	_ok(storage_chip.modulate.a == 1.0)
+	main.queue_free()
+	await get_tree().process_frame
 
 
 # Every translation loads in Godot itself: a malformed entry (a msgstr cut

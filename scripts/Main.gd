@@ -1031,6 +1031,7 @@ func _load_level(level_id: String) -> void:
 	_application = TenantApplication.for_level(level_id)
 	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
 	tenant_card.set_application(_application != null, hidden_reqs)
+	_update_household()
 	if not gm.moments.is_empty():
 		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
 		_on_moment_selected(_first_mid, false)
@@ -2914,6 +2915,30 @@ func _switch_floor(floor_id: String) -> void:
 
 # The tenants move in on the floor on screen; nobody lives there during the
 # post-win showcase, which has its own figure.
+# The household as the bar shows it, a portrait each (TenantCard), with whose
+# each need is.
+func _update_household() -> void:
+	var out: Array = []
+	if _application:
+		for r in _application.residents:
+			var res := r as TenantResident
+			out.append({"id": String(res.id), "name": tr(res.display_name),
+				"color": TenantLayer.tint_of(_application.level_id, res),
+				"body": res.body, "feminine": res.is_feminine()})
+	tenant_card.set_household(out, _owners_of)
+
+
+# Whose a requirement is: the residents the application names for it, else
+# the one who asked for it; [] when it is the whole household's.
+func _owners_of(req_id: String) -> Array:
+	var line := _application.line_for(req_id) if _application else null
+	if line == null:
+		return []
+	if not line.owners.is_empty():
+		return line.owners.map(func(o): return String(o))
+	return [String(line.speaker)] if line.speaker != &"" else []
+
+
 func _start_tenants() -> void:
 	if tenant_layer == null:
 		return
@@ -4751,6 +4776,7 @@ func _apply_phase(i: int, with_scene: bool) -> void:
 	tenant_card.setup_moments(gm.moments)
 	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
 	tenant_card.set_application(_application != null, hidden_reqs)
+	_update_household()
 	_refresh_functions()
 	_update_rent_btn()
 	if with_scene:

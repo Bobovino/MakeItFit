@@ -49,6 +49,15 @@ var _has_application := false             # show the fax button in front of the 
 # so the line drawn to them lands right) until their line stamps them in.
 var _stamping := false
 var _project_chip: PanelContainer = null   # "Apartments 1/3": shown when the project has boxes with tenants
+# The household, as portraits in front of the chips (set_household): each
+# says how many of their needs are still to do, and choosing one fades the
+# chips that aren't theirs, as a life sim shows one person's needs.
+var _household: Array = []          # [{id, name, color, body, feminine}]
+var _owners_of := Callable()        # req id -> Array of resident ids; [] = everyone's
+var _focus := ""                    # the resident whose needs are shown; "" = everyone
+var _badges: Dictionary = {}        # resident id -> Label
+var _badges_queued := false
+const FACE_SIZE := 40.0
 
 
 # Blueprint drafting-table palette — matches GridDraw.gd's corner title block
@@ -200,6 +209,7 @@ func _clear_checklist() -> void:
 func _add_goal_label() -> void:
 	if _has_application:
 		_add_application_button()
+	_add_household()
 	var lbl := Label.new()
 	lbl.name = "GoalLabel"
 	# The fax button stands for the tenant's application: with it, whose
@@ -425,6 +435,7 @@ func _set_need_chip(chip: PanelContainer, satisfied: bool) -> void:
 		_pop_chip(chip)
 	if satisfied != was_satisfied:
 		_queue_fit()
+		_queue_badges()
 
 
 # ── Keeping the bar on one row ──────────────────────────────────────────────
@@ -565,10 +576,10 @@ func update_rules(rules: Array) -> void:
 			if is_items:
 				var n: int = rule["number"]
 				chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-				chip.tooltip_text += "
-" + tr("Click to see the pieces that count")
+				chip.tooltip_text += "\n" + tr("Click to see the pieces that count")
 				chip.gui_input.connect(func(event: InputEvent):
-					if event is InputEventMouseButton and (event as InputEventMouseButton).pressed 							and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+					if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+						and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 						items_clicked.emit(n))
 			_rule_row.add_child(chip)
 			_rule_chips.append(chip)
@@ -602,7 +613,8 @@ func update_moments(results: Dictionary) -> void:
 		var mfulfilled_all := (results.get(mid, {}) as Dictionary).get("fulfilled", []) as Array
 		# Hidden needs don't count, so the clock doesn't give them away.
 		done[mid] = needs.all(func(f) -> bool:
-			return f in mfulfilled_all or is_hidden_requirement("moment:%s:%s" % [mid, f]) 				or is_hidden_requirement("need:" + str(f)))
+			return f in mfulfilled_all or is_hidden_requirement("moment:%s:%s" % [mid, f]) \
+				or is_hidden_requirement("need:" + str(f)))
 		if not _moment_check_chips.has(mid):
 			continue
 		var chips  := _moment_check_chips[mid] as Dictionary
@@ -660,13 +672,141 @@ func _apply_requirement_state() -> void:
 	var hidden_chips: Array = []
 	for req_id in _hidden_reqs:
 		hidden_chips.append_array(_chips_by_req.get(req_id, []) as Array)
-	for list in _chips_by_req.values():
-		for chip in list:
+	for req_id in _chips_by_req:
+		for chip in _chips_by_req[req_id]:
 			var c := chip as Control
 			if not is_instance_valid(c):
 				continue
 			c.visible = c not in hidden_chips
-			c.modulate.a = 0.0 if c.get_meta("unstamped", false) else 1.0
+			# Someone else's need, while one resident's are shown: faded.
+			var theirs := _focus == "" or _is_theirs(req_id, _focus)
+			c.modulate.a = 0.0 if c.get_meta("unstamped", false) else (1.0 if theirs else 0.22)
+	_queue_badges()
+
+
+# ── The household ───────────────────────────────────────────────────────────
+
+# Called by Main with the level's residents ({id, name, color, body,
+# feminine}) and who each requirement belongs to.
+func set_household(residents: Array, owners_of: Callable) -> void:
+	_household = residents
+	_owners_of = owners_of
+	if not _household.any(func(r): return (r as Dictionary)["id"] == _focus):
+		_focus = ""
+	var old := checklist_container.get_node_or_null("Household")
+	if old:
+		checklist_container.remove_child(old)
+		old.queue_free()
+	if checklist_container.get_child_count() > 0:
+		_add_household()
+		var strip := checklist_container.get_node_or_null("Household")
+		if strip:
+			var after := checklist_container.get_node_or_null("ApplicationButton")
+			checklist_container.move_child(strip, after.get_index() + 1 if after else 0)
+	_apply_requirement_state()
+
+
+func _is_theirs(req_id: String, rid: String) -> bool:
+	if not _owners_of.is_valid():
+		return true
+	var owners := _owners_of.call(req_id) as Array
+	return owners.is_empty() or rid in owners
+
+
+func _add_household() -> void:
+	_badges.clear()
+	if _household.is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.name = "Household"
+	row.add_theme_constant_override("separation", 4)
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	checklist_container.add_child(row)
+	for r in _household:
+		var rd := r as Dictionary
+		var rid := rd["id"] as String
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(FACE_SIZE, FACE_SIZE)
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.tooltip_text = (tr("%s NEEDS") % (rd["name"] as String).to_upper()) + "\n" + tr("Click to show only theirs")
+		var col := rd["color"] as Color
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = col.lightened(0.6)
+		sb.border_color = col.darkened(0.15) if rid != _focus else GameTheme.NAVY
+		sb.set_border_width_all(2 if rid != _focus else 4)
+		sb.set_corner_radius_all(int(FACE_SIZE * 0.5))
+		sb.anti_aliasing = true
+		for state in ["normal", "hover", "pressed"]:
+			btn.add_theme_stylebox_override(state, sb)
+		var body := rd.get("body", "adult") as String
+		if body == "animal":
+			btn.text = NEED_GLYPH["pet"]
+			btn.add_theme_color_override("font_color", col.darkened(0.45))
+		else:
+			# The face, cut to the button's round frame by a rounded mask.
+			var mask := Panel.new()
+			var round := StyleBoxFlat.new()
+			round.set_corner_radius_all(int(FACE_SIZE * 0.5) - 3)
+			mask.add_theme_stylebox_override("panel", round)
+			mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			mask.set_anchors_preset(Control.PRESET_FULL_RECT)
+			mask.offset_left = 3; mask.offset_top = 3; mask.offset_right = -3; mask.offset_bottom = -3
+			mask.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+			btn.add_child(mask)
+			var pic := TextureRect.new()
+			pic.texture = MiiPortrait.face(body, rd.get("feminine", false) as bool)
+			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+			mask.add_child(pic)
+		# How many of their needs are still to do; a tick once there are none.
+		var badge := Label.new()
+		badge.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		badge.add_theme_font_size_override("font_size", 11)
+		badge.add_theme_color_override("font_color", Color.WHITE)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		badge.custom_minimum_size = Vector2(16, 16)
+		badge.position = Vector2(FACE_SIZE - 13, -4)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(badge)
+		_badges[rid] = badge
+		btn.pressed.connect(func():
+			Audio.play("click")
+			_focus = "" if _focus == rid else rid
+			set_household(_household, _owners_of))
+		row.add_child(btn)
+	_queue_badges()
+
+
+func _queue_badges() -> void:
+	if not _badges_queued:
+		_badges_queued = true
+		_refresh_badges.call_deferred()
+
+
+func _refresh_badges() -> void:
+	_badges_queued = false
+	for rid in _badges:
+		var badge := _badges[rid] as Label
+		if not is_instance_valid(badge):
+			continue
+		# By chip: one chip can answer to two ids ("need:sleep", "moment:night:sleep").
+		var todo := {}
+		for req_id in _chips_by_req:
+			if req_id in _hidden_reqs or not _is_theirs(req_id, rid):
+				continue
+			for c in _chips_by_req[req_id]:
+				if is_instance_valid(c) and not (c as Control).get_meta("satisfied", false):
+					todo[c] = true
+		var missing := todo.size()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = GameTheme.RED if missing > 0 else GameTheme.OK
+		sb.set_corner_radius_all(8)
+		badge.add_theme_stylebox_override("normal", sb)
+		badge.text = str(missing) if missing > 0 else ""
 
 
 func is_hidden_requirement(req_id: String) -> bool:

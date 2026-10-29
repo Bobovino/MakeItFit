@@ -33,6 +33,32 @@ static func create(px: int, framing := "fax") -> MiiPortrait:
 	return p
 
 
+# A head-and-shoulders still of the Mii for this body, shared: a Mii looks
+# only as its body and whether it is feminine make it, so one portrait per
+# kind serves every resident of that kind, on the plan's tokens and in the
+# bar alike. Drawn for its first moments, then left still; kept for the rest
+# of the game, under the tree's root.
+static var _faces := {}   # "body|feminine" -> MiiPortrait
+const FACE_PX := 128
+
+static func face(body: String, feminine: bool) -> Texture2D:
+	var key := "%s|%s" % [body, feminine]
+	var p = _faces.get(key)
+	if not is_instance_valid(p):
+		p = create(FACE_PX, "head")
+		_faces[key] = p
+		(Engine.get_main_loop() as SceneTree).root.add_child.call_deferred(p)
+		p._dress_still.call_deferred(body, feminine)
+	return (p as MiiPortrait).texture()
+
+
+func _dress_still(body: String, feminine: bool) -> void:
+	show_body(body, feminine)
+	pose(1.0, 15.0)
+	await get_tree().create_timer(0.6).timeout
+	render_target_update_mode = SubViewport.UPDATE_DISABLED
+
+
 func _build() -> void:
 	_cam = Camera3D.new()
 	_cam.fov = 35.0

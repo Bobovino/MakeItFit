@@ -614,7 +614,12 @@ class _Trail extends Node2D:
 
 # Each resident keeps one colour, whatever the language or the session.
 func _tint(r: TenantResident) -> Color:
-	var hue := float(absi(("%s/%s" % [_app.level_id, r.id]).hash()) % 360) / 360.0
+	return tint_of(_app.level_id, r)
+
+
+# A resident's own colour, the same wherever they are shown.
+static func tint_of(level_id: String, r: TenantResident) -> Color:
+	var hue := float(absi(("%s/%s" % [level_id, r.id]).hash()) % 360) / 360.0
 	return Color.from_hsv(hue, 0.5, 0.88)
 
 
