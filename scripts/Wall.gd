@@ -2505,7 +2505,7 @@ func turn_riders(support: Furniture, riders: Array, old_pos: Vector2, old_w: int
 		var rw := rf.grid_w
 		rf.set_rot_steps(rf.rot_steps + 1)   # not registered right now, so this only turns it
 		place_furniture(rf, support.grid_pos + Vector2(off.y, old_w - off.x - rw))
-		rf.record_moment_move(old_pos + off)
+		rf.record_moment_move(old_pos + off, Input.is_key_pressed(KEY_SHIFT))
 	end_batch()
 
 

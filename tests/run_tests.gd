@@ -1317,12 +1317,12 @@ func _t_moved_from_home() -> void:
 		return null
 	var desk: Furniture = find.call("desk")
 	var chair: Furniture = find.call("dining_chair")
-	# What dropping it does: moved for the moment on screen only.
+	# What dropping it with Shift held does: moved for the moment on screen only.
 	var move := func(f: Furniture, mid: String, to: Vector2) -> void:
 		assert(Furniture.active_moment_id == mid)
 		var from := f.grid_pos
 		fl.place_furniture(f, to)
-		f.record_moment_move(from)
+		f.record_moment_move(from, true)
 	var day_spot := desk.grid_pos
 	main._on_moment_selected("night", false)
 	var night_spot := day_spot + Vector2(0, 8)
@@ -1341,6 +1341,13 @@ func _t_moved_from_home() -> void:
 	main._refresh_functions()
 	_current = "comfort: the desk in the same place day and night stays put, comfort is back"
 	_ok(is_equal_approx(main.gm.comfort_pct, 100.0), str(main.gm.comfort_pct))
+	# A plain drop (no Shift) moves it in every moment.
+	var chair_from := chair.grid_pos
+	fl.place_furniture(chair, chair_from + Vector2(0, 4))
+	chair.record_moment_move(chair_from)
+	_current = "comfort: dropped without Shift, a piece is moved in every moment"
+	_ok(chair.get_moment_position("day") == chair.grid_pos and chair.get_moment_position("night") == chair.grid_pos,
+		"day %s night %s at %s" % [chair.get_moment_position("day"), chair.get_moment_position("night"), chair.grid_pos])
 	main.queue_free()
 	await get_tree().process_frame
 

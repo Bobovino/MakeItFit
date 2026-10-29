@@ -2327,8 +2327,9 @@ func _finish_furniture_drag() -> void:
 				if is_instance_valid(h) and h.get_meta("furniture", null) == r:
 					h.position.x = rmesh.position.x - rsize.x * 0.5
 					h.position.z = rmesh.position.z - rsize.z * 0.5
-		# Moved for the moment on screen only, unless Shift is held: the
-		# other moments keep where it was (Main's toast says what it costs).
+		# Moved for every moment; with Shift held, for the moment on screen
+		# only, the others keeping where it was (Main's toast says what that
+		# costs).
 		f.record_moment_move(from_grid, Input.is_key_pressed(KEY_SHIFT))
 		mesh.position.x = (snap_pos.x - _room_bounds.position.x) * TILE_M + item_size.x * 0.5
 		mesh.position.z = (snap_pos.y - _room_bounds.position.y) * TILE_M + item_size.z * 0.5

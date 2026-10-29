@@ -1565,22 +1565,23 @@ func get_occupied_tiles() -> Array:
 # if it has_own_moment_position() and one's been recorded, else its single
 # shared grid_pos (the correct fallback for both "never moved for this
 # moment yet" and "red, non-rail — always shares one position").
-# Records a move made while a moment is on screen. Moved for that moment
-# only (the default), every other moment that had no place of its own yet
-# keeps the one it had, `from`: moving it at night doesn't move it by day.
-# `everywhere` (Shift held on dropping it) puts it there in every moment.
-# Pieces that share one place in every moment (red ones) have nothing to
-# record. Returns what was done, for the notice: "" when nothing.
-func record_moment_move(from: Vector2, everywhere := false) -> String:
+# Records a move made while a moment is on screen. A plain move puts it
+# there in every moment (the default). `only_here` (Shift held on dropping
+# it) moves it for the moment on screen only: every other moment that had
+# no place of its own yet keeps the one it had, `from`, so moving it at
+# night doesn't move it by day. Pieces that share one place in every moment
+# (red ones) have nothing to record. Returns what was done, for the notice:
+# "" when nothing.
+func record_moment_move(from: Vector2, only_here := false) -> String:
 	if not has_own_moment_position() or not Furniture.test_mode_active or Furniture.all_moment_ids.size() < 2:
 		return ""
 	for mid in Furniture.all_moment_ids:
-		if everywhere:
+		if not only_here:
 			moment_positions[mid] = grid_pos
 		elif not moment_positions.has(mid):
 			moment_positions[mid] = from
 	moment_positions[Furniture.active_moment_id] = grid_pos
-	if everywhere:
+	if not only_here:
 		return tr("Moved for every moment")
 	return tr("Moved for %s only") % tr(Furniture.moment_labels.get(Furniture.active_moment_id, Furniture.active_moment_id) as String)
 
