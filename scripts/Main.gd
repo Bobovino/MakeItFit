@@ -3876,8 +3876,10 @@ func _floor_pane_right_x() -> float:
 	return RIGHT_X
 
 
+# The plan ends above the needs bar (and the shop under it, when open): the
+# bar has no strip of its own to hide what would run behind it.
 func _floor_pane_bottom_y() -> float:
-	if is_instance_valid(inventory) and inventory.visible:
+	if is_instance_valid(tenant_card):
 		return tenant_card.offset_top
 	return BOT_Y
 

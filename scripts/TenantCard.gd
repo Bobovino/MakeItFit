@@ -31,11 +31,13 @@ var _setup_ticks: int = 0
 var _moments: Array = []
 var _moment_check_chips: Dictionary = {}  # moment_id -> { need -> Control }
 var _moment_rows: Dictionary = {}         # moment_id -> HFlowContainer (its chip row)
-# The moments themselves: a tab per moment (MomentClock), the one on screen
-# named on its tab. Choosing a tab switches the moment.
+# The moments themselves: a clock with a slice per moment (MomentClock) and
+# the active one's name beside it. Choosing a slice switches the moment.
 var _moment_clock: MomentClock = null
 var _moment_icon: Label = null
 var _moment_name: Label = null
+const CLOCK_SIZE := 78.0
+const CLOCK_SIZE_MANY := 92.0   # more moments than icons fit: bigger slices to click
 var _showcased_chips: Array = []          # chips currently gold-ringed by highlight_showcase_need()
 
 # Every chip by the requirement id(s) it shows (see Requirements): one chip
@@ -251,11 +253,13 @@ func _build_moment_checklist() -> void:
 	_moment_check_chips = {}
 	_add_goal_label()
 
-	# The moments as tabs (MomentClock), the one on screen named on its tab.
+	# The clock, then the active moment's name: every moment is on the dial,
+	# whichever is active.
 	_moment_clock = MomentClock.new()
 	_moment_clock.name = "MomentClock"
 	_moment_clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_moment_clock.setup(_moments)
+	_moment_clock.setup(_moments, CLOCK_SIZE_MANY if _moments.size() > MomentClock.COMPACT_MAX else CLOCK_SIZE)
+	_moment_clock.tooltip_text = " "   # turns on _get_tooltip(): it names the slice under the pointer
 	_moment_clock.moment_chosen.connect(func(mid: String): moment_selected.emit(mid))
 	checklist_container.add_child(_moment_clock)
 	# With too many moments for icons on the small dial, the active one's
@@ -264,7 +268,7 @@ func _build_moment_checklist() -> void:
 	_moment_icon.name = "MomentIcon"
 	_moment_icon.add_theme_font_override("font", GameTheme.font("icons"))
 	_moment_icon.add_theme_font_size_override("font_size", 26)
-	_moment_icon.add_theme_color_override("font_color", GameTheme.NAVY)
+	_moment_icon.add_theme_color_override("font_color", GameTheme.CHALK)
 	_moment_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_moment_icon.visible = _moment_clock.is_compact()
 	_moment_icon.text = _moment_clock.active_icon()
@@ -274,9 +278,8 @@ func _build_moment_checklist() -> void:
 	_moment_name.text = tr(_moment_clock.active_label()).to_upper()
 	_moment_name.add_theme_font_override("font", GameTheme.font("mono_bold"))
 	_moment_name.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	_moment_name.add_theme_color_override("font_color", GameTheme.INK)
+	_moment_name.add_theme_color_override("font_color", GameTheme.CHALK)   # on the board itself
 	_moment_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_moment_name.visible = false   # the moment's tab names it
 	checklist_container.add_child(_moment_name)
 
 	# Then a single shared content area — only the active moment's chip row is
