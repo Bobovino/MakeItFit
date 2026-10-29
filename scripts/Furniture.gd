@@ -415,13 +415,44 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 func _fetch_topdown_icon(data: Dictionary) -> void:
 	var cached := Thumb.get_cached_ortho("top", furniture_id)
 	if cached:
-		_topdown_icon = cached
+		_topdown_icon = Furniture.in_pencil(cached)
 		queue_redraw()
 		return
 	var tex: Texture2D = await Thumb.get_topdown_icon_async(data)
 	if is_instance_valid(self) and tex:
-		_topdown_icon = tex
+		_topdown_icon = Furniture.in_pencil(tex)
 		queue_redraw()
+
+
+# The plan is a black-and-white sheet: a piece's top-down picture goes on it
+# in pale greys, as if drawn in pencil, keeping its shape and shading but not
+# its colours. Made once per picture.
+static var _pencil: Dictionary = {}   # source texture's RID -> greyed copy
+
+static func in_pencil(tex: Texture2D) -> Texture2D:
+	var key := tex.get_rid()
+	if _pencil.has(key):
+		return _pencil[key]
+	var img := tex.get_image()
+	if img == null:
+		return tex
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			var g := lerpf(c.r * 0.30 + c.g * 0.59 + c.b * 0.11, 1.0, 0.55)
+			img.set_pixel(x, y, Color(g, g, g, c.a))
+	var out := ImageTexture.create_from_image(img)
+	_pencil[key] = out
+	return out
+
+
+# A piece's fill on the white plan: light grey, a hint of its own colour.
+static func paper_fill(own: Color) -> Color:
+	return Color("ececec").lerp(own, 0.15)
 
 
 func _screen_up() -> bool:
@@ -574,11 +605,10 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var w := grid_w * TILE_SIZE
 	var h := grid_h * TILE_SIZE
-	# Per-item colour fill (from furniture.json's "color") with a crisp white
-	# blueprint outline — pieces need to read apart at a glance since this is
-	# a packing puzzle, and a uniform white silhouette made everything blur
-	# together.
-	var ink := Color(0.88, 0.95, 1.00, 1.0)
+	# On the white sheet: a light grey fill (with a hint of the piece's own
+	# colour, so pieces still read apart in a packing puzzle) and a black
+	# outline, its picture in pencil greys (in_pencil).
+	var ink := GridDraw.PLAN_INK
 
 	# rot_steps cycles 0..3 in quarter turns; grid_w/grid_h already swap every
 	# single step (for collision/footprint), so at odd steps the "canonical"
@@ -635,7 +665,7 @@ func _draw_split_body(parts: Array, origin: Vector2, theta: float, canon: Vector
 		var dst: Rect2 = part["dst"]
 		var src: Rect2 = part["src"]
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		draw_rect(dst, Color(_color.r, _color.g, _color.b, 0.45))
+		draw_rect(dst, Furniture.paper_fill(_color))
 		var hd := 6.0
 		while hd < dst.size.x + dst.size.y:
 			draw_line(dst.position + Vector2(maxf(0.0, hd - dst.size.y), minf(hd, dst.size.y)),
@@ -670,7 +700,7 @@ func _draw_split_body(parts: Array, origin: Vector2, theta: float, canon: Vector
 func _draw_body(origin: Vector2, theta: float, cw: float, ch: float, ink: Color) -> void:
 	draw_set_transform(origin, theta, Vector2.ONE)
 
-	draw_rect(Rect2(0, 0, cw, ch), Color(_color.r, _color.g, _color.b, 0.45))
+	draw_rect(Rect2(0, 0, cw, ch), Furniture.paper_fill(_color))
 	# Subtle 45° drafting hatch over the fill — keeps the per-item colour
 	# legible while making pieces read as drawn linework, not paint blocks.
 	var hatch := Color(ink.r, ink.g, ink.b, 0.07)

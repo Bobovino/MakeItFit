@@ -14,12 +14,21 @@ const BP_INK_SOFT  := Color("c9cbe6")                  # secondary lines (GameTh
 const BP_GRID_FINE := Color(1, 1, 1, 0.05)             # 10 cm subcell grid (quiet)
 const BP_GRID_MAJ  := Color(1, 1, 1, 0.14)             # 1 m grid lines (quiet)
 
-const FLOOR_COLOR  := BP_FLOOR
-const WALL_COLOR   := BP_INK
+# ── The plan itself: a white sheet in black ink ───────────────────────────────
+# Drawn as flats are drawn in Spain, solid black walls on white, lying on the
+# blueprint drawing board (the screen behind it). The BP_* colours above stay
+# for the blueprint previews (the map's cards, the catalogue).
+const PLAN_PAPER    := Color("fbfaf6")   # the sheet
+const PLAN_FLOOR    := Color("ffffff")   # the rooms
+const PLAN_INK      := Color("141414")   # walls, dimensions
+const PLAN_INK_SOFT := Color("6b6b6b")   # secondary lines
+
+const FLOOR_COLOR  := PLAN_FLOOR
+const WALL_COLOR   := PLAN_INK
 const GRID_MINOR   := BP_GRID_FINE
 const GRID_MAJOR   := BP_GRID_MAJ
-const DOOR_COLOR   := Color("c9cbe6")                # door swing, soft chalk
-const WINDOW_COLOR := Color(0.66, 0.84, 1.00, 0.95)  # glazing, the one pale blue on the plan
+const DOOR_COLOR   := Color("4a4a4a")                # door swing, a fine grey line
+const WINDOW_COLOR := Color(0.30, 0.56, 0.80, 0.95)  # glazing, the one blue on the plan
 const EDGE_HOVER   := Color(0.85, 0.27, 0.25, 0.55)   # GameTheme.RED
 const EDGE_ACTIVE  := Color(0.85, 0.27, 0.25, 1.0)
 const WALL_THICK   := 6.0
@@ -173,11 +182,10 @@ func _draw_old_format(parent: Floor, w: int, h: int, rw: int, rh: int) -> void:
 
 
 func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void:
-	# Deep blueprint-blue canvas
-	const CANVAS_BG   := BP_PAPER
-	# Grid lines — cyan, visible on both the deep-blue paper and lighter floor
-	const FINE_COL    := Color(1, 1, 1, 0.16)  # 10 cm subcell lines
-	const MAJOR_COL   := Color(1, 1, 1, 0.30)  # 1 m cell lines (brighter)
+	# A white sheet, its grid in faint pencil.
+	const CANVAS_BG   := PLAN_PAPER
+	const FINE_COL    := Color(0, 0, 0, 0.07)  # 10 cm subcell lines
+	const MAJOR_COL   := Color(0, 0, 0, 0.10)  # 1 m cell lines (darker)
 
 	# The level's authored canvas (grid_w x grid_h) is usually much bigger than
 	# any one room actually uses — drawing the paper sheet/grid across the
@@ -217,7 +225,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# The sheet stands on a navy edge, like every card of the look.
 	draw_rect(Rect2(sheet_x + 4, sheet_y + 5, sheet_w, sheet_h), Color("1b2759"))
 	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), CANVAS_BG)
-	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), Color(1, 1, 1, 0.85), false, 1.5)
+	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), GameTheme.NAVY, false, 1.5)
 
 	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
 	if not parent.shadow_mask.is_empty():
@@ -251,8 +259,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				f.grid_w * TILE_SIZE, f.grid_h * TILE_SIZE), BELOW_FURN_COL)
 
 	# ── 2. Painted floor tiles (blueprint blue, or tinted by kind) ───────────
-	const BALCONY_COL  := Color("2b4a5e")   # outdoor decking, a cooler blue-green
-	const BATHROOM_COL := Color("33407a")   # wet-room, a bluer indigo
+	const BALCONY_COL  := Color("efe7d6")   # outdoor decking, a warm tint
+	const BATHROOM_COL := Color("eaf0f4")   # wet-room tiles, a cool tint
 	for tile in parent.floor_mask:
 		var t := tile as Vector2i
 		var kind := parent.get_tile_kind(t) if parent.has_method("get_tile_kind") else "normal"
@@ -563,7 +571,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, min_px_maj, true)
 
 	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
-	const FRAME_COL := Color(1, 1, 1, 0.55)
+	const FRAME_COL := Color(0, 0, 0, 0.30)
 	var m1 := 4.0
 	var m2 := 7.0
 	draw_rect(Rect2(sheet_x + m1, sheet_y + m1, sheet_w - m1 * 2, sheet_h - m1 * 2), FRAME_COL, false, 1.5)
@@ -574,8 +582,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	for corner in [Vector2(sheet_x + tm, sheet_y + tm), Vector2(sheet_x + sheet_w - tm, sheet_y + tm), Vector2(sheet_x + tm, sheet_y + sheet_h - tm), Vector2(sheet_x + sheet_w - tm, sheet_y + sheet_h - tm)]:
 		var dx := tk if corner.x < sheet_x + sheet_w * 0.5 else -tk
 		var dy := tk if corner.y < sheet_y + sheet_h * 0.5 else -tk
-		draw_line(corner, corner + Vector2(dx, 0), BP_INK_SOFT, 1.0, true)
-		draw_line(corner, corner + Vector2(0, dy), BP_INK_SOFT, 1.0, true)
+		draw_line(corner, corner + Vector2(dx, 0), PLAN_INK_SOFT, 1.0, true)
+		draw_line(corner, corner + Vector2(0, dy), PLAN_INK_SOFT, 1.0, true)
 
 	# ── 4. Natural light hatching (only over painted tiles) ───────────────────
 	_draw_natural_light(parent)
@@ -717,7 +725,7 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
 	if not _is_plate(parent):
 		return
-	const DIM_COL := Color(1, 1, 1, 0.80)
+	const DIM_COL := Color(0.08, 0.08, 0.08, 0.85)
 	var b := _room_bounds_tiles(parent)
 	var font := ThemeDB.fallback_font
 	var left   := float(b.position.x * TILE_SIZE)
@@ -832,8 +840,8 @@ func _draw_segments(parent: Floor) -> void:
 	# Contrasts against both the cream floor AND the dark canvas background —
 	# a near-black ink (previously ~equal to CANVAS_BG) made walls vanish
 	# whenever there was no stray floor tile just outside them for contrast.
-	const PRIMARY_COL   := Color(1, 1, 1, 1.0)            # bold chalk wall
-	const SECONDARY_COL := Color(0.79, 0.80, 0.90, 0.90)  # lighter interior partition
+	const PRIMARY_COL   := PLAN_INK                       # solid black wall
+	const SECONDARY_COL := Color("333333")                # interior partition, a touch lighter
 	const DEMO_COL      := Color(0.95, 0.55, 0.35, 0.55)  # orange demolition guide
 	# Thickness in TILES — walls render as filled tile cells, not lines.
 	# Kept at the minimum (1 tile = 10 cm) for both primary and secondary walls
@@ -972,7 +980,7 @@ func _draw_segments(parent: Floor) -> void:
 			var old_vs := sd.get("view_side", 0) as int
 			if old_vs != 0: vs_dict = {str(old_vs): {}}
 		if not vs_dict.is_empty():
-			const WV_COL  := Color(0.25, 0.82, 0.88, 0.95)
+			const WV_COL  := Color(0.20, 0.50, 0.62, 0.95)
 			const TICK_PX := 10
 			var mid := seg_len / 2.0
 			for sk in vs_dict:
@@ -1006,8 +1014,8 @@ func _draw_segments(parent: Floor) -> void:
 # Sliding door: no swing arc (nothing to collide with) — drawn as a recessed
 # track with a single leaf, matching the rail-furniture visual language.
 func _draw_sliding_door(dr: Rect2, is_h: bool) -> void:
-	const TRACK_COL := Color(0.30, 0.68, 0.72, 0.90)
-	const PANEL_COL := Color(0.30, 0.68, 0.72, 0.45)
+	const TRACK_COL := Color(0.25, 0.25, 0.25, 0.90)
+	const PANEL_COL := Color(0.25, 0.25, 0.25, 0.35)
 	if is_h:
 		var cy := dr.position.y + dr.size.y * 0.5
 		draw_line(Vector2(dr.position.x, cy - 1.5), Vector2(dr.end.x, cy - 1.5), TRACK_COL, 1.0)
@@ -1375,17 +1383,17 @@ func _draw_partitions(parent: Floor) -> void:
 
 
 func _draw_columns(parent: Floor) -> void:
-	# Structural column: filled white square with an X (standard blueprint symbol)
-	const COL_COL  := Color(0.86, 0.94, 1.00, 1.0)
-	const COL_H    := Color(0.30, 0.50, 0.72, 0.90)
+	# Structural column: a solid square in the walls' black, crossed (the plan's symbol)
+	const COL_COL  := Color(0.20, 0.20, 0.20, 1.0)
+	const COL_H    := Color(0.08, 0.08, 0.08, 1.0)
 	for col in parent.columns:
 		var cx: int = col["x"] as int
 		var cy: int = col["y"] as int
 		var r := Rect2(cx * TILE_SIZE, cy * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 		draw_rect(r, COL_COL)
 		draw_rect(r, COL_H, false, 1.5)
-		draw_line(r.position + Vector2(2, 2), r.end - Vector2(2, 2), Color(0.10, 0.24, 0.40, 0.55), 1.0)
-		draw_line(r.position + Vector2(r.size.x - 2, 2), r.position + Vector2(2, r.size.y - 2), Color(0.10, 0.24, 0.40, 0.55), 1.0)
+		draw_line(r.position + Vector2(2, 2), r.end - Vector2(2, 2), Color(1, 1, 1, 0.45), 1.0)
+		draw_line(r.position + Vector2(r.size.x - 2, 2), r.position + Vector2(2, r.size.y - 2), Color(1, 1, 1, 0.45), 1.0)
 
 
 func _draw_subfloor_layer(parent: Floor) -> void:
@@ -1447,8 +1455,8 @@ func _draw_ceiling_layer(parent: Floor) -> void:
 # Quiet routes: a dashed ring round the sleeping birds (the distance to keep)
 # and the night-time way from a bed to the toilet as a line of footsteps,
 # calm when it keeps clear, red when it wakes them.
-const QUIET_RING := Color(0.70, 0.78, 1.0, 0.85)
-const QUIET_OK := Color(0.55, 0.95, 0.70, 0.95)
+const QUIET_RING := Color(0.25, 0.35, 0.75, 0.85)
+const QUIET_OK := Color(0.12, 0.58, 0.32, 0.95)
 const QUIET_BAD := Color(1.0, 0.42, 0.38, 0.95)
 
 func _draw_quiet_routes() -> void:
@@ -1485,7 +1493,7 @@ func _draw_quiet_routes() -> void:
 
 # The walls a wall-bound piece can be put against (Floor.backs_onto_wall):
 # every wall tile but doorways, in a soft glow over the wall.
-const WALL_CUE_COL := Color(0.45, 0.88, 1.0, 0.55)
+const WALL_CUE_COL := Color(0.12, 0.50, 0.85, 0.50)
 
 func _draw_wall_cue(parent: Floor) -> void:
 	var ts := float(TILE_SIZE)
@@ -1499,7 +1507,7 @@ var _light_layer: Node2D = null
 # One rail track, in tiles: along the axis (`horizontal` or not) from `from`
 # to `to`, its line across at `at`. A thin line with a short stop across
 # each end.
-const RAIL_TRACK_COL := Color(0.62, 0.86, 0.92, 0.95)
+const RAIL_TRACK_COL := Color(0.30, 0.33, 0.40, 0.95)
 
 func _draw_rail_track(horizontal: bool, from: float, to: float, at: float) -> void:
 	var t := float(TILE_SIZE)
@@ -1540,7 +1548,7 @@ func _draw_light_layer() -> void:
 		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(LIGHT_COL, k))
 
 
-# Sand-gold sunlight laid well over the blueprint blue: a thin warm wash over
-# it turned grey or mauve (warm and this blue cancel out).
-const LIGHT_COL := Color(1.0, 0.86, 0.42)
-const LIGHT_STRENGTH := 0.55   # its opacity at full light
+# Sunlight: a warm yellow wash over the white plan, strong enough to show
+# against the paper.
+const LIGHT_COL := Color(0.98, 0.80, 0.25)
+const LIGHT_STRENGTH := 0.45   # its opacity at full light
