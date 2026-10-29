@@ -3793,19 +3793,39 @@ func _set_mode_hint(text: String) -> void:
 			_mode_hint_lbl.visible = false
 		return
 	if not is_instance_valid(_mode_hint_lbl):
+		# On a slip of paper: pale ink straight on the board was lost over
+		# the plan once zoomed in under it.
 		_mode_hint_lbl = Label.new()
 		_mode_hint_lbl.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-		_mode_hint_lbl.add_theme_color_override("font_color", GameTheme.CHALK_SOFT)
+		_mode_hint_lbl.add_theme_color_override("font_color", GameTheme.INK)
+		var slip := StyleBoxFlat.new()
+		slip.bg_color = Color("fbfaf5")
+		slip.border_color = GameTheme.NAVY
+		slip.set_border_width_all(1)
+		slip.set_corner_radius_all(3)
+		slip.set_content_margin(SIDE_LEFT, 10)
+		slip.set_content_margin(SIDE_RIGHT, 10)
+		slip.set_content_margin(SIDE_TOP, 2)
+		slip.set_content_margin(SIDE_BOTTOM, 3)
+		slip.shadow_color = Color(0, 0, 0, 0.3)
+		slip.shadow_size = 1
+		slip.shadow_offset = Vector2(2, 2)
+		_mode_hint_lbl.add_theme_stylebox_override("normal", slip)
 		_mode_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_mode_hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ui_layer.add_child(_mode_hint_lbl)
 	_mode_hint_lbl.text = text
 	var span := _top_free_span()
-	_mode_hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_mode_hint_lbl.offset_left   = span.x
-	_mode_hint_lbl.offset_right  = span.y
+	# As wide as its words, centred; wrapping only when they don't fit.
+	_mode_hint_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var w := minf(_mode_hint_lbl.get_combined_minimum_size().x, span.y - span.x)
+	if w < _mode_hint_lbl.get_combined_minimum_size().x:
+		_mode_hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var mid := (span.x + span.y) * 0.5
+	_mode_hint_lbl.offset_left   = mid - w * 0.5
+	_mode_hint_lbl.offset_right  = mid + w * 0.5
 	_mode_hint_lbl.offset_top    = TOP_Y + 40.0
-	_mode_hint_lbl.offset_bottom = TOP_Y + 84.0
+	_mode_hint_lbl.offset_bottom = TOP_Y + 40.0
 	_mode_hint_lbl.visible = true
 	ui_layer.move_child(_mode_hint_lbl, ui_layer.get_child_count() - 1)
 	# Wrapped onto more lines, or fewer: the plan makes room (_fit_floor).
@@ -3817,13 +3837,14 @@ func _set_mode_hint(text: String) -> void:
 			_fit_floor(fl)
 
 
-# How much taller than one line the hint under the title is.
+# How much taller than one bare line the hint under the title is: its other
+# lines, and its slip's margins.
 var _hint_extra_fitted := 0.0
 
 func _hint_extra_h() -> float:
 	if not is_instance_valid(_mode_hint_lbl) or not _mode_hint_lbl.visible:
 		return 0.0
-	return maxf(0.0, float(_mode_hint_lbl.get_line_count() - 1)) * _mode_hint_lbl.get_line_height()
+	return maxf(0.0, float(_mode_hint_lbl.get_line_count() - 1)) * _mode_hint_lbl.get_line_height() + 10.0
 
 
 # The stretch of the top edge, centred on the screen, that the title and the

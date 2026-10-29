@@ -1,86 +1,83 @@
-extends Control
+extends HBoxContainer
 class_name MomentClock
 
-# A level's moments on a clock face, in the needs bar: one slice per moment
-# with its icon, the active one filled, and a hand that sweeps to whichever
-# is chosen. Moments can be hours, days of the week, occasions or routines;
-# the clock only says "this is about time", so the slices are equal and the
-# hour ticks round the rim are decoration.
+# A level's moments in the needs bar, as tabs, like the dividers of a day
+# planner: the moment on screen shows its icon and name on white paper with
+# a navy edge; the others show their icon on a quieter card. Each tab says
+# whether that moment has everything (a green tick) or still misses
+# something (a red dot). Moments can be hours, days of the week, occasions
+# or routines.
 #
-# Click a slice to choose it (the same as the old tabs); the tooltip names
-# the slice under the pointer. Main switches the moment and calls
-# set_active(), so a switch made any other way (Q/E, loading) turns the hand
-# too.
-#
-# The clock holds icons for up to COMPACT_MAX moments. With more (a week, a
-# dozen routines) the slices are too thin for icons: it shows the slices
-# alone, and TenantCard puts the active moment's icon beside it.
+# Clicking a tab chooses it. Main switches the moment and calls
+# set_active(), so a switch made any other way (Q/E, loading) moves the tab
+# too. (It was a clock face; the name stays for the scripts that use it.)
 
 signal moment_chosen(moment_id: String)
 
-const RIM := 2.0
-const TICKS := 12
-const COMPACT_MAX := 4
-const DONE_FILL := Color("bfe3cc")      # a moment with every need met
-const MISSING_FILL := Color("f6c7c4")   # a moment still missing a need
+const COMPACT_MAX := 4   # kept for callers: tabs never need the bar's spare icon
+const DONE_INK := Color("27500a")
 
 var _moments: Array = []          # [{id, label, icon}]
 var _active := 0
-var _hand_angle := 0.0            # radians, 0 = twelve o'clock, clockwise
-var _hover := -1
-var _tween: Tween
 var _done := {}                   # moment id -> whether its needs are met; none until known
+var _tabs: Array = []             # one Button per moment
 
 
-func setup(moments: Array, size_px: float) -> void:
+func setup(moments: Array, _size_px: float = 0.0) -> void:
 	_moments = moments
-	custom_minimum_size = Vector2(size_px, size_px)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_active = 0
-	_hand_angle = _slice_angle(0)
-	queue_redraw()
+	add_theme_constant_override("separation", 4)
+	for t in _tabs:
+		(t as Node).queue_free()
+	_tabs.clear()
+	for k in _moments.size():
+		var m := _moments[k] as Dictionary
+		var tab := Button.new()
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tab.tooltip_text = tr(m.get("label", "") as String)
+		tab.custom_minimum_size = Vector2(0, GameTheme.TOUCH_SMALL)
+		tab.add_theme_font_override("font", GameTheme.font("ui"))
+		tab.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+		var mid := m.get("id", "") as String
+		tab.pressed.connect(func(): moment_chosen.emit(mid))
+		add_child(tab)
+		_tabs.append(tab)
+	_paint()
 
 
 func set_active(moment_id: String) -> void:
 	var k := _index_of(moment_id)
-	if k < 0 or k == _active and _hand_angle == _slice_angle(k):
+	if k < 0 or k == _active:
 		return
 	_active = k
-	var target := _slice_angle(k)
-	# Always the short way round: from Sunday to Monday, forward.
-	var delta := wrapf(target - _hand_angle, -PI, PI)
-	if absf(delta) < 0.001:
-		_hand_angle = target
-		queue_redraw()
-		return
-	if _tween and _tween.is_valid():
-		_tween.kill()
-	if GameState.reduce_motion or not is_inside_tree():
-		_hand_angle = target
-		queue_redraw()
-		return
-	var from := _hand_angle
-	_tween = create_tween()
-	_tween.tween_method(func(t: float) -> void:
-		_hand_angle = from + delta * t
-		queue_redraw(), 0.0, 1.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	queue_redraw()
+	_paint()
 
 
-# Which moments have all their needs met: their slices fill green, or red
+# Which moments have all their needs met: a tick on their tab, or a red dot
 # where something is missing.
 func set_status(done: Dictionary) -> void:
 	if done == _done:
 		return
 	_done = done.duplicate()
-	queue_redraw()
+	_paint()
 
 
 func active_label() -> String:
 	if _moments.is_empty():
 		return ""
 	return (_moments[_active] as Dictionary).get("label", "") as String
+
+
+func active_icon() -> String:
+	if _moments.is_empty():
+		return ""
+	return MomentClock.icon_for(_moments[_active] as Dictionary)
+
+
+# The tabs name the moment themselves: nothing for the bar to add.
+func is_compact() -> bool:
+	return false
 
 
 func _index_of(moment_id: String) -> int:
@@ -90,119 +87,42 @@ func _index_of(moment_id: String) -> int:
 	return -1
 
 
-# The middle of slice k, from twelve o'clock clockwise.
-func _slice_angle(k: int) -> float:
-	if _moments.is_empty():
-		return 0.0
-	return TAU * k / _moments.size()
-
-
-func _point(angle: float, r: float) -> Vector2:
-	return size * 0.5 + Vector2(sin(angle), -cos(angle)) * r
-
-
-func _slice_at(pos: Vector2) -> int:
-	var d := pos - size * 0.5
-	if d.length() > size.x * 0.5 or _moments.is_empty():
-		return -1
-	var a := fposmod(atan2(d.x, -d.y), TAU)
-	var step := TAU / _moments.size()
-	return int(fposmod(a + step * 0.5, TAU) / step) % _moments.size()
-
-
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var h := _slice_at((event as InputEventMouseMotion).position)
-		if h != _hover:
-			_hover = h
-			queue_redraw()
-	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		var k := _slice_at((event as InputEventMouseButton).position)
-		if k >= 0:
-			accept_event()
-			moment_chosen.emit((_moments[k] as Dictionary)["id"] as String)
-
-
-# Too many moments for icons on the dial.
-func is_compact() -> bool:
-	return _moments.size() > COMPACT_MAX
-
-
-func active_icon() -> String:
-	if _moments.is_empty():
-		return ""
-	return MomentClock.icon_for(_moments[_active] as Dictionary)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT and _hover != -1:
-		_hover = -1
-		queue_redraw()
-
-
-func _get_tooltip(at_position: Vector2) -> String:
-	var k := _slice_at(at_position)
-	if k < 0:
-		return ""
-	return tr((_moments[k] as Dictionary).get("label", "") as String)
-
-
-func _draw() -> void:
-	var c := size * 0.5
-	var r := size.x * 0.5 - RIM
-	draw_circle(c, r, GameTheme.CARD)
-	var n := _moments.size()
-	if n == 0:
-		return
-	var step := TAU / n
-	# Slices: the active one navy; the others green when all their needs are
-	# met, red when one is missing, white until known. Hover darkens a little.
-	for k in n:
-		var mid := (_moments[k] as Dictionary).get("id", "") as String
-		var col := GameTheme.CARD
-		if k == _active:
-			col = GameTheme.NAVY
-		elif _done.has(mid):
-			col = DONE_FILL if _done[mid] else MISSING_FILL
-		if k == _hover and k != _active:
-			col = col.darkened(0.08)
-		if col == GameTheme.CARD:
-			continue
-		var a0 := _slice_angle(k) - step * 0.5
-		var pts := PackedVector2Array([c])
-		var segs := maxi(6, int(24.0 / n))
-		for s in segs + 1:
-			pts.append(_point(a0 + step * s / segs, r))
-		draw_colored_polygon(pts, col)
-	# Dividers between slices.
-	if n > 1:
-		for k in n:
-			var a := _slice_angle(k) + step * 0.5
-			draw_line(c, _point(a, r), GameTheme.INK_SOFT, 1.0, true)
-	# Hour ticks round the rim.
-	for t in TICKS:
-		var a := TAU * t / TICKS
-		draw_line(_point(a, r - 4.0), _point(a, r), GameTheme.INK, 1.5, true)
-	draw_arc(c, r, 0.0, TAU, 64, GameTheme.NAVY, RIM * 2.0, true)
-	# Icons, halfway out in each slice.
-	var font := GameTheme.font("icons")
-	var fs := int(clampf(r * (0.62 if n <= 2 else 0.52), 12.0, 30.0))
-	for k in n:
-		if is_compact():
-			break
-		var col := GameTheme.CHALK if k == _active else GameTheme.INK
-		var glyph := MomentClock.icon_for(_moments[k] as Dictionary)
-		var at := _point(_slice_angle(k), r * (0.64 if n > 1 else 0.0))
-		var w := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		draw_string(font, at + Vector2(-w * 0.5, fs * 0.36), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
-	# The hand, short like an hour hand so it points at the icon without
-	# covering it, in the main-action red so it shows on navy and white.
-	var tip := _point(_hand_angle, r * 0.38)
-	draw_line(c, tip, GameTheme.NAVY, 5.0, true)
-	draw_line(c, tip, GameTheme.RED, 3.0, true)
-	draw_circle(c, 4.5, GameTheme.NAVY)
-	draw_circle(c, 2.0, GameTheme.RED)
+func _paint() -> void:
+	for k in _tabs.size():
+		var tab := _tabs[k] as Button
+		var m := _moments[k] as Dictionary
+		var on := k == _active
+		var mid := m.get("id", "") as String
+		var mark := ""
+		var mark_col := GameTheme.INK
+		if _done.has(mid):
+			mark = "  \uea5e" if _done[mid] else "  \u25cf"
+			mark_col = DONE_INK if _done[mid] else GameTheme.RED
+		tab.text = MomentClock.icon_for(m) + ("  " + tr(m.get("label", "") as String) if on else "") + mark
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = GameTheme.CARD if on else GameTheme.CARD_DIM
+		sb.border_color = GameTheme.NAVY if on else GameTheme.INK_SOFT.lerp(GameTheme.CARD, 0.4)
+		sb.set_border_width_all(2 if on else 1)
+		sb.corner_radius_top_left = 8
+		sb.corner_radius_top_right = 8
+		sb.corner_radius_bottom_left = 2
+		sb.corner_radius_bottom_right = 2
+		sb.shadow_color = Color(0, 0, 0, 0.3)
+		sb.shadow_size = 1
+		sb.shadow_offset = Vector2(2, 3) if on else Vector2(1, 2)
+		sb.set_content_margin(SIDE_LEFT, 12)
+		sb.set_content_margin(SIDE_RIGHT, 12)
+		sb.anti_aliasing = true
+		var hover := sb.duplicate() as StyleBoxFlat
+		hover.bg_color = GameTheme.CARD
+		for state in ["normal", "pressed", "hover_pressed"]:
+			tab.add_theme_stylebox_override(state, sb)
+		tab.add_theme_stylebox_override("hover", hover)
+		# The one on screen in navy; the others in the colour of how they
+		# stand (green: everything there, red: something missing).
+		var ink := GameTheme.INK if on else (mark_col if mark != "" else GameTheme.INK_SOFT)
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+			tab.add_theme_color_override(c, ink)
 
 
 # Tabler icons a moment can name in its "icon" field, by name.
