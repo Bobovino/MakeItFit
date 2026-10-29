@@ -361,6 +361,14 @@ func _ready() -> void:
 		return pos.x > LEFT_X and pos.x < RIGHT_X and pos.y > TOP_Y and pos.y < _floor_pane_bottom_y()
 	_update_split(_split_y)
 	_apply_ui_theme()
+	# The household's portraits: a column at the left, its foot on the needs
+	# bar (or the shop), as in The Sims 3 (_process keeps it there).
+	_household_col = VBoxContainer.new()
+	_household_col.name = "Household"
+	_household_col.add_theme_constant_override("separation", 8)
+	_household_col.visible = false
+	ui_layer.add_child(_household_col)
+	tenant_card.household_box = _household_col
 	# Chosen on the map's phase path: the flat as the phase before left it.
 	var start_phase := GameState.pending_phase
 	GameState.pending_phase = -1
@@ -4120,8 +4128,13 @@ func _follow_transfer(to_id: String, fid: String, piece_name: String) -> void:
 	_toast(tr("%s came with you. Click to put it down  ·  Esc leaves it under “Owned”.") % piece_name)
 
 
+var _household_col: VBoxContainer = null
+
 func _process(_delta: float) -> void:
 	_update_carry_icon()
+	if is_instance_valid(_household_col):
+		_household_col.size = _household_col.get_combined_minimum_size()
+		_household_col.position = Vector2(14.0, tenant_card.get_global_rect().position.y - 14.0 - _household_col.size.y)
 	if not _xfer_dragging:
 		return
 	if _xfer_purchase:
@@ -4838,7 +4851,12 @@ func _play_phase_scene(i: int) -> void:
 	var d := DialogueScene.play(self, lines, _scene_speakers(), header,
 		func() -> float: return tenant_card.get_global_rect().position.y)
 	_set_plan_left_inset(DialogueScene.MARGIN + DialogueScene.PANEL_W)
-	d.finished.connect(func(): _set_plan_left_inset(0.0))
+	# Its corner is the household's: they step aside while it is up.
+	_household_col.modulate.a = 0.0
+	d.finished.connect(func():
+		_set_plan_left_inset(0.0)
+		if is_instance_valid(_household_col):
+			_household_col.modulate.a = 1.0)
 
 
 # Room kept free at the left of the plan (a dialogue's panel): the flat is

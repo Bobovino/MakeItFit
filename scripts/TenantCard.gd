@@ -49,15 +49,19 @@ var _has_application := false             # show the fax button in front of the 
 # so the line drawn to them lands right) until their line stamps them in.
 var _stamping := false
 var _project_chip: PanelContainer = null   # "Apartments 1/3": shown when the project has boxes with tenants
-# The household, as portraits in front of the chips (set_household): each
-# says how many of their needs are still to do, and choosing one fades the
-# chips that aren't theirs, as a life sim shows one person's needs.
+# The household, a column of portrait tiles Main keeps at the screen's left
+# (household_box, set_household), as in The Sims 3: each says how many of
+# their needs are still to do, and choosing one (its tile grows, framed in
+# white) fades the chips here that aren't theirs.
+var household_box: Container = null
 var _household: Array = []          # [{id, name, color, body, feminine}]
 var _owners_of := Callable()        # req id -> Array of resident ids; [] = everyone's
 var _focus := ""                    # the resident whose needs are shown; "" = everyone
 var _badges: Dictionary = {}        # resident id -> Label
 var _badges_queued := false
-const FACE_SIZE := 40.0
+const FACE_SIZE := 46.0          # a tile in the household column
+const FACE_SIZE_CHOSEN := 58.0   # the one whose needs are shown
+const TILE_RADIUS := 8
 
 
 # Blueprint drafting-table palette — matches GridDraw.gd's corner title block
@@ -209,7 +213,6 @@ func _clear_checklist() -> void:
 func _add_goal_label() -> void:
 	if _has_application:
 		_add_application_button()
-	_add_household()
 	var lbl := Label.new()
 	lbl.name = "GoalLabel"
 	# The fax button stands for the tenant's application: with it, whose
@@ -693,16 +696,7 @@ func set_household(residents: Array, owners_of: Callable) -> void:
 	_owners_of = owners_of
 	if not _household.any(func(r): return (r as Dictionary)["id"] == _focus):
 		_focus = ""
-	var old := checklist_container.get_node_or_null("Household")
-	if old:
-		checklist_container.remove_child(old)
-		old.queue_free()
-	if checklist_container.get_child_count() > 0:
-		_add_household()
-		var strip := checklist_container.get_node_or_null("Household")
-		if strip:
-			var after := checklist_container.get_node_or_null("ApplicationButton")
-			checklist_container.move_child(strip, after.get_index() + 1 if after else 0)
+	_add_household()
 	_apply_requirement_state()
 
 
@@ -717,25 +711,34 @@ func _add_household() -> void:
 	_badges.clear()
 	if _household.is_empty():
 		return
-	var row := HBoxContainer.new()
-	row.name = "Household"
-	row.add_theme_constant_override("separation", 4)
-	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	checklist_container.add_child(row)
+	if household_box == null:
+		return
+	for c in household_box.get_children():
+		household_box.remove_child(c)
+		c.queue_free()
+	household_box.visible = not _household.is_empty()
+	if _household.is_empty():
+		return
 	for r in _household:
 		var rd := r as Dictionary
 		var rid := rd["id"] as String
+		# A rounded square tile in their colour; the chosen one bigger, in white.
+		var chosen := rid == _focus
+		var side := FACE_SIZE_CHOSEN if chosen else FACE_SIZE
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(FACE_SIZE, FACE_SIZE)
+		btn.custom_minimum_size = Vector2(side, side)
+		btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.tooltip_text = (tr("%s NEEDS") % (rd["name"] as String).to_upper()) + "\n" + tr("Click to show only theirs")
 		var col := rd["color"] as Color
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = col.lightened(0.6)
-		sb.border_color = col.darkened(0.15) if rid != _focus else GameTheme.NAVY
-		sb.set_border_width_all(2 if rid != _focus else 4)
-		sb.set_corner_radius_all(int(FACE_SIZE * 0.5))
+		sb.bg_color = col.lightened(0.15)
+		sb.border_color = Color.WHITE if chosen else col.darkened(0.35)
+		sb.set_border_width_all(4 if chosen else 2)
+		sb.set_corner_radius_all(TILE_RADIUS)
+		sb.shadow_color = Color(0, 0, 0, 0.35)
+		sb.shadow_size = 3
 		sb.anti_aliasing = true
 		for state in ["normal", "hover", "pressed"]:
 			btn.add_theme_stylebox_override(state, sb)
@@ -744,10 +747,10 @@ func _add_household() -> void:
 			btn.text = NEED_GLYPH["pet"]
 			btn.add_theme_color_override("font_color", col.darkened(0.45))
 		else:
-			# The face, cut to the button's round frame by a rounded mask.
+			# The face, cut to the tile's rounded frame by a mask.
 			var mask := Panel.new()
 			var round := StyleBoxFlat.new()
-			round.set_corner_radius_all(int(FACE_SIZE * 0.5) - 3)
+			round.set_corner_radius_all(TILE_RADIUS - 2)
 			mask.add_theme_stylebox_override("panel", round)
 			mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			mask.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -769,7 +772,7 @@ func _add_household() -> void:
 		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		badge.custom_minimum_size = Vector2(16, 16)
-		badge.position = Vector2(FACE_SIZE - 13, -4)
+		badge.position = Vector2(side - 12, -5)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn.add_child(badge)
 		_badges[rid] = badge
@@ -777,7 +780,7 @@ func _add_household() -> void:
 			Audio.play("click")
 			_focus = "" if _focus == rid else rid
 			set_household(_household, _owners_of))
-		row.add_child(btn)
+		household_box.add_child(btn)
 	_queue_badges()
 
 
