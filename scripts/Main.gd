@@ -3110,7 +3110,9 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	# anything the plan draws just above its own top wall (the slope banner
 	# on sloped-ceiling levels). Fitting the plan from the very top put those
 	# on top of each other.
-	const HEADER_H := 40.0
+	# One line of hint fits in V_PAD; a hint that wraps (a long language)
+	# pushes the plan down by its other lines, so nothing covers it.
+	var HEADER_H := 40.0 + _hint_extra_h()
 	var avail_w := (RIGHT_X - LEFT_X - _plan_left_inset) - H_PAD * 2
 	var avail_h := (_floor_pane_bottom_y() - TOP_Y - HEADER_H) - V_PAD * 2
 
@@ -3784,6 +3786,22 @@ func _set_mode_hint(text: String) -> void:
 	_mode_hint_lbl.offset_bottom = TOP_Y + 84.0
 	_mode_hint_lbl.visible = true
 	ui_layer.move_child(_mode_hint_lbl, ui_layer.get_child_count() - 1)
+	# Wrapped onto more lines, or fewer: the plan makes room (_fit_floor).
+	var extra := _hint_extra_h()
+	if not is_equal_approx(extra, _hint_extra_fitted):
+		_hint_extra_fitted = extra
+		var fl := _floors.get(_current_floor_id) as Floor
+		if fl and _view_mode == ViewMode.TOPDOWN:
+			_fit_floor(fl)
+
+
+# How much taller than one line the hint under the title is.
+var _hint_extra_fitted := 0.0
+
+func _hint_extra_h() -> float:
+	if not is_instance_valid(_mode_hint_lbl) or not _mode_hint_lbl.visible:
+		return 0.0
+	return maxf(0.0, float(_mode_hint_lbl.get_line_count() - 1)) * _mode_hint_lbl.get_line_height()
 
 
 # The stretch of the top edge, centred on the screen, that the title and the
