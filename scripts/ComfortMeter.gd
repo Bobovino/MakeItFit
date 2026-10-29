@@ -53,30 +53,26 @@ func _fill_color() -> Color:
 	return GameTheme.NAVY
 
 
+# A line of the till receipt (Main's): "Comfort 100%" typed out, and under
+# it a thin gauge. Below the warning line it turns red and pulses: the one
+# passive cue that this blocks renting, not just "below 100%".
 func _draw() -> void:
 	var failing := _pct < _warn_threshold
-	var r := Rect2(Vector2.ZERO, size)
-	draw_rect(r, BG_COL)
-	var fill_w := size.x * clampf(_pct, 0.0, 100.0) / 100.0
-	if fill_w > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(fill_w, size.y)), _fill_color())
-	# A slow pulse on the border while failing is the one PASSIVE cue that
-	# something's actually wrong, not just "below 100%" — the fill color
-	# alone (amber vs red) is easy to read as "fine, just not perfect"
-	# rather than "this blocks renting" unless it visibly draws the eye.
-	var border_col := BORDER_COL
-	var border_w := 2.0
-	if failing:
-		var pulse := (sin(_pulse_t * 4.0) + 1.0) * 0.5   # 0..1
-		border_col = GameTheme.RED.lerp(GameTheme.CARD, pulse * 0.5)
-		border_w = 2.0 + pulse * 1.5
-	draw_rect(r, border_col, false, border_w)
-	var font := ThemeDB.fallback_font
+	var font := GameTheme.font("mono")
 	const FSIZE := GameTheme.FS_CAPTION
-	# Short enough for the bar; the tooltip carries the explanation.
+	# Short enough for the receipt; the tooltip carries the explanation.
 	var label := tr("Comfort %d%%") % roundi(_pct)
 	if failing:
 		label += "  \ueb55"
-	var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE).x
-	draw_string(font, Vector2((size.x - tw) * 0.5, size.y * 0.5 + FSIZE * 0.35), label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, GameTheme.CHALK if _pct >= 60.0 else TEXT_COL)
+	var ink := GameTheme.RED if failing else TEXT_COL
+	draw_string(font, Vector2(0.0, FSIZE), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FSIZE, ink)
+	var gauge := Rect2(0.0, size.y - 5.0, size.x, 4.0)
+	draw_rect(gauge, BG_COL)
+	var fill_w := gauge.size.x * clampf(_pct, 0.0, 100.0) / 100.0
+	var fill := _fill_color()
+	if failing:
+		var pulse := (sin(_pulse_t * 4.0) + 1.0) * 0.5   # 0..1
+		fill = GameTheme.RED.lerp(GameTheme.CARD, pulse * 0.5)
+	if fill_w > 0.0:
+		draw_rect(Rect2(gauge.position, Vector2(fill_w, gauge.size.y)), fill)
+	draw_rect(gauge, BORDER_COL, false, 1.0)

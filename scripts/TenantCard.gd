@@ -97,12 +97,10 @@ const NEED_GLYPH := {
 
 
 func _ready() -> void:
-	# A full-width bottom strip: a white card along the foot of the drawing
-	# board, edged in navy like every card of the capsule look.
+	# No strip of its own: what is on it (sticky notes, the fax) lies on the
+	# drawing board itself, like things on an architect's desk.
 	var paper := StyleBoxFlat.new()
-	paper.bg_color = GameTheme.CARD
-	paper.border_color = GameTheme.NAVY
-	paper.set_border_width(SIDE_TOP, 2)
+	paper.bg_color = Color(0, 0, 0, 0)
 	paper.set_content_margin(SIDE_LEFT, 12)
 	paper.set_content_margin(SIDE_RIGHT, 310)   # Main adjusts this: see set_right_reserve()
 	paper.set_content_margin(SIDE_TOP, 8)
@@ -383,14 +381,18 @@ func _make_need_chip(func_name: String, satisfied: bool, req_id: String = "") ->
 
 func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = false) -> void:
 	chip.add_theme_stylebox_override("panel", _chip_style(satisfied, showcased))
-	# Done: a navy card with white ink. Still to do: a white card ringed in
-	# red with a red cross, so the two differ in shape and fill, not only
-	# in colour.
-	var ink := GameTheme.CHALK if satisfied else GameTheme.INK
+	# A sticky note on the architect's desk: still to do, yellow with a red
+	# cross; done, green with a tick, folded down to its icon. Written by
+	# hand.
+	var ink := NOTE_DONE_INK if satisfied else NOTE_TODO_INK
 	for part in ["Icon", "Name"]:
 		var lbl := chip.find_child(part, true, false) as Label
 		if lbl:
 			lbl.add_theme_color_override("font_color", ink)
+	var hand := chip.find_child("Name", true, false) as Label
+	if hand and GameTheme.handwriting():
+		hand.add_theme_font_override("font", GameTheme.handwriting())
+		hand.add_theme_font_size_override("font_size", GameTheme.FS_BODY + 6)
 	# A need that is met folds down to its icon and tick (its name stays in
 	# the tooltip): what is still to do is what takes the room.
 	var name_lbl := chip.find_child("Name", true, false) as Label
@@ -399,29 +401,40 @@ func _paint_need_chip(chip: PanelContainer, satisfied: bool, showcased: bool = f
 	var badge := chip.find_child("Badge", true, false) as Label
 	if satisfied:
 		badge.text = "\uea5e"
-		badge.add_theme_color_override("font_color", GameTheme.CHALK)
+		badge.add_theme_color_override("font_color", NOTE_DONE_INK)
 	else:
 		badge.text = "\ueb55"
 		badge.add_theme_color_override("font_color", GameTheme.RED)
 
 
-# Objective tiles: a filled green tile when solved, a dim red-outline tile
-# when pending — the puzzle "goal list" reads at a glance instead of as text.
+# Each need a sticky note: yellow while still to do, green once done, so
+# the goal list reads at a glance by colour and by its cross or tick.
 # `showcased` (the 3D post-win showcase currently posing the tenant at this
 # need's furniture) rings the tile in gold on top of whichever fill applies —
 # an independent "look here" cue layered over, not instead of, done/pending.
+const NOTE_TODO      := Color("fbe37a")   # a yellow sticky note
+const NOTE_TODO_EDGE := Color("c9a93b")
+const NOTE_TODO_INK  := Color("5a4400")
+const NOTE_DONE      := Color("d9edc9")   # a green one, ticked
+const NOTE_DONE_EDGE := Color("7aa35a")
+const NOTE_DONE_INK  := Color("27500a")
+
 static func _chip_style(satisfied: bool, showcased: bool = false) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	if satisfied:
-		s.bg_color     = GameTheme.NAVY
-		s.border_color = GameTheme.NAVY
+		s.bg_color     = NOTE_DONE
+		s.border_color = NOTE_DONE_EDGE
 	else:
-		s.bg_color     = GameTheme.CARD
-		s.border_color = GameTheme.RED
-	s.set_border_width_all(4 if showcased else 2)
+		s.bg_color     = NOTE_TODO
+		s.border_color = NOTE_TODO_EDGE
+	s.set_border_width_all(3 if showcased else 1)
 	if showcased:
 		s.border_color = GameTheme.RED
-	s.set_corner_radius_all(10)
+	# Paper: square corners, lying a little off the desk.
+	s.set_corner_radius_all(2)
+	s.shadow_color = Color(0, 0, 0, 0.3)
+	s.shadow_size = 1
+	s.shadow_offset = Vector2(2, 3)
 	s.set_content_margin(SIDE_LEFT, 12)
 	s.set_content_margin(SIDE_RIGHT, 12)
 	s.set_content_margin(SIDE_TOP, 2)
@@ -638,6 +651,22 @@ func _register_chip(req_id: String, chip: Control) -> void:
 	(_chips_by_req[req_id] as Array).append(chip)
 	if _stamping:
 		chip.set_meta("unstamped", true)
+	chip.set_meta("tilt", float(absi(req_id.hash()) % 7 - 3) * 0.8)   # each note its own, always the same
+	_tilt_notes_in(chip.get_parent())
+
+
+# Notes lie a little askew, as if put down by hand. A container sets its
+# children straight whenever it lays them out, so the tilt goes back on
+# after each layout.
+func _tilt_notes_in(row: Node) -> void:
+	if not (row is Container) or row.has_meta("tilts"):
+		return
+	row.set_meta("tilts", true)
+	(row as Container).sort_children.connect(func():
+		for c in row.get_children():
+			if c is Control and (c as Control).has_meta("tilt"):
+				(c as Control).pivot_offset = (c as Control).size * 0.5
+				(c as Control).rotation_degrees = (c as Control).get_meta("tilt") as float)
 
 
 # Called by Main after setup()/setup_moments(): whether the level has an
@@ -668,7 +697,9 @@ func _add_application_button() -> void:
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	GameTheme.hud_button(btn, true)
 	btn.pressed.connect(func(): application_requested.emit())
+	btn.set_meta("tilt", -3.0)   # a sheet laid down on the desk
 	checklist_container.add_child(btn)
+	_tilt_notes_in(checklist_container)
 
 
 func _apply_requirement_state() -> void:

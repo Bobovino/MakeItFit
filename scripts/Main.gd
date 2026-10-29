@@ -556,9 +556,15 @@ func _apply_ui_theme() -> void:
 		# of it: the bar is the handle of the catalogue that opens under it.
 		# It is the screen's one red button: buying is the main action.
 		GameTheme.hud_button(_furniture_menu_btn)
+		# The catalogue itself, lying on the desk with its tab up: rounded
+		# only at the top, a little askew (see _position_furniture_menu_btn).
 		for state in ["normal", "hover", "pressed", "hover_pressed"]:
 			var sb := (_furniture_menu_btn.get_theme_stylebox(state) as StyleBoxFlat).duplicate() as StyleBoxFlat
 			sb.bg_color = GameTheme.RED if state == "normal" else GameTheme.RED.darkened(0.15)
+			sb.corner_radius_top_left = 12
+			sb.corner_radius_top_right = 12
+			sb.corner_radius_bottom_left = 3
+			sb.corner_radius_bottom_right = 3
 			_furniture_menu_btn.add_theme_stylebox_override(state, sb)
 		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
 			_furniture_menu_btn.add_theme_color_override(c, GameTheme.CHALK)
@@ -619,61 +625,77 @@ func _position_top_left_icons() -> void:
 # own natural (unstretched) size, so reset_size() is the right tool here —
 # it's only wrong when something else already fixed a wider offset_right
 # first (see _position_tenant_card()'s comment).
+# Budget and comfort, printed on a till receipt laid on the desk beside the
+# catalogue: what you can spend, and how much the tenant puts up with. The
+# comfort line is there only while the flat has heavy furniture to move.
+var _receipt: PanelContainer = null
+var _receipt_lines: VBoxContainer = null
+
+func _ensure_receipt() -> void:
+	if is_instance_valid(_receipt):
+		return
+	_receipt = PanelContainer.new()
+	_receipt.name = "Receipt"
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = Color("fbfaf5")
+	paper.border_color = GameTheme.NAVY
+	paper.set_border_width_all(2)
+	paper.set_corner_radius_all(2)
+	paper.shadow_color = Color(0, 0, 0, 0.3)
+	paper.shadow_size = 1
+	paper.shadow_offset = Vector2(2, 3)
+	paper.set_content_margin(SIDE_LEFT, 12)
+	paper.set_content_margin(SIDE_RIGHT, 12)
+	paper.set_content_margin(SIDE_TOP, 5)
+	paper.set_content_margin(SIDE_BOTTOM, 5)
+	_receipt.add_theme_stylebox_override("panel", paper)
+	_receipt.rotation_degrees = 1.5
+	_receipt_lines = VBoxContainer.new()
+	_receipt_lines.add_theme_constant_override("separation", 2)
+	_receipt.add_child(_receipt_lines)
+	ui_layer.add_child(_receipt)
+
+
 func _position_budget_label() -> void:
 	if not is_instance_valid(budget_label) or not is_instance_valid(tenant_card):
 		return
-	# The budget is part of the bottom bar, beside the Furniture button: what
-	# you can spend sits next to where you spend it. It used to float on its
-	# own above the bar's left end.
-	if not budget_label.has_meta("in_bar"):
-		budget_label.set_meta("in_bar", true)
+	_ensure_receipt()
+	if budget_label.get_parent() != _receipt_lines:
+		budget_label.get_parent().remove_child(budget_label)
+		_receipt_lines.add_child(budget_label)
 		var plain := StyleBoxEmpty.new()
-		plain.set_content_margin(SIDE_LEFT, 4)
-		plain.set_content_margin(SIDE_RIGHT, 4)
 		budget_label.add_theme_stylebox_override("normal", plain)
 		budget_label.add_theme_font_override("font", GameTheme.font("mono_bold"))
 		budget_label.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
 		budget_label.add_theme_color_override("font_color", GameTheme.INK)
-		budget_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	budget_label.offset_left = 0.0
-	budget_label.reset_size()
-	var w := budget_label.size.x
-	var right := (_furniture_menu_btn.offset_left - 12.0) if is_instance_valid(_furniture_menu_btn) else (RIGHT_X - 12.0)
-	budget_label.offset_right  = right
-	budget_label.offset_left   = right - w
-	budget_label.offset_top    = _bar_row_top(GameTheme.TOUCH_SMALL)
-	budget_label.offset_bottom = budget_label.offset_top + GameTheme.TOUCH_SMALL
-	ui_layer.move_child(budget_label, ui_layer.get_child_count() - 1)
+		budget_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_position_comfort_meter()
 
 
-const COMFORT_METER_SIZE := Vector2(140.0, 36.0)  # a gauge in the bottom bar: "Comfort 100%"
+const COMFORT_METER_SIZE := Vector2(150.0, 28.0)  # its line on the receipt: "Comfort 100%" over a thin gauge
 
 func _ensure_comfort_meter() -> void:
 	if is_instance_valid(_comfort_meter):
 		return
+	_ensure_receipt()
 	_comfort_meter = ComfortMeterScript.new()
 	_comfort_meter.name = "ComfortMeter"
 	_comfort_meter.mouse_filter = Control.MOUSE_FILTER_STOP   # for its tooltip
 	_comfort_meter.custom_minimum_size = COMFORT_METER_SIZE
-	_comfort_meter.size = COMFORT_METER_SIZE
-	ui_layer.add_child(_comfort_meter)
+	_receipt_lines.add_child(_comfort_meter)
+	_receipt_lines.move_child(_comfort_meter, 0)   # the total last, as on a till receipt
 
 
-# Stacks directly above the Budget pill, same "gap above whatever's below it"
-# approach _position_budget_label() itself uses against tenant_card.
+# The receipt sits on the bar's row, just left of the catalogue.
 func _position_comfort_meter() -> void:
-	if not is_instance_valid(_comfort_meter) or not _comfort_meter.visible:
+	if not is_instance_valid(_receipt):
 		return
-	if not is_instance_valid(budget_label):
-		return
-	# In the bottom bar, just left of the budget. (It used to float above
-	# the bar's left end.)
-	_comfort_meter.offset_right  = budget_label.offset_left - 14.0
-	_comfort_meter.offset_left   = _comfort_meter.offset_right - COMFORT_METER_SIZE.x
-	_comfort_meter.offset_top    = _bar_row_top(COMFORT_METER_SIZE.y)
-	_comfort_meter.offset_bottom = _comfort_meter.offset_top + COMFORT_METER_SIZE.y
-	ui_layer.move_child(_comfort_meter, ui_layer.get_child_count() - 1)
+	_receipt.reset_size()
+	_receipt.size = _receipt.get_combined_minimum_size()
+	var right := (_furniture_menu_btn.offset_left - 16.0) if is_instance_valid(_furniture_menu_btn) else (RIGHT_X - 16.0)
+	_receipt.position = Vector2(right - _receipt.size.x, _bar_row_top(_receipt.size.y))
+	_receipt.pivot_offset = _receipt.size * 0.5
+	ui_layer.move_child(_receipt, ui_layer.get_child_count() - 1)
 
 
 # Where something `h` tall goes so it is centred on the needs bar's first row
@@ -3239,11 +3261,9 @@ func _position_tenant_card() -> void:
 	# get_combined_minimum_size() alone re-measures children at the CURRENT
 	# (already-fixed-width) rect without touching offsets.
 	tenant_card.offset_right = RIGHT_X
-	var reserve := 10.0 + FURNITURE_BTN_W + 12.0 + 14.0   # edge, Furniture button, gaps
-	if is_instance_valid(budget_label):
-		reserve += budget_label.get_combined_minimum_size().x
-	if is_instance_valid(_comfort_meter) and _comfort_meter.visible:
-		reserve += COMFORT_METER_SIZE.x + 14.0
+	var reserve := 10.0 + FURNITURE_BTN_W + 16.0 + 14.0   # edge, Furniture button, gaps
+	if is_instance_valid(_receipt):
+		reserve += _receipt.get_combined_minimum_size().x
 	tenant_card.set_right_reserve(reserve)
 	var content_h := maxf(tenant_card.get_combined_minimum_size().y, 38.0)
 	# Flush with the bottom edge while the catalogue is shut. When it opens,
@@ -3540,6 +3560,8 @@ func _position_furniture_menu_btn() -> void:
 	_furniture_menu_btn.offset_top    = _bar_row_top(h)
 	_furniture_menu_btn.offset_bottom = _furniture_menu_btn.offset_top + h
 	_furniture_menu_btn.text = "\uefaf  %s%s  %s" % [tr("Furniture"), ("  \ueb68%d" % owned) if owned > 0 else "", "\uea5f" if _is_furniture_menu_open() else "\uea62"]
+	_furniture_menu_btn.pivot_offset = Vector2(w, h) * 0.5
+	_furniture_menu_btn.rotation_degrees = -1.5
 	ui_layer.move_child(_furniture_menu_btn, ui_layer.get_child_count() - 1)
 	_position_budget_label()
 
