@@ -259,10 +259,6 @@ func _fit_to_window() -> void:
 		if is_instance_valid(backdrop):
 			(backdrop as ColorRect).offset_right = SCREEN_W
 			(backdrop as ColorRect).offset_bottom = BOT_Y
-	if is_instance_valid(_mode_hint_lbl):
-		_mode_hint_lbl.offset_right = RIGHT_X
-	if is_instance_valid(_breadcrumb_lbl):
-		_breadcrumb_lbl.offset_right = RIGHT_X
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.offset_right = RIGHT_X
 		_mode3d_view.offset_bottom = BOT_Y if _mode3d_view.first_person else _view3d_bottom_y()
@@ -270,7 +266,20 @@ func _fit_to_window() -> void:
 	if fl and _view_mode == ViewMode.TOPDOWN:
 		_fit_floor(fl, true)
 	_update_nested_nav()
+	# The title and the hint under it, centred again in the room the buttons
+	# leave, once they stand in their new places (stretched to the screen's
+	# edge they ran under them).
+	_layout_top_lines.call_deferred()
 	_window_fit_busy = false
+
+
+func _layout_top_lines() -> void:
+	var span := _top_free_span()
+	if is_instance_valid(_breadcrumb_lbl):
+		_breadcrumb_lbl.offset_left = span.x
+		_breadcrumb_lbl.offset_right = span.y
+	if is_instance_valid(_mode_hint_lbl) and _mode_hint_lbl.visible:
+		_set_mode_hint(_mode_hint_lbl.text)
 
 
 func _ready() -> void:
