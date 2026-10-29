@@ -34,6 +34,11 @@ const EDGE_ACTIVE  := Color(0.85, 0.27, 0.25, 1.0)
 const WALL_THICK   := 6.0
 const EDGE_W       := 10.0   # clickable strip width — must match Wall.gd EDGE_MARGIN
 const METER_TILES  := 10
+# The sheet past the flat's walls, in screen px (it keeps one size at any
+# zoom): a narrow edge top and left, room for the dimensions bottom and
+# right. Main._fit_floor leaves room for it.
+const SHEET_EDGE := 12.0
+const SHEET_DIMS := 48.0
 
 # Shared paper-grain texture — generated once, tiled over every sheet
 static var _grain_tex: ImageTexture = null
@@ -193,19 +198,15 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# background, frame, and gridlines to the room's real bounds plus a small
 	# margin instead; everything else in this function still draws in the
 	# same absolute tile coordinates, so nothing else needs to move.
-	const GRID_MARGIN_TILES := 2
 	var bounds := _room_bounds_tiles(parent)
-	var bx0 := maxi(bounds.position.x - GRID_MARGIN_TILES, 0)
-	var by0 := maxi(bounds.position.y - GRID_MARGIN_TILES, 0)
-	var bx1 := mini(bounds.position.x + bounds.size.x + GRID_MARGIN_TILES, w)
-	var by1 := mini(bounds.position.y + bounds.size.y + GRID_MARGIN_TILES, h)
-
 	var ww := w * TILE_SIZE
 	var hh := h * TILE_SIZE
-	var sheet_x := bx0 * TILE_SIZE
-	var sheet_y := by0 * TILE_SIZE
-	var sheet_w := (bx1 - bx0) * TILE_SIZE
-	var sheet_h := (by1 - by0) * TILE_SIZE
+	# World px per screen px: the sheet's margins are given on screen.
+	var k := 1.0 / maxf(get_global_transform_with_canvas().get_scale().x, 0.001)
+	var sheet_x := bounds.position.x * TILE_SIZE - SHEET_EDGE * k
+	var sheet_y := bounds.position.y * TILE_SIZE - SHEET_EDGE * k
+	var sheet_w := bounds.size.x * TILE_SIZE + (SHEET_EDGE + SHEET_DIMS) * k
+	var sheet_h := bounds.size.y * TILE_SIZE + (SHEET_EDGE + SHEET_DIMS) * k
 
 	# ── Adaptive zoom ─────────────────────────────────────────────────────────
 	# Use the canvas transform scale to determine effective px-per-tile,
@@ -223,9 +224,9 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	# Stacked soft drop shadows first, so the blueprint reads as a physical
 	# document resting on the warm desk surface behind it.
 	# The sheet stands on a navy edge, like every card of the look.
-	draw_rect(Rect2(sheet_x + 4, sheet_y + 5, sheet_w, sheet_h), Color("1b2759"))
+	draw_rect(Rect2(sheet_x + 4 * k, sheet_y + 5 * k, sheet_w, sheet_h), Color("1b2759"))
 	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), CANVAS_BG)
-	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), GameTheme.NAVY, false, 1.5)
+	draw_rect(Rect2(sheet_x, sheet_y, sheet_w, sheet_h), GameTheme.NAVY, false, 1.5 * k)
 
 	# ── 1b. Shadow tiles — parent floor ghost when editing a loft ─────────────
 	if not parent.shadow_mask.is_empty():
@@ -555,35 +556,30 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 	var min_px_maj  := 1.4 / maxf(ct_scale, 0.001)
 	var fine_base_a := 1.0 if show_grid else 0.22
 	var fine_col := Color(FINE_COL.r, FINE_COL.g, FINE_COL.b, FINE_COL.a * fine_base_a * fine_fade)
-	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, 0.40)
+	var maj_col  := MAJOR_COL if show_grid else Color(MAJOR_COL.r, MAJOR_COL.g, MAJOR_COL.b, MAJOR_COL.a * 0.6)
+	# Only inside the flat: out past its walls the sheet stays clean, for the
+	# dimensions.
+	var gx0 := bounds.position.x
+	var gy0 := bounds.position.y
+	var gx1 := bounds.position.x + bounds.size.x
+	var gy1 := bounds.position.y + bounds.size.y
+	var top_px := float(gy0 * TILE_SIZE)
+	var bottom_px := float(gy1 * TILE_SIZE)
+	var left_px := float(gx0 * TILE_SIZE)
+	var right_px := float(gx1 * TILE_SIZE)
 	if show_fine:
-		for x in range(bx0, bx1 + 1):
+		for x in range(gx0, gx1 + 1):
 			if x % METER_TILES != 0:
-				draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), fine_col, min_px_fine, true)
-		for y in range(by0, by1 + 1):
+				draw_line(Vector2(x * TILE_SIZE, top_px), Vector2(x * TILE_SIZE, bottom_px), fine_col, min_px_fine, true)
+		for y in range(gy0, gy1 + 1):
 			if y % METER_TILES != 0:
-				draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), fine_col, min_px_fine, true)
-	for x in range(bx0 - bx0 % METER_TILES, bx1 + 1, METER_TILES):
-		if x >= bx0:
-			draw_line(Vector2(x * TILE_SIZE, sheet_y), Vector2(x * TILE_SIZE, sheet_y + sheet_h), maj_col, min_px_maj, true)
-	for y in range(by0 - by0 % METER_TILES, by1 + 1, METER_TILES):
-		if y >= by0:
-			draw_line(Vector2(sheet_x, y * TILE_SIZE), Vector2(sheet_x + sheet_w, y * TILE_SIZE), maj_col, min_px_maj, true)
-
-	# ── 3b. Blueprint sheet border — inset double frame (drafting-sheet feel) ─
-	const FRAME_COL := Color(0, 0, 0, 0.30)
-	var m1 := 4.0
-	var m2 := 7.0
-	draw_rect(Rect2(sheet_x + m1, sheet_y + m1, sheet_w - m1 * 2, sheet_h - m1 * 2), FRAME_COL, false, 1.5)
-	draw_rect(Rect2(sheet_x + m2, sheet_y + m2, sheet_w - m2 * 2, sheet_h - m2 * 2), Color(FRAME_COL.r, FRAME_COL.g, FRAME_COL.b, 0.35), false, 1.0)
-	# Corner registration ticks — small drafting L-marks just inside the frame
-	var tk := 6.0
-	var tm := m2 + 4.0
-	for corner in [Vector2(sheet_x + tm, sheet_y + tm), Vector2(sheet_x + sheet_w - tm, sheet_y + tm), Vector2(sheet_x + tm, sheet_y + sheet_h - tm), Vector2(sheet_x + sheet_w - tm, sheet_y + sheet_h - tm)]:
-		var dx := tk if corner.x < sheet_x + sheet_w * 0.5 else -tk
-		var dy := tk if corner.y < sheet_y + sheet_h * 0.5 else -tk
-		draw_line(corner, corner + Vector2(dx, 0), PLAN_INK_SOFT, 1.0, true)
-		draw_line(corner, corner + Vector2(0, dy), PLAN_INK_SOFT, 1.0, true)
+				draw_line(Vector2(left_px, y * TILE_SIZE), Vector2(right_px, y * TILE_SIZE), fine_col, min_px_fine, true)
+	for x in range(gx0 - gx0 % METER_TILES, gx1 + 1, METER_TILES):
+		if x >= gx0:
+			draw_line(Vector2(x * TILE_SIZE, top_px), Vector2(x * TILE_SIZE, bottom_px), maj_col, min_px_maj, true)
+	for y in range(gy0 - gy0 % METER_TILES, gy1 + 1, METER_TILES):
+		if y >= gy0:
+			draw_line(Vector2(left_px, y * TILE_SIZE), Vector2(right_px, y * TILE_SIZE), maj_col, min_px_maj, true)
 
 	# ── 4. Natural light hatching (only over painted tiles) ───────────────────
 	_draw_natural_light(parent)
@@ -722,57 +718,54 @@ func _room_bounds_tiles(parent: Floor) -> Rect2i:
 	return Rect2i(mnx, mny, w, h)
 
 
-func _draw_dimensions(parent: Floor, ww: int, hh: int) -> void:
+# The flat's outer width and depth as an architect's dimension lines on the
+# sheet, clear of the walls: extension lines out from the wall faces, the
+# dimension line between them with a slash at each end, and the measure
+# written over its middle.
+const DIM_OFF := 26.0    # from the wall face to the dimension line, screen px
+const DIM_FONT := 13     # screen px: the dimensions keep one size on screen at any zoom
+
+func _draw_dimensions(parent: Floor, _ww: int, _hh: int) -> void:
 	if not _is_plate(parent):
 		return
 	const DIM_COL := Color(0.08, 0.08, 0.08, 0.85)
+	const EXT_COL := Color(0.08, 0.08, 0.08, 0.40)
 	var b := _room_bounds_tiles(parent)
-	var font := ThemeDB.fallback_font
+	var font := GameTheme.font("mono")
+	# World px per screen px: offsets and lettering are given on screen.
+	var k := 1.0 / maxf(get_global_transform_with_canvas().get_scale().x, 0.001)
+	var off := DIM_OFF * k
 	var left   := float(b.position.x * TILE_SIZE)
 	var right  := float((b.position.x + b.size.x) * TILE_SIZE)
 	var top    := float(b.position.y * TILE_SIZE)
 	var bottom := float((b.position.y + b.size.y) * TILE_SIZE)
-	var w_m := b.size.x / float(METER_TILES)
-	var h_m := b.size.y / float(METER_TILES)
-
-	# Horizontal dim: prefer the side (above/below the room) with more free space
-	var gap_above := top
-	var gap_below := hh - bottom
-	var below := gap_below >= gap_above
-	var dy := bottom + 8.0 if below else top - 8.0
-	if maxf(gap_above, gap_below) >= 8.0:
-		# Extension lines from the wall face out just past the dimension line
-		var wall_y := bottom if below else top
-		var ext_end := dy + 3.0 if below else dy - 3.0
-		draw_line(Vector2(left, wall_y + (2.0 if below else -2.0)), Vector2(left, ext_end), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
-		draw_line(Vector2(right, wall_y + (2.0 if below else -2.0)), Vector2(right, ext_end), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
-		draw_line(Vector2(left, dy), Vector2(right, dy), DIM_COL, 1.0, true)
-		# Architect 45° slash ticks at each end
-		draw_line(Vector2(left - 3, dy + 3), Vector2(left + 3, dy - 3), DIM_COL, 1.2, true)
-		draw_line(Vector2(right - 3, dy + 3), Vector2(right + 3, dy - 3), DIM_COL, 1.2, true)
-		var wtxt := "%.1f m" % w_m
-		var wsz := font.get_string_size(wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7)
-		draw_string(font, Vector2((left + right) * 0.5 - wsz.x * 0.5, dy - 2), wtxt,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
-
-	# Vertical dim: prefer the side (left/right of the room) with more space
-	var gap_left  := left
-	var gap_right := ww - right
-	var on_right := gap_right >= gap_left
-	var dx := right + 8.0 if on_right else left - 8.0
-	if maxf(gap_left, gap_right) >= 8.0:
-		var wall_x := right if on_right else left
-		var ext_end2 := dx + 3.0 if on_right else dx - 3.0
-		draw_line(Vector2(wall_x + (2.0 if on_right else -2.0), top), Vector2(ext_end2, top), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
-		draw_line(Vector2(wall_x + (2.0 if on_right else -2.0), bottom), Vector2(ext_end2, bottom), Color(DIM_COL.r, DIM_COL.g, DIM_COL.b, 0.55), 1.0, true)
-		draw_line(Vector2(dx, top), Vector2(dx, bottom), DIM_COL, 1.0, true)
-		draw_line(Vector2(dx - 3, top + 3), Vector2(dx + 3, top - 3), DIM_COL, 1.2, true)
-		draw_line(Vector2(dx - 3, bottom + 3), Vector2(dx + 3, bottom - 3), DIM_COL, 1.2, true)
-		var htxt := "%.1f m" % h_m
-		draw_string(font, Vector2(dx + 3, (top + bottom) * 0.5 + 3), htxt,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 7, DIM_COL)
-
-
+	# Under the flat: its width.
+	var px := k   # one screen pixel
+	var tick := 4.0 * k
+	# Under the flat: its width.
+	var dy := bottom + off
+	draw_line(Vector2(left, bottom + tick), Vector2(left, dy + tick), EXT_COL, px, true)
+	draw_line(Vector2(right, bottom + tick), Vector2(right, dy + tick), EXT_COL, px, true)
+	draw_line(Vector2(left, dy), Vector2(right, dy), DIM_COL, px, true)
+	for x in [left, right]:
+		draw_line(Vector2(x - tick, dy + tick), Vector2(x + tick, dy - tick), DIM_COL, 1.6 * px, true)
+	var wtxt := "%.2f m" % (b.size.x / float(METER_TILES))
+	var wsz := font.get_string_size(wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, DIM_FONT)
+	draw_set_transform(Vector2((left + right) * 0.5 - wsz.x * 0.5 * k, dy - 4.0 * k), 0.0, Vector2(k, k))
+	draw_string(font, Vector2.ZERO, wtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, DIM_FONT, DIM_COL)
+	# To its right: its depth, written along the line.
+	var dx := right + off
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_line(Vector2(right + tick, top), Vector2(dx + tick, top), EXT_COL, px, true)
+	draw_line(Vector2(right + tick, bottom), Vector2(dx + tick, bottom), EXT_COL, px, true)
+	draw_line(Vector2(dx, top), Vector2(dx, bottom), DIM_COL, px, true)
+	for y in [top, bottom]:
+		draw_line(Vector2(dx - tick, y + tick), Vector2(dx + tick, y - tick), DIM_COL, 1.6 * px, true)
+	var htxt := "%.2f m" % (b.size.y / float(METER_TILES))
+	var hsz := font.get_string_size(htxt, HORIZONTAL_ALIGNMENT_LEFT, -1, DIM_FONT)
+	draw_set_transform(Vector2(dx - 4.0 * k, (top + bottom) * 0.5 + hsz.x * 0.5 * k), -PI * 0.5, Vector2(k, k))
+	draw_string(font, Vector2.ZERO, htxt, HORIZONTAL_ALIGNMENT_LEFT, -1, DIM_FONT, DIM_COL)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_edge_overlays(parent: Floor) -> void:

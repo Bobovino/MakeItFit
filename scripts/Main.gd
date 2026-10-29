@@ -3126,7 +3126,7 @@ func is_placing_furniture() -> bool:
 func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	const H_PAD  := 32.0
 	const V_PAD  := 24.0
-	const PAD_T  := 3     # tile padding around apartment content
+	const PAD_T  := 1     # tile padding around apartment content
 
 	# The top of the pane belongs to the title and hint line, and to
 	# anything the plan draws just above its own top wall (the slope banner
@@ -3135,8 +3135,12 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 	# One line of hint fits in V_PAD; a hint that wraps (a long language)
 	# pushes the plan down by its other lines, so nothing covers it.
 	var HEADER_H := 40.0 + _hint_extra_h()
-	var avail_w := (RIGHT_X - LEFT_X - _plan_left_inset) - H_PAD * 2
-	var avail_h := (_floor_pane_bottom_y() - TOP_Y - HEADER_H) - V_PAD * 2
+	# The sheet the plan is drawn on reaches past it by a fixed margin on
+	# screen (GridDraw.SHEET_EDGE, and SHEET_DIMS for the dimensions on the
+	# right and below): kept clear too.
+	const SHEET := GridDraw.SHEET_EDGE + GridDraw.SHEET_DIMS
+	var avail_w := (RIGHT_X - LEFT_X - _plan_left_inset) - H_PAD * 2 - SHEET
+	var avail_h := (_floor_pane_bottom_y() - TOP_Y - HEADER_H) - V_PAD * 2 - SHEET
 
 	var fw: float; var fh: float
 	var off_x := 0.0;   var off_y := 0.0
@@ -3157,8 +3161,8 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 
 	_base_scale    = s
 	_base_position = Vector2(
-		LEFT_X + _plan_left_inset + H_PAD + (avail_w - fw * s) * 0.5 - off_x * s,
-		TOP_Y + HEADER_H + V_PAD + (avail_h - fh * s) * 0.5 - off_y * s
+		LEFT_X + _plan_left_inset + H_PAD + GridDraw.SHEET_EDGE + (avail_w - fw * s) * 0.5 - off_x * s,
+		TOP_Y + HEADER_H + V_PAD + GridDraw.SHEET_EDGE + (avail_h - fh * s) * 0.5 - off_y * s
 	)
 	if reset_view:
 		_manual_zoom = 1.0
@@ -3168,8 +3172,13 @@ func _fit_floor(apt_floor: Floor, reset_view: bool = false) -> void:
 
 func _apply_room_transform() -> void:
 	var total := _base_scale * _manual_zoom
+	var zoomed := not is_equal_approx(room.scale.x, total)
 	room.scale    = Vector2(total, total)
 	room.position = _base_position + _manual_pan
+	# The plan's dimensions keep one size on screen: drawn again at a new zoom.
+	var fl := _floors.get(_current_floor_id) as Floor
+	if zoomed and fl and is_instance_valid(fl.grid_draw):
+		fl.grid_draw.queue_redraw()
 
 
 # ── Floor plan / docked-panel split divider drag ───────────────────────────
