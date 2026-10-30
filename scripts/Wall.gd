@@ -1937,7 +1937,8 @@ func _recalculate_zones() -> void:
 # Each room can be given to one or more residents (room_owners, set by the
 # player dragging a portrait onto it); their personal needs are then met only
 # by what stands in it (Main._personal_need_met).
-#   rooms: [{tiles: {Vector2i: true}, center: Vector2 (tiles), anchor: Vector2i}]
+#   rooms: [{tiles: {Vector2i: true}, center: Vector2 (tiles), anchor: Vector2i,
+#            index: int, links: [indices of the rooms a door joins it to]}]
 #   room_owners: {anchor tile (Vector2i): [resident id, ...]} — any tile of
 #     the room will do; the room is whichever one holds it now, so it follows
 #     the room through moved furniture and survives a wall moved elsewhere.
@@ -1947,6 +1948,13 @@ var room_owners: Dictionary = {}
 # How each resident looks on the plan ({id: {color, body, feminine}}), for the
 # rooms given to them; set by Main with the household.
 var resident_looks: Dictionary = {}
+# Rooms a room rule is broken in (index -> true), outlined in red on the plan;
+# set by Main._check_room_rules.
+var room_faults: Dictionary = {}:
+	set(v):
+		room_faults = v
+		if grid_draw:
+			grid_draw.queue_redraw()
 
 
 func _door_tile_set() -> Dictionary:
@@ -1995,7 +2003,23 @@ func _recalculate_rooms() -> void:
 						seen[nb] = true
 						queue.append(nb)
 			if tiles.size() >= ROOM_MIN_TILES:
-				rooms.append({"tiles": tiles, "center": sum / tiles.size(), "anchor": start})
+				rooms.append({"tiles": tiles, "center": sum / tiles.size(), "anchor": start, "links": []})
+	# Which rooms a door joins: the rooms on either side of each doorway.
+	var doors := _door_tile_set()
+	for i in rooms.size():
+		rooms[i]["index"] = i
+	for t in doors:
+		var dt := t as Vector2i
+		var touching: Array = []
+		for step in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			for reach in [1, 2]:
+				var r := room_at(wrap_tile(dt + step * reach))
+				if not r.is_empty() and (r["index"] as int) not in touching:
+					touching.append(r["index"])
+		for ra in touching:
+			for rb in touching:
+				if ra != rb and rb not in (rooms[ra]["links"] as Array):
+					(rooms[ra]["links"] as Array).append(rb)
 
 
 # The room holding `tile`, or {}.

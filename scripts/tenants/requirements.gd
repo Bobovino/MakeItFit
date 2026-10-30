@@ -66,7 +66,7 @@ static func glyph(id: String) -> String:
 	match key:
 		"sight": return "\uea9a"
 		"zones": return "\uf00e"
-		"apartments": return "\ueac1"
+		"apartments", "rooms": return "\ueac1"   # rooms: a room rule (GameManager.room_rules)
 		"items": return "\uec0b"   # counted needs; so far only Dani's freezers
 		"reach": return "\uec87"   # can't get there (TenantLayer._try_to_reach)
 		"quiet": return MomentClock.ICONS["zzz"]   # let something asleep sleep (GameManager.quiet_routes)

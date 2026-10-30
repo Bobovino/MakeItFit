@@ -1606,6 +1606,22 @@ func _t_rooms_of_their_own() -> void:
 	_current = "rooms: a resident has one room; two in one bed's room don't fit"
 	_ok(fl.owners_of_room(fl.room_at(Vector2i(70, 20))) == ["marisol", "tito"]
 		and "sleep" not in main.gm.fulfilled_functions, str(fl.room_owners))
+
+	# Room rules: the kitchen's door leads to the north-east bedroom, the hall
+	# and the bathroom; the bathroom's to the south-east bedroom.
+	var kitchen := fl.room_at(Vector2i(20, 15))
+	_current = "room rules: doors join the rooms they open between"
+	_ok((kitchen["links"] as Array).size() == 3, str(kitchen["links"]))
+	main._refresh_functions()
+	var ok_before: bool = main.gm.room_rule_status.all(func(r): return r["ok"])
+	var bed: Furniture = main._spawn_furniture("normal_bed", fl, 0, 0)
+	fl.forget_furniture(bed)
+	fl.place_furniture(bed, Vector2(20, 28))   # a bed in the kitchen
+	fl.assign_room(Vector2i(20, 15), "lucia")   # and Lucía's room is the kitchen: Marisol's way to the bath crosses it
+	main._refresh_functions()
+	var st: Array = main.gm.room_rule_status
+	_current = "room rules: a bed in the kitchen, and a way through someone's room, are both broken"
+	_ok(ok_before and not st[0]["ok"] and not st[1]["ok"] and not main.gm.check_win(), str(st))
 	main.queue_free()
 	await get_tree().process_frame
 	GameState.save_path = real_path

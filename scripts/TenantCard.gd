@@ -572,10 +572,12 @@ func update_rules(rules: Array) -> void:
 			var is_sight := (rule["kind"] as String) == "sight"
 			var is_items := (rule["kind"] as String) == "items"
 			var is_quiet := (rule["kind"] as String) == "quiet"
-			if not is_sight and not is_items and not is_quiet:
+			var is_rooms := (rule["kind"] as String) == "rooms"
+			if not is_sight and not is_items and not is_quiet and not is_rooms:
 				zone_number += 1
 			var req_id := ("sight:%d" % rule["number"]) if is_sight else (("items:%d" % rule["number"]) if is_items \
-				else (("quiet:%d" % rule["number"]) if is_quiet else ("zones:%d" % zone_number)))
+				else (("quiet:%d" % rule["number"]) if is_quiet else (("rooms:%d" % rule["number"]) if is_rooms \
+				else ("zones:%d" % zone_number))))
 			var chip := _make_need_chip("rule", false, req_id)
 			chip.set_meta("rule", true)
 			var text := rule.get("short", "") as String
@@ -588,7 +590,8 @@ func update_rules(rules: Array) -> void:
 				"\n" + tr("The numbered line on the plan shows it.") if is_sight
 				else ("\n" + tr("Put them all down in the flat.") if is_items
 				else ("\n" + tr("The footsteps on the plan show the way, red where it wakes them.") if is_quiet
-				else "\n" + tr("Tall storage splits a room into zones."))))
+				else ("\n" + tr("The rooms outlined in red on the plan break it.") if is_rooms
+				else "\n" + tr("Tall storage splits a room into zones.")))))
 			if is_items:
 				var n: int = rule["number"]
 				chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

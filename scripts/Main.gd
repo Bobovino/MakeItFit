@@ -3042,6 +3042,88 @@ func _personal_need_met(fn: String, moment_id: String) -> Dictionary:
 	return out
 
 
+# The level's room rules (GameManager.room_rules), checked on the floor in
+# play: each one's status for the bar, and the rooms at fault for the plan
+# (Floor.room_faults, outlined in red).
+func _check_room_rules() -> void:
+	gm.room_rule_status = []
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl == null:
+		return
+	fl.room_faults = {}
+	if gm.room_rules.is_empty():
+		return
+	var fns: Array = []   # per room index: what the pieces in it give
+	for room in fl.rooms:
+		var here: Array = []
+		for f in fl.furniture_in_room(room):
+			for fn in gm._functions_of(f, _active_moment_id):
+				if fn not in here:
+					here.append(fn)
+		fns.append(here)
+	for r in gm.room_rules:
+		var rule := r as Dictionary
+		var a := rule.get("a", "") as String
+		var b := rule.get("b", "") as String
+		var bad: Array = []
+		var label := ""
+		var short := ""
+		match rule.get("type", "") as String:
+			"apart":
+				for i in fl.rooms.size():
+					if a in fns[i] and b in fns[i]:
+						bad.append(i)
+				label = tr("%s and %s in different rooms") % [Loc.need_name(a), Loc.need_name(b)]
+				short = tr("%s apart from %s") % [Loc.need_name(a), Loc.need_name(b)]
+			"together":
+				for i in fl.rooms.size():
+					if a not in fns[i]:
+						continue
+					var near: bool = b in fns[i]
+					for j in fl.rooms[i]["links"] as Array:
+						near = near or b in fns[j]
+					if not near:
+						bad.append(i)
+				label = tr("%s in the same room as %s, or next door") % [Loc.need_name(a), Loc.need_name(b)]
+				short = tr("%s by %s") % [Loc.need_name(a), Loc.need_name(b)]
+			"own_way":
+				var to := rule.get("to", "") as String
+				for i in fl.rooms.size():
+					var owners := fl.owners_of_room(fl.rooms[i])
+					for rid in owners:
+						if not _own_way(fl, fns, i, rid, to):
+							bad.append(i)
+							break
+				label = tr("Everyone reaches %s from their room without crossing someone else's") % Loc.need_name(to)
+				short = tr("Own way to %s") % Loc.need_name(to)
+		if rule.has("label"):
+			label = tr(rule["label"] as String)
+		if rule.has("short"):
+			short = tr(rule["short"] as String)
+		gm.room_rule_status.append({"label": label, "short": short, "ok": bad.is_empty(), "rooms": bad})
+		for i in bad:
+			fl.room_faults[i] = true
+
+
+# From room `from` (resident `rid`'s), through doors, to a room giving `to`,
+# never entering a room that belongs to others and not to them.
+func _own_way(fl: Floor, fns: Array, from: int, rid: String, to: String) -> bool:
+	var seen := {from: true}
+	var queue: Array = [from]
+	while not queue.is_empty():
+		var i: int = queue.pop_front()
+		if to in fns[i]:
+			return true
+		for j in fl.rooms[i]["links"] as Array:
+			if seen.has(j):
+				continue
+			seen[j] = true
+			var owners := fl.owners_of_room(fl.rooms[j])
+			if owners.is_empty() or rid in owners:
+				queue.append(j)
+	return false
+
+
 # The household column's drag: a portrait let go over a room of the plan
 # gives the room to that resident; over open plan, takes theirs away.
 var _resident_drag := ""
@@ -4808,6 +4890,7 @@ func _refresh_functions() -> void:
 		free_tiles_by_moment[mid] = total
 		free_window_tiles_by_moment[mid] = total_window
 	gm.update_functions(all_entries, extra_fns, _active_moment_id, free_tiles_by_moment, free_window_tiles_by_moment)
+	_check_room_rules()
 	var apt_floor := _floors.get(_current_floor_id) as Floor
 	if apt_floor:
 		gm.update_zones(apt_floor.zones)

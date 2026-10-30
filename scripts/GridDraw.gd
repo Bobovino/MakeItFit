@@ -1515,6 +1515,7 @@ var _room_tags: Node2D = null
 
 # ── Rooms (Floor.rooms) ──────────────────────────────────────────────────────
 const ROOM_TINT := 0.16        # a resident's colour over the room given to them
+const ROOM_FAULT_COL := Color(0.86, 0.22, 0.18)   # a room a room rule is broken in
 const ROOM_FACE_PX := 30.0     # on screen, whatever the zoom
 const ROOM_NAME_PX := 13
 const ROOM_KINDS := ["kitchen", "bathroom", "bedroom", "living"]   # Floor.room_kind()
@@ -1527,14 +1528,26 @@ func _draw_room_layer() -> void:
 		return
 	var ts := float(TILE_SIZE)
 	for room in parent.rooms:
+		var tiles := room["tiles"] as Dictionary
 		var owners := parent.owners_of_room(room)
-		if owners.is_empty():
-			continue
-		var col := (parent.resident_looks.get(owners[0], {}) as Dictionary).get("color", GameTheme.NAVY) as Color
-		var fill := Color(col, ROOM_TINT)
-		for t in room["tiles"] as Dictionary:
-			var v := t as Vector2i
-			_room_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), fill)
+		if not owners.is_empty():
+			var col := (parent.resident_looks.get(owners[0], {}) as Dictionary).get("color", GameTheme.NAVY) as Color
+			var fill := Color(col, ROOM_TINT)
+			for t in tiles:
+				var v := t as Vector2i
+				_room_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), fill)
+		# A room a room rule is broken in: a red wash and a red edge round it.
+		if parent.room_faults.has(room.get("index", -1)):
+			for t in tiles:
+				var v := t as Vector2i
+				var r := Rect2(v.x * ts, v.y * ts, ts, ts)
+				_room_layer.draw_rect(r, Color(ROOM_FAULT_COL, 0.10))
+				for side in [[Vector2i(-1, 0), r.position, Vector2(r.position.x, r.end.y)],
+						[Vector2i(1, 0), Vector2(r.end.x, r.position.y), r.end],
+						[Vector2i(0, -1), r.position, Vector2(r.end.x, r.position.y)],
+						[Vector2i(0, 1), Vector2(r.position.x, r.end.y), r.end]]:
+					if not tiles.has(v + (side[0] as Vector2i)):
+						_room_layer.draw_line(side[1], side[2], ROOM_FAULT_COL, 2.0)
 
 
 # On a clear bit of each room's floor, at a steady size on screen: what the

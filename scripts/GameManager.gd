@@ -40,6 +40,21 @@ var zone_separations: Array = []     # [[ [fnsA], [fnsB] ], ...] — groups that
 var quiet_routes: Array = []
 var quiet_status: Array = []
 
+# Room rules: how the flat's rooms (Floor.rooms, closed in by walls and
+# doors) must be used. Each {type, ...}:
+#   "apart":    {a, b}  no room holds both a piece giving `a` and one giving `b`
+#                       (no bed in the kitchen)
+#   "together": {a, b}  every room with `a` has `b` in it or in a room a door
+#                       joins it to (the table next to the kitchen)
+#   "own_way":  {to}    from each resident's own room, a room with `to` is
+#                       reached through doors without crossing a room that is
+#                       someone else's (nobody walks through Lucía's room to
+#                       the bathroom)
+# room_rule_status mirrors it ({label, short, ok, rooms: indices at fault}),
+# worked out by Main (_check_room_rules), which knows the rooms and owners.
+var room_rules: Array = []
+var room_rule_status: Array = []
+
 # Phases: a level can come in acts ("phases" in its data). Each phase after
 # the first adds to what the tenant wants (needs, rules, pieces they bring);
 # meeting a phase that isn't the last opens the next one on the same flat
@@ -120,6 +135,8 @@ func load_level(level_id: String) -> void:
 		items_status = []
 		quiet_routes = _tenant.get("quiet_routes", []).duplicate(true) as Array
 		quiet_status = []
+		room_rules = _tenant.get("room_rules", []).duplicate(true) as Array
+		room_rule_status = []
 		phase = 0
 		external_restrictions = (current_level.get("external_zone", {}) as Dictionary).duplicate(true)
 		external_zone_ok = true
@@ -152,6 +169,8 @@ func load_level(level_id: String) -> void:
 			items_status = []
 			quiet_routes = (level.get("tenant", {}) as Dictionary).get("quiet_routes", []).duplicate(true) as Array
 			quiet_status = []
+			room_rules = (level.get("tenant", {}) as Dictionary).get("room_rules", []).duplicate(true) as Array
+			room_rule_status = []
 			phase = 0
 			external_restrictions = (level.get("external_zone", {}) as Dictionary).duplicate(true)
 			external_zone_ok = true
@@ -481,6 +500,8 @@ func apply_phase(i: int) -> void:
 			required_functions.append(fn)
 	for q in add.get("quiet_routes", []) as Array:
 		quiet_routes.append((q as Dictionary).duplicate(true))
+	for rr in add.get("room_rules", []) as Array:
+		room_rules.append((rr as Dictionary).duplicate(true))
 	phase = i
 	functions_updated.emit(fulfilled_functions, required_functions)
 
@@ -539,6 +560,9 @@ func rule_status() -> Array:
 	for i in quiet_status.size():
 		var q := quiet_status[i] as Dictionary
 		out.append({"kind": "quiet", "number": i + 1, "label": tr(q["label"] as String), "short": tr(q["short"] as String), "ok": q["ok"]})
+	for i in room_rule_status.size():
+		var rr := room_rule_status[i] as Dictionary
+		out.append({"kind": "rooms", "number": i + 1, "label": rr["label"], "short": rr["short"], "ok": rr["ok"]})
 	for sep in zone_separations:
 		var a := Loc.join_list((sep[0] as Array).map(func(f): return Loc.need_name(str(f))))
 		var b := Loc.join_list((sep[1] as Array).map(func(f): return Loc.need_name(str(f))))
@@ -640,6 +664,9 @@ func check_win() -> bool:
 		return false
 	for q in quiet_status:
 		if not ((q as Dictionary)["ok"] as bool):
+			return false
+	for rr in room_rule_status:
+		if not ((rr as Dictionary)["ok"] as bool):
 			return false
 	for st in items_status:
 		if not ((st as Dictionary)["ok"] as bool):

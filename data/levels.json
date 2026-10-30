@@ -300,6 +300,17 @@
 					"storage",
 					"sleep",
 					"sit"
+				],
+				"room_rules": [
+					{
+						"type": "apart",
+						"a": "sleep",
+						"b": "cook"
+					},
+					{
+						"type": "own_way",
+						"to": "hygiene"
+					}
 				]
 			},
 			"phases": [
