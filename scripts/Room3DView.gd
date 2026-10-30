@@ -3439,6 +3439,7 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 	flat = flat.normalized()
 	_cam_flat_dir = flat
 	_turn_flat_labels(flat)
+	_turn_room_tags(flat)
 	for wd in _wall_data:
 		if wd.get("force_hidden", false):
 			continue   # a balcony window replaced this wall outright — never fade it back in
@@ -5032,14 +5033,30 @@ func _rebuild_rule_overlays() -> void:
 
 # ── Rooms (Floor.rooms) ─────────────────────────────────────────────────────
 # As on the plan: a room given to residents is tinted in their colour on the
-# floor, and over each room hang its name and its residents' faces.
+# floor, and its name and its residents' faces are painted on the floor.
 var _room_root: Node3D = null
-const ROOM_TAG_Y := 1.6        # metres up: over the furniture, under the far walls' tops
+var _room_tags: Array = []      # [{node, along_x: Vector3, along_z: Vector3}]
+const ROOM_NAME_FS := 40
+const ROOM_NAME_PX := 0.0095    # metres per font pixel: letters about 38 cm high
+const ROOM_FACE_M := 0.5
+const ROOM_GAP_M := 0.08
+
+# Each room's name turned in quarter turns to read from the camera, and put
+# at the clear spot for that way along the room.
+func _turn_room_tags(flat: Vector3) -> void:
+	var quarter := roundi(atan2(flat.x, flat.z) / (PI * 0.5)) if flat != Vector3.ZERO else 0
+	for t in _room_tags:
+		var node = t["node"]
+		if not is_instance_valid(node):
+			continue
+		(node as Node3D).rotation = Vector3(-PI * 0.5, quarter * PI * 0.5, 0.0)
+		(node as Node3D).position = t["along_x"] if quarter % 2 == 0 else t["along_z"]
 
 func refresh_rooms() -> void:
 	if is_instance_valid(_room_root):
 		_room_root.queue_free()
 	_room_root = null
+	_room_tags.clear()
 	if not is_instance_valid(build_root) or _apt_floor == null or _apt_floor.rooms.is_empty() or first_person:
 		return
 	_room_root = Node3D.new()
@@ -5063,52 +5080,59 @@ func refresh_rooms() -> void:
 					tinted = true
 		if owners.is_empty() and kind == "":
 			continue
-		var c := room["center"] as Vector2
-		var at := Vector3((c.x - _room_bounds.position.x) * TILE_M, ROOM_TAG_Y,
-			(c.y - _room_bounds.position.y) * TILE_M)
+		# Painted on the floor, the name over a row of faces, at a clear spot
+		# (Floor.room_label_spot: it moves aside when a piece is put where it
+		# was). It reads from the camera in quarter turns, each way along the
+		# room having its own clear spot (_turn_room_tags).
+		var text := tr(GridDraw.ROOM_NAMES[GridDraw.ROOM_KINDS.find(kind)] as String).to_upper() if kind != "" else ""
+		var font := GameTheme.font("mono_bold")
+		var name_w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, ROOM_NAME_FS).x * ROOM_NAME_PX if text != "" else 0.0
+		var name_h := ROOM_NAME_FS * ROOM_NAME_PX if text != "" else 0.0
+		var faces_w := owners.size() * ROOM_FACE_M + maxi(owners.size() - 1, 0) * ROOM_GAP_M
+		var faces_h := ROOM_FACE_M if not owners.is_empty() else 0.0
+		var block := Vector2(maxf(name_w, faces_w), name_h + faces_h + (ROOM_GAP_M if text != "" and faces_h > 0.0 else 0.0))
+		var size := block / TILE_M + Vector2(2, 2)
+		var to_local := func(s: Vector2) -> Vector3:
+			return Vector3((s.x - _room_bounds.position.x) * TILE_M, 0.012, (s.y - _room_bounds.position.y) * TILE_M)
 		var tag := Node3D.new()
-		tag.position = at
 		_room_root.add_child(tag)
-		if kind != "":
+		_room_tags.append({"node": tag,
+			"along_x": to_local.call(_apt_floor.room_label_spot(room, size)),
+			"along_z": to_local.call(_apt_floor.room_label_spot(room, Vector2(size.y, size.x)))})
+		if text != "":
 			var name_l := Label3D.new()
-			name_l.text = tr(GridDraw.ROOM_NAMES[GridDraw.ROOM_KINDS.find(kind)] as String).to_upper()
-			name_l.font = GameTheme.font("mono_bold")
-			name_l.font_size = 40
-			name_l.pixel_size = 0.009
-			name_l.modulate = GridDraw.PLAN_INK
-			name_l.outline_size = 14
-			name_l.outline_modulate = Color(1, 1, 1, 0.9)
-			name_l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			name_l.no_depth_test = true
-			name_l.render_priority = 6
-			name_l.position = Vector3(0.0, 0.48, 0.0)
+			name_l.text = text
+			name_l.font = font
+			name_l.font_size = ROOM_NAME_FS
+			name_l.pixel_size = ROOM_NAME_PX
+			name_l.modulate = Color(GridDraw.PLAN_INK, 0.85)
+			name_l.outline_size = 0
+			name_l.shaded = false
+			name_l.position = Vector3(0.0, block.y * 0.5 - name_h * 0.5, 0.0)
 			tag.add_child(name_l)
-		var side := 0.6
-		var x0 := -(owners.size() - 1) * (side + 0.1) * 0.5
+		var x0 := -faces_w * 0.5 + ROOM_FACE_M * 0.5
 		for i in owners.size():
 			var look := _apt_floor.resident_looks.get(owners[i], {}) as Dictionary
-			var face := Sprite3D.new()
-			face.texture = MiiPortrait.face(look.get("body", "adult") as String, look.get("feminine", false) as bool)
-			if face.texture == null:
+			var tex := MiiPortrait.face(look.get("body", "adult") as String, look.get("feminine", false) as bool)
+			if tex == null:
 				continue
-			face.pixel_size = side / float(face.texture.get_width())
-			face.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			face.no_depth_test = true
-			face.render_priority = 6
-			face.shaded = false
-			face.position = Vector3(x0 + i * (side + 0.1), 0.0, 0.0)
-			# A frame in their colour behind the face.
+			var at := Vector3(x0 + i * (ROOM_FACE_M + ROOM_GAP_M), -block.y * 0.5 + ROOM_FACE_M * 0.5, 0.0)
+			# A frame in their colour under the face.
 			var frame := Sprite3D.new()
 			frame.texture = _room_frame_tex()
 			frame.modulate = (look.get("color", GameTheme.NAVY) as Color).darkened(0.2)
-			frame.pixel_size = (side + 0.08) / float(frame.texture.get_width())
-			frame.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			frame.no_depth_test = true
-			frame.render_priority = 5
+			frame.pixel_size = (ROOM_FACE_M + 0.05) / float(frame.texture.get_width())
 			frame.shaded = false
-			frame.position = face.position
+			frame.position = at
 			tag.add_child(frame)
+			var face := Sprite3D.new()
+			face.texture = tex
+			face.pixel_size = ROOM_FACE_M / float(tex.get_width())
+			face.shaded = false
+			face.render_priority = 1
+			face.position = at + Vector3(0.0, 0.0, 0.002)
 			tag.add_child(face)
+	_turn_room_tags(_cam_flat_dir)
 	if tinted:
 		var quad := QuadMesh.new()
 		quad.size = Vector2(w * TILE_M, h * TILE_M)

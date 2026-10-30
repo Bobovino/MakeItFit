@@ -2050,6 +2050,47 @@ func room_kind(room: Dictionary) -> String:
 	return ""
 
 
+# Where a room's name goes on its floor: the clear spot nearest its middle
+# where a `size` (tiles, along x then y) label fits with nothing standing on
+# it. Failing that, the spot where the least of it is covered. Kept with the
+# room until the layout changes (the rooms are worked out again then).
+func room_label_spot(room: Dictionary, size: Vector2) -> Vector2:
+	var key := Vector2i(ceili(size.x), ceili(size.y))
+	var cache := room.get_or_add("spots", {}) as Dictionary
+	if cache.has(key):
+		return cache[key]
+	var tiles := room["tiles"] as Dictionary
+	var c := room["center"] as Vector2
+	var clear := func(t: Vector2i) -> bool:
+		return tiles.has(t) and _placed_list(t).all(func(p): return (p as Furniture).overhead)
+	var covered := func(mid: Vector2) -> int:   # tiles of the label not clear
+		var n := 0
+		var x0 := floori(mid.x - key.x * 0.5)
+		var y0 := floori(mid.y - key.y * 0.5)
+		for y in range(y0, y0 + key.y):
+			for x in range(x0, x0 + key.x):
+				if not clear.call(Vector2i(x, y)):
+					n += 1
+		return n
+	var spots: Array = []
+	for t in tiles:
+		var v := t as Vector2i
+		if v.x % 2 == 0 and v.y % 2 == 0:
+			spots.append(Vector2(v) + Vector2(0.5, 0.5))
+	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(c) < b.distance_squared_to(c))
+	var out := c
+	var least := key.x * key.y + 1
+	for s in spots:
+		var n := covered.call(s) as int
+		if n < least:
+			least = n
+			out = s
+			if n == 0:
+				break
+	cache[key] = out
+	return out
+
+
 # The floor pieces standing in a room (by the middle of their footprint).
 func furniture_in_room(room: Dictionary) -> Array:
 	var out: Array = []

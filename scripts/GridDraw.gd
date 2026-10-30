@@ -1537,8 +1537,9 @@ func _draw_room_layer() -> void:
 			_room_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), fill)
 
 
-# Over the furniture, at a steady size on screen: what the room is (from what
-# is in it) and, under that, the faces of whoever it was given to.
+# On a clear bit of each room's floor, at a steady size on screen: what the
+# room is (from what is in it) and, under that, the faces of whoever it was
+# given to.
 func _draw_room_tags() -> void:
 	var parent := get_parent() as Floor
 	if parent == null or not parent.visible or editor_mode:
@@ -1552,12 +1553,17 @@ func _draw_room_tags() -> void:
 		var kind := parent.room_kind(room)
 		if owners.is_empty() and kind == "":
 			continue
-		var c := (room["center"] as Vector2) * ts
-		var y := c.y
-		if kind != "":
-			var text := tr(ROOM_NAMES[ROOM_KINDS.find(kind)] as String).to_upper()
-			var fs := roundi(ROOM_NAME_PX * k)
-			var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		# At a clear spot of the room (Floor.room_label_spot), so a piece
+		# put where the name was moves it aside rather than hiding it.
+		var text := tr(ROOM_NAMES[ROOM_KINDS.find(kind)] as String).to_upper() if kind != "" else ""
+		var fs := roundi(ROOM_NAME_PX * k)
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x if text != "" else 0.0
+		var faces_w := owners.size() * (ROOM_FACE_PX + 4.0) * k
+		var block := Vector2(maxf(tw, faces_w), (ROOM_NAME_PX + 6.0 if text != "" else 0.0) * k + (ROOM_FACE_PX * k if not owners.is_empty() else 0.0))
+		var spot := parent.room_label_spot(room, block / ts + Vector2(2, 2)) * ts
+		var c := Vector2(spot.x, spot.y - block.y * 0.5)
+		var y := c.y + (ROOM_NAME_PX * k if text != "" else 0.0)
+		if text != "":
 			var at := Vector2(c.x - tw * 0.5, y)
 			_room_tags.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(4 * k), Color(PLAN_PAPER, 0.9))
 			_room_tags.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, PLAN_INK_SOFT)
