@@ -602,22 +602,26 @@ func set_external_daylight_factor(factor: float) -> void:
 
 
 # Light, in squares. By day it comes from the sun, one point far outside:
-# every window it shines in through (one facing it) lays a beam into the room
-# along the sun's direction, as wide as the window and BEAM_DEPTH tiles long
-# (full for the first half, BEAM_FAR after); a window facing away gets only
-# the sky's glow, SKY_GLOW for SKY_DEPTH tiles straight in. A tall piece
+# every window it shines in through (one facing it) lays a patch of sun on
+# the floor along the sun's direction, as wide as the window, where the 3D
+# view's sun lands: the sun stands SUN_ELEVATION_DEG high, so the light
+# through a window from WINDOW_Y0_M to WINDOW_Y1_M up falls from SUN_NEAR to
+# SUN_FAR tiles out. A window facing away gets only the sky's glow, SKY_GLOW
+# for SKY_DEPTH tiles straight in, as does the floor right by a sunny one.
+# A tall piece
 # stops a beam (it is lit; what stands behind it is in its shadow), a medium
 # one lets MEDIUM_PASS through, a low one or a screen (reeded glass, a
 # curtain) none of its own. A skylight lights the tiles under it. By night
 # the windows give nothing and each lamp lights a pool around it instead.
 # Straight lines on purpose: a wardrobe's shadow is exactly as wide as the
 # wardrobe, so the player can see where light will fall.
-const BEAM_DEPTH := 30
-const BEAM_FAR := 0.65
 const MEDIUM_PASS := 0.5
 const SKY_GLOW := 0.4
-const SKY_DEPTH := 6
+const SKY_DEPTH := 6.0
 const SUN_SIDE_DEG := 14.0     # off the sunny wall's normal, so beams come in at a slant
+const SUN_ELEVATION_DEG := 34.0
+const SUN_NEAR := Room3DView.WINDOW_Y0_M / tan(deg_to_rad(SUN_ELEVATION_DEG)) / Room3DView.TILE_M
+const SUN_FAR := Room3DView.WINDOW_Y1_M / tan(deg_to_rad(SUN_ELEVATION_DEG)) / Room3DView.TILE_M
 const LAMP_IDS: Array[String] = ["floor_lamp", "desk_lamp", "nightstand"]
 const LAMP_REACH := 16.0       # tiles
 
@@ -725,13 +729,13 @@ func _cast_light(moving: Furniture, at: Vector2, night: bool) -> Dictionary:
 		_cast_lamps(moving, at, blocked, light)
 		return out
 
-	# A ray from a window: the tiles it crosses, in order, `step` apart.
-	var cast := func(from: Vector2, dir: Vector2, depth: int, start_strength: float, far: bool) -> void:
+	# A ray from a window: the tiles it crosses, in order, lit from `near`
+	# tiles out to `far` (what stands nearer still shades what is beyond).
+	var cast := func(from: Vector2, dir: Vector2, near: float, far: float, start_strength: float) -> void:
 		var strength := start_strength
 		var dimmed_by: Dictionary = {}
 		var last := Vector2i(floori(from.x), floori(from.y))
-		var steps := depth * 2
-		for i in range(1, steps + 1):
+		for i in range(1, ceili(far * 2.0) + 1):
 			var p := from + dir * (i * 0.5)
 			var cell := Vector2i(floori(p.x), floori(p.y))
 			if cell == last:
@@ -748,7 +752,8 @@ func _cast_light(moving: Furniture, at: Vector2, night: bool) -> Dictionary:
 				elif not f.screen and f.height_category == "medium" and not dimmed_by.has(f):
 					dimmed_by[f] = true
 					strength *= MEDIUM_PASS
-			light.call(t, strength * (BEAM_FAR if far and i > steps / 2 else 1.0))
+			if i * 0.5 >= near:
+				light.call(t, strength)
 			if stop:
 				break
 
@@ -766,8 +771,8 @@ func _cast_light(moving: Furniture, at: Vector2, night: bool) -> Dictionary:
 			if strength <= 0.0:
 				continue
 			if sun_dir != Vector2.ZERO and into.dot(sun_dir) > 0.2:
-				cast.call(from, sun_dir, BEAM_DEPTH, strength, true)
-			cast.call(from, into, SKY_DEPTH, strength * SKY_GLOW, false)
+				cast.call(from, sun_dir, SUN_NEAR, SUN_FAR, strength)
+			cast.call(from, into, 0.0, SKY_DEPTH, strength * SKY_GLOW)
 
 	# Skylights light their own footprint straight from above: whatever stands
 	# under one is lit, and nothing on the floor can shade it.

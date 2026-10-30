@@ -1812,7 +1812,7 @@ func _catalog_piece(fl: Floor, id: String, w: int = 0, h: int = 0) -> Furniture:
 # nobody sees through it. A bookshelf in the same place leaves it dark.
 func _t_reeded_glass() -> void:
 	var fl := _window_floor()
-	var behind := Vector2i(10, 12)
+	var behind := Vector2i(8, 17)   # in the patch of sun, which starts some way in from the window
 	var open_light := fl.get_light(behind)
 	var open_sight := fl.has_sightline(Vector2i(10, 3), behind)
 	var glass := _catalog_piece(fl, "fluted_glass_panel", 25, 3)
