@@ -8,9 +8,10 @@ extends Node3D
 #   - The visible walls are cut down toward the camera, so they can't be what
 #     stops the sun. Each wall gets a full-height twin that only casts shadow,
 #     with its window openings left out, plus a shadow-only ceiling over the
-#     whole apartment. The sun is aimed in through the outside wall with the
-#     most window, low and a little from the side, so it lays patches of
-#     light on the floor. An apartment with no window gets no sun at all.
+#     whole apartment. The sun comes in the way the plan's beams do
+#     (Floor.sun_dir: through the outside wall with the most window, a
+#     little from the side), low, so it lays patches of light on the floor.
+#     An apartment with no window gets no sun at all.
 #   - At night each lamp (LAMP_IDS) lights a warm pool around itself, fading
 #     in with StyleController.night.
 #   - Every floor piece sits on a soft contact shadow, which is what keeps it
@@ -19,7 +20,7 @@ extends Node3D
 # Lamps and contact shadows follow their pieces as they are dragged, bought
 # and sold.
 
-const LAMP_IDS: Array[String] = ["floor_lamp", "desk_lamp", "nightstand"]
+const LAMP_IDS: Array[String] = Floor.LAMP_IDS
 const LAMP_COLOR := Color(1.0, 0.78, 0.52)
 const LAMP_ENERGY := 2.2
 const LAMP_RANGE := 3.2
@@ -54,10 +55,19 @@ func _process(_delta: float) -> void:
 
 # ── Sunlight through the windows ─────────────────────────────────────────────
 
+# Each wall by its mesh and how many parts it has: its windows' glass is
+# dressed on after the wall is built, and the openings are cut from that.
+func _wall_key(wd: Dictionary) -> Array:
+	var mi = wd["mesh"]
+	if not is_instance_valid(mi):
+		return [0, 0]
+	return [(mi as Object).get_instance_id(), (mi as Node).get_child_count()]
+
+
 func _walls_changed() -> bool:
 	var ids: Array = []
 	for wd in view._wall_data:
-		ids.append((wd["mesh"] as Object).get_instance_id() if is_instance_valid(wd["mesh"]) else 0)
+		ids.append(_wall_key(wd))
 	return ids != _wall_ids
 
 
@@ -72,17 +82,22 @@ func _build_casters() -> void:
 	var sun_in := Vector3.ZERO
 	var top := 0.0
 	for wd in view._wall_data:
-		_wall_ids.append((wd["mesh"] as Object).get_instance_id() if is_instance_valid(wd["mesh"]) else 0)
+		_wall_ids.append(_wall_key(wd))
 		var wall := wd["mesh"] as MeshInstance3D
 		# Glass walls let the light through; a balcony wall rebuilt with a
 		# hole in it (a CSG node, not a mesh) keeps casting its own shadow.
 		if wall == null or wall.mesh == null or wd.get("role", &"") == StyleController.ROLE_GLASS_WALL:
 			continue
 		wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# Nor its glass and frames: the twin stands for the whole wall, and a
+		# pane casting shadow kept the sun out of every window.
+		for part in wall.get_children():
+			if part is GeometryInstance3D:
+				(part as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var box := wall.mesh.get_aabb()
 		var full_h: float = wd.get("full_h", box.size.y)
 		top = maxf(top, full_h)
-		var windows := _windows_of(wall)
+		var windows := _windows_of(wall, full_h)
 		var frame := wall.global_transform.orthonormalized()
 		var z_mid := box.position.z + box.size.z * 0.5
 		for r in _solid_parts(box.position.x, box.end.x, full_h, windows):
@@ -99,14 +114,19 @@ func _build_casters() -> void:
 	var d: float = view._room_d_m
 	var root := view.build_root.global_transform
 	_add_caster(root * Vector3(w * 0.5, top + 0.04, d * 0.5), root.basis, Vector3(w + 0.6, 0.08, d + 0.6))
-	if best_window > 0.0:
+	# The same sun as the plan's beams (Floor.sun_dir), so light falls in
+	# the same places in both views.
+	var fl: Floor = view._apt_floor
+	if fl != null and fl.sun_dir != Vector2.ZERO:
+		_aim_sun((root.basis * Vector3(fl.sun_dir.x, 0.0, fl.sun_dir.y)).normalized(), false)
+	elif best_window > 0.0:
 		_aim_sun(sun_in)
 
 
 # Window openings on a wall, in its own space: [x0, x1, y0, y1]. Read from the
 # glass panes Room3DView dresses the wall with (both faces carry one; the
 # short mark drawn on a lowered wall's cut face is not an opening).
-func _windows_of(wall: MeshInstance3D) -> Array:
+func _windows_of(wall: MeshInstance3D, top: float = INF) -> Array:
 	var out: Array = []
 	for part in wall.get_children():
 		if not (part is MeshInstance3D) or part.get_meta("wall_part_role", &"") != StyleController.ROLE_WINDOW:
@@ -116,6 +136,8 @@ func _windows_of(wall: MeshInstance3D) -> Array:
 			continue
 		var p: Vector3 = (part as Node3D).position
 		var r := [p.x - size.x * 0.5, p.x + size.x * 0.5, p.y - size.y * 0.5, p.y + size.y * 0.5]
+		if r[2] >= top - 0.01:
+			continue   # glass above the wall's own top (a cut wall's upper storey), not an opening in it
 		if not out.any(func(o: Array) -> bool: return absf(o[0] - r[0]) < 0.01):
 			out.append(r)
 	out.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
@@ -145,8 +167,8 @@ func _add_caster(pos: Vector3, basis: Basis, size: Vector3) -> void:
 	mi.global_transform = Transform3D(basis, pos)
 
 
-func _aim_sun(into_room: Vector3) -> void:
-	var flat := into_room.rotated(Vector3.UP, deg_to_rad(SUN_SIDE_DEG))
+func _aim_sun(into_room: Vector3, turn := true) -> void:
+	var flat := into_room.rotated(Vector3.UP, deg_to_rad(SUN_SIDE_DEG)) if turn else into_room
 	var elev := deg_to_rad(SUN_ELEVATION_DEG)
 	var dir := (flat * cos(elev) + Vector3.DOWN * sin(elev)).normalized()
 	view._sun.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), view._sun.global_position)

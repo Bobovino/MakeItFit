@@ -1522,7 +1522,8 @@ func _draw_natural_light(_parent: Floor) -> void:
 		_light_layer.queue_redraw()
 
 
-# The squares daylight reaches (Floor._cast_light), brighter where more
+# The squares light reaches (Floor._cast_light: the sun by day, lamps by
+# night), brighter where more
 # light is: the beams from the windows and the shadows furniture throws in
 # them read at a glance. While a piece is dragged its shadow moves with it
 # (Floor.light_map_with).
@@ -1535,13 +1536,16 @@ func _draw_light_layer() -> void:
 	if not ghost.is_empty() and is_instance_valid(ghost.get("furniture")):
 		light = parent.light_map_with(ghost["furniture"] as Furniture, Vector2(ghost["gx"] as float, ghost["gy"] as float))
 	var ts := float(TILE_SIZE)
+	var night := Floor.is_night_moment(Furniture.active_moment_id)
+	var col := LAMP_COL if night else LIGHT_COL
 	for t in light:
 		var v := t as Vector2i
 		var k := LIGHT_STRENGTH * clampf(light[t] as float, 0.0, 1.0)
-		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(LIGHT_COL, k))
+		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(col, k))
 
 
 # Sunlight: a warm yellow wash over the white plan, strong enough to show
 # against the paper.
 const LIGHT_COL := Color(0.98, 0.80, 0.25)
 const LIGHT_STRENGTH := 0.45   # its opacity at full light
+const LAMP_COL := Color(1.0, 0.62, 0.22)   # lamplight at night, warmer

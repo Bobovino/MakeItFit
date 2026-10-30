@@ -4122,7 +4122,7 @@ func _recompute_pet_effects() -> void:
 				for x in range(px - 1, px + pet.grid_w + 1):
 					for y in range(py - 1, py + pet.grid_h + 1):
 						if x < px or x >= px + pet.grid_w or y < py or y >= py + pet.grid_h:
-							reaching = maxf(reaching, fl.get_light(Vector2i(x, y)))
+							reaching = maxf(reaching, fl.get_daylight(Vector2i(x, y)))
 				var starved := reaching < DAYLIGHT_NEEDED
 				if starved and not pet._daylight_starved:
 					_toast(tr("%s needs daylight: stand it where the window's light reaches.") % pet.furniture_name, true)
@@ -5051,6 +5051,9 @@ func _on_moment_selected(moment_id: String, sound: bool = true) -> void:
 			if fur.foldable:
 				fur.set_extended_conflict(fl.check_extended_conflict(fur))
 			fur.queue_redraw()
+		fl._compute_light_map()   # sun by day, lamps by night
+		if fl.grid_draw:
+			fl.grid_draw.queue_redraw()
 	# queue_redraw() above only repaints the 2D Node2D furniture — the 3D
 	# diorama is a separate set of MeshInstance3D nodes built once from a
 	# snapshot of the floor, so switching moments while looking at the 3D

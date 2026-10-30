@@ -300,14 +300,16 @@ func _t_loop_pathing() -> void:
 func _t_loop_light() -> void:
 	var make := func(looped: bool) -> Floor:
 		var data := {"id": "loop_light", "label": "Loop", "grid_w": 34, "grid_h": 24, "floor_tiles": [], "segments": [
-			{"x1": 1, "y1": 1, "x2": 31, "y2": 1, "primary": true, "demolished": false},
-			{"x1": 31, "y1": 1, "x2": 31, "y2": 21, "primary": true, "demolished": false},
-			{"x1": 31, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 1, "y1": 1, "x2": 21, "y2": 1, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 1, "x2": 21, "y2": 21, "primary": true, "demolished": false},
+			{"x1": 21, "y1": 21, "x2": 1, "y2": 21, "primary": true, "demolished": false},
 			{"x1": 1, "y1": 21, "x2": 1, "y2": 1, "primary": true, "demolished": false,
 				"has_window": true, "window_pos": 3, "window_len": 4},
 		]}
+		# The sun comes in a little from the side (Floor.SUN_SIDE_DEG): the
+		# beam from the west window drifts down a few rows by the east wall.
 		if looped:
-			data["loop"] = {"pairs": [{"a": {"side": "east", "from": 4, "to": 8}, "b": {"side": "west", "from": 12, "to": 16}}]}
+			data["loop"] = {"pairs": [{"a": {"side": "east", "from": 8, "to": 14}, "b": {"side": "west", "from": 12, "to": 18}}]}
 		var fl := load("res://scenes/Wall.tscn").instantiate() as Floor
 		add_child(fl)
 		fl.setup(data)

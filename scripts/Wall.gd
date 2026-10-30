@@ -601,43 +601,67 @@ func set_external_daylight_factor(factor: float) -> void:
 		grid_draw.queue_redraw()
 
 
-# Daylight, in squares: each window shines a straight beam into the room,
-# as wide as the window and BEAM_DEPTH tiles deep (full for the first half,
-# BEAM_FAR after). A tall piece stops the beam (it is lit; what stands
-# behind it is in its shadow), a medium one lets MEDIUM_PASS through, a low
-# one or a screen (reeded glass, a curtain) none of its own. A skylight lights
-# the tiles under it. Straight on purpose: a wardrobe's shadow is exactly
-# as wide as the wardrobe, so the player can see where light will fall.
+# Light, in squares. By day it comes from the sun, one point far outside:
+# every window it shines in through (one facing it) lays a beam into the room
+# along the sun's direction, as wide as the window and BEAM_DEPTH tiles long
+# (full for the first half, BEAM_FAR after); a window facing away gets only
+# the sky's glow, SKY_GLOW for SKY_DEPTH tiles straight in. A tall piece
+# stops a beam (it is lit; what stands behind it is in its shadow), a medium
+# one lets MEDIUM_PASS through, a low one or a screen (reeded glass, a
+# curtain) none of its own. A skylight lights the tiles under it. By night
+# the windows give nothing and each lamp lights a pool around it instead.
+# Straight lines on purpose: a wardrobe's shadow is exactly as wide as the
+# wardrobe, so the player can see where light will fall.
 const BEAM_DEPTH := 30
 const BEAM_FAR := 0.65
 const MEDIUM_PASS := 0.5
+const SKY_GLOW := 0.4
+const SKY_DEPTH := 6
+const SUN_SIDE_DEG := 14.0     # off the sunny wall's normal, so beams come in at a slant
+const LAMP_IDS: Array[String] = ["floor_lamp", "desk_lamp", "nightstand"]
+const LAMP_REACH := 16.0       # tiles
+
+# Which way the sunlight travels across the plan (a unit vector, in tiles):
+# in through the outside wall with the most window, a little from the side.
+# Zero when the apartment has no outside window. The 3D view aims its sun
+# the same way (RoomLighting).
+var sun_dir := Vector2.ZERO
+var _day_map: Dictionary = {}
+var _night_map: Dictionary = {}
+
+static func is_night_moment(moment_id: String) -> bool:
+	return moment_id.to_lower().find("night") != -1
+
 
 func _compute_light_map() -> void:
-	_light_map = _cast_light(null, Vector2.ZERO)
+	sun_dir = _find_sun_dir()
+	_day_map = _cast_light(null, Vector2.ZERO, false)
+	_night_map = _cast_light(null, Vector2.ZERO, true)
+	_light_map = _night_map if is_night_moment(Furniture.active_moment_id) else _day_map
 
 
 # The light as it would be with `moving` standing at `at` instead of where
 # it is (or isn't): the plan shows the shadow follow a piece being dragged.
 func light_map_with(moving: Furniture, at: Vector2) -> Dictionary:
-	return _cast_light(moving, at)
+	return _cast_light(moving, at, is_night_moment(Furniture.active_moment_id))
 
 
-func _cast_light(moving: Furniture, at: Vector2) -> Dictionary:
-	var out: Dictionary = {}
-	var blocked := _partition_tile_set(true)
-	var moving_tiles: Dictionary = {}
-	if moving != null:
-		for t in _rect_tiles(at, moving.grid_w, moving.grid_h):
-			moving_tiles[wrap_tile(t)] = true
-	var pieces_on := func(t: Vector2i) -> Array:
-		var on: Array = _placed_list(t).filter(func(p): return p != moving and not (p as Furniture).overhead)
-		if moving_tiles.has(t) and not moving.overhead:
-			on.append(moving)
-		return on
+# Daylight on a tile whatever the moment on screen (a pet needs the window).
+func get_daylight(tile: Vector2i) -> float:
+	return _day_map.get(tile, 0.0)
 
-	# Where each beam starts (the first tile inside, by the window) and
-	# which way it goes.
-	var beams: Array = []
+
+# The window tiles of every window, each with the way into the room from it
+# (both ways for a window between two rooms) and whether that side is the
+# outside: [[wall_tile, into, outside]].
+func _window_faces() -> Array:
+	var out: Array = []
+	var add := func(wall_tile: Vector2i, dirs: Array) -> void:
+		for dir in dirs:
+			var inside := is_floor_tile(wall_tile + (dir as Vector2i))
+			var behind := is_floor_tile(wall_tile - (dir as Vector2i))
+			if inside:
+				out.append([wall_tile, dir, not behind])
 	if _use_new_format:
 		for seg in segments:
 			var sd := seg as Dictionary
@@ -651,10 +675,7 @@ func _cast_light(moving: Furniture, at: Vector2) -> Dictionary:
 			var mn_x := mini(x1, x2); var mn_y := mini(y1, y2)
 			for i in range(wl):
 				var wall_tile := Vector2i(mn_x + wp + i, y1) if is_horiz else Vector2i(x1, mn_y + wp + i)
-				for dir in ([Vector2i(0, 1), Vector2i(0, -1)] if is_horiz else [Vector2i(1, 0), Vector2i(-1, 0)]):
-					var first: Vector2i = wall_tile + dir
-					if is_floor_tile(first) and not blocked.has(first):
-						beams.append([first, dir])
+				add.call(wall_tile, [Vector2i(0, 1), Vector2i(0, -1)] if is_horiz else [Vector2i(1, 0), Vector2i(-1, 0)])
 	else:
 		for wd in wall_definitions:
 			if not wd.get("has_window", false):
@@ -663,33 +684,90 @@ func _cast_light(moving: Furniture, at: Vector2) -> Dictionary:
 			var wl: int = wd.get("window_len", 0)
 			for i in range(wl):
 				match wd["edge"] as String:
-					"north": beams.append([Vector2i(wx + i, 0), Vector2i(0, 1)])
-					"south": beams.append([Vector2i(wx + i, grid_h - 1), Vector2i(0, -1)])
-					"west":  beams.append([Vector2i(0, wx + i), Vector2i(1, 0)])
-					"east":  beams.append([Vector2i(grid_w - 1, wx + i), Vector2i(-1, 0)])
+					"north": out.append([Vector2i(wx + i, -1), Vector2i(0, 1), true])
+					"south": out.append([Vector2i(wx + i, grid_h), Vector2i(0, -1), true])
+					"west":  out.append([Vector2i(-1, wx + i), Vector2i(1, 0), true])
+					"east":  out.append([Vector2i(grid_w, wx + i), Vector2i(-1, 0), true])
+	return out
 
-	for beam in beams:
-		var start: Vector2i = beam[0]
-		var dir: Vector2i = beam[1]
-		var strength := external_daylight_factor
+
+func _find_sun_dir() -> Vector2:
+	var by_side: Dictionary = {}   # into-room direction -> window tiles on outside walls
+	for face in _window_faces():
+		if face[2]:
+			by_side[face[1]] = (by_side.get(face[1], 0) as int) + 1
+	var best := Vector2i.ZERO
+	for side in [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0)]:
+		if (by_side.get(side, 0) as int) > (by_side.get(best, 0) as int):
+			best = side
+	if best == Vector2i.ZERO:
+		return Vector2.ZERO
+	return Vector2(best).rotated(deg_to_rad(SUN_SIDE_DEG))
+
+
+func _cast_light(moving: Furniture, at: Vector2, night: bool) -> Dictionary:
+	var out: Dictionary = {}
+	var blocked := _partition_tile_set(true)
+	var moving_tiles: Dictionary = {}
+	if moving != null:
+		for t in _rect_tiles(at, moving.grid_w, moving.grid_h):
+			moving_tiles[wrap_tile(t)] = true
+	var pieces_on := func(t: Vector2i) -> Array:
+		var on: Array = _placed_list(t).filter(func(p): return p != moving and not (p as Furniture).overhead)
+		if moving_tiles.has(t) and not moving.overhead:
+			on.append(moving)
+		return on
+	var light := func(t: Vector2i, v: float) -> void:
+		if v > (out.get(t, 0.0) as float):
+			out[t] = v
+
+	if night:
+		_cast_lamps(moving, at, blocked, light)
+		return out
+
+	# A ray from a window: the tiles it crosses, in order, `step` apart.
+	var cast := func(from: Vector2, dir: Vector2, depth: int, start_strength: float, far: bool) -> void:
+		var strength := start_strength
 		var dimmed_by: Dictionary = {}
-		for step in BEAM_DEPTH:
-			var t := wrap_tile(start + dir * step)   # daylight goes round a loop too
+		var last := Vector2i(floori(from.x), floori(from.y))
+		var steps := depth * 2
+		for i in range(1, steps + 1):
+			var p := from + dir * (i * 0.5)
+			var cell := Vector2i(floori(p.x), floori(p.y))
+			if cell == last:
+				continue
+			last = cell
+			var t := wrap_tile(cell)   # daylight goes round a loop too
 			if not is_floor_tile(t) or blocked.has(t):
 				break
 			var stop := false
-			for p in pieces_on.call(t):
-				var f := p as Furniture
+			for q in pieces_on.call(t):
+				var f := q as Furniture
 				if f.blocks_light():
 					stop = true
 				elif not f.screen and f.height_category == "medium" and not dimmed_by.has(f):
 					dimmed_by[f] = true
 					strength *= MEDIUM_PASS
-			var lit := strength * (1.0 if step < BEAM_DEPTH / 2 else BEAM_FAR)
-			if lit > (out.get(t, 0.0) as float):
-				out[t] = lit
+			light.call(t, strength * (BEAM_FAR if far and i > steps / 2 else 1.0))
 			if stop:
 				break
+
+	# Outside windows first; a window between two rooms then passes on what
+	# reached it from the other side.
+	var faces := _window_faces()
+	for outer in [true, false]:
+		for face in faces:
+			if face[2] != outer:
+				continue
+			var wall_tile: Vector2i = face[0]
+			var into := Vector2(face[1] as Vector2i)
+			var from := Vector2(wall_tile) + Vector2(0.5, 0.5)
+			var strength := external_daylight_factor if outer else (out.get(wrap_tile(wall_tile - (face[1] as Vector2i)), 0.0) as float)
+			if strength <= 0.0:
+				continue
+			if sun_dir != Vector2.ZERO and into.dot(sun_dir) > 0.2:
+				cast.call(from, sun_dir, BEAM_DEPTH, strength, true)
+			cast.call(from, into, SKY_DEPTH, strength * SKY_GLOW, false)
 
 	# Skylights light their own footprint straight from above: whatever stands
 	# under one is lit, and nothing on the floor can shade it.
@@ -701,6 +779,34 @@ func _cast_light(moving: Furniture, at: Vector2) -> Dictionary:
 			if is_floor_tile(tile) and tile not in blocked:
 				out[tile] = maxf(out.get(tile, 0.0) as float, external_daylight_factor)
 	return out
+
+
+# Night: each lamp lights a pool LAMP_REACH tiles round, brightest at the
+# lamp, as far as a wall lets it (a straight line from the lamp to the tile).
+func _cast_lamps(moving: Furniture, at: Vector2, blocked: Dictionary, light: Callable) -> void:
+	for item in _get_all_placed_unique():
+		var lamp := item as Furniture
+		if not (lamp.furniture_id in LAMP_IDS):
+			continue
+		var pos := at if lamp == moving else lamp.grid_pos
+		var c := pos + Vector2(lamp.grid_w, lamp.grid_h) * 0.5
+		var r := ceili(LAMP_REACH)
+		for y in range(floori(c.y) - r, floori(c.y) + r + 1):
+			for x in range(floori(c.x) - r, floori(c.x) + r + 1):
+				var t := Vector2i(x, y)
+				var to := Vector2(t) + Vector2(0.5, 0.5)
+				var d := c.distance_to(to)
+				if d > LAMP_REACH or not is_floor_tile(t) or blocked.has(t):
+					continue
+				var seen := true
+				var n := ceili(d * 2.0)
+				for i in range(1, n):
+					var p := c.lerp(to, float(i) / n)
+					if blocked.has(Vector2i(floori(p.x), floori(p.y))):
+						seen = false
+						break
+				if seen:
+					light.call(t, lerpf(1.0, 0.25, d / LAMP_REACH))
 
 
 func set_active_wall_edge(edge: String) -> void:
@@ -2581,6 +2687,7 @@ func count_free_tiles_for_moment(moment_id: String) -> int:
 # like "ventilation"/"light" that specifically require open floor NEAR a
 # window, as opposed to "sport" which just needs open floor anywhere.
 func count_free_window_tiles_for_moment(moment_id: String, light_threshold: float = 0.15) -> int:
+	var light := _night_map if is_night_moment(moment_id) else _day_map
 	var floor_tiles_set: Dictionary
 	if not floor_mask.is_empty():
 		floor_tiles_set = floor_mask.duplicate()
@@ -2604,7 +2711,7 @@ func count_free_window_tiles_for_moment(moment_id: String, light_threshold: floa
 	for t in floor_tiles_set:
 		if t in blocked or occupied.has(t):
 			continue
-		if get_light(t) >= light_threshold:
+		if (light.get(t, 0.0) as float) >= light_threshold:
 			free += 1
 	return free
 
