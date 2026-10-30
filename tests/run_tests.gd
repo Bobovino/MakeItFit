@@ -1280,9 +1280,14 @@ func _t_unreachable_shown() -> void:
 	await get_tree().create_timer(TenantLayer.HOP_TIME + 0.2).timeout
 	_current = "unreachable: the resident nearest it sets off for it"
 	_ok(layer._reach_rid != &"" and layer._reacting, "rid '%s'" % layer._reach_rid)
-	await get_tree().create_timer(2.5).timeout
+	# The walk there takes as long as it is (where they stood is random): wait
+	# for them to stop, as long as it takes, rather than a fixed while.
+	var waited := 0.0
+	while not is_instance_valid(layer._trail2d) and layer._reach_rid != &"" and waited < 10.0:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
 	_current = "unreachable: a dotted trail goes on from where they stopped to the piece"
-	_ok(is_instance_valid(layer._trail2d) or layer._reach_rid == &"", "trail %s" % layer._trail2d)
+	_ok(is_instance_valid(layer._trail2d), "trail %s after %.1f s, rid '%s'" % [layer._trail2d, waited, layer._reach_rid])
 	piece.set_accessible(true)
 	layer.commit()
 	await get_tree().process_frame
