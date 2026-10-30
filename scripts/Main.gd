@@ -3050,16 +3050,27 @@ func _on_resident_drag(data: Variant, ended: bool) -> void:
 		return
 	var rid := _resident_drag
 	_resident_drag = ""
-	if rid == "" or _view_mode != ViewMode.TOPDOWN or get_viewport().gui_is_drag_successful():
+	if rid == "" or get_viewport().gui_is_drag_successful():
 		return
-	var hovered := get_viewport().gui_get_hovered_control()
-	if hovered != null and hovered.mouse_filter == Control.MOUSE_FILTER_STOP:
-		return   # let go over the bar or a button, not the plan
 	var fl := _floors.get(_current_floor_id) as Floor
 	if fl == null:
 		return
-	var at := fl.get_local_mouse_position() / Furniture.TILE_SIZE
-	var tile := Vector2i(floori(at.x), floori(at.y))
+	var tile: Vector2i
+	if _view_mode == ViewMode.VIEW3D:
+		if not is_instance_valid(_mode3d_view) or _mode3d_view.first_person:
+			return
+		var under = _mode3d_view.tile_under_mouse()
+		if under == null:
+			return   # let go over the bar or a button, not the room
+		tile = under
+	elif _view_mode == ViewMode.TOPDOWN:
+		var hovered := get_viewport().gui_get_hovered_control()
+		if hovered != null and hovered.mouse_filter == Control.MOUSE_FILTER_STOP:
+			return   # let go over the bar or a button, not the plan
+		var at := fl.get_local_mouse_position() / Furniture.TILE_SIZE
+		tile = Vector2i(floori(at.x), floori(at.y))
+	else:
+		return
 	var had := false
 	for room in fl.rooms:
 		if rid in fl.owners_of_room(room):
@@ -4810,6 +4821,7 @@ func _refresh_functions() -> void:
 		tenant_card.update_rules(gm.rule_status())
 		if is_instance_valid(_mode3d_view):
 			_mode3d_view.set_rule_overlays(gm.sightline_status, apt_floor.zones, apt_floor.zone_status)
+			_mode3d_view.refresh_rooms()
 		# Zone separations/sightlines are level-wide checks against whatever's
 		# CURRENTLY on screen — with per-moment furniture positions now
 		# possible, that's only valid for _active_moment_id specifically. Every

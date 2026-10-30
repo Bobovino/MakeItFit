@@ -3866,6 +3866,8 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	_settle_stacked()
 	_rule_root = null   # freed with the rest of build_root's children
 	_rebuild_rule_overlays()
+	_room_root = null
+	refresh_rooms()
 
 	for edge in apt_floor.wall_items:
 		var items: Dictionary = apt_floor.wall_items[edge] as Dictionary
@@ -5026,6 +5028,121 @@ func _rebuild_rule_overlays() -> void:
 			zmi.material_override = zmat
 			zmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_rule_root.add_child(zmi)
+
+
+# ── Rooms (Floor.rooms) ─────────────────────────────────────────────────────
+# As on the plan: a room given to residents is tinted in their colour on the
+# floor, and over each room hang its name and its residents' faces.
+var _room_root: Node3D = null
+const ROOM_TAG_Y := 1.6        # metres up: over the furniture, under the far walls' tops
+
+func refresh_rooms() -> void:
+	if is_instance_valid(_room_root):
+		_room_root.queue_free()
+	_room_root = null
+	if not is_instance_valid(build_root) or _apt_floor == null or _apt_floor.rooms.is_empty() or first_person:
+		return
+	_room_root = Node3D.new()
+	_room_root.name = "Rooms"
+	build_root.add_child(_room_root)
+	var w := maxi(_room_bounds.size.x, 1)
+	var h := maxi(_room_bounds.size.y, 1)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var tinted := false
+	for room in _apt_floor.rooms:
+		var owners := _apt_floor.owners_of_room(room)
+		var kind := _apt_floor.room_kind(room)
+		if not owners.is_empty():
+			var look := _apt_floor.resident_looks.get(owners[0], {}) as Dictionary
+			var col := Color(look.get("color", GameTheme.NAVY) as Color, GridDraw.ROOM_TINT * 1.8)
+			for t in room["tiles"] as Dictionary:
+				var px := (t as Vector2i).x - _room_bounds.position.x
+				var py := (t as Vector2i).y - _room_bounds.position.y
+				if px >= 0 and py >= 0 and px < w and py < h:
+					img.set_pixel(px, py, col)
+					tinted = true
+		if owners.is_empty() and kind == "":
+			continue
+		var c := room["center"] as Vector2
+		var at := Vector3((c.x - _room_bounds.position.x) * TILE_M, ROOM_TAG_Y,
+			(c.y - _room_bounds.position.y) * TILE_M)
+		var tag := Node3D.new()
+		tag.position = at
+		_room_root.add_child(tag)
+		if kind != "":
+			var name_l := Label3D.new()
+			name_l.text = tr(GridDraw.ROOM_NAMES[GridDraw.ROOM_KINDS.find(kind)] as String).to_upper()
+			name_l.font = GameTheme.font("mono_bold")
+			name_l.font_size = 40
+			name_l.pixel_size = 0.009
+			name_l.modulate = GridDraw.PLAN_INK
+			name_l.outline_size = 14
+			name_l.outline_modulate = Color(1, 1, 1, 0.9)
+			name_l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			name_l.no_depth_test = true
+			name_l.render_priority = 6
+			name_l.position = Vector3(0.0, 0.48, 0.0)
+			tag.add_child(name_l)
+		var side := 0.6
+		var x0 := -(owners.size() - 1) * (side + 0.1) * 0.5
+		for i in owners.size():
+			var look := _apt_floor.resident_looks.get(owners[i], {}) as Dictionary
+			var face := Sprite3D.new()
+			face.texture = MiiPortrait.face(look.get("body", "adult") as String, look.get("feminine", false) as bool)
+			if face.texture == null:
+				continue
+			face.pixel_size = side / float(face.texture.get_width())
+			face.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			face.no_depth_test = true
+			face.render_priority = 6
+			face.shaded = false
+			face.position = Vector3(x0 + i * (side + 0.1), 0.0, 0.0)
+			# A frame in their colour behind the face.
+			var frame := Sprite3D.new()
+			frame.texture = _room_frame_tex()
+			frame.modulate = (look.get("color", GameTheme.NAVY) as Color).darkened(0.2)
+			frame.pixel_size = (side + 0.08) / float(frame.texture.get_width())
+			frame.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			frame.no_depth_test = true
+			frame.render_priority = 5
+			frame.shaded = false
+			frame.position = face.position
+			tag.add_child(frame)
+			tag.add_child(face)
+	if tinted:
+		var quad := QuadMesh.new()
+		quad.size = Vector2(w * TILE_M, h * TILE_M)
+		quad.orientation = PlaneMesh.FACE_Y
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.position = Vector3(w * TILE_M * 0.5, 0.006, h * TILE_M * 0.5)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_texture = ImageTexture.create_from_image(img)
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_room_root.add_child(mi)
+
+
+var _frame_tex: ImageTexture = null
+
+func _room_frame_tex() -> ImageTexture:
+	if _frame_tex == null:
+		var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+		img.fill(Color.WHITE)
+		_frame_tex = ImageTexture.create_from_image(img)
+	return _frame_tex
+
+
+# The floor tile under the pointer, or null when the pointer isn't over this
+# view (Main gives a room to whoever's portrait is dropped there).
+func tile_under_mouse() -> Variant:
+	if not is_visible_in_tree() or _room_w_m <= 0.0 or not _mouse_over_own_view():
+		return null
+	var p := _room_local_to_tile(_ground_hit(_to_vp(container.get_local_mouse_position())))
+	return Vector2i(floori(p.x), floori(p.y))
 
 
 # A piece that slides (a wardrobe, a rolling cart) gets the track it rides
@@ -6495,6 +6612,7 @@ func enter_first_person() -> bool:
 	_fp_pitch = -8.0
 	_fp_saved = {"fov": cam.fov, "near": cam.near, "attributes": cam.attributes}
 	first_person = true
+	refresh_rooms()   # the room tags hang where the walker would walk into them
 	cam.fov = FP_FOV
 	cam.near = FP_NEAR
 	if is_instance_valid(_walls_btn):
@@ -6510,6 +6628,7 @@ func exit_first_person() -> void:
 	if not first_person:
 		return
 	first_person = false
+	refresh_rooms()   # the room tags hang where the walker would walk into them
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	cam.fov = _fp_saved.get("fov", cam.fov)
 	cam.near = _fp_saved.get("near", cam.near)
@@ -6575,6 +6694,7 @@ func _fp_cut_doorways(wd: Dictionary, cut: bool) -> void:
 func _exit_tree() -> void:
 	if first_person:
 		first_person = false
+		refresh_rooms()   # the room tags hang where the walker would walk into them
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
