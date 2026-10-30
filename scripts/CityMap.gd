@@ -500,7 +500,7 @@ func _build_ui() -> void:
 	vb.add_child(preview_frame)
 
 	_blueprint_preview = BlueprintPreviewScript.new()
-	_blueprint_preview.custom_minimum_size = Vector2(0, 130)
+	_blueprint_preview.custom_minimum_size = Vector2(0, 108)
 	preview_frame.add_child(_blueprint_preview)
 
 	var sep1 := HSeparator.new()
@@ -527,7 +527,7 @@ func _build_ui() -> void:
 	tenant_row.add_child(portrait_frame)
 
 	_tenant_portrait = TextureRect.new()
-	_tenant_portrait.custom_minimum_size = Vector2(64, 64)
+	_tenant_portrait.custom_minimum_size = Vector2(56, 56)
 	_tenant_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_tenant_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait_frame.add_child(_tenant_portrait)
