@@ -150,6 +150,13 @@ var _home_grid_pos: Vector2 = Vector2(-1, -1)
 # in a level's starting_furniture ("keepsake": true), never in the catalogue.
 var keepsake: bool = false
 var is_nested_box: bool = false
+# A box's inside as a little plan of itself, drawn on the box in place of its
+# picture: {segments, bounds, furniture}, the same data BlueprintPreview takes.
+# Set by Main (_recompute_box_effects); {} draws the box as a plain piece.
+var interior_plan: Dictionary = {}:
+	set(v):
+		interior_plan = v
+		queue_redraw()
 var child_level_id: String = ""
 # How much everything currently inside this box's child level weighs,
 # combined — Main._recompute_box_effects() keeps this current whenever the
@@ -625,7 +632,9 @@ func _draw() -> void:
 	var theta := deg_to_rad(rot_steps * 90.0)
 	var origin := Vector2(w, h) * 0.5 - Vector2(cw, ch).rotated(theta) * 0.5
 	var parts := _body_parts(float(w), float(h))
-	if parts.size() > 1:
+	if is_nested_box and parts.size() == 1 and _has_interior_plan():
+		_draw_mini_plan(float(w), float(h), cw, ch, theta, ink)
+	elif parts.size() > 1:
 		_draw_split_body(parts, origin, theta, Vector2(cw, ch), ink)
 	else:
 		_draw_body(origin, theta, cw, ch, ink)
@@ -634,6 +643,36 @@ func _draw() -> void:
 	# only the fill/hatch/symbol need to actually spin.
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_draw_overlays(w, h, ink, parts)
+
+
+func _has_interior_plan() -> bool:
+	var b: Rect2 = interior_plan.get("bounds", Rect2())
+	return b.size.x > 0.0 and b.size.y > 0.0
+
+
+# A box seen from the apartment it stands in: the apartment inside it, as a
+# small plan of itself (walls and furniture), turned with the box.
+func _draw_mini_plan(w: float, h: float, cw: float, ch: float, theta: float, ink: Color) -> void:
+	var b: Rect2 = interior_plan["bounds"]
+	draw_rect(Rect2(0, 0, w, h), GridDraw.PLAN_PAPER)
+	var pad := 3.0
+	var s := minf((cw - pad * 2.0) / b.size.x, (ch - pad * 2.0) / b.size.y)
+	var c := b.get_center()
+	draw_set_transform(Vector2(w, h) * 0.5, theta, Vector2.ONE)
+	for fd in interior_plan.get("furniture", []) as Array:
+		var r := Rect2((Vector2(fd["x"], fd["y"]) - c) * s, Vector2(fd["w"], fd["h"]) * s)
+		draw_rect(r, Furniture.paper_fill(fd.get("color", Color.GRAY) as Color))
+		draw_rect(r, GridDraw.PLAN_INK_SOFT, false, 0.5)
+	var wall := clampf(s * 1.2, 0.75, 2.0)
+	for sg in interior_plan.get("segments", []) as Array:
+		var d := sg as Dictionary
+		var p1 := (Vector2(d.get("x1", 0.0) as float, d.get("y1", 0.0) as float) - c) * s
+		var p2 := (Vector2(d.get("x2", 0.0) as float, d.get("y2", 0.0) as float) - c) * s
+		draw_line(p1, p2, ink, wall)
+	if (interior_plan.get("segments", []) as Array).is_empty():
+		draw_rect(Rect2((b.position - c) * s, b.size * s), ink, false, wall)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_rect(Rect2(0, 0, w, h), ink, false, 1.0)
 
 
 # Where the piece's body is drawn, in its own pixels: [{dst: Rect2, src:
@@ -1801,10 +1840,12 @@ const TAPE_COLOR := Color(0.80, 0.66, 0.42, 0.95)
 const STRAP_COLOR := Color(0.22, 0.16, 0.12, 0.95)
 
 func _draw_packing(w: float, h: float) -> void:
-	if mobility_tier == "yellow" or mobility_tier == "red":
+	# Drawn as a little plan, the box keeps its plan clear: no tape or straps.
+	var plain := not _has_interior_plan()
+	if plain and (mobility_tier == "yellow" or mobility_tier == "red"):
 		var band := maxf(2.0, h * 0.12)
 		draw_rect(Rect2(0, h * 0.5 - band * 0.5, w, band), TAPE_COLOR)
-	if mobility_tier == "red":
+	if plain and mobility_tier == "red":
 		var strap := maxf(2.0, w * 0.10)
 		draw_rect(Rect2(w * 0.5 - strap * 0.5, 0, strap, h), STRAP_COLOR)
 		draw_rect(Rect2(0, h * 0.5 - strap * 0.5, w, strap), STRAP_COLOR)
@@ -1821,6 +1862,9 @@ func _draw_packing(w: float, h: float) -> void:
 # less daylight gets in.
 func _draw_shade(w: float, h: float) -> void:
 	var dark := (1.0 - _shade) * 0.6
+	if _has_interior_plan():   # a light tint only, so its plan still reads
+		draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.03, 0.08, dark * 0.4))
+		return
 	draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.03, 0.08, dark))
 	var hatch := Color(0.02, 0.03, 0.08, dark + 0.15)
 	var d := 3.0

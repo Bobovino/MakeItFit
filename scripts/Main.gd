@@ -2714,6 +2714,12 @@ func _recompute_box_effects() -> void:
 			fur._noise_by = ""
 			fur._noise_making = false
 	_recompute_pet_effects()
+	# Each box shows its inside on the plan, as a little plan of itself.
+	for box in _collect_nested_boxes():
+		var ld := _lookup_level_dict(box.child_level_id)
+		var plan := _floor_plan_data(ld)
+		plan["furniture"] = _furniture_preview_rects_for(box.child_level_id, ld)
+		box.interior_plan = plan
 	# Direction 1 (parent noise -> child): if we're currently INSIDE a box
 	# that had a noisy neighbor outside it when we entered, every needs_quiet
 	# piece in here is muted — set once at entry (_on_box_entered), applied

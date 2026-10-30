@@ -3,9 +3,8 @@ class_name ResultScreen
 
 # What the RENT OUT button ends in.
 #
-# Rented: which apartment, who lives there now and for what rent; the stars,
-# with why (the share of the budget left over) and what the next one takes;
-# what the level earned; how far the portfolio is from the goal. Then where
+# Rented: which apartment and who lives there now; the stars, with why (the
+# share of the budget left over) and what the next one takes. Then where
 # to go: on to the next level (selected, so Enter goes on), or look around
 # the apartment, play it again, or back to the projects.
 #
@@ -45,7 +44,7 @@ func show_success(info: Dictionary) -> void:
 	var retired := GameState.is_retired()
 
 	_header(body, tr("Rented out"), info.get("level_name", "") as String,
-		tr("Tenant: %s · %s €/month") % [info.get("tenant", ""), _money(info.get("rent", 0))], true)
+		tr("Tenant: %s") % info.get("tenant", ""), true)
 
 	# Stars, and what they are for.
 	var star_box := VBoxContainer.new()
@@ -73,34 +72,6 @@ func show_success(info: Dictionary) -> void:
 			roundi(share * 100.0), stars + 1, roundi(need * 100.0)]
 	star_box.add_child(why)
 
-	# What the level brought in.
-	var tiles := HBoxContainer.new()
-	tiles.add_theme_constant_override("separation", 10)
-	body.add_child(tiles)
-	if start > 0:
-		_tile(tiles, tr("Budget left"), "%s €" % _money(left), tr("of %s €") % _money(start))
-	var funds: int = info.get("funds", 0)
-	if funds > 0:
-		_tile(tiles, tr("Studio funds"), "+%s €" % _money(funds), tr("for the next projects"))
-	_tile(tiles, tr("Monthly rent"), "+%s €" % _money(info.get("rent", 0)), tr("to your portfolio"))
-
-	# Towards the goal.
-	var portfolio: int = info.get("portfolio", 0)
-	var goal_row := HBoxContainer.new()
-	body.add_child(goal_row)
-	var goal_lbl := Label.new()
-	goal_lbl.text = tr("Portfolio")
-	goal_lbl.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
-	goal_lbl.add_theme_color_override("font_color", GameTheme.INK)
-	goal_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	goal_row.add_child(goal_lbl)
-	var goal_val := Label.new()
-	goal_val.text = tr("%s of %s €/month") % [_money(portfolio), _money(GameState.RETIRE_GOAL)]
-	goal_val.add_theme_font_override("font", GameTheme.font("mono"))
-	goal_val.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	goal_val.add_theme_color_override("font_color", GameTheme.INK_SOFT)
-	goal_row.add_child(goal_val)
-	body.add_child(_progress(float(portfolio) / float(GameState.RETIRE_GOAL)))
 	if retired:
 		var done := Label.new()
 		done.text = tr("Goal reached: your portfolio is complete.")
@@ -280,51 +251,6 @@ func _header(body: VBoxContainer, kicker: String, title: String, subtitle: Strin
 			tw.chain().tween_property(st, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)
 			tw.tween_property(st, "modulate:a", 1.0, 0.14)
 			tw.chain().tween_callback(func(): Audio.play("place"))
-
-
-func _tile(row: HBoxContainer, label: String, value: String, note: String) -> void:
-	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(GameTheme.CARD_DIM, GameTheme.CARD_DIM, 10))
-	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(p)
-	var vb := MenuKit._margins(VBoxContainer.new(), 6, 4, 6, 4)
-	vb.add_theme_constant_override("separation", 0)
-	p.add_child(vb.get_parent())
-	var l := Label.new()
-	l.text = label.to_upper()
-	l.add_theme_font_override("font", GameTheme.font("mono_bold"))
-	l.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	l.add_theme_color_override("font_color", GameTheme.INK_SOFT)
-	vb.add_child(l)
-	var v := Label.new()
-	v.text = value
-	v.add_theme_font_override("font", GameTheme.font("mono_bold"))
-	v.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
-	v.add_theme_color_override("font_color", GameTheme.INK)
-	vb.add_child(v)
-	var n := Label.new()
-	n.text = note
-	n.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	n.add_theme_color_override("font_color", GameTheme.INK_SOFT)
-	vb.add_child(n)
-
-
-func _progress(share: float) -> Control:
-	var track := Panel.new()
-	track.custom_minimum_size.y = 12
-	var ts := StyleBoxFlat.new()
-	ts.bg_color = GameTheme.CARD_DIM.darkened(0.08)
-	ts.set_corner_radius_all(6)
-	track.add_theme_stylebox_override("panel", ts)
-	var fill := Panel.new()
-	var fs := StyleBoxFlat.new()
-	fs.bg_color = GameTheme.NAVY
-	fs.set_corner_radius_all(6)
-	fill.add_theme_stylebox_override("panel", fs)
-	track.add_child(fill)
-	track.resized.connect(func():
-		fill.size = Vector2(track.size.x * clampf(share, 0.0, 1.0), track.size.y))
-	return track
 
 
 func _footer(body: VBoxContainer) -> HBoxContainer:
