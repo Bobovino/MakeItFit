@@ -334,6 +334,8 @@ func _ready() -> void:
 		result_screen.retry_requested.connect(_on_retry)
 	if not result_screen.watch_again_requested.is_connected(_on_watch_again_reveal):
 		result_screen.watch_again_requested.connect(_on_watch_again_reveal)
+	if not result_screen.decorate_requested.is_connected(_on_decorate):
+		result_screen.decorate_requested.connect(_on_decorate)
 	if not result_screen.walk_through_requested.is_connected(_on_walk_through):
 		result_screen.walk_through_requested.connect(_on_walk_through)
 	if not result_screen.advance_level_requested.is_connected(_on_advance_level):
@@ -1573,7 +1575,7 @@ func _spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, gy: int, 
 		return null
 	# Apply per-instance overrides set by the level editor (rail axis/extents,
 	# or which level a nested/parabox box's interior points at).
-	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id", "keepsake"]
+	var rail_keys := ["rail_axis", "rail_start", "rail_end", "reveal_start", "reveal_end", "reveal_functions", "child_level_id", "keepsake", "colors"]
 	for key in rail_keys:
 		if rail_data.has(key):
 			fdata = fdata.duplicate()
@@ -5328,6 +5330,26 @@ func _on_watch_again_reveal() -> void:
 	_show_watch_done_button()
 
 
+# "Decorate" on the Results screen: the finished flat in 3D, read-only like
+# View Apartment, where clicking a piece offers it colours (Room3DView's
+# decorating). Each change is kept with the rented-out layout at once.
+func _on_decorate() -> void:
+	_on_watch_again_reveal()
+	if not is_instance_valid(_mode3d_view):
+		return
+	_mode3d_view.stop_tenant_showcase()
+	_mode3d_view.decorating = true
+	if not _mode3d_view.piece_recolored.is_connected(_on_piece_recolored):
+		_mode3d_view.piece_recolored.connect(_on_piece_recolored)
+	_toast(tr("Click a piece to change its colours."))
+
+
+func _on_piece_recolored(_f: Furniture) -> void:
+	if _current_level_id in GameState.completed:
+		GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+	_last_furniture_state = _snapshot_all_furniture()
+
+
 # "Walk Through" on the Results screen: the same read-only look around as
 # View Apartment, but at eye height inside the flat (Room3DView's first-person
 # mode), over the whole window with the HUD out of the way. Esc goes straight
@@ -5420,6 +5442,7 @@ func _close_watch_again() -> void:
 	_start_tenants()
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
+		_mode3d_view.decorating = false
 		_mode3d_view.stop_tenant_showcase()
 	if is_instance_valid(_furniture_menu_btn):
 		_furniture_menu_btn.visible = true
@@ -5921,6 +5944,8 @@ func _snapshot_all_furniture() -> Dictionary:
 				entry["child_level_id"] = f.child_level_id
 			if f.keepsake:
 				entry["keepsake"] = true
+			if not f.colors.is_empty():
+				entry["colors"] = f.colors_saved()
 			# _home_grid_pos is the level's TRUE authored starting position,
 			# not whatever (x,y) this particular undo step happens to restore
 			# to — capture it explicitly so comfort scoring (which compares
@@ -6020,6 +6045,9 @@ func _restore_spawn_furniture(furniture_id: String, apt_floor: Floor, gx: int, g
 	if override_data.get("keepsake", false):
 		fdata = fdata.duplicate()
 		fdata["keepsake"] = true
+	if override_data.has("colors"):
+		fdata = fdata.duplicate()
+		fdata["colors"] = override_data["colors"]
 	var f: Furniture = FurnitureScene.instantiate() as Furniture
 	apt_floor.add_child(f)
 	f.setup(fdata, apt_floor)

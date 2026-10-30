@@ -64,6 +64,7 @@ func _run_all() -> void:
 	_test("a bed unfolded in another moment keeps its space then", func(): _t_other_moment())
 	_test("under a loft only what is low enough; nothing in a window", func(): _t_loft_and_window())
 	_test("reeded glass lets daylight through and stops the eye", func(): _t_reeded_glass())
+	_test("decorate: wood and colour parts, metal kept, colours saved and read back", func(): _t_furniture_colors())
 	_test("a curtain is drawn and opened per moment", func(): _t_curtain_per_moment())
 	_test("a skylight lights from above and takes no floor", func(): _t_skylight())
 	_test("a sleeping pod sleeps, stores, splits and shades", func(): _t_sleeping_pod())
@@ -1856,6 +1857,26 @@ func _catalog_piece(fl: Floor, id: String, w: int = 0, h: int = 0) -> Furniture:
 
 # Reeded glass across the whole room: the far side still gets daylight, but
 # nobody sees through it. A bookshelf in the same place leaves it dark.
+func _t_furniture_colors() -> void:
+	var parts_ok := FurnitureColors.part_of("M_oak") == FurnitureColors.WOOD \
+		and FurnitureColors.part_of("C_9c5e38") == FurnitureColors.COLOUR \
+		and FurnitureColors.part_of("M_brass") == &""
+	# A lighter material stays lighter than a darker one after recolouring.
+	var teal := Color("3f8f8c")
+	var light := FurnitureColors.recolor(Color(0.8, 0.6, 0.5), teal)
+	var dark := FurnitureColors.recolor(Color(0.3, 0.2, 0.1), teal)
+	var f := Furniture.new()
+	f.colors = {FurnitureColors.COLOUR: teal}
+	var saved := f.colors_saved()
+	var g := Furniture.new()
+	g.set_colors_saved(saved)
+	_ok(parts_ok and light.get_luminance() > dark.get_luminance()
+		and (g.colors[FurnitureColors.COLOUR] as Color).is_equal_approx(teal),
+		"parts %s light %.2f dark %.2f saved %s" % [parts_ok, light.get_luminance(), dark.get_luminance(), saved])
+	f.free()
+	g.free()
+
+
 func _t_reeded_glass() -> void:
 	var fl := _window_floor()
 	var behind := Vector2i(8, 17)   # in the patch of sun, which starts some way in from the window

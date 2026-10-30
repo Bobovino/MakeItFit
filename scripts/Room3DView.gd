@@ -21,6 +21,7 @@ signal box_enter_requested(furniture: Furniture)   # a nested box was double-cli
 signal piece_long_pressed(furniture: Furniture)   # a finger held still on a floor piece: show its actions
 signal wall_item_long_pressed(hit: Dictionary)    # ...or on a wall piece
 signal showcase_stop_changed(moment_id: String, needs: Array)   # tenant showcase moved to a new stop — Main.gd rings the matching TenantCard chip(s)
+signal piece_recolored(furniture: Furniture)   # Decorate: a piece was given a colour — Main.gd saves it
 
 const TILE_M      := 0.1     # metres per tile (10 cm) — matches the 2D views
 const WALL_TILES  := 24      # matches WallInspector.WALL_HEIGHT (2.4 m ceiling)
@@ -1123,7 +1124,14 @@ func _on_container_input(event: InputEvent) -> void:
 				_press_moved = false
 				if read_only:
 					# Post-win "View Apartment" mode — nothing to pick up, hang, or
-					# buy, so a left-press over empty floor only ever pans.
+					# buy, so a left-press over empty floor only ever pans. In
+					# Decorate, pressing a piece opens its colours.
+					if decorating:
+						var picked := _pick_furniture(_to_vp(mb.position))
+						if not picked.is_empty():
+							_open_swatches(picked["furniture"] as Furniture, mb.position)
+							return
+						_close_swatches()
 					_panning = true
 				elif _buying_furniture:
 					if TouchControls.active:
@@ -1239,7 +1247,7 @@ func _on_container_input(event: InputEvent) -> void:
 			# the red/green hitbox outlines already say "this is where it
 			# sits"/"this is where it'd land" once a drag is under way. Skipped
 			# in read-only mode — nothing is actually grabbable there.
-			if not read_only:
+			if not read_only or decorating:
 				_update_hover(_to_vp(mm.position))
 
 
@@ -5031,6 +5039,129 @@ func _rebuild_rule_overlays() -> void:
 			_rule_root.add_child(zmi)
 
 
+# ── Decorate ────────────────────────────────────────────────────────────────
+# Once a flat is rented out, its pieces can be given colours (FurnitureColors):
+# click one and a card of swatches opens beside it, a row per part it has
+# (its own colour, its wood), and "As made" to undo. Only this view shows them.
+var decorating := false:
+	set(v):
+		decorating = v
+		if not v:
+			_close_swatches()
+var _swatches: PanelContainer = null
+
+
+# The parts a piece's model has that can be coloured, wood last.
+func _parts_of(mi: MeshInstance3D) -> Array:
+	var found := {}
+	var stack: Array = [_model_of(mi)]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if not is_instance_valid(n):
+			continue
+		if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+			var mesh := (n as MeshInstance3D).mesh
+			for i in mesh.get_surface_count():
+				var m := mesh.surface_get_material(i)
+				if m != null:
+					var part := FurnitureColors.part_of(m.resource_name)
+					if part != &"":
+						found[part] = true
+		stack.append_array((n as Node).get_children())
+	return [FurnitureColors.COLOUR, FurnitureColors.WOOD].filter(func(p): return found.has(p))
+
+
+func _restyle_piece(mi: MeshInstance3D) -> void:
+	var inst = _model_of(mi)
+	if is_instance_valid(inst):
+		_style_node(inst, mi.get_meta("style_role", StyleController.ROLE_FURNITURE))
+
+
+func _close_swatches() -> void:
+	if is_instance_valid(_swatches):
+		_swatches.queue_free()
+	_swatches = null
+
+
+func _open_swatches(f: Furniture, at: Vector2) -> void:
+	_close_swatches()
+	var entry := _entry_of(f)
+	if entry.is_empty():
+		return
+	var mi := entry["mesh"] as MeshInstance3D
+	var parts := _parts_of(mi)
+	if parts.is_empty():
+		return
+	Audio.play("click")
+	_swatches = PanelContainer.new()
+	_swatches.add_theme_stylebox_override("panel", GameTheme.make_card_stylebox(GameTheme.CARD, GameTheme.INK_SOFT, 10))
+	_swatches.mouse_filter = Control.MOUSE_FILTER_STOP
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	_swatches.add_child(vb)
+	var title := Label.new()
+	title.text = f.furniture_name
+	title.add_theme_font_override("font", GameTheme.font("mono_bold"))
+	title.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+	title.add_theme_color_override("font_color", GameTheme.INK)
+	vb.add_child(title)
+	for part in parts:
+		var name_l := Label.new()
+		name_l.text = tr(FurnitureColors.part_label(part))
+		name_l.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		name_l.add_theme_color_override("font_color", GameTheme.INK_SOFT)
+		vb.add_child(name_l)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		vb.add_child(row)
+		var pick := func(c: Variant) -> void:
+			if c == null:
+				f.colors.erase(part)
+			else:
+				f.colors[part] = c
+			_restyle_piece(mi)
+			Audio.play("place")
+			piece_recolored.emit(f)
+			_open_swatches(f, at)   # again, to show which is chosen now
+		for hex in FurnitureColors.PALETTES[part] as Array:
+			var col := Color(hex as String)
+			var chosen: bool = f.colors.has(part) and (f.colors[part] as Color).is_equal_approx(col)
+			row.add_child(_swatch(col, chosen, func(): pick.call(col)))
+		var reset := Button.new()
+		reset.text = tr("As made")
+		reset.focus_mode = Control.FOCUS_NONE
+		reset.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
+		reset.disabled = not f.colors.has(part)
+		reset.pressed.connect(func(): pick.call(null))
+		row.add_child(reset)
+	add_child(_swatches)
+	# Beside the pointer, kept inside the view.
+	await get_tree().process_frame
+	if not is_instance_valid(_swatches):
+		return
+	var size_now := _swatches.get_combined_minimum_size()
+	var p := container.position + at + Vector2(18, -size_now.y * 0.5)   # `at` is in the container's space
+	p.x = clampf(p.x, 8.0, size.x - size_now.x - 8.0)
+	p.y = clampf(p.y, 8.0, size.y - size_now.y - 8.0)
+	_swatches.position = p
+
+
+func _swatch(col: Color, chosen: bool, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(28, 28)
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for state in ["normal", "hover", "pressed"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = col.lightened(0.08) if state == "hover" else col
+		sb.set_corner_radius_all(6)
+		sb.border_color = GameTheme.INK if chosen else col.darkened(0.3)
+		sb.set_border_width_all(3 if chosen else 1)
+		b.add_theme_stylebox_override(state, sb)
+	b.pressed.connect(on_press)
+	return b
+
+
 # ── Rooms (Floor.rooms) ─────────────────────────────────────────────────────
 # As on the plan: a room given to residents is tinted in their colour on the
 # floor, and its name and its residents' faces are painted on the floor.
@@ -6456,6 +6587,7 @@ func _add_furniture_box(f: Furniture, bounds: Rect2i, catalog: Array) -> void:
 	var pos  := Vector3(local_x, height_m * 0.5, local_z)
 	var mi   := _box(canon_size, Vector3.ZERO, col)
 	mi.set_meta("style_role", _item_role(fdata))
+	mi.set_meta("recolor", FurnitureColors.recolorer(f))   # the colours given with Decorate
 	mi.position = pos
 	mi.rotation.y = deg_to_rad(f.rot_steps * 90.0)
 	if fdata.get("animated_fold", false):

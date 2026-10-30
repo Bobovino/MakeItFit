@@ -36,6 +36,8 @@ static func capture(main: Node) -> Dictionary:
 				p["child_level_id"] = f.child_level_id
 			if f.keepsake:
 				p["keepsake"] = true
+			if not f.colors.is_empty():
+				p["colors"] = f.colors_saved()
 			pieces.append(p)
 		var paint := {}
 		var painted: Dictionary = main._paint_pieces.get(fid, {})
@@ -157,7 +159,7 @@ static func _return_to_owned(main: Node, fid: String) -> int:
 
 static func _restore_piece(main: Node, fl: Floor, p: Dictionary) -> Furniture:
 	var overrides := {}
-	for key in ["child_level_id", "keepsake"]:
+	for key in ["child_level_id", "keepsake", "colors"]:
 		if p.has(key):
 			overrides[key] = p[key]
 	var pos: Vector2 = p.get("pos", Vector2.ZERO)

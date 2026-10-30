@@ -300,7 +300,24 @@ func _style_mesh_materials(mi: MeshInstance3D, role: StringName, provider: Calla
 				surface_role = ROLE_GLOW
 			elif src_mat is BaseMaterial3D:
 				src = (src_mat as BaseMaterial3D).albedo_color
+				var recolor := _recolor_of(mi)
+				if recolor.is_valid():
+					src = recolor.call(src_mat.resource_name, src)
 		mi.set_surface_override_material(i, provider.call(surface_role, src))
+
+
+# A colour the player gave a piece (FurnitureColors): a "recolor" Callable
+# meta on the mesh or one of the nodes above it, which maps a material's own
+# colour to the one to draw.
+func _recolor_of(node: Node) -> Callable:
+	var n := node
+	for i in 6:
+		if n == null:
+			break
+		if n.has_meta("recolor"):
+			return n.get_meta("recolor") as Callable
+		n = n.get_parent()
+	return Callable()
 
 
 # Meshes in the matte look take part in the ink's facing pass (they know how

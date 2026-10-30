@@ -149,6 +149,23 @@ var _home_grid_pos: Vector2 = Vector2(-1, -1)
 # folded like anything else — the puzzle is living around it. Set per piece
 # in a level's starting_furniture ("keepsake": true), never in the catalogue.
 var keepsake: bool = false
+# The colours the player gave it with Decorate (FurnitureColors): part ->
+# Color. Empty: as modelled. Only the 3D view shows them.
+var colors: Dictionary = {}
+
+
+# The colours as saved (part -> "rrggbb"), and back.
+func colors_saved() -> Dictionary:
+	var out := {}
+	for part in colors:
+		out[String(part)] = (colors[part] as Color).to_html(false)
+	return out
+
+
+func set_colors_saved(saved: Dictionary) -> void:
+	colors = {}
+	for part in saved:
+		colors[StringName(part)] = Color(saved[part] as String)
 var is_nested_box: bool = false
 # A box's inside as a little plan of itself, drawn on the box in place of its
 # picture: {segments, bounds, furniture}, the same data BlueprintPreview takes.
@@ -403,6 +420,7 @@ func setup(data: Dictionary, apt_floor: Floor) -> void:
 	mobility_tier         = data.get("mobility_tier",     "red")    as String
 	is_nested_box         = data.get("is_nested_box",     false)    as bool
 	keepsake              = data.get("keepsake",          false)    as bool
+	set_colors_saved(data.get("colors", {}) as Dictionary)
 	child_level_id        = data.get("child_level_id",    "")       as String
 	is_noisy              = data.get("is_noisy",          false)    as bool
 	needs_quiet           = data.get("needs_quiet",       false)    as bool
