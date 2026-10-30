@@ -212,7 +212,7 @@
 			"moments": [],
 			"name": "The Beach House",
 			"palette": "ochre",
-			"starting_budget": 450,
+			"starting_budget": 1200,
 			"starting_furniture": [
 				{
 					"id": "stove",

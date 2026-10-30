@@ -812,6 +812,20 @@ func _add_household() -> void:
 			Audio.play("click")
 			_focus = "" if _focus == rid else rid
 			set_household(_household, _owners_of))
+		# Dragged onto a room of the plan, the room becomes theirs (Main
+		# takes the drop: see Main._on_resident_dropped).
+		if body != "animal":
+			btn.tooltip_text += "\n" + tr("Drag onto a room to give it to them")
+			btn.set_drag_forwarding(func(_at: Vector2) -> Variant:
+				var face := TextureRect.new()
+				face.texture = MiiPortrait.face(body, rd.get("feminine", false) as bool)
+				face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				face.size = Vector2(FACE_SIZE, FACE_SIZE)
+				face.position = -face.size * 0.5
+				var holder := Control.new()
+				holder.add_child(face)
+				btn.set_drag_preview(holder)
+				return {"resident": rid}, Callable(), Callable())
 		household_box.add_child(btn)
 	_queue_badges()
 

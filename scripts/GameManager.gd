@@ -338,6 +338,7 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 	for fn in extra_functions:
 		if fn not in fulfilled_functions:
 			fulfilled_functions.append(fn)
+	_apply_personal(fulfilled_functions, active_moment_id)
 
 	if moments.is_empty():
 		comfort_pct = compute_comfort(placed_furniture, "")
@@ -383,6 +384,7 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 					var available := free_window if near_window else free
 					if available >= min_free and fn not in m_fulfilled:
 						m_fulfilled.append(fn)
+			_apply_personal(m_fulfilled, mid, false)
 			var currently_met := true
 			for need in m_needs:
 				if need not in m_fulfilled:
@@ -402,6 +404,28 @@ func update_functions(placed_furniture: Array, extra_functions: Array = [], acti
 		moments_updated.emit(moment_results)
 
 	functions_updated.emit(fulfilled_functions, required_functions)
+
+
+# Personal needs (ApplicationLine.personal): fn -> the residents it is met for
+# one by one, each in their own room. Main fills it from the application and
+# sets personal_check, which answers (fn, moment_id) with {resident id: met}.
+# personal_status keeps that answer for the moment on screen, for the bar.
+var personal_needs: Dictionary = {}
+var personal_check := Callable()
+var personal_status: Dictionary = {}
+
+# A personal need counts only once it is met for every one of its residents.
+func _apply_personal(fulfilled: Array, moment_id: String, record := true) -> void:
+	if record:
+		personal_status.clear()
+	if not personal_check.is_valid():
+		return
+	for fn in personal_needs:
+		var each := personal_check.call(fn, moment_id) as Dictionary
+		if record:
+			personal_status[fn] = each
+		if fn in fulfilled and false in each.values():
+			fulfilled.erase(fn)
 
 
 func update_zones(zones: Array) -> void:

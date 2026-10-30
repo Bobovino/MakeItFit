@@ -263,6 +263,7 @@
     },
     {
       "id": "bunk_bed",
+      "capacity": 2,
       "name": "Bunk Bed",
       "placement": "floor",
       "size": {
@@ -1526,6 +1527,7 @@
     },
     {
       "id": "double_bed",
+      "capacity": 2,
       "name": "Double Bed",
       "placement": "floor",
       "size": {
@@ -1995,6 +1997,7 @@
     {
       "placement": "wall",
       "id": "murphy_bed_double",
+      "capacity": 2,
       "name": "Double Murphy Bed",
       "size": {
         "w": 17,
@@ -2170,6 +2173,7 @@
     {
       "placement": "floor",
       "id": "trundle_bed",
+      "capacity": 2,
       "name": "Trundle Bed",
       "size": {
         "w": 11,

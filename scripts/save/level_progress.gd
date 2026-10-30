@@ -49,6 +49,7 @@ static func capture(main: Node) -> Dictionary:
 			"wall_items": (fl.wall_items as Dictionary).duplicate(true),
 			"builder": (main._capture_builder_entry(fl) as Dictionary)["data"],
 			"paint": paint,
+			"rooms": fl.room_owners.duplicate(true),
 		}
 	return {
 		"version": VERSION,
@@ -117,6 +118,7 @@ static func apply(main: Node, data: Dictionary) -> void:
 			for origin in walls[edge]:
 				fl.place_wall_item(edge, origin as Vector2i, walls[edge][origin] as String)
 		_restore_paint(main, fid, fl, fd.get("paint", {}))
+		fl.room_owners = (fd.get("rooms", {}) as Dictionary).duplicate(true)
 		fl.end_batch()
 
 	gm.moment_verified = (data.get("verified", {}) as Dictionary).duplicate()

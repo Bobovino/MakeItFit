@@ -99,9 +99,19 @@ func _ready() -> void:
 		parent.furniture_changed.connect(queue_redraw)
 	# Daylight on its own layer, over the plan and under the furniture (the
 	# Floor's other children).
+	# Rooms given to residents: their colour on the floor, under the light.
+	_room_layer = Node2D.new()
+	_room_layer.draw.connect(_draw_room_layer)
+	add_child(_room_layer)
 	_light_layer = Node2D.new()
 	_light_layer.draw.connect(_draw_light_layer)
 	add_child(_light_layer)
+	# Each room's name and its residents' faces, over the furniture.
+	_room_tags = Node2D.new()
+	_room_tags.z_index = 19
+	_room_tags.draw.connect(_draw_room_tags)
+	if parent:
+		parent.add_child.call_deferred(_room_tags)
 
 
 func _process(_delta: float) -> void:
@@ -138,6 +148,10 @@ func _draw() -> void:
 	var parent: Floor = get_parent() as Floor
 	if not parent:
 		return
+	if is_instance_valid(_room_layer):
+		_room_layer.queue_redraw()
+	if is_instance_valid(_room_tags):
+		_room_tags.queue_redraw()
 	var w  := parent.grid_w
 	var h  := parent.grid_h
 	var rw := w * TILE_SIZE
@@ -1496,6 +1510,70 @@ func _draw_wall_cue(parent: Floor) -> void:
 
 
 var _light_layer: Node2D = null
+var _room_layer: Node2D = null
+var _room_tags: Node2D = null
+
+# ── Rooms (Floor.rooms) ──────────────────────────────────────────────────────
+const ROOM_TINT := 0.16        # a resident's colour over the room given to them
+const ROOM_FACE_PX := 30.0     # on screen, whatever the zoom
+const ROOM_NAME_PX := 13
+const ROOM_KINDS := ["kitchen", "bathroom", "bedroom", "living"]   # Floor.room_kind()
+# i18n-const
+const ROOM_NAMES := ["Kitchen", "Bathroom", "Bedroom", "Living room"]
+
+func _draw_room_layer() -> void:
+	var parent := get_parent() as Floor
+	if parent == null or not parent.visible:
+		return
+	var ts := float(TILE_SIZE)
+	for room in parent.rooms:
+		var owners := parent.owners_of_room(room)
+		if owners.is_empty():
+			continue
+		var col := (parent.resident_looks.get(owners[0], {}) as Dictionary).get("color", GameTheme.NAVY) as Color
+		var fill := Color(col, ROOM_TINT)
+		for t in room["tiles"] as Dictionary:
+			var v := t as Vector2i
+			_room_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), fill)
+
+
+# Over the furniture, at a steady size on screen: what the room is (from what
+# is in it) and, under that, the faces of whoever it was given to.
+func _draw_room_tags() -> void:
+	var parent := get_parent() as Floor
+	if parent == null or not parent.visible or editor_mode:
+		return
+	var scale := _room_tags.get_global_transform_with_canvas().get_scale().x
+	var k := 1.0 / maxf(scale, 0.01)
+	var font := GameTheme.font("mono_bold")
+	var ts := float(TILE_SIZE)
+	for room in parent.rooms:
+		var owners := parent.owners_of_room(room)
+		var kind := parent.room_kind(room)
+		if owners.is_empty() and kind == "":
+			continue
+		var c := (room["center"] as Vector2) * ts
+		var y := c.y
+		if kind != "":
+			var text := tr(ROOM_NAMES[ROOM_KINDS.find(kind)] as String).to_upper()
+			var fs := roundi(ROOM_NAME_PX * k)
+			var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var at := Vector2(c.x - tw * 0.5, y)
+			_room_tags.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(4 * k), Color(PLAN_PAPER, 0.9))
+			_room_tags.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, PLAN_INK_SOFT)
+			y += 6.0 * k
+		var side := ROOM_FACE_PX * k
+		var gap := 4.0 * k
+		var x := c.x - (owners.size() * side + (owners.size() - 1) * gap) * 0.5
+		for rid in owners:
+			var look := parent.resident_looks.get(rid, {}) as Dictionary
+			var col := look.get("color", GameTheme.NAVY) as Color
+			var r := Rect2(x, y, side, side)
+			_room_tags.draw_rect(r.grow(2.0 * k), col.darkened(0.3))
+			_room_tags.draw_rect(r, col.lightened(0.15))
+			_room_tags.draw_texture_rect(MiiPortrait.face(look.get("body", "adult") as String,
+				look.get("feminine", false) as bool), r, false)
+			x += side + gap
 
 # One rail track, in tiles: along the axis (`horizontal` or not) from `from`
 # to `to`, its line across at `at`. A thin line with a short stop across

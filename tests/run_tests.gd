@@ -37,6 +37,7 @@ func _ready() -> void:
 	await _t_dialogue_portrait()
 	await _t_start_at_phase()
 	await _t_household_bar()
+	await _t_rooms_of_their_own()
 	await _t_carry_hints()
 	await _t_three_freezers()
 	await _t_kit_modules_in_a_level()
@@ -957,9 +958,10 @@ func _t_project_needs_every_apartment() -> void:
 	_current = "project: back as it was, the box counts as ready again"
 	_ok(main._level_state_label(inner, false) == "ready", main._level_state_label(inner, false))
 
-	# Now the flat too: the project is rented out. (Without its later phases:
-	# those have their own test.)
+	# Now the flat too: the project is rented out. (Without its later phases,
+	# or beds being personal: those have their own tests.)
 	main.gm.current_level["phases"] = []
+	main.gm.personal_needs = {}
 	for id in ["normal_bed", "stool"]:
 		_place_somewhere(main, root_floor, id)
 	main._refresh_functions()
@@ -1562,6 +1564,50 @@ func _t_household_bar() -> void:
 	_ok(storage_chip.visible)
 	main.queue_free()
 	await get_tree().process_frame
+
+
+# Rooms of their own, in the Beach House: its five rooms are found (walls and
+# doors close them), and sleep is personal, so beds count only in a room given
+# to whoever sleeps there; the bunk bed in the children's room sleeps both.
+func _t_rooms_of_their_own() -> void:
+	var real_path := GameState.save_path
+	GameState.save_path = "user://test_rooms_save.json"
+	GameState.pending_level_id = "beach_house"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	_current = "rooms: the Beach House has five"
+	_ok(fl.rooms.size() == 5, str(fl.rooms.size()))
+	var put := func(id: String, at: Vector2) -> void:
+		var f: Furniture = main._spawn_furniture(id, fl, 0, 0)
+		fl.forget_furniture(f)
+		fl.place_furniture(f, at)
+	put.call("normal_bed", Vector2(60, 8))    # the north-east bedroom
+	put.call("bunk_bed", Vector2(60, 58))     # the south-east bedroom
+	main._refresh_functions()
+	_current = "rooms: beds in rooms nobody was given don't count"
+	_ok("sleep" not in main.gm.fulfilled_functions, str(main.gm.personal_status))
+	fl.assign_room(Vector2i(70, 20), "marisol")
+	fl.assign_room(Vector2i(70, 50), "lucia")
+	main._refresh_functions()
+	_current = "rooms: Tito has no room yet, so sleep isn't met"
+	_ok("sleep" not in main.gm.fulfilled_functions and main.gm.personal_status["sleep"]["lucia"],
+		str(main.gm.personal_status))
+	fl.assign_room(Vector2i(70, 52), "tito")
+	main._refresh_functions()
+	_current = "rooms: a bed each in their own rooms meets sleep"
+	_ok("sleep" in main.gm.fulfilled_functions, str(main.gm.personal_status))
+	fl.assign_room(Vector2i(70, 20), "tito")
+	main._refresh_functions()
+	_current = "rooms: a resident has one room; two in one bed's room don't fit"
+	_ok(fl.owners_of_room(fl.room_at(Vector2i(70, 20))) == ["marisol", "tito"]
+		and "sleep" not in main.gm.fulfilled_functions, str(fl.room_owners))
+	main.queue_free()
+	await get_tree().process_frame
+	GameState.save_path = real_path
 
 
 # Every translation loads in Godot itself: a malformed entry (a msgstr cut

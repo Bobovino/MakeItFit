@@ -1070,6 +1070,7 @@ func _load_level(level_id: String) -> void:
 	_application = TenantApplication.for_level(level_id)
 	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
 	tenant_card.set_application(_application != null, hidden_reqs)
+	_set_personal_needs()
 	_update_household()
 	if not gm.moments.is_empty():
 		var _first_mid := (gm.moments[0] as Dictionary)["id"] as String
@@ -1436,6 +1437,10 @@ func _restore_level_state(level_id: String) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_BEGIN:
+		_on_resident_drag(get_viewport().gui_get_drag_data(), false)
+	elif what == NOTIFICATION_DRAG_END:
+		_on_resident_drag(null, true)
 	# The phone sends the game to the background, or the window is closing.
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT \
 			or what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -2969,6 +2974,11 @@ func _update_household() -> void:
 				"color": TenantLayer.tint_of(_application.level_id, res),
 				"body": res.body, "feminine": res.is_feminine()})
 	tenant_card.set_household(out, _owners_of)
+	var looks := {}
+	for r in out:
+		looks[(r as Dictionary)["id"]] = r
+	for fid in _floors:
+		(_floors[fid] as Floor).resident_looks = looks
 
 
 # Whose a requirement is: the residents the application names for it, else
@@ -2977,9 +2987,95 @@ func _owners_of(req_id: String) -> Array:
 	var line := _application.line_for(req_id) if _application else null
 	if line == null:
 		return []
+	if line.personal:
+		return (gm.personal_needs.get(line.requirement.trim_prefix("need:"), []) as Array).duplicate()
 	if not line.owners.is_empty():
 		return line.owners.map(func(o): return String(o))
 	return [String(line.speaker)] if line.speaker != &"" else []
+
+
+# ── Rooms of their own ───────────────────────────────────────────────────────
+# A personal need (ApplicationLine.personal) is met for a resident only by
+# what stands in a room given to them (Floor.room_owners): the player gives
+# one by dragging their portrait from the household column onto it.
+
+func _set_personal_needs() -> void:
+	gm.personal_needs = {}
+	gm.personal_check = _personal_need_met
+	if _application == null:
+		return
+	for l in _application.lines:
+		var line := l as ApplicationLine
+		if not line.personal or not line.requirement.begins_with("need:"):
+			continue
+		var who: Array = line.owners.map(func(o): return String(o))
+		if who.is_empty():
+			for r in _application.residents:
+				if (r as TenantResident).body != "animal":
+					who.append(String((r as TenantResident).id))
+		gm.personal_needs[line.requirement.trim_prefix("need:")] = who
+	if not gm.personal_needs.is_empty():
+		_toast.call_deferred(tr("Drag each portrait onto the room that will be theirs."))
+
+
+# {resident id: met} for one personal need: met when the room given to them
+# has as many pieces giving it as residents of that room who need it.
+func _personal_need_met(fn: String, moment_id: String) -> Dictionary:
+	var out := {}
+	var who := gm.personal_needs.get(fn, []) as Array
+	for rid in who:
+		out[rid] = false
+		for fid in _floors:
+			var fl := _floors[fid] as Floor
+			for room in fl.rooms:
+				var owners := fl.owners_of_room(room)
+				if rid not in owners:
+					continue
+				var sharing := owners.filter(func(o): return o in who).size()
+				var have := 0   # places: a bunk bed sleeps two ("capacity")
+				for f in fl.furniture_in_room(room):
+					if fn in gm._functions_of(f, moment_id):
+						have += gm.get_furniture_by_id((f as Furniture).furniture_id).get("capacity", 1) as int
+				out[rid] = have >= sharing
+	return out
+
+
+# The household column's drag: a portrait let go over a room of the plan
+# gives the room to that resident; over open plan, takes theirs away.
+var _resident_drag := ""
+
+func _on_resident_drag(data: Variant, ended: bool) -> void:
+	if not ended:
+		_resident_drag = (data as Dictionary).get("resident", "") as String if data is Dictionary else ""
+		return
+	var rid := _resident_drag
+	_resident_drag = ""
+	if rid == "" or _view_mode != ViewMode.TOPDOWN or get_viewport().gui_is_drag_successful():
+		return
+	var hovered := get_viewport().gui_get_hovered_control()
+	if hovered != null and hovered.mouse_filter == Control.MOUSE_FILTER_STOP:
+		return   # let go over the bar or a button, not the plan
+	var fl := _floors.get(_current_floor_id) as Floor
+	if fl == null:
+		return
+	var at := fl.get_local_mouse_position() / Furniture.TILE_SIZE
+	var tile := Vector2i(floori(at.x), floori(at.y))
+	var had := false
+	for room in fl.rooms:
+		if rid in fl.owners_of_room(room):
+			had = true
+	var room := fl.room_at(fl.wrap_tile(tile))
+	if room.is_empty() and not had:
+		return
+	fl.assign_room(fl.wrap_tile(tile), rid)
+	# One room each, across the whole flat.
+	for fid in _floors:
+		if fid != _current_floor_id:
+			(_floors[fid] as Floor).assign_room(Vector2i(-99999, -99999), rid)
+	Audio.play("place" if not room.is_empty() else "click")
+	_refresh_functions()
+	_autosave_dirty = true
+	_autosave_soon()
 
 
 func _start_tenants() -> void:
@@ -4888,6 +4984,7 @@ func _apply_phase(i: int, with_scene: bool) -> void:
 	tenant_card.setup_moments(gm.moments)
 	var hidden_reqs: Array = _application.hidden_requirements() if _application else []
 	tenant_card.set_application(_application != null, hidden_reqs)
+	_set_personal_needs()
 	_update_household()
 	_refresh_functions()
 	_update_rent_btn()

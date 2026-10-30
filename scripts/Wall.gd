@@ -1927,7 +1927,141 @@ func _recalculate_zones() -> void:
 						zone_fids.append(f.furniture_id)
 					break
 		zones.append({"tiles": zone_tiles, "functions": zone_fns, "furniture_ids": zone_fids})
+	_recalculate_rooms()
 	grid_draw.queue_redraw()
+
+
+# ── Rooms ────────────────────────────────────────────────────────────────────
+# The floor's rooms: floor closed in by walls and by doors (a doorway belongs
+# to neither room it joins). Unlike zones, furniture doesn't split a room.
+# Each room can be given to one or more residents (room_owners, set by the
+# player dragging a portrait onto it); their personal needs are then met only
+# by what stands in it (Main._personal_need_met).
+#   rooms: [{tiles: {Vector2i: true}, center: Vector2 (tiles), anchor: Vector2i}]
+#   room_owners: {anchor tile (Vector2i): [resident id, ...]} — any tile of
+#     the room will do; the room is whichever one holds it now, so it follows
+#     the room through moved furniture and survives a wall moved elsewhere.
+const ROOM_MIN_TILES := 40   # less is a nook or a gap by a wall, not a room
+var rooms: Array = []
+var room_owners: Dictionary = {}
+# How each resident looks on the plan ({id: {color, body, feminine}}), for the
+# rooms given to them; set by Main with the household.
+var resident_looks: Dictionary = {}
+
+
+func _door_tile_set() -> Dictionary:
+	var out: Dictionary = {}
+	if not _use_new_format:
+		return out
+	for sg in segments:
+		var p := sg as Dictionary
+		if p.get("demolished", false) or not (p.get("has_door", false) as bool):
+			continue
+		var dp := p.get("door_pos", -1) as int
+		if dp < 0:
+			continue
+		var x1: int = p["x1"]; var y1: int = p["y1"]
+		var x2: int = p["x2"]; var y2: int = p["y2"]
+		for i in range(dp, dp + 10):
+			out[Vector2i(x1, mini(y1, y2) + i) if x1 == x2 else Vector2i(mini(x1, x2) + i, y1)] = true
+	return out
+
+
+func _recalculate_rooms() -> void:
+	rooms = []
+	if not _use_new_format:
+		return
+	var closed := _partition_tile_set()
+	closed.merge(_door_tile_set())
+	closed.merge(_window_tile_set())
+	var b := get_room_bounds()
+	var seen: Dictionary = {}
+	for y in range(b.position.y, b.end.y + 1):
+		for x in range(b.position.x, b.end.x + 1):
+			var start := Vector2i(x, y)
+			if seen.has(start) or closed.has(start) or not is_floor_tile(start):
+				continue
+			var tiles: Dictionary = {}
+			var queue: Array[Vector2i] = [start]
+			seen[start] = true
+			var sum := Vector2.ZERO
+			while not queue.is_empty():
+				var cur: Vector2i = queue.pop_back()
+				tiles[cur] = true
+				sum += Vector2(cur) + Vector2(0.5, 0.5)
+				for step in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nb := wrap_tile(cur + step)
+					if not seen.has(nb) and not closed.has(nb) and is_floor_tile(nb):
+						seen[nb] = true
+						queue.append(nb)
+			if tiles.size() >= ROOM_MIN_TILES:
+				rooms.append({"tiles": tiles, "center": sum / tiles.size(), "anchor": start})
+
+
+# The room holding `tile`, or {}.
+func room_at(tile: Vector2i) -> Dictionary:
+	for r in rooms:
+		if (r["tiles"] as Dictionary).has(tile):
+			return r
+	return {}
+
+
+# Who a room belongs to: the residents of every anchor that falls in it.
+func owners_of_room(room: Dictionary) -> Array:
+	var out: Array = []
+	for anchor in room_owners:
+		if (room["tiles"] as Dictionary).has(anchor):
+			for rid in room_owners[anchor] as Array:
+				if rid not in out:
+					out.append(rid)
+	return out
+
+
+# Gives the room under `tile` to `rid` (taking them out of any other room on
+# this floor); a tile in no room just takes them out.
+func assign_room(tile: Vector2i, rid: String) -> void:
+	for anchor in room_owners.keys():
+		(room_owners[anchor] as Array).erase(rid)
+		if (room_owners[anchor] as Array).is_empty():
+			room_owners.erase(anchor)
+	var room := room_at(tile)
+	if not room.is_empty():
+		var anchor := tile
+		for a in room_owners:
+			if (room["tiles"] as Dictionary).has(a):
+				anchor = a
+				break
+		if not room_owners.has(anchor):
+			room_owners[anchor] = []
+		(room_owners[anchor] as Array).append(rid)
+	grid_draw.queue_redraw()
+
+
+# What a room is for, read from what is in it: "kitchen", "bathroom",
+# "bedroom", "living" or "" — named on the plan.
+func room_kind(room: Dictionary) -> String:
+	var fns: Dictionary = {}
+	for f in furniture_in_room(room):
+		for fn in (f as Furniture).functions:
+			fns[fn] = true
+	for pair in [["hygiene", "bathroom"], ["cook", "kitchen"], ["sleep", "bedroom"], ["sit", "living"]]:
+		if fns.has(pair[0]):
+			return pair[1]
+	return ""
+
+
+# The floor pieces standing in a room (by the middle of their footprint).
+func furniture_in_room(room: Dictionary) -> Array:
+	var out: Array = []
+	var tiles := room["tiles"] as Dictionary
+	for item in _get_all_placed_unique():
+		var f := item as Furniture
+		if f.overhead:
+			continue
+		var mid := f.grid_pos + Vector2(f.grid_w, f.grid_h) * 0.5
+		if tiles.has(wrap_tile(Vector2i(floori(mid.x), floori(mid.y)))):
+			out.append(f)
+	return out
 
 
 # Whether this piece is actually on the floor's books (placed), as opposed to

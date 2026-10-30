@@ -48,6 +48,7 @@ script = ExtResource("3_line")
 text = "We need beds. Real ones, not towels on the floor."
 requirement = "need:sleep"
 speaker = &"tito"
+personal = true
 
 [sub_resource type="Resource" id="line_5"]
 script = ExtResource("3_line")
