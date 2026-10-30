@@ -50,13 +50,14 @@ const STYLE_FOV := 26.0
 var _cam_dist_scale: float = 1.0
 
 # ── Sims-style view controls ────────────────────────────────────────────────
-# Wall display: UP shows every wall at full height, DOWN lowers them all to
-# stubs, CUTAWAY (the default) lowers only what is in the way — see
-# _update_wall_visibility(). Static, so the choice survives this view being
-# torn down and rebuilt (switching to the floor plan and back, a new level).
-enum WallMode { UP, CUTAWAY, DOWN }
+# Wall display: CUTAWAY (the default) lowers the outside walls in the way and
+# every inner wall, INNER_UP the same outside walls but stands the inner ones
+# at full height (the rooms read as rooms), DOWN lowers them all to stubs —
+# see _update_wall_visibility(). Static, so the choice survives this view
+# being torn down and rebuilt (switching to the floor plan and back, a new level).
+enum WallMode { INNER_UP, CUTAWAY, DOWN }
 # i18n-const
-const WALL_MODE_LABELS := ["Walls: Up", "Walls: Cutaway", "Walls: Down"]
+const WALL_MODE_LABELS := ["Walls: Inner Up", "Walls: Cutaway", "Walls: Down"]
 static var wall_mode: int = WallMode.CUTAWAY
 var _walls_btn: Button = null
 # Q / E turn the view a quarter at a time, onto one of the four diagonal
@@ -188,11 +189,12 @@ func _ready() -> void:
 	_walls_btn.name = "WallModeBtn"
 	_walls_btn.focus_mode = Control.FOCUS_NONE   # must never take the keyboard: Q/E/WASD belong to the view
 	GameTheme.hud_button(_walls_btn)
-	_walls_btn.tooltip_text = tr("How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered")
+	_walls_btn.tooltip_text = tr("How walls are shown (Home / End)\nInner up: the walls between rooms stand, the outside ones in the way are lowered\nCutaway: only the far outside walls stand\nDown: all lowered")
 	_walls_btn.anchor_left = 1.0
 	_walls_btn.anchor_right = 1.0
 	_walls_btn.offset_left = -232.0
 	_walls_btn.offset_right = -12.0
+	_walls_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN   # a longer label grows it leftward, not off the screen
 	_walls_btn.offset_top = 76.0
 	_walls_btn.offset_bottom = 76.0 + GameTheme.TOUCH_SMALL
 	_walls_btn.visible = false   # shown once a room (not a single-item preview) is built
@@ -3442,17 +3444,15 @@ func _update_wall_visibility(cam_offset: Vector3) -> void:
 			continue   # a balcony window replaced this wall outright — never fade it back in
 		var target := 1.0
 		match wall_mode:
-			WallMode.UP:
-				target = 1.0
 			WallMode.DOWN:
 				target = 0.0
 			_:
 				if wd.get("interior", false):
-					# Interior walls are always down in the cutaway, drawn on
-					# the floor with their doors: deciding them by where the
-					# camera was centred made them come and go as it panned,
-					# which read as random. Only the far outside walls stand.
-					target = 0.0
+					# Interior walls are all down in the cutaway, drawn on the
+					# floor with their doors, or all up with INNER_UP: deciding
+					# them by where the camera was centred made them come and
+					# go as it panned, which read as random.
+					target = 1.0 if wall_mode == WallMode.INNER_UP else 0.0
 				else:
 					# A perimeter wall is in the way when the camera is on its
 					# outside, looking in.
@@ -5768,7 +5768,7 @@ func _update_seam_planes(flat: Vector3) -> void:
 	for sp in _seam_planes:
 		if not is_instance_valid(sp["mesh"]):
 			continue
-		var near := (sp["normal"] as Vector3).dot(flat) > 0.0 and wall_mode != WallMode.UP
+		var near := (sp["normal"] as Vector3).dot(flat) > 0.0
 		var mat := sp["mat"] as StandardMaterial3D
 		mat.albedo_color.a = SEAM_NEAR_ALPHA if near or wall_mode == WallMode.DOWN else SEAM_FAR_ALPHA
 

@@ -1015,27 +1015,27 @@ msgstr "Phase %d neu starten"
 msgid "You"
 msgstr "Du"
 
-#: scripts/Main.gd:5254
+#: scripts/Main.gd:5257
 msgid " Back to Results"
 msgstr " Zurück zum Ergebnis"
 
-#: scripts/Main.gd:5384
+#: scripts/Main.gd:5387
 msgid "CUSTOM BUILD"
 msgstr "EIGENBAU"
 
-#: scripts/Main.gd:5396
+#: scripts/Main.gd:5399
 msgid "LMB paint · RMB erase"
 msgstr "LMT malen · RMT löschen"
 
-#: scripts/Main.gd:5408
+#: scripts/Main.gd:5411
 msgid "Move"
 msgstr "Bewegen"
 
-#: scripts/Main.gd:5432
+#: scripts/Main.gd:5435
 msgid "%s  %d€/tile"
 msgstr "%s  %d€/Feld"
 
-#: scripts/Main.gd:6074
+#: scripts/Main.gd:6077
 msgid "Paint tiles on the floor"
 msgstr "Felder auf den Boden malen"
 
@@ -1240,76 +1240,76 @@ msgstr "Noch nicht vermietbar"
 msgid "Keep furnishing"
 msgstr "Weiter einrichten"
 
-#: scripts/Room3DView.gd:59
-msgid "Walls: Up"
-msgstr "Wände: Oben"
+#: scripts/Room3DView.gd:60
+msgid "Walls: Inner Up"
+msgstr "Wände: Innen oben"
 
-#: scripts/Room3DView.gd:59
+#: scripts/Room3DView.gd:60
 msgid "Walls: Cutaway"
 msgstr "Wände: Schnitt"
 
-#: scripts/Room3DView.gd:59
+#: scripts/Room3DView.gd:60
 msgid "Walls: Down"
 msgstr "Wände: Unten"
 
-#: scripts/Room3DView.gd:191
+#: scripts/Room3DView.gd:192
 msgid ""
 "How walls are shown (Home / End)\n"
-"Up: all at full height\n"
-"Cutaway: only those in the way are lowered\n"
+"Inner up: the walls between rooms stand, the outside ones in the way are lowered\n"
+"Cutaway: only the far outside walls stand\n"
 "Down: all lowered"
 msgstr ""
 "So werden Wände gezeigt (Pos1 / Ende)\n"
-"Oben: alle in voller Höhe\n"
-"Schnitt: nur die störenden sind abgesenkt\n"
+"Innen oben: die Wände zwischen den Räumen stehen, störende Außenwände sind abgesenkt\n"
+"Schnitt: nur die hinteren Außenwände stehen\n"
 "Unten: alle abgesenkt"
 
-#: scripts/Room3DView.gd:397
+#: scripts/Room3DView.gd:399
 #: scripts/RuleOverlay.gd:150
 msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr "Hochebene: %.0f / %.0f, das hier bringt %.0f dazu"
 
-#: scripts/Room3DView.gd:1740
-#: scripts/Wall.gd:1416
+#: scripts/Room3DView.gd:1742
+#: scripts/Wall.gd:1527
 msgid "Outside the room"
 msgstr "Außerhalb des Raums"
 
-#: scripts/Room3DView.gd:1765
+#: scripts/Room3DView.gd:1767
 msgid "Can't place here"
 msgstr "Kann hier nicht platziert werden"
 
-#: scripts/Room3DView.gd:1877
+#: scripts/Room3DView.gd:1879
 msgid " %s is a keepsake: it can be moved, not sold"
 msgstr " %s ist ein Erbstück: Es lässt sich bewegen, aber nicht verkaufen"
 
-#: scripts/Room3DView.gd:1880
+#: scripts/Room3DView.gd:1882
 msgid "Removing %s means repaying its %d€ rent"
 msgstr "%s zu entfernen heißt, seine %d€ Miete zurückzuzahlen"
 
-#: scripts/Room3DView.gd:2198
+#: scripts/Room3DView.gd:2200
 msgid "Too close to a window or door"
 msgstr "Zu nah an einem Fenster oder einer Tür"
 
-#: scripts/Room3DView.gd:2203
+#: scripts/Room3DView.gd:2205
 #: scripts/RuleOverlay.gd:136
-#: scripts/Wall.gd:1531
+#: scripts/Wall.gd:1642
 msgid "Ceiling too low here"
 msgstr "Decke hier zu niedrig"
 
-#: scripts/Room3DView.gd:2206
+#: scripts/Room3DView.gd:2208
 msgid "Blocked by furniture on the floor"
 msgstr "Von Möbeln auf dem Boden blockiert"
 
-#: scripts/Room3DView.gd:2210
+#: scripts/Room3DView.gd:2212
 msgid "Doesn't fit on this wall"
 msgstr "Passt nicht an diese Wand"
 
-#: scripts/Room3DView.gd:2228
-#: scripts/Wall.gd:1511
+#: scripts/Room3DView.gd:2230
+#: scripts/Wall.gd:1622
 msgid "Overlaps %s"
 msgstr "Überschneidet sich mit %s"
 
-#: scripts/Room3DView.gd:2228
+#: scripts/Room3DView.gd:2230
 msgid "another item"
 msgstr "einem anderen Gegenstand"
 
@@ -1529,64 +1529,64 @@ msgstr "Jede Wohnung ist fertig"
 msgid "needs %s flooring"
 msgstr "braucht %s-Boden"
 
-#: scripts/Wall.gd:1410
+#: scripts/Wall.gd:1521
 msgid "Longer than the loop: it runs into itself"
 msgstr "Länger als die Schleife: stößt an sich selbst"
 
-#: scripts/Wall.gd:1423
+#: scripts/Wall.gd:1534
 msgid "Needs %s flooring"
 msgstr "Braucht %s-Boden"
 
-#: scripts/Wall.gd:1426
+#: scripts/Wall.gd:1537
 msgid "Blocked by a wall"
 msgstr "Von einer Wand blockiert"
 
-#: scripts/Wall.gd:1431
+#: scripts/Wall.gd:1542
 msgid "Its back has to be against a wall"
 msgstr "Muss mit der Rückseite an einer Wand stehen"
 
-#: scripts/Wall.gd:1454
+#: scripts/Wall.gd:1565
 msgid "Too tall to go under the loft"
 msgstr "Zu hoch für unter die Hochebene"
 
-#: scripts/Wall.gd:1459
+#: scripts/Wall.gd:1570
 msgid "Too heavy for this loft (%.0f / %.0f)"
 msgstr "Zu schwer für diese Hochebene (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1467
+#: scripts/Wall.gd:1578
 msgid "Too heavy: what this box stands on would break (%s)"
 msgstr "Zu schwer: was unter dieser Kiste steht, würde brechen (%s)"
 
-#: scripts/Wall.gd:1472
+#: scripts/Wall.gd:1583
 msgid "Needs a table or shelf underneath"
 msgstr "Braucht einen Tisch oder ein Regal darunter"
 
-#: scripts/Wall.gd:1477
+#: scripts/Wall.gd:1588
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr "Zu schwer für %s — es würde brechen (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1519
+#: scripts/Wall.gd:1630
 msgid "Keep the steps clear"
 msgstr "Die Stufen freihalten"
 
-#: scripts/Wall.gd:1522
+#: scripts/Wall.gd:1633
 msgid "Can't stand across a step"
 msgstr "Kann nicht über einer Stufe stehen"
 
-#: scripts/Wall.gd:1552
+#: scripts/Wall.gd:1663
 msgid "Needs clearance around %s"
 msgstr "Braucht Platz um %s herum"
 
-#: scripts/Wall.gd:1561
+#: scripts/Wall.gd:1672
 msgid "In the way of the door"
 msgstr "Steht der Tür im Weg"
 
-#: scripts/Wall.gd:1636
-#: scripts/Wall.gd:1684
+#: scripts/Wall.gd:1747
+#: scripts/Wall.gd:1795
 msgid "Would overlap %s during \"%s\""
 msgstr "Würde sich bei %s während „%s“ überschneiden"
 
-#: scripts/Wall.gd:1639
+#: scripts/Wall.gd:1750
 msgid "Needs clearance around %s during \"%s\""
 msgstr "Braucht Platz um %s während \"%s\""
 
@@ -3296,20 +3296,5 @@ msgstr "Maß-Stauraum"
 msgid "Custom Bathroom"
 msgstr "Maßbad"
 
-#~ msgid "Rented out"
-#~ msgstr "Vermietet"
-
-#~ msgid "Tenant: %s"
-#~ msgstr "Mieter: %s"
-
-#~ msgid "Top rating: %d%% of the budget left over."
-#~ msgstr "Bestwertung: %d %% des Budgets übrig."
-
-#~ msgid "%d%% of the budget left over · %d stars from %d%%"
-#~ msgstr "%d %% des Budgets übrig · %d Sterne ab %d %%"
-
-#~ msgid "Goal reached: your portfolio is complete."
-#~ msgstr "Ziel erreicht: Dein Portfolio ist komplett."
-
-#~ msgid "APPROVED"
-#~ msgstr "GENEHMIGT"
+#~ msgid "How walls are shown (Home / End)\nUp: all at full height\nCutaway: only those in the way are lowered\nDown: all lowered"
+#~ msgstr "So werden Wände gezeigt (Pos1 / Ende)\nOben: alle in voller Höhe\nSchnitt: nur die störenden sind abgesenkt\nUnten: alle abgesenkt"
