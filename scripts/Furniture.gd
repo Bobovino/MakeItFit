@@ -431,10 +431,16 @@ func _fetch_topdown_icon(data: Dictionary) -> void:
 		queue_redraw()
 
 
-# The plan is a black-and-white sheet: a piece's top-down picture goes on it
-# in pale greys, as if drawn in pencil, keeping its shape and shading but not
-# its colours. Made once per picture.
-static var _pencil: Dictionary = {}   # source texture's RID -> greyed copy
+# The plan is a white sheet in ink: a piece's top-down picture goes on it as
+# an ink drawing — its outlines and the edges inside it (a pillow, a sink's
+# bowl) in dark lines over a pale wash of its own colours, so it reads as a
+# bed or a sofa at a glance, not as a grey block. Made once per picture.
+static var _pencil: Dictionary = {}   # source texture's RID -> drawn copy
+const PENCIL_SHADE := 0.45   # how far the wash is paled toward white
+const PENCIL_COLOUR := 0.6   # how much of its own colour the wash keeps
+const PENCIL_GAIN := 2.6     # how strongly a change in tone becomes a line
+const PENCIL_FLOOR := 0.18   # changes in tone fainter than this draw nothing
+const PENCIL_INK := 0.12
 
 static func in_pencil(tex: Texture2D) -> Texture2D:
 	var key := tex.get_rid()
@@ -447,11 +453,41 @@ static func in_pencil(tex: Texture2D) -> Texture2D:
 	if img.is_compressed():
 		img.decompress()
 	img.convert(Image.FORMAT_RGBA8)
-	for y in img.get_height():
-		for x in img.get_width():
+	var w := img.get_width()
+	var h := img.get_height()
+	# Tone as it would look on white paper, and how solid each pixel is.
+	var tone := PackedFloat32Array()
+	var solid := PackedFloat32Array()
+	var wash: Array[Color] = []
+	tone.resize(w * h)
+	solid.resize(w * h)
+	wash.resize(w * h)
+	for y in h:
+		for x in w:
 			var c := img.get_pixel(x, y)
-			var g := lerpf(c.r * 0.30 + c.g * 0.59 + c.b * 0.11, 1.0, 0.55)
-			img.set_pixel(x, y, Color(g, g, g, c.a))
+			var lum := c.r * 0.30 + c.g * 0.59 + c.b * 0.11
+			tone[y * w + x] = lerpf(1.0, lum, c.a)
+			solid[y * w + x] = c.a
+			# Its own colour, softened and paled like a watercolour wash.
+			var soft := Color(lum, lum, lum).lerp(c, PENCIL_COLOUR)
+			wash[y * w + x] = soft.lerp(Color.WHITE, PENCIL_SHADE)
+	# A Sobel filter: where the tone (or the outline) changes, a line.
+	for y in h:
+		var up := maxi(y - 1, 0) * w
+		var mid := y * w
+		var dn := mini(y + 1, h - 1) * w
+		for x in w:
+			var l := maxi(x - 1, 0)
+			var r := mini(x + 1, w - 1)
+			var i := mid + x
+			var gx := tone[up + r] + 2.0 * tone[mid + r] + tone[dn + r] - tone[up + l] - 2.0 * tone[mid + l] - tone[dn + l]
+			var gy := tone[dn + l] + 2.0 * tone[dn + x] + tone[dn + r] - tone[up + l] - 2.0 * tone[up + x] - tone[up + r]
+			var ax := solid[up + r] + 2.0 * solid[mid + r] + solid[dn + r] - solid[up + l] - 2.0 * solid[mid + l] - solid[dn + l]
+			var ay := solid[dn + l] + 2.0 * solid[dn + x] + solid[dn + r] - solid[up + l] - 2.0 * solid[up + x] - solid[up + r]
+			var line := maxf(sqrt(gx * gx + gy * gy), sqrt(ax * ax + ay * ay) * 0.8) * 0.25
+			var ink := clampf((line - PENCIL_FLOOR) * PENCIL_GAIN, 0.0, 1.0)
+			var col := wash[i].lerp(Color(PENCIL_INK, PENCIL_INK, PENCIL_INK), ink)
+			img.set_pixel(x, y, Color(col, maxf(solid[i], ink)))
 	var out := ImageTexture.create_from_image(img)
 	_pencil[key] = out
 	return out
@@ -755,8 +791,36 @@ func _draw_body(origin: Vector2, theta: float, cw: float, ch: float, ink: Color)
 	# symbol. Falls back to the symbol while the render is still in flight.
 	if _topdown_icon:
 		draw_texture_rect(_topdown_icon, Rect2(0, 0, cw, ch), false)
+		_draw_plan_mark(cw, ch, ink)
 	else:
 		_draw_symbol(int(cw), int(ch), ink)
+
+
+# What a plan draws on pieces whose top is a flat board seen from above, so
+# they read as what they are: a wardrobe its hanging rail with hangers across
+# it, any other cupboard, chest or shelf a cross corner to corner. (Not a
+# fridge or a kitchen unit: those are drawn as themselves.)
+func _draw_plan_mark(cw: float, ch: float, ink: Color) -> void:
+	if not ("storage" in functions) or "cook" in functions or "sleep" in functions or is_nested_box \
+			or furniture_id.contains("fridge") or furniture_id.contains("freezer"):
+		return
+	var s := Color(ink, 0.55)
+	var r := Rect2(2, 2, cw - 4, ch - 4)
+	if "dress" in functions and height_category == "tall":
+		var along_x := cw >= ch
+		var a := r.position + (Vector2(0, r.size.y * 0.5) if along_x else Vector2(r.size.x * 0.5, 0))
+		var b := a + (Vector2(r.size.x, 0) if along_x else Vector2(0, r.size.y))
+		draw_line(a, b, s, 1.0, true)
+		var n := maxi(int((b - a).length() / 7.0), 2)
+		var half := (r.size.y if along_x else r.size.x) * 0.32
+		for i in range(1, n):
+			var p := a.lerp(b, float(i) / n)
+			var d := Vector2(0, half) if along_x else Vector2(half, 0)
+			var tilt := Vector2(1.5, 0) if along_x else Vector2(0, 1.5)
+			draw_line(p - d - tilt, p + d + tilt, s, 1.0, true)
+	else:
+		draw_line(r.position, r.end, s, 1.0, true)
+		draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), s, 1.0, true)
 
 
 func _draw_overlays(w: int, h: int, ink: Color, parts: Array) -> void:

@@ -1582,23 +1582,19 @@ func _draw_room_tags() -> void:
 			x += side + gap
 
 # One rail track, in tiles: along the axis (`horizontal` or not) from `from`
-# to `to`, its line across at `at`. A thin line with a short stop across
-# each end.
+# to `to`, its line across at `at`. A fine dashed line, the way a plan marks
+# what runs overhead or under, with a short stop across each end.
 const RAIL_TRACK_COL := Color(0.30, 0.33, 0.40, 0.95)
 
 func _draw_rail_track(horizontal: bool, from: float, to: float, at: float) -> void:
 	var t := float(TILE_SIZE)
-	var stop := t * 0.9
-	if horizontal:
-		var y := at * t
-		draw_line(Vector2(from * t, y), Vector2(to * t, y), RAIL_TRACK_COL, 2.0, true)
-		for x in [from * t, to * t]:
-			draw_line(Vector2(x, y - stop), Vector2(x, y + stop), RAIL_TRACK_COL, 2.0, true)
-	else:
-		var x := at * t
-		draw_line(Vector2(x, from * t), Vector2(x, to * t), RAIL_TRACK_COL, 2.0, true)
-		for y in [from * t, to * t]:
-			draw_line(Vector2(x - stop, y), Vector2(x + stop, y), RAIL_TRACK_COL, 2.0, true)
+	var stop := t * 0.5
+	var a := Vector2(from * t, at * t) if horizontal else Vector2(at * t, from * t)
+	var b := Vector2(to * t, at * t) if horizontal else Vector2(at * t, to * t)
+	draw_dashed_line(a, b, RAIL_TRACK_COL, 1.0, 4.0, true, true)
+	var across := Vector2(0, stop) if horizontal else Vector2(stop, 0)
+	for p in [a, b]:
+		draw_line(p - across, p + across, RAIL_TRACK_COL, 1.0, true)
 
 
 func _draw_natural_light(_parent: Floor) -> void:

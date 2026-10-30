@@ -5185,20 +5185,20 @@ func _add_piece_rail(f: Furniture, bounds: Rect2i) -> void:
 		((tr_d["to"] as float) - (tr_d["from"] as float)) * TILE_M, cross * TILE_M)
 
 
-# A sliding door's floor guide: one slim metal strip lying on the floor,
-# with a small stop at each end. `along0` and `length` run along the track;
+# A sliding door's floor guide: a very narrow metal strip set in the floor,
+# with a tiny stop at each end. `along0` and `length` run along the track;
 # `center` is its line across. All in metres, room-local.
 func _add_track(is_h: bool, along0: float, length: float, center: float) -> void:
-	const GUIDE_COLOR := Color(0.36, 0.40, 0.46, 1.0)
-	const Y_LVL := 0.006    # clear of the floor and its plank pattern
-	const WIDE := 0.022
-	const HIGH := 0.006
+	const GUIDE_COLOR := Color(0.30, 0.33, 0.38, 0.9)
+	const Y_LVL := 0.004    # clear of the floor and its plank pattern
+	const WIDE := 0.007
+	const HIGH := 0.003
 	var mid := along0 + length * 0.5
 	_add_rail_decal(Vector3(length, HIGH, WIDE) if is_h else Vector3(WIDE, HIGH, length),
 		Vector3(mid, Y_LVL, center) if is_h else Vector3(center, Y_LVL, mid), GUIDE_COLOR)
 	for end_at in [along0, along0 + length]:
-		var stop := Vector3(0.016, 0.018, 0.05) if is_h else Vector3(0.05, 0.018, 0.016)
-		_add_rail_decal(stop, Vector3(end_at, Y_LVL + 0.006, center) if is_h else Vector3(center, Y_LVL + 0.006, end_at), GUIDE_COLOR)
+		var stop := Vector3(0.008, 0.008, 0.03) if is_h else Vector3(0.03, 0.008, 0.008)
+		_add_rail_decal(stop, Vector3(end_at, Y_LVL + 0.003, center) if is_h else Vector3(center, Y_LVL + 0.003, end_at), GUIDE_COLOR)
 
 
 func _add_rail_decal(size: Vector3, pos: Vector3, color: Color) -> void:
