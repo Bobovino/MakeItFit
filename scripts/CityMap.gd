@@ -78,8 +78,7 @@ const BlueprintPreviewScript := preload("res://scripts/BlueprintPreview.gd")
 # Info panel widgets
 var _info_title:    Label
 var _info_district: Label
-var _phase_box: VBoxContainer     # the selected home's phases, when it has some
-var _phase_path: HBoxContainer    # a stop per phase, joined by a line
+var _phase_box: VBoxContainer     # the chosen phase's line, for a home in phases
 var _phase_caption: Label         # the chosen phase's title
 var _chosen_phase := -1           # the phase ENTER starts; -1: the home has none
 var _chosen_for := ""             # the home _chosen_phase was chosen in
@@ -492,13 +491,9 @@ func _build_ui() -> void:
 	# margins, a different width for each home.
 	_info_district = _make_info_label(vb, GameTheme.FS_CAPTION, FAX_INK_SOFT, true)
 
-	# A home in phases: its path, one stop per phase (_fill_phase_path).
+	# A home in phases: which phase ENTER starts (chosen on its card).
 	_phase_box = VBoxContainer.new()
-	_phase_box.add_theme_constant_override("separation", 4)
 	vb.add_child(_phase_box)
-	_phase_path = HBoxContainer.new()
-	_phase_path.add_theme_constant_override("separation", 0)
-	_phase_box.add_child(_phase_path)
 	_phase_caption = _make_info_label(_phase_box, GameTheme.FS_CAPTION, FAX_INK, true)
 	_phase_caption.add_theme_font_override("font", GameTheme.font("mono_bold"))
 
@@ -648,41 +643,68 @@ func _fax_key(btn: Button, face: Color, text: Color) -> void:
 
 
 # ── Phases ───────────────────────────────────────────────────────────────────
-# A home in phases shows them as a path on its sheet, like the lessons of a
-# course: a stop per phase, joined by a line. Every phase reached can be
-# played (again) from its start: finished ones are filled in, the furthest
-# one is ringed, the ones after it are locked. Clicking one chooses it for
-# ENTER; the one the project was left in is chosen to begin with, else the
-# furthest.
-const STOP_D := 34.0
+# A home in phases shows them on its card on the map, like the lessons of a
+# course: a numbered stop per phase, joined by a line, along the card's foot.
+# Every phase reached can be played (again) from its start: finished ones
+# are filled in, the furthest one is ringed in red, the ones after it are
+# locked. Clicking a stop chooses that home and that phase for ENTER; the
+# one the project was left in is chosen to begin with, else the furthest.
+# The fax says which phase is chosen, in one line.
+const STOP_D := 24.0
 
 func _progress_phase(lid: String) -> int:
 	return int(GameState.get_progress(lid).get("phase", 0)) if GameState.has_progress(lid) else -1
 
 
-func _fill_phase_path(ld: Dictionary) -> void:
-	for c in _phase_path.get_children():
-		c.queue_free()
+# The phase ENTER would start in `ld` (-1 for a home with no phases), kept
+# when it is the home chosen already.
+func _phase_for(ld: Dictionary) -> int:
 	var phases := ld.get("phases", []) as Array
 	var lid := ld.get("id", "") as String
-	_phase_box.visible = phases.size() >= 2
 	if phases.size() < 2:
-		_chosen_phase = -1
+		return -1
+	var reached := GameState.phase_reached(lid, phases.size())
+	if lid == _chosen_for and _chosen_phase >= 0 and _chosen_phase <= reached:
+		return _chosen_phase
+	return _progress_phase(lid) if GameState.has_progress(lid) else reached
+
+
+# The fax's line about the phase chosen.
+func _fill_phase_path(ld: Dictionary) -> void:
+	var phases := ld.get("phases", []) as Array
+	_chosen_phase = _phase_for(ld)
+	_chosen_for = ld.get("id", "") as String
+	_phase_box.visible = _chosen_phase >= 0
+	if _chosen_phase < 0:
 		return
+	var title := tr((phases[_chosen_phase] as Dictionary).get("title", "") as String)
+	_phase_caption.text = (tr("Phase %d of %d") % [_chosen_phase + 1, phases.size()]) + ("  ·  " + title if title != "" else "")
+
+
+# The stops along a card's foot.
+func _add_phase_stops(card: Button, ld: Dictionary, margin: float) -> void:
+	var phases := ld.get("phases", []) as Array
+	var lid := ld.get("id", "") as String
 	var reached := GameState.phase_reached(lid, phases.size())
 	var done := lid in GameState.completed
-	if lid != _chosen_for or _chosen_phase < 0 or _chosen_phase > reached:
-		_chosen_phase = _progress_phase(lid) if GameState.has_progress(lid) else reached
-	_chosen_for = lid
+	var chosen := _phase_for(ld) if lid == _chosen_for else -1
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 0)
+	row.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	row.offset_left = margin + 6.0
+	row.offset_right = -(margin + 10.0)
+	row.offset_top = -(margin + STOP_D + 6.0)
+	row.offset_bottom = -(margin + 6.0)
+	card.add_child(row)
 	for i in phases.size():
 		if i > 0:
 			var line := ColorRect.new()
-			line.color = FaxStyle.INK if i <= reached else FaxStyle.INK_SOFT.lerp(Color.WHITE, 0.55)
+			line.color = GameTheme.NAVY if i <= reached else GameTheme.INK_SOFT.lerp(Color.WHITE, 0.55)
 			line.custom_minimum_size = Vector2(0, 3)
 			line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_phase_path.add_child(line)
+			row.add_child(line)
 		var stop := Button.new()
 		stop.text = str(i + 1)
 		stop.custom_minimum_size = Vector2(STOP_D, STOP_D)
@@ -691,52 +713,48 @@ func _fill_phase_path(ld: Dictionary) -> void:
 		stop.tooltip_text = tr((phases[i] as Dictionary).get("title", "") as String)
 		stop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if i <= reached else Control.CURSOR_FORBIDDEN
 		stop.add_theme_font_override("font", GameTheme.font("mono_bold"))
-		stop.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-		stop.set_meta("phase", i)
-		stop.set_meta("finished", done or i < reached)
+		stop.add_theme_font_size_override("font_size", 12)
+		_style_stop(stop, i > reached, done or i < reached, i == chosen)
 		stop.pressed.connect(func():
 			Audio.play("click")
+			var before := _chosen_for
 			_chosen_phase = i
+			_chosen_for = lid
+			_fill_parcel(card, ld)
+			if before != lid and _cards.has(before):
+				for lv in _levels_data.get("levels", []):
+					if (lv as Dictionary).get("id", "") == before:
+						_fill_parcel(_cards[before] as Button, lv as Dictionary)
 			_select_level(ld))
-		_phase_path.add_child(stop)
-	_style_phase_stops()
-	var ph := phases[_chosen_phase] as Dictionary
-	var title := tr(ph.get("title", "") as String)
-	_phase_caption.text = (tr("Phase %d of %d") % [_chosen_phase + 1, phases.size()]) + ("  ·  " + title if title != "" else "")
+		row.add_child(stop)
 
 
 # Finished: filled in. The furthest reached: ringed in red. Locked: faint.
 # The chosen one stands out with a thicker ring.
-func _style_phase_stops() -> void:
-	for stop in _phase_path.get_children():
-		if not (stop is Button):
-			continue
-		var b := stop as Button
-		var i := b.get_meta("phase") as int
-		var finished := b.get_meta("finished") as bool
-		var sb := StyleBoxFlat.new()
-		sb.set_corner_radius_all(int(STOP_D * 0.5))
-		sb.anti_aliasing = true
-		var ink := FaxStyle.INK
-		if b.disabled:
-			sb.bg_color = Color.WHITE
-			sb.border_color = FaxStyle.INK_SOFT.lerp(Color.WHITE, 0.55)
-			ink = sb.border_color
-		elif finished:
-			sb.bg_color = FaxStyle.INK
-			sb.border_color = FaxStyle.INK
-			ink = Color.WHITE
-		else:
-			sb.bg_color = Color.WHITE
-			sb.border_color = FaxStyle.STAMP_INK
-			ink = FaxStyle.STAMP_INK
-		sb.set_border_width_all(4 if i == _chosen_phase else 2)
-		if i == _chosen_phase and finished:
-			sb.border_color = FaxStyle.STAMP_INK
-		for state in ["normal", "hover", "pressed", "disabled"]:
-			b.add_theme_stylebox_override(state, sb)
-		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
-			b.add_theme_color_override(state, ink)
+func _style_stop(b: Button, locked: bool, finished: bool, chosen: bool) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(int(STOP_D * 0.5))
+	sb.anti_aliasing = true
+	var ink := GameTheme.NAVY
+	if locked:
+		sb.bg_color = Color.WHITE
+		sb.border_color = GameTheme.INK_SOFT.lerp(Color.WHITE, 0.55)
+		ink = sb.border_color
+	elif finished:
+		sb.bg_color = GameTheme.NAVY
+		sb.border_color = GameTheme.NAVY
+		ink = Color.WHITE
+	else:
+		sb.bg_color = Color.WHITE
+		sb.border_color = GameTheme.RED
+		ink = GameTheme.RED
+	sb.set_border_width_all(3 if chosen else 2)
+	if chosen:
+		sb.border_color = GameTheme.RED
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(state, sb)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
+		b.add_theme_color_override(state, ink)
 
 
 # The machine prints the chosen home: the sheet feeds up out of the slot.
@@ -1823,6 +1841,14 @@ func _fill_parcel(btn: Button, ld: Dictionary) -> void:
 		status.add_theme_color_override("font_color",
 			GameTheme.INK if can_buy else GameTheme.INK_SOFT)
 	btn.add_child(status)
+	# A home in phases: its stops along the foot, where the status was (its
+	# stars, if any, go under its name).
+	if level_visible and is_owned and (ld.get("phases", []) as Array).size() >= 2:
+		status.visible = false
+		if stars > 0:
+			nm.text += "\n" + "".repeat(stars)
+		nm.offset_bottom = -(margin + STOP_D + 8.0)
+		_add_phase_stops(btn, ld, margin)
 
 
 
