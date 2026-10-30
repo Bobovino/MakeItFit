@@ -5380,7 +5380,8 @@ func _turn_flat_labels(flat: Vector3) -> void:
 
 
 # Doors that open (Room3DView builds one per swing door): each swings open
-# while a resident is next to it or the pointer is over it, and shuts after.
+# while a resident is next to it, or in first person while the walker is at
+# it or looking at it, and shuts after. From above the pointer leaves them be.
 # [{wall, pivot, open_deg, center_local, t (0 shut .. 1 open), back: [parts]}]
 var _doors: Array = []
 var _pending_door_backs: Array = []
@@ -5409,7 +5410,7 @@ func _update_doors(delta: float) -> void:
 		if not is_instance_valid(wall) or not is_instance_valid(pivot):
 			continue
 		var center: Vector3 = wall.transform * (door["center_local"] as Vector3)
-		var want := 1.0 if is_same(_hover_door, door) else 0.0
+		var want := 1.0 if first_person and is_same(_hover_door, door) else 0.0
 		if first_person:
 			var eye := _fp_local_eye()
 			if Vector2(eye.x - center.x, eye.z - center.z).length() < FP_DOOR_NEAR_M:
