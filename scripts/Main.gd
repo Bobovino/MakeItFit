@@ -1209,14 +1209,12 @@ func _show_existing_completion(level_id: String, load_gen: int) -> void:
 func _result_info(stars: int, funds: int, has_next: bool) -> Dictionary:
 	return {
 		"level_name": gm.current_level.get("name", "") as String,
-		"tenant": gm.current_level["tenant"]["name"],
-		"rent": gm.current_level["tenant"]["monthly_rent"] as int,
 		"stars": stars,
 		"funds": funds,
-		"portfolio": GameState.portfolio_rent,
 		"has_next": has_next,
-		"budget_left": gm.budget,
-		"budget_start": gm.current_level.get("starting_budget", 0) as int,
+		"phase": gm.phase,
+		"phase_title": (gm.phases()[gm.phase] as Dictionary).get("title", "") as String if gm.phase < gm.phases().size() else "",
+		"phase_count": gm.phases().size(),
 	}
 
 

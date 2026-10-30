@@ -3,8 +3,7 @@ class_name ResultScreen
 
 # What the RENT OUT button ends in.
 #
-# Rented: which apartment and who lives there now; the stars, with why (the
-# share of the budget left over) and what the next one takes. Then where
+# Rented: which apartment, and which phase of it. Then where
 # to go: on to the next level (selected, so Enter goes on), or look around
 # the apartment, play it again, or back to the projects.
 #
@@ -20,7 +19,6 @@ signal watch_again_requested    # close this and look around the finished apartm
 signal walk_through_requested   # close this and walk around the finished apartment in first person
 signal advance_level_requested  # load the next owned level directly
 
-const STAMP_INK := GameTheme.NAVY   # the Housing Office's stamp
 
 var _layer_root: Control
 var _card: PanelContainer
@@ -35,50 +33,27 @@ func _ready() -> void:
 		$Panel.queue_free()
 
 
-# info: {level_name, tenant, rent, stars, funds, portfolio, has_next,
-#        budget_left, budget_start}
+# info: {level_name, has_next, phase, phase_title, phase_count}
 func show_success(info: Dictionary) -> void:
 	_failure = false
 	var body := _open()
-	var stars: int = info.get("stars", 1)
 	var retired := GameState.is_retired()
 
-	_header(body, tr("Rented out"), info.get("level_name", "") as String,
-		tr("Tenant: %s") % info.get("tenant", ""), true)
-
-	# Stars, and what they are for.
-	var star_box := VBoxContainer.new()
-	star_box.add_theme_constant_override("separation", 2)
-	body.add_child(star_box)
-	var star_lbl := Label.new()
-	star_lbl.add_theme_font_size_override("font_size", GameTheme.FS_DISPLAY)
-	star_lbl.add_theme_color_override("font_color", GameTheme.RED)
-	star_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	star_box.add_child(star_lbl)
-	_animate_stars(star_lbl, stars)
-	var start: int = info.get("budget_start", 0)
-	var left: int = info.get("budget_left", 0)
-	var share := float(left) / float(start) if start > 0 else 1.0
-	var why := Label.new()
-	why.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	why.add_theme_color_override("font_color", GameTheme.INK_SOFT)
-	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if stars >= 3:
-		why.text = tr("Top rating: %d%% of the budget left over.") % roundi(share * 100.0)
-	else:
-		var need := GameManager.STAR3_SHARE if stars == 2 else GameManager.STAR2_SHARE
-		why.text = tr("%d%% of the budget left over · %d stars from %d%%") % [
-			roundi(share * 100.0), stars + 1, roundi(need * 100.0)]
-	star_box.add_child(why)
-
-	if retired:
-		var done := Label.new()
-		done.text = tr("Goal reached: your portfolio is complete.")
-		done.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
-		done.add_theme_color_override("font_color", GameTheme.OK)
-		done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		body.add_child(done)
+	var title := GameTheme.title_label(info.get("level_name", "") as String, GameTheme.FS_DISPLAY)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(title)
+	# Which phase of the level this was, when it has more than one.
+	var count: int = info.get("phase_count", 0)
+	if count >= 2:
+		var phase: int = info.get("phase", 0)
+		var ph_title := tr(info.get("phase_title", "") as String)
+		var ph := Label.new()
+		ph.text = (tr("Phase %d of %d") % [mini(phase, count - 1) + 1, count]) + ("  ·  " + ph_title if ph_title != "" else "")
+		ph.add_theme_font_override("font", GameTheme.font("mono_bold"))
+		ph.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
+		ph.add_theme_color_override("font_color", GameTheme.INK_SOFT)
+		ph.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		body.add_child(ph)
 
 	# Where to go.
 	var bar := _footer(body)
@@ -117,7 +92,7 @@ func show_success(info: Dictionary) -> void:
 func show_failure(reason: String, missing: Array = []) -> void:
 	_failure = true
 	var body := _open()
-	_header(body, tr("Not ready to rent"), reason, "", false)
+	_header(body, tr("Not ready to rent"), reason, "")
 	if not missing.is_empty():
 		var list := VBoxContainer.new()
 		list.add_theme_constant_override("separation", 6)
@@ -195,28 +170,21 @@ func _open() -> VBoxContainer:
 	return body
 
 
-# Kicker, title, subtitle; with `stamp`, the Housing Office's stamp beside it.
-func _header(body: VBoxContainer, kicker: String, title: String, subtitle: String, stamp: bool) -> void:
-	var row := HBoxContainer.new()
-	body.add_child(row)
+# Kicker, title and subtitle.
+func _header(body: VBoxContainer, kicker: String, title: String, subtitle: String) -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(col)
+	body.add_child(col)
 	var k := Label.new()
 	k.text = kicker.to_upper()
 	k.add_theme_font_override("font", GameTheme.font("mono_bold"))
 	k.add_theme_font_size_override("font_size", GameTheme.FS_CAPTION)
-	k.add_theme_color_override("font_color", GameTheme.OK if stamp else GameTheme.RED)
+	k.add_theme_color_override("font_color", GameTheme.RED)
 	col.add_child(k)
-	var t: Label
-	if stamp:
-		t = GameTheme.title_label(title, GameTheme.FS_DISPLAY)
-	else:
-		t = Label.new()
-		t.text = title
-		t.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
-		t.add_theme_color_override("font_color", GameTheme.INK)
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_size_override("font_size", GameTheme.FS_LABEL)
+	t.add_theme_color_override("font_color", GameTheme.INK)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(t)
 	if subtitle != "":
@@ -225,32 +193,6 @@ func _header(body: VBoxContainer, kicker: String, title: String, subtitle: Strin
 		s.add_theme_font_size_override("font_size", GameTheme.FS_BODY)
 		s.add_theme_color_override("font_color", GameTheme.INK_SOFT)
 		col.add_child(s)
-	if stamp:
-		var st := Label.new()
-		st.text = tr("APPROVED")
-		st.add_theme_font_override("font", GameTheme.font("display"))
-		st.add_theme_font_size_override("font_size", GameTheme.FS_TITLE)
-		st.add_theme_color_override("font_color", Color(STAMP_INK, 0.9))
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = Color(STAMP_INK, 0.85)
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(6)
-		sb.content_margin_left = 12
-		sb.content_margin_right = 12
-		sb.anti_aliasing = true
-		st.add_theme_stylebox_override("normal", sb)
-		st.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		st.resized.connect(func(): st.pivot_offset = st.size * 0.5)
-		row.add_child(st)
-		if not GameState.reduce_motion:
-			st.modulate.a = 0.0
-			st.scale = Vector2(1.8, 1.8)
-			var tw := st.create_tween().set_parallel(true)
-			tw.tween_interval(0.35)
-			tw.chain().tween_property(st, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN)
-			tw.tween_property(st, "modulate:a", 1.0, 0.14)
-			tw.chain().tween_callback(func(): Audio.play("place"))
 
 
 func _footer(body: VBoxContainer) -> HBoxContainer:
@@ -286,35 +228,3 @@ func _reveal() -> void:
 	_card.modulate.a = 0.0
 	var tw := _card.create_tween().set_parallel(true)
 	tw.tween_property(_card, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-
-# Stars fill in one at a time with a pop; all at once with Reduce motion.
-func _animate_stars(lbl: Label, stars: int) -> void:
-	var shown := func(n: int) -> String: return "\uf6a6".repeat(n) + "\ueb2e".repeat(3 - n)
-	if GameState.reduce_motion:
-		lbl.text = shown.call(stars)
-		return
-	lbl.text = shown.call(0)
-	lbl.resized.connect(func(): lbl.pivot_offset = lbl.size * 0.5)
-	var tw := lbl.create_tween()
-	tw.tween_interval(0.25)
-	for i in range(1, stars + 1):
-		var n := i
-		tw.tween_interval(0.25)
-		tw.tween_callback(func():
-			lbl.text = shown.call(n)
-			Audio.play("place"))
-		tw.tween_property(lbl, "scale", Vector2(1.18, 1.18), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_property(lbl, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
-# 10000 -> "10.000" / "10,000", the way the language writes it.
-func _money(v: Variant) -> String:
-	var n := absi(int(v))
-	var s := str(n)
-	var sep := "," if TranslationServer.get_locale().begins_with("en") else "."
-	var out := ""
-	while s.length() > 3:
-		out = sep + s.substr(s.length() - 3) + out
-		s = s.substr(0, s.length() - 3)
-	return ("-" if int(v) < 0 else "") + s + out
