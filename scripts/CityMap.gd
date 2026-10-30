@@ -478,13 +478,6 @@ func _build_ui() -> void:
 
 	const FAX_INK := FaxStyle.INK
 	const FAX_INK_SOFT := FaxStyle.INK_SOFT
-	var fax_head := _make_info_label(vb, 13, FAX_INK_SOFT)
-	fax_head.add_theme_font_override("font", GameTheme.font("mono"))
-	fax_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	fax_head.text = tr("FAX  ·  KÖNIGSBERG PROJECTS  ·  PAGE 1/1")
-	var head_rule := HSeparator.new()
-	head_rule.add_theme_color_override("color", FAX_INK_SOFT)
-	vb.add_child(head_rule)
 	_info_title = _make_info_label(vb, GameTheme.FS_TITLE, FAX_INK, true)
 	_info_title.add_theme_font_override("font", GameTheme.font("display"))
 	# Wraps: a long district name or budget made the sheet wider than its
