@@ -3901,22 +3901,42 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		_update_camera()
 
 
-# ── Ghost reference layer (floor directly below a loft) ────────────────────
-# Flat grey, translucent, no models/textures and never added to any of the
-# pick/drag lists — purely a "here's what's underneath" cue, not a second
-# interactive floor. Positioned using the LOFT's own bounds (not the below
-# floor's bounds) so tile coordinates line up: a mezzanine and its base
-# floor share the same absolute apartment grid, they just each report a
-# different sub-rectangle of it via get_room_bounds().
+# ── The floor below, as a blueprint ──────────────────────────────────────
+# Under a loft or an upper storey, the floor beneath drawn the way a plan
+# shows it: a blue sheet with its grid, the walls cut low as on a plan, and
+# each piece a pale blue volume outlined in white. Never added to any of the
+# pick/drag lists — a "here's what's underneath" cue, not a second floor to
+# work on. The staircase that comes up from it is the real one (see
+# _add_ghost_stairs). Positioned using THIS floor's bounds so tile
+# coordinates line up: both share the same absolute apartment grid.
 const GHOST_COLOR := Color(0.55, 0.56, 0.58)
 const GHOST_ALPHA := 0.22
+const BLUEPRINT_SHEET := Color(0.16, 0.36, 0.70, 0.55)
+const BLUEPRINT_FILL  := Color(0.55, 0.74, 1.00, 0.30)
+const BLUEPRINT_LINE  := Color(0.92, 0.96, 1.00, 0.95)
+const BLUEPRINT_WALL_H := 0.9   # walls cut here, as a plan cuts them
 
 func _add_ghost_floor(below_floor: Floor, bounds: Rect2i) -> void:
-	var y_off := -Floor.FLOOR_HEIGHT_TILES * TILE_M
+	var y_off := -_storey_m("loft" if _apt_floor.floor_type == "loft" else "floor")
 	var w := bounds.size.x * TILE_M
 	var d := bounds.size.y * TILE_M
 
-	_make_ghost(_box(Vector3(w, 0.05, d), Vector3(w * 0.5, y_off - 0.025, d * 0.5), GHOST_COLOR))
+	_blueprint(_box(Vector3(w, 0.02, d), Vector3(w * 0.5, y_off - 0.01, d * 0.5), BLUEPRINT_SHEET), BLUEPRINT_SHEET)
+	var grid := QuadMesh.new()
+	grid.size = Vector2(w, d)
+	grid.orientation = PlaneMesh.FACE_Y
+	var grid_mi := MeshInstance3D.new()
+	grid_mi.mesh = grid
+	grid_mi.position = Vector3(w * 0.5, y_off + 0.002, d * 0.5)
+	var gmat := StandardMaterial3D.new()
+	gmat.albedo_texture = _grid_texture()
+	gmat.albedo_color = Color(2.2, 2.4, 2.6, 0.55)   # the grid's dark lines turned pale
+	gmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gmat.uv1_scale = Vector3(w / TILE_M, d / TILE_M, 1.0)
+	grid_mi.material_override = gmat
+	grid_mi.set_meta("is_ghost", true)
+	build_root.add_child(grid_mi)
 
 	for seg in below_floor.segments:
 		if (seg as Dictionary).get("demolished", false):
@@ -3931,20 +3951,38 @@ func _add_ghost_floor(below_floor: Floor, bounds: Rect2i) -> void:
 		if length < 0.001:
 			continue
 		var horizontal := absf(lz2 - lz1) < 0.001
-		var seg_size := Vector3(length, WALL_H_M, WALL_THICK) if horizontal else Vector3(WALL_THICK, WALL_H_M, length)
-		var mid := Vector3((lx1 + lx2) * 0.5, y_off + WALL_H_M * 0.5, (lz1 + lz2) * 0.5)
-		_make_ghost(_box(seg_size, mid, GHOST_COLOR))
+		var seg_size := Vector3(length, BLUEPRINT_WALL_H, WALL_THICK) if horizontal else Vector3(WALL_THICK, BLUEPRINT_WALL_H, length)
+		var mid := Vector3((lx1 + lx2) * 0.5, y_off + BLUEPRINT_WALL_H * 0.5, (lz1 + lz2) * 0.5)
+		_blueprint(_box(seg_size, mid, BLUEPRINT_LINE), Color(BLUEPRINT_LINE, 0.75))
 
 	for item in below_floor.get_all_furniture():
 		var f := item as Furniture
 		var fw := f.grid_w * TILE_M
 		var fd := f.grid_h * TILE_M
 		var height_m := maxf(f.z_top / 10.0, 0.2)   # 10 tiles/m, see FLOOR_HEIGHT_TILES
-		var lx := (f.grid_pos.x - bounds.position.x) * TILE_M + fw * 0.5
-		var lz := (f.grid_pos.y - bounds.position.y) * TILE_M + fd * 0.5
-		_make_ghost(_box(Vector3(fw, height_m, fd), Vector3(lx, y_off + height_m * 0.5, lz), GHOST_COLOR))
+		var lx := (f.grid_pos.x - bounds.position.x) * TILE_M
+		var lz := (f.grid_pos.y - bounds.position.y) * TILE_M
+		_blueprint(_box(Vector3(fw, height_m, fd), Vector3(lx + fw * 0.5, y_off + height_m * 0.5, lz + fd * 0.5), BLUEPRINT_FILL), BLUEPRINT_FILL)
+		for y in [y_off + 0.004, y_off + height_m]:
+			var outline := _build_outline_group(Vector2(fw, fd), BLUEPRINT_LINE, y)
+			outline.position.x = lx
+			outline.position.z = lz
+			outline.set_meta("is_ghost", true)
+			build_root.add_child(outline)
 
 	_add_ghost_stairs(below_floor, bounds)
+
+
+# A blueprint part: see-through, flat-lit, left out of the room's styling.
+func _blueprint(mi: MeshInstance3D, col: Color) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_meta("is_ghost", true)
 
 
 func _make_ghost(mi: MeshInstance3D) -> void:
@@ -4224,8 +4262,10 @@ func _refit_item_model(mi: MeshInstance3D, box_size: Vector3) -> void:
 	# follows the model's own proportions instead of the catalogue's number,
 	# within a third either way, so a piece is never squashed flat or pulled
 	# into a tower to match a height written for a different model.
-	var proportional := sqrt(scale_v.x * scale_v.z)
-	scale_v.y = clampf(scale_v.y, proportional / MODEL_HEIGHT_GIVE, proportional * MODEL_HEIGHT_GIVE)
+	# (A staircase between floors climbs the whole storey: exact.)
+	if not mi.get_meta("exact_height", false):
+		var proportional := sqrt(scale_v.x * scale_v.z)
+		scale_v.y = clampf(scale_v.y, proportional / MODEL_HEIGHT_GIVE, proportional * MODEL_HEIGHT_GIVE)
 	inst.scale = scale_v
 	inst.rotation.y = rot_y
 	var local_center := Vector3(
@@ -4735,11 +4775,17 @@ const STAIR_STEP_DEPTH_TILES := 2   # matches LevelEditor.gd's STAIR_STEP_DEPTH
 const STAIR_LOFT_COL  := Color(0.52, 0.60, 0.82)
 const STAIR_FLOOR_COL := Color(0.78, 0.58, 0.22)
 
+# How high a staircase climbs, and how far below the floor beneath is drawn:
+# to the next storey a wall's height (the room on screen is that tall, and
+# the flight has to meet the floor above it); to a loft, the nominal height.
+func _storey_m(target: String) -> float:
+	return WALL_H_M if target == "floor" else Floor.FLOOR_HEIGHT_TILES * TILE_M
+
 func _add_stairs(bounds: Rect2i) -> void:
 	if not _apt_floor:
 		return
-	var full_h := Floor.FLOOR_HEIGHT_TILES * TILE_M
 	for entry in _apt_floor.stairs_data:
+		var full_h := _storey_m((entry as Dictionary).get("target", "loft") as String)
 		# A staircase placed as furniture brings its own model, drawn with the
 		# rest of the furniture; the plain block flight is for stairs that
 		# have none (the level's own, or a piece whose model is missing).
@@ -4767,6 +4813,7 @@ func _add_stair_model(ed: Dictionary, bounds: Rect2i, full_h: float, y_offset :=
 		(r.position.y - bounds.position.y) * TILE_M + size.z * 0.5)
 	var mi := _box(size, pos, STAIR_FLOOR_COL)
 	mi.set_meta("style_role", StyleController.ROLE_FURNITURE)
+	mi.set_meta("exact_height", true)   # its top step is the next floor
 	_apply_item_model(mi, path, size, [])
 	_style_if_bare(mi)
 	return true
@@ -4818,7 +4865,7 @@ func _add_stair_flight(ed: Dictionary, bounds: Rect2i, full_h: float,
 # cue on the floor a staircase arrives at, without building a second solid
 # flight (see _add_stairs).
 func _add_ghost_stairs(below_floor: Floor, bounds: Rect2i) -> void:
-	var full_h := Floor.FLOOR_HEIGHT_TILES * TILE_M
+	var full_h := _storey_m("loft" if _apt_floor.floor_type == "loft" else "floor")
 	var y_off := -full_h
 	# below_floor may have stairs going to more than one place (e.g. the
 	# ground floor's stairs go both to its own loft AND to the next floor

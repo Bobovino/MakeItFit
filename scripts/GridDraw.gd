@@ -390,70 +390,13 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		var _r   := _ed["rect"]      as Rect2i
 		var _dir := _ed["direction"] as String
 		var _tgt := _ed.get("target", "loft") as String
-		var _srx := float(_r.position.x * TILE_SIZE)
-		var _sry := float(_r.position.y * TILE_SIZE)
-		var _srw := float(_r.size.x    * TILE_SIZE)
-		var _srh := float(_r.size.y    * TILE_SIZE)
 		var _sfill := STAIR_FILL   if _tgt == "loft" else FSTAIR_FILL
 		var _snos  := STAIR_NOSING if _tgt == "loft" else FSTAIR_NOSING
 		var _sbdr  := STAIR_BORDER if _tgt == "loft" else FSTAIR_BORDER
 		var _sarr  := STAIR_ARROW  if _tgt == "loft" else FSTAIR_ARROW
-		draw_rect(Rect2(_srx, _sry, _srw, _srh), _sfill)
-		# Internal tread-separator nosings perpendicular to travel direction
-		match _dir:
-			"north", "south":
-				for _s in range(1, _r.size.y / STEP_DEPTH):
-					var _ny := _sry + float(_s * STEP_DEPTH * TILE_SIZE)
-					draw_line(Vector2(_srx, _ny), Vector2(_srx + _srw, _ny), _snos, 1.5)
-			"east", "west":
-				for _s in range(1, _r.size.x / STEP_DEPTH):
-					var _nx := _srx + float(_s * STEP_DEPTH * TILE_SIZE)
-					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), _snos, 1.5)
-		# Outer border
-		draw_rect(Rect2(_srx, _sry, _srw, _srh), _sbdr, false, 2.0)
+		_draw_flight(_r, _dir, _sfill, _snos, _sbdr, _sarr, false)
 		if _tgt == "floor":
 			_draw_stair_word(_r, _dir, false, tr("Up"), _sarr)
-		# Ascent arrow; floor stairs also get a second inner chevron (↑↑) to signal full floor
-		var _scx := _srx + _srw * 0.5
-		var _scy := _sry + _srh * 0.5
-		var _aw  := float(TILE_SIZE) * 1.5
-		match _dir:
-			"north":
-				var _tip := Vector2(_scx, _sry + float(TILE_SIZE))
-				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
-				if _tgt == "floor":
-					var _mid := Vector2(_scx, (_sry + float(TILE_SIZE) + _scy) * 0.5)
-					draw_line(_mid, Vector2(_mid.x - _aw * 0.4, _mid.y + _aw * 0.9), _sarr, 1.5)
-					draw_line(_mid, Vector2(_mid.x + _aw * 0.4, _mid.y + _aw * 0.9), _sarr, 1.5)
-				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y + _aw), _sarr, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y + _aw), _sarr, 2.0)
-			"south":
-				var _tip := Vector2(_scx, _sry + _srh - float(TILE_SIZE))
-				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
-				if _tgt == "floor":
-					var _mid := Vector2(_scx, (_sry + _srh - float(TILE_SIZE) + _scy) * 0.5)
-					draw_line(_mid, Vector2(_mid.x - _aw * 0.4, _mid.y - _aw * 0.9), _sarr, 1.5)
-					draw_line(_mid, Vector2(_mid.x + _aw * 0.4, _mid.y - _aw * 0.9), _sarr, 1.5)
-				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y - _aw), _sarr, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y - _aw), _sarr, 2.0)
-			"east":
-				var _tip := Vector2(_srx + _srw - float(TILE_SIZE), _scy)
-				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
-				if _tgt == "floor":
-					var _mid := Vector2((_srx + _srw - float(TILE_SIZE) + _scx) * 0.5, _scy)
-					draw_line(_mid, Vector2(_mid.x - _aw * 0.9, _mid.y - _aw * 0.4), _sarr, 1.5)
-					draw_line(_mid, Vector2(_mid.x - _aw * 0.9, _mid.y + _aw * 0.4), _sarr, 1.5)
-				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), _sarr, 2.0)
-				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), _sarr, 2.0)
-			"west":
-				var _tip := Vector2(_srx + float(TILE_SIZE), _scy)
-				draw_line(Vector2(_scx, _scy), _tip, _sarr, 2.0)
-				if _tgt == "floor":
-					var _mid := Vector2((_srx + float(TILE_SIZE) + _scx) * 0.5, _scy)
-					draw_line(_mid, Vector2(_mid.x + _aw * 0.9, _mid.y - _aw * 0.4), _sarr, 1.5)
-					draw_line(_mid, Vector2(_mid.x + _aw * 0.9, _mid.y + _aw * 0.4), _sarr, 1.5)
-				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y - _aw * 0.5), _sarr, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y + _aw * 0.5), _sarr, 2.0)
 
 	# Per-tile fallback for editor-painted stair_mask tiles (no stairs_data block)
 	for _stile in parent.stair_mask:
@@ -472,62 +415,20 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		if Vector2i(_t.x + 1, _t.y) not in parent.stair_mask:
 			draw_line(Vector2(_trx + _ts, _tpy), Vector2(_trx + _ts, _tpy + _ts), STAIR_BORDER, 1.5)
 
-	# ── 2d. Stair openings (loft floors — same footprint as floor stair, descent arrow) ─
-	# A hole in this floor: dark, the steps of the flight below seen down it.
-	const SO_FILL   := Color(0.14, 0.16, 0.24, 0.62)
-	const SO_BORDER := Color(0.10, 0.12, 0.20, 1.00)
-	const SO_NOSING := Color(0.78, 0.58, 0.22, 0.55)
-	const SO_ARROW  := Color(0.96, 0.92, 0.82, 1.00)
+	# ── 2d. Stair openings: the stairwell a flight from the floor below comes up through
+	# A hole in this floor, the flight below seen down it: drawn in ink on a
+	# grey wash, as the same staircase seen from above.
+	const SO_FILL   := Color(0.30, 0.34, 0.46, 0.24)
+	const SO_BORDER := Color(0.12, 0.14, 0.24, 1.00)
+	const SO_NOSING := Color(0.12, 0.14, 0.24, 0.70)
+	const SO_ARROW  := Color(0.12, 0.14, 0.24, 1.00)
 	for _op in parent.stair_openings:
 		var _opd   := _op as Dictionary
 		var _opr   := _opd["rect"] as Rect2i
 		var _opdir := _opd.get("direction", "north") as String
-		var _srx   := float(_opr.position.x * TILE_SIZE)
-		var _sry   := float(_opr.position.y * TILE_SIZE)
-		var _srw   := float(_opr.size.x    * TILE_SIZE)
-		var _srh   := float(_opr.size.y    * TILE_SIZE)
-		var _scx   := _srx + _srw * 0.5
-		var _scy   := _sry + _srh * 0.5
-		var _aw    := float(TILE_SIZE) * 1.5
-		# Draw over the stair footprint (same x/y/w/h as the ground-floor stair block)
-		draw_rect(Rect2(_srx, _sry, _srw, _srh), SO_FILL)
-		match _opdir:
-			"north", "south":
-				for _s in range(1, _opr.size.y / STEP_DEPTH):
-					var _ny := _sry + float(_s * STEP_DEPTH * TILE_SIZE)
-					draw_line(Vector2(_srx, _ny), Vector2(_srx + _srw, _ny), SO_NOSING, 1.5)
-			"east", "west":
-				for _s in range(1, _opr.size.x / STEP_DEPTH):
-					var _nx := _srx + float(_s * STEP_DEPTH * TILE_SIZE)
-					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), SO_NOSING, 1.5)
-		draw_rect(Rect2(_srx, _sry, _srw, _srh), SO_BORDER, false, 2.0)
+		_draw_flight(_opr, _opdir, SO_FILL, SO_NOSING, SO_BORDER, SO_ARROW, true)
 		if (_opd.get("target", "loft") as String) == "floor":
 			_draw_stair_word(_opr, _opdir, true, tr("Down"), SO_ARROW)
-		# Arrow pointing in DESCENT direction — mirrors ground-floor arrow but opposite end
-		# Ground floor: "north"→↑ tip at top | "south"→↓ tip at bottom
-		#               "east"→→ tip at right | "west"→← tip at left
-		# Loft descent: flip the tip to the opposite end and flip the chevron
-		match _opdir:
-			"north":  # descent ↓: tip at bottom, chevron opens upward
-				var _tip := Vector2(_scx, _sry + _srh - float(TILE_SIZE))
-				draw_line(Vector2(_scx, _sry + float(TILE_SIZE)), _tip, SO_ARROW, 2.5)
-				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y - _aw), SO_ARROW, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y - _aw), SO_ARROW, 2.0)
-			"south":  # descent ↑: tip at top, chevron opens downward
-				var _tip := Vector2(_scx, _sry + float(TILE_SIZE))
-				draw_line(Vector2(_scx, _sry + _srh - float(TILE_SIZE)), _tip, SO_ARROW, 2.5)
-				draw_line(_tip, Vector2(_tip.x - _aw * 0.5, _tip.y + _aw), SO_ARROW, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw * 0.5, _tip.y + _aw), SO_ARROW, 2.0)
-			"east":   # descent ←: tip at left, chevron opens rightward
-				var _tip := Vector2(_srx + float(TILE_SIZE), _scy)
-				draw_line(Vector2(_srx + _srw - float(TILE_SIZE), _scy), _tip, SO_ARROW, 2.5)
-				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y - _aw * 0.5), SO_ARROW, 2.0)
-				draw_line(_tip, Vector2(_tip.x + _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
-			"west":   # descent →: tip at right, chevron opens leftward
-				var _tip := Vector2(_srx + _srw - float(TILE_SIZE), _scy)
-				draw_line(Vector2(_srx + float(TILE_SIZE), _scy), _tip, SO_ARROW, 2.5)
-				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), SO_ARROW, 2.0)
-				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
 
 	# ── 2d'. Stair landings (Floor.stair_layout): floor kept clear at the foot
 	# of a flight and where one arrives, a dashed outline like a clearance.
@@ -1662,6 +1563,58 @@ func _draw_light_layer() -> void:
 		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(col, k))
 
 
+# A flight as an architect's plan draws it. The plan is a cut through the
+# storey at about a metre, so a flight going up from this floor is cut at
+# STAIR_CUT of its run: its treads solid up to a break line, dashed beyond
+# (above the cut). Seen from the floor above, down its stairwell, it is the
+# other way round: the part beyond the break solid, the rest dashed. The
+# walking line down the middle always points up the flight — a small circle
+# at the first step, an arrowhead at the last — on both floors.
+const STAIR_CUT := 0.6
+
+func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Color, ink: Color, from_below: bool) -> void:
+	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+	var run := r.size.y if dir in ["north", "south"] else r.size.x
+	var steps := maxi(run / 2, 1)   # 20 cm treads
+	# A point of the flight: u across it (0..1), v along it (0 = foot, 1 = top).
+	var at := func(u: float, v: float) -> Vector2:
+		match dir:
+			"north": return Vector2(px.position.x + u * px.size.x, px.end.y - v * px.size.y)
+			"south": return Vector2(px.position.x + u * px.size.x, px.position.y + v * px.size.y)
+			"east":  return Vector2(px.position.x + v * px.size.x, px.position.y + u * px.size.y)
+		return Vector2(px.end.x - v * px.size.x, px.position.y + u * px.size.y)
+	draw_rect(px, fill)
+	var shown := func(v: float) -> bool:   # solid on this floor's plan
+		return (v >= STAIR_CUT) if from_below else (v <= STAIR_CUT)
+	for i in range(1, steps):
+		var v := float(i) / steps
+		if shown.call(v):
+			draw_line(at.call(0.0, v), at.call(1.0, v), nosing, 1.5)
+		else:
+			draw_dashed_line(at.call(0.0, v), at.call(1.0, v), Color(nosing, nosing.a * 0.7), 1.0, 3.0)
+	draw_rect(px, border, false, 2.0)
+	# The break line: a slanted cut with a small zigzag in the middle.
+	var d := 0.07
+	var pts := [at.call(-0.05, STAIR_CUT - d), at.call(0.42, STAIR_CUT - d * 0.1), at.call(0.48, STAIR_CUT + d * 0.6),
+		at.call(0.54, STAIR_CUT - d * 0.6), at.call(0.60, STAIR_CUT + d * 0.1), at.call(1.05, STAIR_CUT + d)]
+	for i in pts.size() - 1:
+		draw_line(pts[i], pts[i + 1], ink, 1.5, true)
+	# The walking line.
+	var foot: Vector2 = at.call(0.5, 0.5 / steps)
+	var top: Vector2 = at.call(0.5, 1.0 - 0.25 / steps)
+	var cut: Vector2 = at.call(0.5, STAIR_CUT)
+	if from_below:
+		draw_dashed_line(foot, cut, Color(ink, 0.6), 1.0, 3.0)
+		draw_line(cut, top, ink, 1.5, true)
+	else:
+		draw_circle(foot, 2.6, ink)
+		draw_line(foot, cut, ink, 1.5, true)
+		draw_dashed_line(cut, top, Color(ink, 0.6), 1.0, 3.0)
+	var back := (cut - top).normalized() * 6.0
+	var side := Vector2(-back.y, back.x) * 0.55
+	draw_colored_polygon(PackedVector2Array([top, top + back + side, top + back - side]), ink)
+
+
 # "Up" at the foot of a flight, "Down" at the top of the stairwell one comes
 # up through: where each is walked onto, as on an architect's plan.
 func _draw_stair_word(r: Rect2i, dir: String, top: bool, word: String, col: Color) -> void:
@@ -1669,20 +1622,18 @@ func _draw_stair_word(r: Rect2i, dir: String, top: bool, word: String, col: Colo
 	var fs := maxi(8, int(TILE_SIZE * 1.3))
 	var sz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
-	var inset := float(TILE_SIZE) * 1.4
-	# The foot of a "north" flight is its south edge, and so on.
-	var at_end := {"north": "s", "south": "n", "east": "w", "west": "e"}[dir] as String
-	if top:
-		at_end = {"s": "n", "n": "s", "w": "e", "e": "w"}[at_end] as String
+	# On the walking line, clear of its circle and its arrowhead: a quarter
+	# of the way up for "Up", most of the way for "Down".
+	var v := 0.8 if top else 0.3
 	var c := px.get_center()
-	match at_end:
-		"s": c.y = px.end.y - inset
-		"n": c.y = px.position.y + inset
-		"w": c.x = px.position.x + inset + sz.x * 0.5
-		"e": c.x = px.end.x - inset - sz.x * 0.5
+	match dir:
+		"north": c.y = px.end.y - v * px.size.y
+		"south": c.y = px.position.y + v * px.size.y
+		"east":  c.x = px.position.x + v * px.size.x
+		_:       c.x = px.end.x - v * px.size.x
 	var at := c + Vector2(-sz.x * 0.5, sz.y * 0.3)
-	draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0.10, 0.08, 0.04, 0.55))
-	draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 0.97, 0.88))
+	draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(1, 0.98, 0.92, 0.85))
+	draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
 
 # Sunlight: a warm yellow wash over the white plan, strong enough to show
