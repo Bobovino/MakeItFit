@@ -302,8 +302,16 @@ func load_game() -> void:
 
 # ── Projects in progress ──────────────────────────────────────────────────────
 
+# A project left half-done. Not one older than the flat's won layout: an
+# autosave could still slip in after renting out, and the won flat should
+# reopen on its results instead. (Layouts from before "at" count as newer.)
 func has_progress(level_id: String) -> bool:
-	return progress.has(level_id)
+	if not progress.has(level_id):
+		return false
+	if completed.has(level_id) and has_level_layout(level_id):
+		var won_at := int(get_level_layout(level_id).get("at", 0))
+		return won_at > 0 and int(get_progress(level_id).get("at", 0)) > won_at
+	return true
 
 
 func get_progress(level_id: String) -> Dictionary:
@@ -398,6 +406,7 @@ func get_stars(level_id: String) -> int:
 
 func save_level_layout(level_id: String, snapshot: Dictionary) -> void:
 	snapshot["level_fp"] = level_fingerprint(level_id)
+	snapshot["at"] = int(Time.get_unix_time_from_system())
 	level_layouts[level_id] = snapshot
 	save_game()
 

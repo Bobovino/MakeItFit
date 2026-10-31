@@ -226,6 +226,7 @@ var _active_moment_id:  String = ""
 var _rent_auto_armed:   bool = false   # false while a level is still spawning its starting furniture — see _update_rent_btn()
 var _level_load_id:     int  = 0       # bumped on every _load_level() call — lets an in-flight completion reveal detect a Restart Level mid-animation and bail instead of showing stale results
 var _level_completed:   bool = false   # true once this level's Results screen has been shown this session — see _on_settings_btn_pressed
+var _rented_out:        bool = false   # this visit's flat is rented out (or reopened won): no more autosaves, it reopens on its results
 
 
 # ── Filling the window ───────────────────────────────────────────────────────
@@ -889,6 +890,7 @@ func _load_level(level_id: String) -> void:
 	_post_win_view   = false
 	_rent_auto_armed = false
 	_level_completed = false
+	_rented_out      = false
 	Furniture.read_only     = false
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
@@ -1129,17 +1131,8 @@ func _load_level(level_id: String) -> void:
 	# switching scenes when the player picks up a previously-won level instead
 	# of a fresh one. Consumed here regardless of outcome so it never leaks
 	# into the next level load.
-	var _use_saved := GameState.pending_use_saved_layout
+	var _use_saved := GameState.pending_use_saved_layout and GameState.has_level_layout(level_id)
 	GameState.pending_use_saved_layout = false
-	if _use_saved and GameState.has_level_layout(level_id):
-		_restore_furniture_snapshot(GameState.get_level_layout(level_id))
-		# The restore replaced every piece of furniture (including any nested
-		# box) after the nav buttons were set up — refresh them against
-		# what's actually on the floor now.
-		_update_nested_nav()
-	else:
-		_restoring_furniture  = false
-		_last_furniture_state = _snapshot_all_furniture()
 
 	# _set_view_mode is normally only triggered by clicking a mode button —
 	# applying it once here makes the default mode's layout (hidden/docked
@@ -1157,12 +1150,31 @@ func _load_level(level_id: String) -> void:
 		if _resuming:
 			_root_phase = _resume_phase
 			_phase_level_id = level_id
+		elif _use_saved:   # a won flat: it was rented out in its last phase
+			_phase_level_id = level_id
+			_root_phase = maxi(gm.phases().size() - 1, 0)
+			_phase_checkpoints.clear()
 		elif level_id != _phase_level_id:
 			_phase_level_id = level_id
 			_root_phase = 0
 			_phase_checkpoints.clear()
 		for i in range(1, _root_phase + 1):
 			_apply_phase(i, false)
+	# After the phases, so the won layout's own budget and Owned win over
+	# what each phase hands over.
+	if _use_saved:
+		var won := GameState.get_level_layout(level_id)
+		if won.has("full"):
+			LevelProgress.apply(self, str_to_var(won["full"] as String))
+		else:   # won before the full capture was kept
+			_restore_furniture_snapshot(won)
+		# The restore replaced every piece of furniture (including any nested
+		# box) after the nav buttons were set up — refresh them against
+		# what's actually on the floor now.
+		_update_nested_nav()
+	else:
+		_restoring_furniture  = false
+		_last_furniture_state = _snapshot_all_furniture()
 	if _resuming:
 		_resuming = false
 		_applications_shown[level_id] = true   # it was already read: no need to print it again
@@ -1192,7 +1204,9 @@ func _load_level(level_id: String) -> void:
 	# _load_gen against _level_load_id after every await so a stale tail is a
 	# harmless no-op instead of popping a results screen for a level that no
 	# longer matches what's on screen.
-	if _use_saved and _level_has_goal() and gm.check_win():
+	# Won is won: a layout kept before the full capture (no rotations, no
+	# rooms given) may not pass the checker again, and still reopens here.
+	if _use_saved and _level_has_goal():
 		_show_existing_completion(level_id, _load_gen)
 
 
@@ -1200,6 +1214,10 @@ func _load_level(level_id: String) -> void:
 # generation check rather than something _load_level awaits directly.
 func _show_existing_completion(level_id: String, load_gen: int) -> void:
 	tenant_card.set_rented(true)
+	if _nested_stack.is_empty():
+		_rented_out = true
+		_autosave_dirty = false
+		GameState.clear_progress(level_id)   # a stale autosave from after the win
 	await _play_completion_reveal()
 	if load_gen != _level_load_id:
 		return
@@ -1370,7 +1388,7 @@ func _root_level_id() -> String:
 
 
 func _can_autosave() -> bool:
-	return not _post_win_view and not GameState.testing_from_editor and _current_level_id != "" \
+	return not _post_win_view and not _rented_out and not GameState.testing_from_editor and _current_level_id != "" \
 		and _current_level_id != "_custom" and not _restoring_furniture
 
 
@@ -5023,13 +5041,14 @@ func _on_rent_pressed() -> void:
 	var level_rent  := gm.current_level["tenant"]["monthly_rent"] as int
 
 	GameState.complete_level(_current_level_id, stars, funds, level_rent)
-	GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+	GameState.save_level_layout(_current_level_id, _won_layout())
 	_level_ok.clear()
 	_box_cond.clear()
 	# Rented out: nothing left half-done here.
 	if _nested_stack.is_empty():
 		GameState.clear_progress(_current_level_id)
 		_autosave_dirty = false
+		_rented_out = true
 	tenant_card.set_rented(true)
 
 	var completed_level_id := _current_level_id
@@ -5429,8 +5448,17 @@ func _on_decorate() -> void:
 
 func _on_piece_recolored(_f: Furniture) -> void:
 	if _current_level_id in GameState.completed:
-		GameState.save_level_layout(_current_level_id, _snapshot_all_furniture())
+		GameState.save_level_layout(_current_level_id, _won_layout())
 	_last_furniture_state = _snapshot_all_furniture()
+
+
+# The rented-out flat as kept for reopening on its results: the furniture
+# snapshot, plus the whole level exactly (LevelProgress: rotations, rooms
+# given, walls built, moments), so the checker judges it won again.
+func _won_layout() -> Dictionary:
+	var snap := _snapshot_all_furniture()
+	snap["full"] = var_to_str(LevelProgress.capture(self))
+	return snap
 
 
 # "Walk Through" on the Results screen: the same read-only look around as

@@ -25,6 +25,7 @@ func _ready() -> void:
 	_run_all()
 	await _t_tenants_are_cosmetic()
 	await _t_progress_round_trip()
+	await _t_won_flat_reopens_on_results()
 	await _t_project_needs_every_apartment()
 	await _t_box_on_a_surface()
 	await _t_outside_walls()
@@ -874,6 +875,78 @@ func _t_progress_round_trip() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
 	GameState.save_path = real_path
 	GameState.progress = real_progress
+
+
+# A flat rented out, left and opened again (the map's "Revisar Plano Actual")
+# lands back on its results, in its last phase, laid out as it was won: no
+# autosave after the win turns it back into a project in progress, and one
+# left by an older build is ignored. Runs against its own save file.
+func _t_won_flat_reopens_on_results() -> void:
+	var lid := "beach_house"
+	var real_path := GameState.save_path
+	var real := {"progress": GameState.progress.duplicate(true), "completed": GameState.completed.duplicate(true),
+		"layouts": GameState.level_layouts.duplicate(true), "motion": GameState.reduce_motion}
+	GameState.save_path = "user://test_won_save.json"
+	GameState.reduce_motion = true
+
+	GameState.pending_level_id = lid
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	for i in range(1, main.gm.phases().size()):
+		main._apply_phase(i, false)
+	var fl: Floor = main._floors[main._current_floor_id]
+	var piece: Furniture = fl.get_all_furniture()[0]
+	piece.set_rot_steps((piece.rot_steps + 2) % 4)   # turned: the old won layout lost this
+	var turned := piece.rot_steps
+	var piece_id := piece.furniture_id
+	var piece_at := piece.grid_pos
+	# What _complete_project keeps when the flat is rented out.
+	GameState.complete_level(lid, 3, 0, 0)
+	GameState.save_level_layout(lid, main._won_layout())
+	GameState.clear_progress(lid)
+	main._rented_out = true
+	main._autosave_soon()
+	main._autosave_dirty = true
+	main._autosave_now()
+	_current = "won flat: nothing autosaves it as a project in progress after renting out"
+	_ok(not GameState.progress.has(lid))
+	main.queue_free()
+	await get_tree().process_frame
+
+	GameState.progress[lid] = {"at": 1, "level": lid}   # left by an older build
+	_current = "won flat: an autosave older than the win isn't a project to resume"
+	_ok(not GameState.has_progress(lid))
+
+	GameState.pending_level_id = lid
+	GameState.pending_resume = GameState.has_progress(lid)
+	GameState.pending_use_saved_layout = true
+	main = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	fl = main._floors[main._current_floor_id]
+	var again := -1
+	for f in fl.get_all_furniture():
+		if (f as Furniture).furniture_id == piece_id and (f as Furniture).grid_pos == piece_at:
+			again = (f as Furniture).rot_steps
+	_current = "won flat: reopens on its results, in its last phase, as it was won"
+	_ok(main.result_screen.visible and main.gm.phase == main.gm.phases().size() - 1 and again == turned,
+		"results %s, phase %d, turn %d (won %d)" % [main.result_screen.visible, main.gm.phase, again, turned])
+	_current = "won flat: the stale autosave is gone"
+	_ok(not GameState.progress.has(lid))
+	main.queue_free()
+	await get_tree().process_frame
+
+	for suffix in ["", ".bak", ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))
+	GameState.save_path = real_path
+	GameState.progress = real["progress"]
+	GameState.completed = real["completed"]
+	GameState.level_layouts = real["layouts"]
+	GameState.reduce_motion = real["motion"]
 
 
 # Everything about a level the save has to keep, and what the checker makes
