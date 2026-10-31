@@ -79,8 +79,8 @@ msgid "Back to the title screen"
 msgstr ""
 
 #: scripts/CityMap.gd:674
-#: scripts/Main.gd:5182
-#: scripts/Main.gd:5218
+#: scripts/Main.gd:5187
+#: scripts/Main.gd:5223
 #: scripts/ResultScreen.gd:52
 msgid "Phase %d of %d"
 msgstr ""
@@ -169,7 +169,7 @@ msgid "Studio Funds: %d€"
 msgstr ""
 
 #: scripts/CityMap.gd:2010
-#: scripts/Main.gd:5142
+#: scripts/Main.gd:5147
 msgid "Back to phase %d"
 msgstr ""
 
@@ -307,31 +307,39 @@ msgstr ""
 msgid "%s zone"
 msgstr ""
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:358
 msgid "Kitchen"
 msgstr ""
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:357
 #: scripts/Inventory.gd:567
 msgid "Bathroom"
 msgstr ""
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:356
 msgid "Bedroom"
 msgstr ""
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 msgid "Living room"
 msgstr ""
 
-#: scripts/GridDraw.gd:1253
+#: scripts/GridDraw.gd:415
+msgid "Up"
+msgstr ""
+
+#: scripts/GridDraw.gd:505
+msgid "Down"
+msgstr ""
+
+#: scripts/GridDraw.gd:1275
 msgid "Sloped ceiling: %.2fm to %.2fm"
 msgstr ""
 
-#: scripts/GridDraw.gd:1334
+#: scripts/GridDraw.gd:1356
 msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr ""
 
@@ -1007,73 +1015,73 @@ msgstr ""
 msgid "This apartment is ready. Still to furnish: %s"
 msgstr ""
 
-#: scripts/Main.gd:5015
+#: scripts/Main.gd:5019
 msgid "The tenant can't walk to: %s"
 msgstr ""
 
-#: scripts/Main.gd:5016
+#: scripts/Main.gd:5020
 msgid "No way to: %s"
 msgstr ""
 
-#: scripts/Main.gd:5031
+#: scripts/Main.gd:5035
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
 msgstr ""
 
-#: scripts/Main.gd:5038
+#: scripts/Main.gd:5042
 msgid "Not every need on the bar is ticked yet."
 msgstr ""
 
-#: scripts/Main.gd:5040
+#: scripts/Main.gd:5044
 msgid "Still missing:"
 msgstr ""
 
-#: scripts/Main.gd:5049
+#: scripts/Main.gd:5054
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
 msgstr ""
 
-#: scripts/Main.gd:5104
+#: scripts/Main.gd:5109
 msgid "Phase %d of %d done"
 msgstr ""
 
-#: scripts/Main.gd:5142
+#: scripts/Main.gd:5147
 msgid "Restart phase %d"
 msgstr ""
 
-#: scripts/Main.gd:5226
+#: scripts/Main.gd:5231
 #: scripts/ui/ApplicationFax.gd:293
 #: scripts/ui/dialogue_scene.gd:132
 msgid "You"
 msgstr ""
 
-#: scripts/Main.gd:5468
+#: scripts/Main.gd:5473
 msgid "Click a piece to change its colours."
 msgstr ""
 
-#: scripts/Main.gd:5521
+#: scripts/Main.gd:5526
 msgid " Back to Results"
 msgstr ""
 
-#: scripts/Main.gd:5652
+#: scripts/Main.gd:5657
 msgid "CUSTOM BUILD"
 msgstr ""
 
-#: scripts/Main.gd:5664
+#: scripts/Main.gd:5669
 msgid "LMB paint · RMB erase"
 msgstr ""
 
-#: scripts/Main.gd:5676
+#: scripts/Main.gd:5681
 msgid "Move"
 msgstr ""
 
-#: scripts/Main.gd:5700
+#: scripts/Main.gd:5705
 msgid "%s  %d€/tile"
 msgstr ""
 
-#: scripts/Main.gd:6347
+#: scripts/Main.gd:6352
 msgid "Paint tiles on the floor"
 msgstr ""
 
@@ -1312,7 +1320,7 @@ msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr ""
 
 #: scripts/Room3DView.gd:1750
-#: scripts/Wall.gd:1527
+#: scripts/Wall.gd:1651
 msgid "Outside the room"
 msgstr ""
 
@@ -1334,7 +1342,7 @@ msgstr ""
 
 #: scripts/Room3DView.gd:2213
 #: scripts/RuleOverlay.gd:136
-#: scripts/Wall.gd:1642
+#: scripts/Wall.gd:1780
 msgid "Ceiling too low here"
 msgstr ""
 
@@ -1347,7 +1355,7 @@ msgid "Doesn't fit on this wall"
 msgstr ""
 
 #: scripts/Room3DView.gd:2238
-#: scripts/Wall.gd:1622
+#: scripts/Wall.gd:1760
 msgid "Overlaps %s"
 msgstr ""
 
@@ -1355,27 +1363,27 @@ msgstr ""
 msgid "another item"
 msgstr ""
 
-#: scripts/Room3DView.gd:4631
+#: scripts/Room3DView.gd:4683
 msgid "Double-click to step inside"
 msgstr ""
 
-#: scripts/Room3DView.gd:5131
+#: scripts/Room3DView.gd:5184
 msgid "As made"
 msgstr ""
 
-#: scripts/Room3DView.gd:5373
+#: scripts/Room3DView.gd:5426
 msgid "Ceiling / Ducts"
 msgstr ""
 
-#: scripts/Room3DView.gd:5374
+#: scripts/Room3DView.gd:5427
 msgid "Building Subfloor"
 msgstr ""
 
-#: scripts/Room3DView.gd:5375
+#: scripts/Room3DView.gd:5428
 msgid "Floor Subfloor / Pipes"
 msgstr ""
 
-#: scripts/Room3DView.gd:5376
+#: scripts/Room3DView.gd:5429
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1384,11 +1392,11 @@ msgstr ""
 msgid "Roof"
 msgstr ""
 
-#: scripts/Room3DView.gd:5379
+#: scripts/Room3DView.gd:5432
 msgid "(view in 2D for detail)"
 msgstr ""
 
-#: scripts/Room3DView.gd:6874
+#: scripts/Room3DView.gd:6927
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr ""
 
@@ -1584,68 +1592,84 @@ msgstr ""
 msgid "Every apartment is ready"
 msgstr ""
 
-#: scripts/Wall.gd:372
+#: scripts/Wall.gd:341
+msgid "Stairs"
+msgstr ""
+
+#: scripts/Wall.gd:496
 msgid "needs %s flooring"
 msgstr ""
 
-#: scripts/Wall.gd:1521
+#: scripts/Wall.gd:1645
 msgid "Longer than the loop: it runs into itself"
 msgstr ""
 
-#: scripts/Wall.gd:1534
+#: scripts/Wall.gd:1658
 msgid "Needs %s flooring"
 msgstr ""
 
-#: scripts/Wall.gd:1537
+#: scripts/Wall.gd:1661
 msgid "Blocked by a wall"
 msgstr ""
 
-#: scripts/Wall.gd:1542
-msgid "Its back has to be against a wall"
-msgstr ""
-
-#: scripts/Wall.gd:1565
-msgid "Too tall to go under the loft"
-msgstr ""
-
-#: scripts/Wall.gd:1570
-msgid "Too heavy for this loft (%.0f / %.0f)"
-msgstr ""
-
-#: scripts/Wall.gd:1578
-msgid "Too heavy: what this box stands on would break (%s)"
-msgstr ""
-
-#: scripts/Wall.gd:1583
-msgid "Needs a table or shelf underneath"
-msgstr ""
-
-#: scripts/Wall.gd:1588
-msgid "Too heavy for %s — it would break (%.0f / %.0f)"
-msgstr ""
-
-#: scripts/Wall.gd:1630
-msgid "Keep the steps clear"
-msgstr ""
-
-#: scripts/Wall.gd:1633
-msgid "Can't stand across a step"
-msgstr ""
-
-#: scripts/Wall.gd:1663
-msgid "Needs clearance around %s"
+#: scripts/Wall.gd:1669
+msgid "On the stairs"
 msgstr ""
 
 #: scripts/Wall.gd:1672
+msgid "Over the stairwell"
+msgstr ""
+
+#: scripts/Wall.gd:1675
+msgid "Keep the stair landing clear"
+msgstr ""
+
+#: scripts/Wall.gd:1680
+msgid "Its back has to be against a wall"
+msgstr ""
+
+#: scripts/Wall.gd:1703
+msgid "Too tall to go under the loft"
+msgstr ""
+
+#: scripts/Wall.gd:1708
+msgid "Too heavy for this loft (%.0f / %.0f)"
+msgstr ""
+
+#: scripts/Wall.gd:1716
+msgid "Too heavy: what this box stands on would break (%s)"
+msgstr ""
+
+#: scripts/Wall.gd:1721
+msgid "Needs a table or shelf underneath"
+msgstr ""
+
+#: scripts/Wall.gd:1726
+msgid "Too heavy for %s — it would break (%.0f / %.0f)"
+msgstr ""
+
+#: scripts/Wall.gd:1768
+msgid "Keep the steps clear"
+msgstr ""
+
+#: scripts/Wall.gd:1771
+msgid "Can't stand across a step"
+msgstr ""
+
+#: scripts/Wall.gd:1801
+msgid "Needs clearance around %s"
+msgstr ""
+
+#: scripts/Wall.gd:1810
 msgid "In the way of the door"
 msgstr ""
 
-#: scripts/Wall.gd:1747
-#: scripts/Wall.gd:1795
+#: scripts/Wall.gd:1885
+#: scripts/Wall.gd:1933
 msgid "Would overlap %s during \"%s\""
 msgstr ""
 
-#: scripts/Wall.gd:1750
+#: scripts/Wall.gd:1888
 msgid "Needs clearance around %s during \"%s\""
 msgstr ""
 
@@ -2038,7 +2062,7 @@ msgstr ""
 
 #: data/levels.json:the_tower
 msgid ""
-"The tower has four floors and each one is barely two metres across. The staircase eats a third of every one of them.\n"
+"The tower has four floors and each one is barely two metres across. The staircase zigzags up through it: each floor loses room to the flight going up, to the stairwell of the one coming up, and to the landings at their ends, which have to stay clear.\n"
 "\n"
 "No floor can hold a whole home, so spread it out: one or two needs per floor. Use the floor tabs at the bottom right, or the Up and Down arrow keys, to move between them."
 msgstr ""

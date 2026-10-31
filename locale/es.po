@@ -81,8 +81,8 @@ msgid "Back to the title screen"
 msgstr "Volver a la pantalla de título"
 
 #: scripts/CityMap.gd:674
-#: scripts/Main.gd:5182
-#: scripts/Main.gd:5218
+#: scripts/Main.gd:5187
+#: scripts/Main.gd:5223
 #: scripts/ResultScreen.gd:52
 msgid "Phase %d of %d"
 msgstr "Fase %d de %d"
@@ -171,7 +171,7 @@ msgid "Studio Funds: %d€"
 msgstr "Fondos del estudio: %d€"
 
 #: scripts/CityMap.gd:2010
-#: scripts/Main.gd:5142
+#: scripts/Main.gd:5147
 msgid "Back to phase %d"
 msgstr "Volver a la fase %d"
 
@@ -309,31 +309,39 @@ msgstr "%s comparten esta zona"
 msgid "%s zone"
 msgstr "Zona de %s"
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:358
 msgid "Kitchen"
 msgstr "Cocina"
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:357
 #: scripts/Inventory.gd:567
 msgid "Bathroom"
 msgstr "Baño"
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 #: scripts/Inventory.gd:356
 msgid "Bedroom"
 msgstr "Dormitorio"
 
-#: scripts/GridDraw.gd:1523
+#: scripts/GridDraw.gd:1545
 msgid "Living room"
 msgstr "Salón"
 
-#: scripts/GridDraw.gd:1253
+#: scripts/GridDraw.gd:415
+msgid "Up"
+msgstr "Sube"
+
+#: scripts/GridDraw.gd:505
+msgid "Down"
+msgstr "Baja"
+
+#: scripts/GridDraw.gd:1275
 msgid "Sloped ceiling: %.2fm to %.2fm"
 msgstr "Techo inclinado: de %.2f m a %.2f m"
 
-#: scripts/GridDraw.gd:1334
+#: scripts/GridDraw.gd:1356
 msgid "%.1f° slope  |  %.2fm → %.2fm over %.1fm  (tiles %d–%d)"
 msgstr "%.1f° de pendiente  |  %.2f m → %.2f m en %.1f m  (casillas %d–%d)"
 
@@ -1009,15 +1017,15 @@ msgstr "Quitar %s significa devolver sus %d€ de alquiler, y solo tienes %d€.
 msgid "This apartment is ready. Still to furnish: %s"
 msgstr "Este piso está listo. Falta amueblar: %s"
 
-#: scripts/Main.gd:5015
+#: scripts/Main.gd:5019
 msgid "The tenant can't walk to: %s"
 msgstr "El inquilino no puede llegar a: %s"
 
-#: scripts/Main.gd:5016
+#: scripts/Main.gd:5020
 msgid "No way to: %s"
 msgstr "No se llega a: %s"
 
-#: scripts/Main.gd:5031
+#: scripts/Main.gd:5035
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
@@ -1025,15 +1033,15 @@ msgstr ""
 "El inquilino no está cómodo con esta distribución.\n"
 "Hay que mover a mano demasiados muebles pesados al cambiar de momento: deja algunos en el mismo sitio en todos los momentos."
 
-#: scripts/Main.gd:5038
+#: scripts/Main.gd:5042
 msgid "Not every need on the bar is ticked yet."
 msgstr "Aún no están marcadas todas las necesidades de la barra."
 
-#: scripts/Main.gd:5040
+#: scripts/Main.gd:5044
 msgid "Still missing:"
 msgstr "Aún falta:"
 
-#: scripts/Main.gd:5049
+#: scripts/Main.gd:5054
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
@@ -1041,45 +1049,45 @@ msgstr ""
 "El inquilino no puede llegar a: %s.\n"
 "Deja un paso de al menos 40 cm desde la puerta hasta el lado desde el que se usa cada pieza."
 
-#: scripts/Main.gd:5104
+#: scripts/Main.gd:5109
 msgid "Phase %d of %d done"
 msgstr "Fase %d de %d completada"
 
-#: scripts/Main.gd:5142
+#: scripts/Main.gd:5147
 msgid "Restart phase %d"
 msgstr "Reiniciar la fase %d"
 
-#: scripts/Main.gd:5226
+#: scripts/Main.gd:5231
 #: scripts/ui/ApplicationFax.gd:293
 #: scripts/ui/dialogue_scene.gd:132
 msgid "You"
 msgstr "Tú"
 
-#: scripts/Main.gd:5468
+#: scripts/Main.gd:5473
 msgid "Click a piece to change its colours."
 msgstr "Haz clic en un mueble para cambiar sus colores."
 
-#: scripts/Main.gd:5521
+#: scripts/Main.gd:5526
 msgid " Back to Results"
 msgstr " Volver a los resultados"
 
-#: scripts/Main.gd:5652
+#: scripts/Main.gd:5657
 msgid "CUSTOM BUILD"
 msgstr "A MEDIDA"
 
-#: scripts/Main.gd:5664
+#: scripts/Main.gd:5669
 msgid "LMB paint · RMB erase"
 msgstr "Clic izq. pintar · Clic der. borrar"
 
-#: scripts/Main.gd:5676
+#: scripts/Main.gd:5681
 msgid "Move"
 msgstr "Mover"
 
-#: scripts/Main.gd:5700
+#: scripts/Main.gd:5705
 msgid "%s  %d€/tile"
 msgstr "%s  %d€/casilla"
 
-#: scripts/Main.gd:6347
+#: scripts/Main.gd:6352
 msgid "Paint tiles on the floor"
 msgstr "Pinta casillas en el suelo"
 
@@ -1322,7 +1330,7 @@ msgid "Loft: %.0f / %.0f, this adds %.0f"
 msgstr "Altillo: %.0f / %.0f, esto suma %.0f"
 
 #: scripts/Room3DView.gd:1750
-#: scripts/Wall.gd:1527
+#: scripts/Wall.gd:1651
 msgid "Outside the room"
 msgstr "Fuera de la habitación"
 
@@ -1344,7 +1352,7 @@ msgstr "Demasiado cerca de una ventana o una puerta"
 
 #: scripts/Room3DView.gd:2213
 #: scripts/RuleOverlay.gd:136
-#: scripts/Wall.gd:1642
+#: scripts/Wall.gd:1780
 msgid "Ceiling too low here"
 msgstr "El techo es demasiado bajo aquí"
 
@@ -1357,7 +1365,7 @@ msgid "Doesn't fit on this wall"
 msgstr "No cabe en esta pared"
 
 #: scripts/Room3DView.gd:2238
-#: scripts/Wall.gd:1622
+#: scripts/Wall.gd:1760
 msgid "Overlaps %s"
 msgstr "Se solapa con %s"
 
@@ -1365,27 +1373,27 @@ msgstr "Se solapa con %s"
 msgid "another item"
 msgstr "otro objeto"
 
-#: scripts/Room3DView.gd:4631
+#: scripts/Room3DView.gd:4683
 msgid "Double-click to step inside"
 msgstr "Doble clic para entrar"
 
-#: scripts/Room3DView.gd:5131
+#: scripts/Room3DView.gd:5184
 msgid "As made"
 msgstr "Original"
 
-#: scripts/Room3DView.gd:5373
+#: scripts/Room3DView.gd:5426
 msgid "Ceiling / Ducts"
 msgstr "Techo / conductos"
 
-#: scripts/Room3DView.gd:5374
+#: scripts/Room3DView.gd:5427
 msgid "Building Subfloor"
 msgstr "Forjado del edificio"
 
-#: scripts/Room3DView.gd:5375
+#: scripts/Room3DView.gd:5428
 msgid "Floor Subfloor / Pipes"
 msgstr "Bajo suelo / tuberías"
 
-#: scripts/Room3DView.gd:5376
+#: scripts/Room3DView.gd:5429
 #: data/levels.json:three_freezers
 #: data/levels.json:day_and_night
 #: data/levels.json:the_inheritance
@@ -1394,11 +1402,11 @@ msgstr "Bajo suelo / tuberías"
 msgid "Roof"
 msgstr "Tejado"
 
-#: scripts/Room3DView.gd:5379
+#: scripts/Room3DView.gd:5432
 msgid "(view in 2D for detail)"
 msgstr "(ver detalles en 2D)"
 
-#: scripts/Room3DView.gd:6874
+#: scripts/Room3DView.gd:6927
 msgid "W A S D to walk · mouse to look around · Shift to hurry · Esc to leave"
 msgstr "W A S D para andar · ratón para mirar · Mayús para ir más rápido · Esc para salir"
 
@@ -1594,68 +1602,84 @@ msgstr "Falta amueblar: %s"
 msgid "Every apartment is ready"
 msgstr "Todos los pisos están listos"
 
-#: scripts/Wall.gd:372
+#: scripts/Wall.gd:341
+msgid "Stairs"
+msgstr "Escalera"
+
+#: scripts/Wall.gd:496
 msgid "needs %s flooring"
 msgstr "necesita suelo de %s"
 
-#: scripts/Wall.gd:1521
+#: scripts/Wall.gd:1645
 msgid "Longer than the loop: it runs into itself"
 msgstr "Más largo que el bucle: choca consigo mismo"
 
-#: scripts/Wall.gd:1534
+#: scripts/Wall.gd:1658
 msgid "Needs %s flooring"
 msgstr "Necesita suelo de %s"
 
-#: scripts/Wall.gd:1537
+#: scripts/Wall.gd:1661
 msgid "Blocked by a wall"
 msgstr "Bloqueado por una pared"
 
-#: scripts/Wall.gd:1542
+#: scripts/Wall.gd:1669
+msgid "On the stairs"
+msgstr "Encima de la escalera"
+
+#: scripts/Wall.gd:1672
+msgid "Over the stairwell"
+msgstr "Sobre el hueco de la escalera"
+
+#: scripts/Wall.gd:1675
+msgid "Keep the stair landing clear"
+msgstr "Deja libre el descansillo de la escalera"
+
+#: scripts/Wall.gd:1680
 msgid "Its back has to be against a wall"
 msgstr "Tiene que ir con la espalda contra una pared"
 
-#: scripts/Wall.gd:1565
+#: scripts/Wall.gd:1703
 msgid "Too tall to go under the loft"
 msgstr "Demasiado alto para ir bajo el altillo"
 
-#: scripts/Wall.gd:1570
+#: scripts/Wall.gd:1708
 msgid "Too heavy for this loft (%.0f / %.0f)"
 msgstr "Demasiado pesado para este altillo (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1578
+#: scripts/Wall.gd:1716
 msgid "Too heavy: what this box stands on would break (%s)"
 msgstr "Demasiado pesado: lo que hay bajo esta caja se rompería (%s)"
 
-#: scripts/Wall.gd:1583
+#: scripts/Wall.gd:1721
 msgid "Needs a table or shelf underneath"
 msgstr "Necesita una mesa o una estantería debajo"
 
-#: scripts/Wall.gd:1588
+#: scripts/Wall.gd:1726
 msgid "Too heavy for %s — it would break (%.0f / %.0f)"
 msgstr "Demasiado pesado para %s: se rompería (%.0f / %.0f)"
 
-#: scripts/Wall.gd:1630
+#: scripts/Wall.gd:1768
 msgid "Keep the steps clear"
 msgstr "Deja libres los escalones"
 
-#: scripts/Wall.gd:1633
+#: scripts/Wall.gd:1771
 msgid "Can't stand across a step"
 msgstr "No puede quedar entre dos alturas"
 
-#: scripts/Wall.gd:1663
+#: scripts/Wall.gd:1801
 msgid "Needs clearance around %s"
 msgstr "Necesita espacio libre alrededor de %s"
 
-#: scripts/Wall.gd:1672
+#: scripts/Wall.gd:1810
 msgid "In the way of the door"
 msgstr "Estorba a la puerta"
 
-#: scripts/Wall.gd:1747
-#: scripts/Wall.gd:1795
+#: scripts/Wall.gd:1885
+#: scripts/Wall.gd:1933
 msgid "Would overlap %s during \"%s\""
 msgstr "Se solaparía con %s durante «%s»"
 
-#: scripts/Wall.gd:1750
+#: scripts/Wall.gd:1888
 msgid "Needs clearance around %s during \"%s\""
 msgstr "Necesita espacio alrededor de %s durante \"%s\""
 
@@ -2071,11 +2095,11 @@ msgstr "Muchas plantas, todas estrechas"
 
 #: data/levels.json:the_tower
 msgid ""
-"The tower has four floors and each one is barely two metres across. The staircase eats a third of every one of them.\n"
+"The tower has four floors and each one is barely two metres across. The staircase zigzags up through it: each floor loses room to the flight going up, to the stairwell of the one coming up, and to the landings at their ends, which have to stay clear.\n"
 "\n"
 "No floor can hold a whole home, so spread it out: one or two needs per floor. Use the floor tabs at the bottom right, or the Up and Down arrow keys, to move between them."
 msgstr ""
-"La torre tiene cuatro plantas y cada una mide apenas dos metros de ancho. La escalera se come un tercio de cada una.\n"
+"La torre tiene cuatro plantas y cada una mide apenas dos metros de ancho. La escalera sube en zigzag: cada planta pierde sitio por el tramo que sube, por el hueco del que llega de abajo y por los descansillos de sus extremos, que tienen que quedar libres.\n"
 "\n"
 "Ninguna planta da para un hogar entero, así que repártelo: una o dos necesidades por planta. Usa las pestañas de planta abajo a la derecha, o las flechas Arriba y Abajo, para moverte entre ellas."
 

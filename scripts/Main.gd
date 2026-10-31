@@ -4999,6 +4999,10 @@ func _update_accessibility() -> void:
 	for f in blocked:
 		if not (f as Furniture).furniture_name in names:
 			names.append((f as Furniture).furniture_name)
+	for fid in _floors:
+		for n in (_floors[fid] as Floor).unreachable_stairs():
+			if not n in names:
+				names.append(n)
 	if names != _unreachable_names:
 		_unreachable_names = names
 		if _level_has_goal():
@@ -5019,7 +5023,7 @@ func _bar_rules() -> Array:
 
 func _all_furniture_accessible() -> bool:
 	for fid in _floors:
-		if (_floors[fid] as Floor).get_inaccessible_furniture().size() > 0:
+		if (_floors[fid] as Floor).get_inaccessible_furniture().size() > 0 				or not (_floors[fid] as Floor).unreachable_stairs().is_empty():
 			return false
 	return true
 
@@ -5046,6 +5050,7 @@ func _on_rent_pressed() -> void:
 		for fid in _floors:
 			for f in (_floors[fid] as Floor).get_inaccessible_furniture():
 				stuck.append((f as Furniture).furniture_name)
+			stuck.append_array((_floors[fid] as Floor).unreachable_stairs())
 		result_screen.show_failure(tr("The tenant can't walk to: %s.\nLeave a path at least 40 cm wide from the door to the side each piece is used from.") % Loc.join_list(Array(stuck)))
 		_refresh_undo_redo_buttons()
 		return

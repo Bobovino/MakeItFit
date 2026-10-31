@@ -20,7 +20,8 @@ extends Node
 # "RESULT: OK" or "RESULT: FAIL".
 
 const ERROR_PREFIXES := ["Overlaps", "Outside the room", "Blocked by a wall", "Needs bathroom flooring",
-	"Needs balcony flooring", "Must be placed against a wall", "Keep the steps clear", "Can't stand across a step"]
+	"Needs balcony flooring", "Must be placed against a wall", "Keep the steps clear", "Can't stand across a step",
+	"On the stairs", "Over the stairwell", "Keep the stair landing clear"]
 
 
 func _ready() -> void:
@@ -133,6 +134,24 @@ func _ready() -> void:
 					errors += 1
 					lines.append("    ERROR  the %+d cm level around (%d, %d) on %s: no steps lead onto it" % [
 						(rd["level"] as int) * 10, int((rd["center"] as Vector2).x), int((rd["center"] as Vector2).y), fid])
+		# Stairs between floors: each needs a landing at its foot and where it
+		# arrives (Floor.stair_layout), and the one at its foot can be walked
+		# to: else nobody gets upstairs.
+		for fid in main._floors:
+			var stfl: Floor = main._floors[fid]
+			var level_flights := stfl.stairs_data.filter(func(e): return not (e as Dictionary).has("furniture") 				and (e as Dictionary).get("target", "loft") == "floor")
+			var landings := stfl.stair_layout()["landings"] as Array
+			var ups := landings.filter(func(l): return (l as Dictionary)["up"]).size()
+			var downs := landings.size() - ups
+			if ups < level_flights.size():
+				errors += 1
+				lines.append("    ERROR  stairs on %s: no room for a landing at the foot of a flight" % fid)
+			if downs < stfl.stair_openings.filter(func(e): return (e as Dictionary).get("target", "loft") == "floor").size():
+				errors += 1
+				lines.append("    ERROR  stairs on %s: no room for a landing where a flight arrives" % fid)
+			for n in stfl.unreachable_stairs():
+				errors += 1
+				lines.append("    ERROR  stairs on %s: the foot of the flight up can't be walked to" % fid)
 		# A starting piece the tenant can't walk to is an error too.
 		for fid in main._floors:
 			var pfl: Floor = main._floors[fid]

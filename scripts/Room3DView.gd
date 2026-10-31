@@ -4384,8 +4384,60 @@ func _add_sloped_ceiling(bounds: Rect2i) -> void:
 
 
 func _add_floor(w: float, d: float) -> void:
-	_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
+	var holes: Array[Rect2i] = []
+	if _apt_floor:
+		for op in _apt_floor.stair_openings:
+			holes.append(((op as Dictionary)["rect"] as Rect2i).intersection(_room_bounds))
+	if holes.is_empty():
+		_box(Vector3(w, 0.05, d), Vector3(w * 0.5, -0.025, d * 0.5), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
+	else:
+		# A stairwell: the slab around it, the flight from below seen down it.
+		for r in _slab_around(_room_bounds, holes):
+			var size := Vector3(r.size.x * TILE_M, 0.05, r.size.y * TILE_M)
+			_box(size, Vector3((r.position.x - _room_bounds.position.x) * TILE_M + size.x * 0.5, -0.025,
+				(r.position.y - _room_bounds.position.y) * TILE_M + size.z * 0.5), Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
 	_add_grid_overlay(w, d)
+
+
+# `area` less `holes`, as rects: each row's runs of floor, a run joined to
+# the one above it when they line up.
+static func _slab_around(area: Rect2i, holes: Array[Rect2i]) -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	var open: Dictionary = {}   # Vector2i(x0, x1) -> index in out, runs of the row above
+	for y in range(area.position.y, area.end.y):
+		var runs: Array[Vector2i] = []
+		var x := area.position.x
+		while x < area.end.x:
+			var hole := false
+			for h in holes:
+				if h.has_point(Vector2i(x, y)):
+					hole = true
+					break
+			if hole:
+				x += 1
+				continue
+			var x0 := x
+			while x < area.end.x:
+				var in_hole := false
+				for h in holes:
+					if h.has_point(Vector2i(x, y)):
+						in_hole = true
+						break
+				if in_hole:
+					break
+				x += 1
+			runs.append(Vector2i(x0, x))
+		var next: Dictionary = {}
+		for run in runs:
+			if open.has(run):
+				var i: int = open[run]
+				out[i] = Rect2i(out[i].position, out[i].size + Vector2i(0, 1))
+				next[run] = i
+			else:
+				out.append(Rect2i(run.x, y, run.y - run.x, 1))
+				next[run] = out.size() - 1
+		open = next
+	return out
 
 
 # A tile-aligned grid, hidden by default and only shown while a piece is
@@ -4704,14 +4756,14 @@ func _add_stairs(bounds: Rect2i) -> void:
 		_add_stair_flight(entry as Dictionary, bounds, full_h, 0.0, false)
 
 
-func _add_stair_model(ed: Dictionary, bounds: Rect2i, full_h: float) -> bool:
+func _add_stair_model(ed: Dictionary, bounds: Rect2i, full_h: float, y_offset := 0.0) -> bool:
 	var dir := ed.get("direction", "north") as String
 	var path := _find_furniture_data(_catalog, "stair_%s" % dir.substr(0, 1)).get("model", "") as String
 	if path.is_empty() or not ResourceLoader.exists(path):
 		return false
 	var r := ed["rect"] as Rect2i
 	var size := Vector3(r.size.x * TILE_M, full_h, r.size.y * TILE_M)
-	var pos := Vector3((r.position.x - bounds.position.x) * TILE_M + size.x * 0.5, full_h * 0.5,
+	var pos := Vector3((r.position.x - bounds.position.x) * TILE_M + size.x * 0.5, y_offset + full_h * 0.5,
 		(r.position.y - bounds.position.y) * TILE_M + size.z * 0.5)
 	var mi := _box(size, pos, STAIR_FLOOR_COL)
 	mi.set_meta("style_role", StyleController.ROLE_FURNITURE)
@@ -4776,7 +4828,11 @@ func _add_ghost_stairs(below_floor: Floor, bounds: Rect2i) -> void:
 		var ed := entry as Dictionary
 		if (ed.get("target", "loft") as String) != want_target:
 			continue
-		_add_stair_flight(ed, bounds, full_h, y_off, true)
+		# Up a stairwell the flight is really there, seen through the hole:
+		# the same staircase as on the floor below.
+		if want_target == "floor" and _add_stair_model(ed, bounds, full_h, y_off):
+			continue
+		_add_stair_flight(ed, bounds, full_h, y_off, want_target == "loft")
 
 
 # Windows/doors are only used for restricted-zone math (blocking wall-item

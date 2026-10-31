@@ -217,6 +217,130 @@ func _unregister_stair(furniture: Furniture) -> void:
 			kept.append(entry)
 	stairs_data = kept
 
+
+# ── Stairs between floors ────────────────────────────────────────────────────
+# A level's own staircase (stairs_data without a furniture piece) and the
+# stairwell a staircase from the floor below comes up through
+# (stair_openings) are solid: nothing stands on them and nobody walks across
+# them. Each staircase to a whole floor (not a loft's) needs a landing kept
+# clear, STAIR_LANDING deep and as wide as the flight: on its own floor in front of the first step, and on the floor
+# it arrives at past the last one — straight on, or to one side when a wall
+# is in the way. Upper floors are walked from that arrival landing, and the
+# landing in front of a staircase going up has to be reached from there.
+const STAIR_LANDING := 8   # tiles (80 cm)
+
+var _stair_cache_key := -1
+var _stair_cache := {}
+
+
+# {solid: {Vector2i: "flight" | "well"}, landings: [{tiles: Array[Vector2i],
+#  up: bool}]} — up: in front of this floor's own staircase going up (false:
+# where one from below arrives).
+func stair_layout() -> Dictionary:
+	var key := hash([segments.hash(), stairs_data.size(), str(stair_openings), floor_mask.size()])
+	if key == _stair_cache_key:
+		return _stair_cache
+	var solid := {}
+	for entry in stairs_data:
+		if (entry as Dictionary).has("furniture"):
+			continue   # a staircase piece: furniture, with its own rules
+		for t in _rect_list(entry["rect"] as Rect2i):
+			solid[t] = "flight"
+	for entry in stair_openings:
+		for t in _rect_list(entry["rect"] as Rect2i):
+			solid[t] = "well"
+	# Landings for stairs between whole floors; a loft's arrive at its edge.
+	var landings: Array = []
+	for entry in stairs_data:
+		if not (entry as Dictionary).has("furniture") and (entry as Dictionary).get("target", "loft") == "floor":
+			var tiles := _stair_landing(entry as Dictionary, false, solid)
+			if not tiles.is_empty():
+				landings.append({"tiles": tiles, "up": true})
+	for entry in stair_openings:
+		if (entry as Dictionary).get("target", "loft") != "floor":
+			continue
+		var tiles := _stair_landing(entry as Dictionary, true, solid)
+		if not tiles.is_empty():
+			landings.append({"tiles": tiles, "up": false})
+	_stair_cache_key = key
+	_stair_cache = {"solid": solid, "landings": landings}
+	return _stair_cache
+
+
+# Every tile kept clear on a landing.
+func stair_landing_tiles() -> Dictionary:
+	var out := {}
+	for l in stair_layout()["landings"] as Array:
+		for t in (l as Dictionary)["tiles"] as Array:
+			out[t] = true
+	return out
+
+
+func _rect_list(r: Rect2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for x in range(r.position.x, r.end.x):
+		for y in range(r.position.y, r.end.y):
+			out.append(Vector2i(x, y))
+	return out
+
+
+# The landing at the bottom (top = false) or top of a flight: straight on if
+# it fits on the floor, else beside that end of the flight, either side. []
+# when there is no room for one (the validator reports it).
+func _stair_landing(entry: Dictionary, top: bool, solid: Dictionary) -> Array[Vector2i]:
+	var r := entry["rect"] as Rect2i
+	var dir := entry.get("direction", "north") as String
+	var along := r.size.y if dir in ["north", "south"] else r.size.x   # length of the run
+	var across := r.size.x if dir in ["north", "south"] else r.size.y  # width of the flight
+	var side := mini(across, along)
+	var L := STAIR_LANDING
+	# Rects in the flight's own frame: u across it, v along it, v = 0 the
+	# first step. Straight on first, then each side of that end.
+	var cands: Array = []
+	if top:
+		cands = [Rect2i(0, along, across, L), Rect2i(across, along - side, L, side), Rect2i(-L, along - side, L, side)]
+	else:
+		cands = [Rect2i(0, -L, across, L), Rect2i(across, 0, L, side), Rect2i(-L, 0, L, side)]
+	var walls := _partition_tile_set()
+	for c in cands:
+		var tiles: Array[Vector2i] = []
+		var ok := true
+		for u in range((c as Rect2i).position.x, (c as Rect2i).end.x):
+			for v in range((c as Rect2i).position.y, (c as Rect2i).end.y):
+				var t: Vector2i
+				match dir:
+					"north": t = Vector2i(r.position.x + u, r.end.y - 1 - v)
+					"south": t = Vector2i(r.position.x + u, r.position.y + v)
+					"east":  t = Vector2i(r.position.x + v, r.position.y + u)
+					_:       t = Vector2i(r.end.x - 1 - v, r.position.y + u)
+				if not is_floor_tile(t) or walls.has(t) or solid.has(t):
+					ok = false
+					break
+				tiles.append(t)
+			if not ok:
+				break
+		if ok:
+			return tiles
+	return []
+
+
+# Whether the landing in front of each staircase going up from this floor
+# can be walked to; the names of those that can't ("Stairs").
+func unreachable_stairs() -> Array:
+	var out: Array = []
+	var reached := get_reachable_floor()
+	for l in stair_layout()["landings"] as Array:
+		if not (l as Dictionary)["up"]:
+			continue
+		var got := false
+		for t in (l as Dictionary)["tiles"] as Array:
+			if reached.has(t):
+				got = true
+				break
+		if not got:
+			out.append(tr("Stairs"))
+	return out
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Ceiling and floor heights ──────────────────────────────────────────────
@@ -1536,6 +1660,20 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 		if tile in blocked:
 			_block_reason = tr("Blocked by a wall")
 			return false
+	var stairs := stair_layout()
+	if not (stairs["solid"] as Dictionary).is_empty() or not (stairs["landings"] as Array).is_empty():
+		var landing := stair_landing_tiles()
+		for tile in _rect_tiles(at, furniture.grid_w, furniture.grid_h):
+			match (stairs["solid"] as Dictionary).get(tile, ""):
+				"flight":
+					_block_reason = tr("On the stairs")
+					return false
+				"well":
+					_block_reason = tr("Over the stairwell")
+					return false
+			if landing.has(tile) and not furniture.walkable:
+				_block_reason = tr("Keep the stair landing clear")
+				return false
 
 	# (A piece on a rail is meant to slide out into the room: exempt.)
 	if furniture.wall_flush_required and not on_a_rail(furniture, at) and not backs_onto_wall(furniture, at):
@@ -2253,6 +2391,16 @@ func carry_hints(carried: Furniture) -> Dictionary:
 		if fur == carried or fur.ghost_radius <= 0:
 			continue
 		out["clearance"].append(Rect2(fur.grid_pos, Vector2(fur.grid_w, fur.grid_h)).grow(float(fur.ghost_radius)))
+	var stairs := stair_layout()
+	if not carried.walkable:
+		for l in stairs["landings"] as Array:
+			var tiles := (l as Dictionary)["tiles"] as Array
+			var lr := Rect2(Vector2(tiles[0] as Vector2i), Vector2.ONE)
+			for t in tiles:
+				lr = lr.merge(Rect2(Vector2(t as Vector2i), Vector2.ONE))
+			out["clearance"].append(lr)
+	for t in stairs["solid"] as Dictionary:
+		out["bad_floor"].append(t)
 	var b := get_room_bounds()
 	var check_floor := not carried.is_nested_box and (carried.floor_category != "any" or has_floor_kind("balcony"))
 	var height_m := carried.body_h * 0.1
@@ -3037,6 +3185,12 @@ func _compute_reachable_floor() -> Dictionary:
 		for x in w:
 			var t := Vector2i(x0 + x, y0 + y)
 			solid[y * w + x] = 1 if (not is_floor_tile(t) or walls.has(t)) else 0
+	var stairs := stair_layout()
+	for t in stairs["solid"] as Dictionary:   # nobody walks across a flight or a stairwell
+		var lx := (t as Vector2i).x - x0
+		var ly := (t as Vector2i).y - y0
+		if lx >= 0 and ly >= 0 and lx < w and ly < h:
+			solid[ly * w + lx] = 1
 	for entry in _placed_continuous:
 		var f: Furniture = entry["furniture"]
 		if not blocks_walking(f):
@@ -3092,6 +3246,16 @@ func _compute_reachable_floor() -> Dictionary:
 			var door := Vector2i(sx1, mini(sy1, sy2) + i) if sx1 == sx2 else Vector2i(mini(sx1, sx2) + i, sy1)
 			for ay in range(door.y - y0 - WALK_WIDTH, door.y - y0 + 2):
 				for ax in range(door.x - x0 - WALK_WIDTH, door.x - x0 + 2):
+					if ax >= 0 and ay >= 0 and ax < aw and ay < ah and clear[ay * aw + ax] == 1:
+						seeds.append(ay * aw + ax)
+
+	# Upper floors: also from where a staircase from below arrives.
+	for l in stairs["landings"] as Array:
+		if (l as Dictionary)["up"]:
+			continue
+		for t in (l as Dictionary)["tiles"] as Array:
+			for ay in range((t as Vector2i).y - y0 - WALK_WIDTH + 1, (t as Vector2i).y - y0 + 1):
+				for ax in range((t as Vector2i).x - x0 - WALK_WIDTH + 1, (t as Vector2i).x - x0 + 1):
 					if ax >= 0 and ay >= 0 and ax < aw and ay < ah and clear[ay * aw + ax] == 1:
 						seeds.append(ay * aw + ax)
 

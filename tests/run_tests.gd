@@ -28,6 +28,7 @@ func _ready() -> void:
 	await _t_progress_round_trip()
 	await _t_won_flat_reopens_on_results()
 	await _t_unreachable_piece_in_bar()
+	await _t_tower_stairs()
 	await _t_project_needs_every_apartment()
 	await _t_box_on_a_surface()
 	await _t_outside_walls()
@@ -1008,6 +1009,59 @@ func _t_unreachable_piece_in_bar() -> void:
 	main._refresh_functions()
 	_current = "unreachable: the chip goes once there's a way again"
 	_ok(fl.get_inaccessible_furniture().is_empty() and (main.tenant_card._chips_by_req.get("reach", []) as Array).is_empty())
+	main.queue_free()
+	await get_tree().process_frame
+
+
+# The Tower's stairs zigzag up: on the first floor the flight from the
+# ground floor arrives through a stairwell and the next flight starts beside
+# it. Neither takes furniture, each end keeps a landing clear, the floor is
+# walked from where the stairs arrive, and the foot of the flight up has to
+# stay reachable.
+func _t_tower_stairs() -> void:
+	GameState.pending_level_id = "the_tower"
+	GameState.reduce_motion = true
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors["fl_1"]
+	var layout := fl.stair_layout()
+	var solid := layout["solid"] as Dictionary
+	_current = "tower stairs: the first floor has its own flight and the stairwell of the one below, apart"
+	_ok(solid.values().has("flight") and solid.values().has("well") and (layout["landings"] as Array).size() == 2)
+	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+	fl.remove_furniture(stool)
+	var where := {}
+	for t in solid:
+		where[solid[t]] = t
+	where["landing"] = fl.stair_landing_tiles().keys()[0]
+	for kind in ["flight", "well", "landing"]:
+		_current = "tower stairs: no furniture on the %s" % kind
+		_ok(not fl.can_place(stool, Vector2(where[kind] as Vector2i)), fl.get_block_reason())
+	var reached := fl.get_reachable_floor()
+	_current = "tower stairs: the floor is walked from where the stairs arrive, and the way up is reached"
+	_ok(fl.stair_landing_tiles().keys().any(func(t): return reached.has(t)) and fl.unreachable_stairs().is_empty())
+	# On the ground floor, pieces put down until the door no longer leads to
+	# the foot of the stairs: the bar says so, and renting out waits.
+	fl = main._floors["fl_0"]
+	var b := fl.get_room_bounds()
+	for y in range(b.end.y - 1, b.position.y - 1, -1):
+		for x in range(b.position.x, b.end.x):
+			if not fl.unreachable_stairs().is_empty():
+				break
+			var w: Furniture = main._spawn_furniture("stool", fl, 0, 0)
+			fl.remove_furniture(w)
+			if fl.can_place(w, Vector2(x, y)):
+				fl.place_furniture(w, Vector2(x, y))
+			else:
+				w.queue_free()
+	main._update_accessibility()
+	main._refresh_functions()
+	_current = "tower stairs: cut off from the flight up, the bar names the stairs"
+	var chips: Array = main.tenant_card._chips_by_req.get("reach", [])
+	_ok(not fl.unreachable_stairs().is_empty() and chips.size() == 1 and not main._all_furniture_accessible(),
+		"stairs cut %s, chips %d, pieces %d" % [fl.unreachable_stairs(), chips.size(), fl.get_all_furniture().size()])
 	main.queue_free()
 	await get_tree().process_frame
 

@@ -411,6 +411,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), _snos, 1.5)
 		# Outer border
 		draw_rect(Rect2(_srx, _sry, _srw, _srh), _sbdr, false, 2.0)
+		if _tgt == "floor":
+			_draw_stair_word(_r, _dir, false, tr("Up"), _sarr)
 		# Ascent arrow; floor stairs also get a second inner chevron (↑↑) to signal full floor
 		var _scx := _srx + _srw * 0.5
 		var _scy := _sry + _srh * 0.5
@@ -471,10 +473,11 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			draw_line(Vector2(_trx + _ts, _tpy), Vector2(_trx + _ts, _tpy + _ts), STAIR_BORDER, 1.5)
 
 	# ── 2d. Stair openings (loft floors — same footprint as floor stair, descent arrow) ─
-	const SO_FILL   := Color(0.40, 0.50, 0.80, 0.65)
-	const SO_BORDER := Color(0.20, 0.30, 0.70, 1.00)
-	const SO_NOSING := Color(0.20, 0.30, 0.70, 0.60)
-	const SO_ARROW  := Color(0.05, 0.10, 0.50, 1.00)
+	# A hole in this floor: dark, the steps of the flight below seen down it.
+	const SO_FILL   := Color(0.14, 0.16, 0.24, 0.62)
+	const SO_BORDER := Color(0.10, 0.12, 0.20, 1.00)
+	const SO_NOSING := Color(0.78, 0.58, 0.22, 0.55)
+	const SO_ARROW  := Color(0.96, 0.92, 0.82, 1.00)
 	for _op in parent.stair_openings:
 		var _opd   := _op as Dictionary
 		var _opr   := _opd["rect"] as Rect2i
@@ -498,6 +501,8 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 					var _nx := _srx + float(_s * STEP_DEPTH * TILE_SIZE)
 					draw_line(Vector2(_nx, _sry), Vector2(_nx, _sry + _srh), SO_NOSING, 1.5)
 		draw_rect(Rect2(_srx, _sry, _srw, _srh), SO_BORDER, false, 2.0)
+		if (_opd.get("target", "loft") as String) == "floor":
+			_draw_stair_word(_opr, _opdir, true, tr("Down"), SO_ARROW)
 		# Arrow pointing in DESCENT direction — mirrors ground-floor arrow but opposite end
 		# Ground floor: "north"→↑ tip at top | "south"→↓ tip at bottom
 		#               "east"→→ tip at right | "west"→← tip at left
@@ -523,6 +528,23 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 				draw_line(Vector2(_srx + float(TILE_SIZE), _scy), _tip, SO_ARROW, 2.5)
 				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y - _aw * 0.5), SO_ARROW, 2.0)
 				draw_line(_tip, Vector2(_tip.x - _aw, _tip.y + _aw * 0.5), SO_ARROW, 2.0)
+
+	# ── 2d'. Stair landings (Floor.stair_layout): floor kept clear at the foot
+	# of a flight and where one arrives, a dashed outline like a clearance.
+	const LANDING_FILL := Color(0.78, 0.58, 0.22, 0.10)
+	const LANDING_LINE := Color(0.65, 0.42, 0.10, 0.85)
+	# Landings that meet (one arriving where the next flight starts) read as
+	# one area: the outline goes round them together.
+	var _land := parent.stair_landing_tiles()
+	for _t in _land:
+		var _v := _t as Vector2i
+		var _o := Vector2(_v * TILE_SIZE)
+		var _ts := float(TILE_SIZE)
+		draw_rect(Rect2(_o, Vector2(_ts, _ts)), LANDING_FILL)
+		for _e in [[Vector2i(0, -1), _o, _o + Vector2(_ts, 0)], [Vector2i(0, 1), _o + Vector2(0, _ts), _o + Vector2(_ts, _ts)],
+				[Vector2i(-1, 0), _o, _o + Vector2(0, _ts)], [Vector2i(1, 0), _o + Vector2(_ts, 0), _o + Vector2(_ts, _ts)]]:
+			if not _land.has(_v + (_e[0] as Vector2i)):
+				draw_dashed_line(_e[1], _e[2], LANDING_LINE, 1.5, 3.0)
 
 	# ── 2e. Rail tracks ──────────────────────────────────────────────────────
 	# A sliding door's floor guide: one thin line with a stop at each end. The
@@ -1631,10 +1653,36 @@ func _draw_light_layer() -> void:
 	var ts := float(TILE_SIZE)
 	var night := Floor.is_night_moment(Furniture.active_moment_id)
 	var col := LAMP_COL if night else LIGHT_COL
+	var well := parent.stair_layout()["solid"] as Dictionary
 	for t in light:
 		var v := t as Vector2i
+		if well.has(v):
+			continue   # stairs and stairwells: drawn on their own, the light only muddled them
 		var k := LIGHT_STRENGTH * clampf(light[t] as float, 0.0, 1.0)
 		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(col, k))
+
+
+# "Up" at the foot of a flight, "Down" at the top of the stairwell one comes
+# up through: where each is walked onto, as on an architect's plan.
+func _draw_stair_word(r: Rect2i, dir: String, top: bool, word: String, col: Color) -> void:
+	var font := ThemeDB.fallback_font
+	var fs := maxi(8, int(TILE_SIZE * 1.3))
+	var sz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+	var inset := float(TILE_SIZE) * 1.4
+	# The foot of a "north" flight is its south edge, and so on.
+	var at_end := {"north": "s", "south": "n", "east": "w", "west": "e"}[dir] as String
+	if top:
+		at_end = {"s": "n", "n": "s", "w": "e", "e": "w"}[at_end] as String
+	var c := px.get_center()
+	match at_end:
+		"s": c.y = px.end.y - inset
+		"n": c.y = px.position.y + inset
+		"w": c.x = px.position.x + inset + sz.x * 0.5
+		"e": c.x = px.end.x - inset - sz.x * 0.5
+	var at := c + Vector2(-sz.x * 0.5, sz.y * 0.3)
+	draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0.10, 0.08, 0.04, 0.55))
+	draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 0.97, 0.88))
 
 
 # Sunlight: a warm yellow wash over the white plan, strong enough to show
