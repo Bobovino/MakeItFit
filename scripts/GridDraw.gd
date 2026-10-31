@@ -1077,14 +1077,13 @@ func _wall_item_above_cut(o: Vector2i, fid: String) -> bool:
 const WALL_ITEM_TOP_TILES := 24   # the wall's height, which hung pieces measure down from
 
 
-func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float, above := false) -> void:
+# Where a piece hung on a wall lies on the plan, in pixels (empty if unknown).
+func _wall_item_rect(bounds: Rect2i, edge: String, o: Vector2i, fid: String) -> Rect2:
 	var fdata := _gm.get_furniture_by_id(fid)
 	if fdata.is_empty():
-		return
+		return Rect2()
 	var iw: int    = fdata["size"]["w"] as int
 	var depth: int = fdata.get("floor_depth", 1) as int
-	var col        := Color("#" + (fdata.get("color", "aaaaaa") as String))
-	col.a = alpha
 	var rect: Rect2
 	match edge:
 		"north":
@@ -1102,20 +1101,36 @@ func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String,
 			rect = Rect2((bounds.position.x + bounds.size.x) * TILE_SIZE - depth * TILE_SIZE,
 				(bounds.position.y + o.x) * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE)
 		_:
-			return
-	if above:   # over the furniture, see-through
-		_over_layer.draw_rect(rect, Color(col, Furniture.ABOVE_CUT_ALPHA))
-		_over_layer.draw_rect(rect, Color(0, 0, 0, 0.40 * Furniture.ABOVE_CUT_ALPHA), false, 1.0)
+			return Rect2()
+	return rect
+
+
+func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float, above := false) -> void:
+	var fdata := _gm.get_furniture_by_id(fid)
+	if fdata.is_empty():
+		return
+	var col        := Color("#" + (fdata.get("color", "aaaaaa") as String))
+	col.a = alpha
+	var rect := _wall_item_rect(bounds, edge, o, fid)
+	if rect.size == Vector2.ZERO:
+		return
+	if above:   # over the furniture
+		col.a = 1.0
+		_over_layer.draw_rect(rect, col)
+		_over_layer.draw_rect(rect, Color(0, 0, 0, 0.40), false, 1.0)
 		return
 	draw_rect(rect, col)
 	draw_rect(rect, Color(0, 0, 0, 0.40), false, 1.0)
 
 
 # ── Above the cut ────────────────────────────────────────────────────────────
-# A plan is a cut through the room at about a metre (Furniture.PLAN_CUT_TILES):
-# what is below it is drawn whole, what is above it — the high treads of an
-# open staircase, a cabinet hung over a worktop — as usual but see-through,
-# over the furniture, so the piece under it still reads.
+# A plan is a cut through the room at about a metre (Furniture.PLAN_CUT_TILES).
+# What is above it — the high treads of an open staircase, a cabinet hung over
+# a worktop, a high bed — is drawn whole, over the furniture; a piece it hides
+# shows through it as a silhouette, only where it is hidden: a pale tint and
+# its own edges in one colour, as a strategy game shows a unit behind a
+# castle.
+const HIDDEN_COL := Color(0.20, 0.45, 0.95)
 var _over_layer: Node2D = null
 
 func _tread_above_cut(i: int, steps: int) -> bool:
@@ -1127,6 +1142,7 @@ func _draw_over_layer() -> void:
 	if parent == null or not parent.visible:
 		return
 	var ci := _over_layer
+	var covers: Array = []   # [Rect2] in plan pixels: what above the cut hides the floor under it
 	const FILL := Color(0.78, 0.58, 0.22, 0.80)   # GridDraw's floor-stair amber
 	for e in parent.stairs_data:
 		var ed := e as Dictionary
@@ -1150,7 +1166,8 @@ func _draw_over_layer() -> void:
 				"east":  a = Vector2(px.position.x + v0 * px.size.x, px.position.y); b = Vector2(px.position.x + v1 * px.size.x, px.end.y)
 				_:       a = Vector2(px.end.x - v1 * px.size.x, px.position.y); b = Vector2(px.end.x - v0 * px.size.x, px.end.y)
 			var shade := FILL.lerp(Color.WHITE, 0.35 * (float(i) + 0.5) / steps)
-			ci.draw_rect(Rect2(a, b - a), Color(shade, Furniture.ABOVE_CUT_ALPHA))
+			ci.draw_rect(Rect2(a, b - a), Color(shade, 1.0))
+			covers.append(Rect2(a, b - a))
 	if _gm != null:
 		var bounds := parent.get_room_bounds()
 		for edge in parent.wall_items:
@@ -1158,6 +1175,50 @@ func _draw_over_layer() -> void:
 			for origin in items:
 				if _wall_item_above_cut(origin as Vector2i, items[origin] as String):
 					_draw_one_wall_item(bounds, edge, origin as Vector2i, items[origin] as String, 1.0, true)
+					var wr := _wall_item_rect(bounds, edge, origin as Vector2i, items[origin] as String)
+					if wr.size != Vector2.ZERO:
+						covers.append(wr)
+	for f in parent.get_all_furniture():
+		if (f as Furniture).above_cut():
+			covers.append(_piece_rect(f as Furniture))
+	if covers.is_empty():
+		return
+	# What they hide.
+	for f in parent.get_all_furniture():
+		var fur := f as Furniture
+		if fur.above_cut() or fur.overhead or fur._dragging:
+			continue
+		var fr := _piece_rect(fur)
+		for c in covers:
+			var cr := c as Rect2
+			var hid := fr.intersection(cr)
+			if hid.size.x < 1.0 or hid.size.y < 1.0:
+				continue
+			ci.draw_rect(hid, Color(HIDDEN_COL, 0.22))
+			# Its own edges, where they run under the cover.
+			for edge in [[fr.position, Vector2(fr.end.x, fr.position.y)], [Vector2(fr.position.x, fr.end.y), fr.end],
+					[fr.position, Vector2(fr.position.x, fr.end.y)], [Vector2(fr.end.x, fr.position.y), fr.end]]:
+				var a: Vector2 = edge[0]
+				var b: Vector2 = edge[1]
+				if a.y == b.y:
+					if a.y < cr.position.y - 0.5 or a.y > cr.end.y + 0.5:
+						continue
+					var x0 := maxf(a.x, cr.position.x)
+					var x1 := minf(b.x, cr.end.x)
+					if x1 > x0:
+						ci.draw_line(Vector2(x0, a.y), Vector2(x1, a.y), HIDDEN_COL, 1.6)
+				else:
+					if a.x < cr.position.x - 0.5 or a.x > cr.end.x + 0.5:
+						continue
+					var y0 := maxf(a.y, cr.position.y)
+					var y1 := minf(b.y, cr.end.y)
+					if y1 > y0:
+						ci.draw_line(Vector2(a.x, y0), Vector2(a.x, y1), HIDDEN_COL, 1.6)
+
+
+# A piece's footprint in plan pixels.
+func _piece_rect(f: Furniture) -> Rect2:
+	return Rect2(f.position, Vector2(f.grid_w, f.grid_h) * TILE_SIZE)
 
 
 func _draw_wall_feature(wall_def: Dictionary, w: int, h: int) -> void:

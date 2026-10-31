@@ -100,12 +100,10 @@ var body_h: float = 8.0
 # draws it that far up so it shows over its table. Floor keeps it current.
 var stack_z: int = 0
 # The plan is a cut through the room at a metre: a piece standing above it
-# (a high bed, raised over the floor) is drawn as usual but see-through, over
-# what is under it, and solid while the cursor is on it (it is what a click
-# there picks up).
+# (a high bed, raised over the floor) is drawn whole over what is under it,
+# and what it hides shows through it as a silhouette (GridDraw's over layer),
+# the way a strategy game shows a unit behind a castle.
 const PLAN_CUT_TILES := 10
-const ABOVE_CUT_ALPHA := 0.45
-var _cut_hover := false
 
 func above_cut() -> bool:
 	return not overhead and z_bottom >= PLAN_CUT_TILES
@@ -696,10 +694,6 @@ func _draw() -> void:
 	if overhead:
 		_draw_overhead(float(w), float(h), ink)
 		return
-	var see_through := above_cut() and not _cut_hover and not _dragging
-	var want := Color(1, 1, 1, ABOVE_CUT_ALPHA) if see_through else Color.WHITE
-	if self_modulate != want:
-		self_modulate = want
 
 	var cw := float(w if rot_steps % 2 == 0 else h)
 	var ch := float(h if rot_steps % 2 == 0 else w)
@@ -1794,11 +1788,6 @@ func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and above_cut() and is_visible_in_tree():
-		var over := Rect2(Vector2.ZERO, Vector2(grid_w, grid_h) * TILE_SIZE).has_point(get_local_mouse_position())
-		if over != _cut_hover:
-			_cut_hover = over
-			queue_redraw()
 	# Double-click a nested box to step inside. Checked before the read-only
 	# gate because entering isn't an edit (the mini-plan cards allow it in the
 	# post-win view too), and before the drag code so the second press doesn't
