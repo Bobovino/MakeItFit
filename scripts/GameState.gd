@@ -10,6 +10,10 @@ const SAVE_VERSION := 2
 # Where the save lives; tests point it elsewhere so they never touch the
 # player's own.
 var save_path := SAVE_PATH
+# Runs started by tools rather than by the player — the test suite and any
+# scripted check, headless, or a windowed one launched with `-- --agent-save`
+# — play on a fresh copy of the player's save here and never write theirs.
+const AGENT_SAVE_DIR := "user://agent/"
 
 var company_funds: int = 0
 var portfolio_rent: int = 0
@@ -148,11 +152,31 @@ func _ready() -> void:
 	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	Engine.max_fps = FPS_ACTIVE
 	_apply_global_font()
+	if is_agent_run():
+		_use_agent_save()
 	load_game()
 	Loc.apply(language)
 	_apply_ui_scale()
 	for _lid in DEFAULT_OWNED:
 		own_level(_lid)
+
+
+static func is_agent_run() -> bool:
+	return DisplayServer.get_name() == "headless" or "--agent-save" in OS.get_cmdline_user_args()
+
+
+# The player's save (and its backup) copied over whatever an earlier run
+# left, so each run starts from where the player is, and saves land here.
+func _use_agent_save() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(AGENT_SAVE_DIR))
+	save_path = AGENT_SAVE_DIR + "save.json"
+	for suffix in ["", ".bak", ".tmp"]:
+		var mine := ProjectSettings.globalize_path(save_path + suffix)
+		var theirs := ProjectSettings.globalize_path(SAVE_PATH + suffix)
+		if FileAccess.file_exists(mine):
+			DirAccess.remove_absolute(mine)
+		if suffix != ".tmp" and FileAccess.file_exists(theirs):
+			DirAccess.copy_absolute(theirs, mine)
 
 
 func _apply_ui_scale() -> void:

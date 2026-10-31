@@ -22,6 +22,7 @@ func _ready() -> void:
 	# The checks compare against the English source text (block reasons), so
 	# they must not follow the machine's language.
 	TranslationServer.set_locale("en")
+	_t_agent_save()
 	_run_all()
 	await _t_tenants_are_cosmetic()
 	await _t_progress_round_trip()
@@ -775,6 +776,16 @@ func _puzzle_state(main: Node, fl: Floor) -> String:
 	var gm: GameManager = main.gm
 	return "%s | reach %d | %s | win %s | fns %s" % [pieces, fl.get_reachable_floor().size(),
 		Requirements.status(gm), gm.check_win(), gm.fulfilled_functions]
+
+
+# A run like this one (headless) is a tool's, not the player's: it plays on
+# its own copy of the player's save, so nothing it does reaches theirs.
+func _t_agent_save() -> void:
+	_current = "agent save: a headless run saves to its own copy, never the player's file"
+	_ok(GameState.is_agent_run() and GameState.save_path.begins_with(GameState.AGENT_SAVE_DIR)
+		and GameState.save_path != GameState.SAVE_PATH, GameState.save_path)
+	_current = "agent save: it starts from what the player has"
+	_ok(not FileAccess.file_exists(GameState.SAVE_PATH) or FileAccess.file_exists(GameState.save_path))
 
 
 # ── Saving a level in progress ───────────────────────────────────────────────
