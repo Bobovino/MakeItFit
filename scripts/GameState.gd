@@ -227,6 +227,7 @@ func save_game() -> void:
 		"progress":        progress,
 		"phase_saves":     phase_saves,
 		"save_version":    SAVE_VERSION,
+		"saved_at":        Time.get_unix_time_from_system(),
 	}
 	var audio := get_node_or_null("/root/Audio")
 	if audio:
@@ -254,8 +255,12 @@ func _write_safely(path: String, text: String) -> void:
 	DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), real)
 
 
-# The save, or its backup when the save itself is missing or unreadable.
+# The save, or its backup when the save itself is missing or unreadable, or
+# older: a save swapped in but then lost (seen on Windows: the game's newest
+# write survived only in .bak) still comes back. Saves from before "saved_at"
+# count as oldest, so then the save itself wins as before.
 func _read_save() -> Dictionary:
+	var best := {}
 	for path in [save_path, save_path + ".bak"]:
 		if not FileAccess.file_exists(path):
 			continue
@@ -263,9 +268,10 @@ func _read_save() -> Dictionary:
 		if f == null:
 			continue
 		var parsed = JSON.parse_string(f.get_as_text())
-		if typeof(parsed) == TYPE_DICTIONARY:
-			return parsed as Dictionary
-	return {}
+		if typeof(parsed) == TYPE_DICTIONARY and (best.is_empty() \
+				or float((parsed as Dictionary).get("saved_at", 0.0)) > float(best.get("saved_at", 0.0))):
+			best = parsed as Dictionary
+	return best
 
 
 func load_game() -> void:

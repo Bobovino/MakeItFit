@@ -872,6 +872,21 @@ func _t_progress_round_trip() -> void:
 	_current = "progress: an unreadable save falls back to its backup"
 	_ok(GameState.has_progress("day_and_night"))
 
+	# The newest write left only in .bak (seen on Windows) is the one loaded;
+	# saves without a stamp keep the save itself first.
+	for pair in [[test_path, "{\"company_funds\": 1, \"saved_at\": 100}"], [test_path + ".bak", "{\"company_funds\": 2, \"saved_at\": 200}"]]:
+		f = FileAccess.open(pair[0], FileAccess.WRITE)
+		f.store_string(pair[1])
+		f.close()
+	_current = "progress: the newer of the save and its backup is the one read"
+	_ok(int(GameState._read_save().get("company_funds", 0)) == 2)
+	for pair in [[test_path, "{\"company_funds\": 1}"], [test_path + ".bak", "{\"company_funds\": 2}"]]:
+		f = FileAccess.open(pair[0], FileAccess.WRITE)
+		f.store_string(pair[1])
+		f.close()
+	_current = "progress: unstamped saves still read the save before its backup"
+	_ok(int(GameState._read_save().get("company_funds", 0)) == 1)
+
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path + suffix))
 	GameState.save_path = real_path
