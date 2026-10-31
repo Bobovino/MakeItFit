@@ -1879,9 +1879,46 @@ func _scenery_for(index: int) -> Dictionary:
 			continue
 		items.append({"fdata": fdata, "x": d.get("x", 0), "y": d.get("y", 0),
 			"rot_steps": d.get("rot_steps", 0), "is_extended": d.get("is_extended", false)})
-	var out := {"segments": segments, "items": items, "box_rect": ctx["box_rect"], "level_id": parent_id}
+	var out := {"segments": segments, "items": items, "box_rect": ctx["box_rect"], "level_id": parent_id,
+		"below": _storeys_below(parent_id, floor_id)}
 	if index > 0:
 		out["outer"] = _scenery_for(index - 1)
+	return out
+
+
+# The storeys of `level_id` under its floor `floor_id`, the one directly
+# below first, as Room3DView._add_storeys_below draws them: a box on the top
+# floor of a tower shows the tower under it.
+func _storeys_below(level_id: String, floor_id: String) -> Array:
+	var storeys: Array = []   # every "floor"-type floor, ground first
+	for fd in (_lookup_level_dict(level_id).get("apartment", {}) as Dictionary).get("floors", []) as Array:
+		if ((fd as Dictionary).get("type", "floor") as String) == "floor":
+			storeys.append(fd)
+	var at := -1
+	for i in storeys.size():
+		if str((storeys[i] as Dictionary).get("id", "")) == floor_id:
+			at = i
+	var cached := (_level_state_cache.get(level_id, {}) as Dictionary).get("floors", {}) as Dictionary
+	var out: Array = []
+	for i in range(at - 1, -1, -1):
+		var fd := storeys[i] as Dictionary
+		var items: Array = []
+		for it in cached.get(str(fd.get("id", "")), []) as Array:
+			var d := it as Dictionary
+			var fdata := gm.get_furniture_by_id(d.get("id", "") as String)
+			if not fdata.is_empty():
+				items.append({"fdata": fdata, "x": d.get("x", 0), "y": d.get("y", 0),
+					"rot_steps": d.get("rot_steps", 0), "is_extended": d.get("is_extended", false)})
+		var stairs: Array = []
+		var openings: Array = []
+		for sd in fd.get("stairs", []) as Array:
+			if ((sd as Dictionary).get("target", "loft") as String) == "floor":
+				stairs.append({"rect": Rect2i(int(sd["x"]), int(sd["y"]), int(sd["w"]), int(sd["h"])), "direction": sd.get("direction", "north")})
+		if i > 0:
+			for sd in (storeys[i - 1] as Dictionary).get("stairs", []) as Array:
+				if ((sd as Dictionary).get("target", "loft") as String) == "floor":
+					openings.append(Rect2i(int(sd["x"]), int(sd["y"]), int(sd["w"]), int(sd["h"])))
+		out.append({"segments": fd.get("segments", []), "items": items, "stairs": stairs, "openings": openings})
 	return out
 
 

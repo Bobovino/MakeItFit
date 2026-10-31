@@ -287,6 +287,7 @@ func _item_role(fdata: Dictionary) -> StringName:
 # plinth as usual. Call before build_from_floor().
 func set_parent_scenery(data: Dictionary) -> void:
 	_parent_scenery = data
+	_scenery_depth = 0.0
 
 
 # While a piece is carried: where it can't go, on the floor (Floor.carry_hints()):
@@ -743,10 +744,25 @@ func _no_shadows(node: Node) -> void:
 # drawn giant, and pulling back far enough put the camera outside those giant
 # walls, with one of them filling the screen: there, the limit is a little
 # beyond the view the room opens with.
+# A building below the room (storeys under this one, or the one round a
+# box): fog and focus reach down to its ground, or out of focus it fades
+# into the backdrop. Called once it is built, and again when the camera's
+# home is set.
+func _fit_style_to_building() -> void:
+	if _style != null and _scenery_depth > 0.0:
+		_style.scene_radius = maxf(_style.scene_radius, _scenery_depth * 1.2)
+		_style.refresh_view()
+
+
 func _max_dist() -> float:
 	if not _parent_scenery.is_empty():
-		return minf(30.0, maxf(_home_dist * 1.5, 3.0))
+		# A box in a building of several floors: far enough to see the whole
+		# building down to the ground (its walls in the way are cut down).
+		return maxf(minf(30.0, maxf(_home_dist * 1.5, 3.0)), _scenery_depth * 1.8)
 	return 30.0
+
+
+var _scenery_depth := 0.0   # how far below the room the building under it (storeys, or round a box) reaches
 
 
 func _add_parent_scenery(w: float, d: float) -> bool:
@@ -875,12 +891,20 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 	var slab := _box(Vector3(f1.x - f0.x, 0.5, f1.z - f0.z),
 		Vector3((f0.x + f1.x) * 0.5, floor_y - 0.25, (f0.z + f1.z) * 0.5), Color.WHITE, StyleController.ROLE_SCENERY_FLOOR)
 	_no_shadows(slab)
+	# The floors of that building below the one the box is on, down to the
+	# ground (a box on the top floor of a tower shows the whole tower).
+	var ground_y := floor_y
+	if not (data.get("below", []) as Array).is_empty():
+		ground_y = _add_storeys_below(data["below"] as Array, to_view, s, floor_y - 0.5)
+	if first:
+		_scenery_depth = -ground_y
+		_fit_style_to_building()
 	# Further out: the apartment this one stands in, or the desk.
 	var outer := data.get("outer", {}) as Dictionary
 	if not outer.is_empty():
-		_scenery_level(outer, f0.x, f0.z, f1.x - f0.x, f1.z - f0.z, floor_y - 0.5, false)
+		_scenery_level(outer, f0.x, f0.z, f1.x - f0.x, f1.z - f0.z, ground_y - 0.5, false)
 	else:
-		_add_desk_around(Vector3(f0.x, floor_y - 0.5, f0.z), f1.x - f0.x, f1.z - f0.z, false)
+		_add_desk_around(Vector3(f0.x, ground_y - 0.5, f0.z), f1.x - f0.x, f1.z - f0.z, false)
 
 	var wall_h := WALL_H_M * s
 	var wall_t := WALL_THICK * s
@@ -908,6 +932,134 @@ func _scenery_level(data: Dictionary, x0: float, z0: float, w: float, d: float, 
 	if first:
 		_add_parent_household(data.get("level_id", "") as String, s, pieces, wall_lines,
 			Rect2(f0.x, f0.z, f1.x - f0.x, f1.z - f0.z), Rect2(x0, z0, w, d), floor_y)
+
+
+# ── The storeys below ───────────────────────────────────────────────────────
+# A building of several floors is shown whole: under the floor on screen
+# (or under the floor a box stands on), every floor beneath it, down to the
+# ground and the drawing board. Each is drawn as it is (walls, its floor
+# with the stairwell cut out, its furniture, its staircase climbing to the
+# floor above) at the scale `s` of the floor above it, a wall's height
+# apart. Walls on the camera's side are cut down like the room's own, so the
+# tower opens like a doll's house.
+#   storeys  [{segments, items: [{fdata, x, y, rot_steps, is_extended}],
+#             stairs: [{rect: Rect2i, direction}], openings: [Rect2i]}],
+#            the one directly below first
+#   to_view  Callable(tx, ty) -> Vector3: a tile point in view metres (y = 0)
+#   top_y    the underside of the floor above them
+# Returns the height the ground floor stands at.
+func _add_storeys_below(storeys: Array, to_view: Callable, s: float, top_y: float) -> float:
+	var storey := WALL_H_M * s
+	var floor_y := top_y
+	for st in storeys:
+		floor_y -= storey
+		_add_storey(st as Dictionary, to_view, s, floor_y)
+	return floor_y
+
+
+func _add_storey(st: Dictionary, to_view: Callable, s: float, floor_y: float) -> void:
+	var segments := st.get("segments", []) as Array
+	var lo := Vector2i(1000000, 1000000)
+	var hi := Vector2i(-1000000, -1000000)
+	for sd in segments:
+		var seg := sd as Dictionary
+		for p in [Vector2i(int(seg["x1"]), int(seg["y1"])), Vector2i(int(seg["x2"]), int(seg["y2"]))]:
+			lo = lo.min(p)
+			hi = hi.max(p)
+	if lo.x >= hi.x or lo.y >= hi.y:
+		return
+	# The floor, round its stairwell.
+	var holes: Array[Rect2i] = []
+	for r in st.get("openings", []) as Array:
+		holes.append(r as Rect2i)
+	for r in _slab_around(Rect2i(lo, hi - lo), holes):
+		var a: Vector3 = to_view.call(float(r.position.x), float(r.position.y))
+		var b: Vector3 = to_view.call(float(r.end.x), float(r.end.y))
+		var slab := _box(Vector3(b.x - a.x, 0.05 * s, b.z - a.z), Vector3((a.x + b.x) * 0.5, floor_y - 0.025 * s, (a.z + b.z) * 0.5),
+			Color(0.93, 0.90, 0.83), StyleController.ROLE_FLOOR)
+		_no_shadows(slab)
+	# Its walls, cut down when they stand between the camera and the room.
+	var wall_h := WALL_H_M * s
+	var wall_t := WALL_THICK * s
+	for sd in segments:
+		var seg := sd as Dictionary
+		if seg.get("demolished", false):
+			continue
+		var a: Vector3 = to_view.call(seg["x1"] as float, seg["y1"] as float)
+		var b: Vector3 = to_view.call(seg["x2"] as float, seg["y2"] as float)
+		var along_x := absf(b.x - a.x) >= absf(b.z - a.z)
+		var length := absf(b.x - a.x) if along_x else absf(b.z - a.z)
+		if length < 0.01:
+			continue
+		var mid := (a + b) * 0.5
+		var wall := _box(Vector3(length, wall_h, wall_t) if along_x else Vector3(wall_t, wall_h, length),
+			Vector3(mid.x, floor_y + wall_h * 0.5, mid.z), Color.WHITE, StyleController.ROLE_WALL)
+		_no_shadows(wall)
+		_scenery_nodes.append({"node": wall, "center": mid, "wall": true,
+			"a": Vector2(a.x, a.z), "b": Vector2(b.x, b.z), "floor_y": floor_y, "h": wall_h})
+	# Its furniture; a piece on a table stands on the table.
+	var rects: Array = []
+	for it in st.get("items", []) as Array:
+		var item := it as Dictionary
+		var fdata := item.get("fdata", {}) as Dictionary
+		if fdata.is_empty():
+			continue
+		var size_t := fdata.get("size", {}) as Dictionary
+		var tw := size_t.get("w", 4) as float
+		var th := size_t.get("h", 4) as float
+		var rot := int(item.get("rot_steps", 0))
+		var foot := Vector2(th, tw) if rot % 2 == 1 else Vector2(tw, th)
+		rects.append({"rect": Rect2(Vector2(item.get("x", 0) as float, item.get("y", 0) as float), foot),
+			"fdata": fdata, "tw": tw, "th": th, "rot": rot, "ext": item.get("is_extended", false)})
+	for e in rects:
+		var fdata := e["fdata"] as Dictionary
+		var rect := e["rect"] as Rect2
+		var lift := 0.0
+		for o in rects:
+			if o != e and (o["fdata"] as Dictionary).get("is_surface", false) and (o["rect"] as Rect2).encloses(rect):
+				lift = maxf(lift, maxf(((o["fdata"] as Dictionary).get("wall_h", 8) as float) * TILE_M, 0.2) * s)
+		var height := maxf((fdata.get("wall_h", 8) as float) * TILE_M, 0.2) * s
+		var canon := Vector3((e["tw"] as float) * TILE_M * s, height, (e["th"] as float) * TILE_M * s)
+		var c: Vector3 = to_view.call(rect.get_center().x, rect.get_center().y)
+		var mi := _box(canon, Vector3(c.x, floor_y + lift + height * 0.5, c.z), Color("#" + (fdata.get("color", "888888") as String)))
+		mi.rotation.y = deg_to_rad((e["rot"] as int) * 90.0)
+		mi.set_meta("style_role", _item_role(fdata))
+		_apply_item_model(mi, _active_model_path(fdata, e["ext"] as bool), canon, fdata.get("hide_nodes", []) as Array)
+		_style_if_bare(mi)
+		_no_shadows(mi)
+	# Its staircase, up to the floor above.
+	for sd in st.get("stairs", []) as Array:
+		var stair := sd as Dictionary
+		var r := stair["rect"] as Rect2i
+		var path := _find_furniture_data(_catalog, "stair_%s" % (stair.get("direction", "north") as String).substr(0, 1)).get("model", "") as String
+		if path.is_empty() or not ResourceLoader.exists(path):
+			continue
+		var a: Vector3 = to_view.call(float(r.position.x), float(r.position.y))
+		var b: Vector3 = to_view.call(float(r.end.x), float(r.end.y))
+		var size := Vector3(b.x - a.x, WALL_H_M * s, b.z - a.z)
+		var mi := _box(size, Vector3((a.x + b.x) * 0.5, floor_y + size.y * 0.5, (a.z + b.z) * 0.5), STAIR_FLOOR_COL)
+		mi.set_meta("style_role", StyleController.ROLE_FURNITURE)
+		mi.set_meta("exact_height", true)
+		_apply_item_model(mi, path, size, [])
+		_style_if_bare(mi)
+		_no_shadows(mi)
+
+
+# What _add_storeys_below needs to know about one of this flat's own floors.
+func _storey_of(fl: Floor) -> Dictionary:
+	var items: Array = []
+	for f in fl.get_all_furniture():
+		var fur := f as Furniture
+		items.append({"fdata": _find_furniture_data(_catalog, fur.furniture_id), "x": fur.grid_pos.x, "y": fur.grid_pos.y,
+			"rot_steps": fur.rot_steps, "is_extended": fur.is_extended})
+	var stairs: Array = []
+	for e in fl.stairs_data:
+		if not (e as Dictionary).has("furniture") and (e as Dictionary).get("target", "loft") == "floor":
+			stairs.append(e)
+	var openings: Array = []
+	for e in fl.stair_openings:
+		openings.append((e as Dictionary)["rect"])
+	return {"segments": fl.segments, "items": items, "stairs": stairs, "openings": openings}
 
 
 # Scenery on the camera's side of the room would sit between the camera and
@@ -994,15 +1146,15 @@ func _add_desk_scenery(w: float, d: float) -> void:
 
 # The desk around a model whose footprint starts at `origin` (x, z) and
 # measures w x d; origin.y is the top of the mat.
-func _add_desk_around(origin: Vector3, w: float, d: float, with_board: bool) -> void:
+func _add_desk_around(origin: Vector3, w: float, d: float, with_board: bool, ground_y := 0.0) -> void:
 	var mat_y := origin.y
 	var ox := origin.x
 	var oz := origin.z
-	_desk_mat_size = maxf(DESK_MAT_SIZE, maxf(w, d) * 14.0)
-	if with_board:
+	_desk_mat_size = maxf(maxf(DESK_MAT_SIZE, maxf(w, d) * 14.0), _scenery_depth * 30.0)
+	if with_board:   # the model's base board, from the mat up to its ground floor
 		var board := BoxMesh.new()
-		board.size = Vector3(w + 0.5, -mat_y - 0.05, d + 0.5)
-		_desk_part(board, Color(0.46, 0.38, 0.27), Vector3(ox + w * 0.5, (mat_y - 0.05) * 0.5, oz + d * 0.5))
+		board.size = Vector3(w + 0.5, ground_y - mat_y - 0.05, d + 0.5)
+		_desk_part(board, Color(0.46, 0.38, 0.27), Vector3(ox + w * 0.5, (mat_y + ground_y - 0.05) * 0.5, oz + d * 0.5))
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(_desk_mat_size, _desk_mat_size)
 	var mat_mi := MeshInstance3D.new()
@@ -3762,6 +3914,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		c.queue_free()
 	_wall_data.clear()
 	_scenery_nodes.clear()
+	_scenery_depth = 0.0
 	_clear_extras()
 	_wall_grid_overlays.clear()
 	_hitbox_highlights.clear()
@@ -3800,6 +3953,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 	if _style != null:
 		_style.scene_center = Vector3(w * 0.5, 1.0, d * 0.5)
 		_style.scene_radius = maxf(w, d) * 0.75 + 1.0
+		_fit_style_to_building()
 		# The long lens wastes less of the frame on perspective, so the home
 		# view can sit closer and let the room fill it. Zoom still works as before.
 		# Fit the whole room, walls included, into the frame: far enough
@@ -3840,16 +3994,22 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 				_add_desk_scenery(w, d)
 			else:
 				_add_plinth(w, d)
-	elif _style != null and apt_floor.floor_type == "floor":
-		# An upper storey: the same drawing board, as far down as the ground
-		# floor stands, seen from up here past the blueprint of the floor
-		# below.
-		var storeys := 0
+	elif apt_floor.floor_type == "floor":
+		# An upper storey: the whole building under it, every floor down to
+		# the ground, standing on the drawing board like the ground floor.
+		var storeys: Array = []
 		var under := below_floor
-		while under != null and storeys < 20:
-			storeys += 1
+		while under != null and storeys.size() < 20:
+			storeys.append(_storey_of(under))
 			under = under.below_floor
-		_add_desk_around(Vector3(0.0, DESK_MAT_Y - storeys * _storey_m("floor"), 0.0), w, d, false)
+		var origin := Vector2(bounds.position)
+		var to_view := func(tx: float, ty: float) -> Vector3:
+			return Vector3((tx - origin.x) * TILE_M, 0.0, (ty - origin.y) * TILE_M)
+		var ground_y := _add_storeys_below(storeys, to_view, 1.0, 0.0)
+		_scenery_depth = -ground_y
+		_fit_style_to_building()
+		if _style != null:
+			_add_desk_around(Vector3(0.0, ground_y + DESK_MAT_Y, 0.0), w, d, true, ground_y)
 
 	# Subfloor/ceiling/roof layers only exist to carry the 2D-only pipe/duct
 	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
@@ -3893,7 +4053,7 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 		for origin in items:
 			_add_wall_item_box(edge, origin as Vector2i, items[origin] as String, catalog)
 
-	if below_floor:
+	if below_floor and apt_floor.floor_type == "loft":   # a storey's floors below are built whole above
 		_add_ghost_floor(below_floor, bounds)
 
 	# Again now the furniture is in: a moved piece's ghost is a copy of it.

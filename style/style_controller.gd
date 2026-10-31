@@ -151,7 +151,9 @@ func _process(_delta: float) -> void:
 		return
 	var view_size := get_viewport().get_visible_rect().size
 	var aspect := view_size.x / maxf(view_size.y, 1.0)
-	var dist := minf(cam.far * 0.9, BACKDROP_DISTANCE)
+	# Always behind the whole scene: a camera pulled far back (a box in a
+	# tower, seen whole) would otherwise have the backdrop in front of it.
+	var dist := minf(cam.far * 0.9, maxf(BACKDROP_DISTANCE, _focus_depth() + scene_radius * 3.0))
 	var height := cam.size if cam.projection == Camera3D.PROJECTION_ORTHOGONAL \
 		else 2.0 * dist * tan(deg_to_rad(cam.fov) * 0.5)
 	var xform := cam.global_transform.translated_local(Vector3(0.0, 0.0, -dist))
