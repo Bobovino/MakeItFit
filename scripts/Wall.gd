@@ -228,12 +228,18 @@ func _unregister_stair(furniture: Furniture) -> void:
 # is in the way. Upper floors are walked from that arrival landing, and the
 # landing in front of a staircase going up has to be reached from there.
 const STAIR_LANDING := 8   # tiles (80 cm)
+# An open staircase (kind "open": treads only, nothing boxed in under them)
+# leaves room beneath: under each tread, up to its underside. It climbs a
+# storey, as the room's walls are tall (Room3DView.WALL_TILES).
+const STAIR_RISE_TILES := 24
+const STAIR_TREAD_TILES := 1   # a tread's own thickness
 
 var _stair_cache_key := -1
 var _stair_cache := {}
 
 
-# {solid: {Vector2i: "flight" | "well"}, landings: [{tiles: Array[Vector2i],
+# {solid: {Vector2i: "flight" | "open" | "well"}, under: {Vector2i: tiles of
+#  room under an open flight's tread}, landings: [{tiles: Array[Vector2i],
 #  up: bool}]} — up: in front of this floor's own staircase going up (false:
 # where one from below arrives).
 func stair_layout() -> Dictionary:
@@ -241,11 +247,15 @@ func stair_layout() -> Dictionary:
 	if key == _stair_cache_key:
 		return _stair_cache
 	var solid := {}
+	var under := {}
 	for entry in stairs_data:
 		if (entry as Dictionary).has("furniture"):
 			continue   # a staircase piece: furniture, with its own rules
+		var open := ((entry as Dictionary).get("kind", "solid") as String) == "open"
 		for t in _rect_list(entry["rect"] as Rect2i):
-			solid[t] = "flight"
+			solid[t] = "open" if open else "flight"
+			if open:
+				under[t] = stair_clearance_at(entry as Dictionary, t)
 	for entry in stair_openings:
 		for t in _rect_list(entry["rect"] as Rect2i):
 			solid[t] = "well"
@@ -263,7 +273,7 @@ func stair_layout() -> Dictionary:
 		if not tiles.is_empty():
 			landings.append({"tiles": tiles, "up": false})
 	_stair_cache_key = key
-	_stair_cache = {"solid": solid, "landings": landings}
+	_stair_cache = {"solid": solid, "under": under, "landings": landings}
 	return _stair_cache
 
 
@@ -274,6 +284,23 @@ func stair_landing_tiles() -> Dictionary:
 		for t in (l as Dictionary)["tiles"] as Array:
 			out[t] = true
 	return out
+
+
+# How much room (tiles of height) an open flight leaves under its tread at
+# `t`: up to the underside of that tread, 20 cm treads rising evenly.
+func stair_clearance_at(entry: Dictionary, t: Vector2i) -> float:
+	var r := entry["rect"] as Rect2i
+	var dir := entry.get("direction", "north") as String
+	var run := r.size.y if dir in ["north", "south"] else r.size.x
+	var steps := maxi(run / 2, 1)
+	var along: int   # tiles from the foot
+	match dir:
+		"north": along = r.end.y - 1 - t.y
+		"south": along = t.y - r.position.y
+		"east":  along = t.x - r.position.x
+		_:       along = r.end.x - 1 - t.x
+	var step := clampi(along * steps / maxi(run, 1), 0, steps - 1)
+	return float(step + 1) * STAIR_RISE_TILES / steps - STAIR_TREAD_TILES
 
 
 func _rect_list(r: Rect2i) -> Array[Vector2i]:
@@ -996,7 +1023,7 @@ func setup(floor_data: Dictionary) -> void:
 					_sd["w"] as int, _sd["h"] as int)
 				var _dir := _sd.get("direction", "north") as String
 				var _tgt := _sd.get("target", "loft") as String
-				stairs_data.append({"rect": _r, "direction": _dir, "target": _tgt})
+				stairs_data.append({"rect": _r, "direction": _dir, "target": _tgt, "kind": _sd.get("kind", "solid")})
 				for _x in range(_r.size.x):
 					for _y in range(_r.size.y):
 						stair_mask[Vector2i(_r.position.x + _x, _r.position.y + _y)] = true
@@ -1010,7 +1037,8 @@ func setup(floor_data: Dictionary) -> void:
 			var _sod := _so as Dictionary
 			var _sor := Rect2i(_sod["x"] as int, _sod["y"] as int,
 				_sod["w"] as int, _sod["h"] as int)
-			stair_openings.append({"rect": _sor, "direction": _sod.get("direction", "north") as String, "target": _sod.get("target", "loft") as String})
+			stair_openings.append({"rect": _sor, "direction": _sod.get("direction", "north") as String, "target": _sod.get("target", "loft") as String,
+				"kind": _sod.get("kind", "solid") as String})
 		rails = (floor_data.get("rails", []) as Array).duplicate(true)
 		reveal_zones = (floor_data.get("reveal_zones", []) as Array).duplicate(true)
 		segments = []
@@ -1668,6 +1696,10 @@ func can_place(furniture: Furniture, at: Vector2) -> bool:
 				"flight":
 					_block_reason = tr("On the stairs")
 					return false
+				"open":
+					if stack_lift(furniture, at) + furniture.body_h > (stairs["under"] as Dictionary)[tile]:
+						_block_reason = tr("Too tall to go under the stairs here")
+						return false
 				"well":
 					_block_reason = tr("Over the stairwell")
 					return false
@@ -2400,7 +2432,11 @@ func carry_hints(carried: Furniture) -> Dictionary:
 				lr = lr.merge(Rect2(Vector2(t as Vector2i), Vector2.ONE))
 			out["clearance"].append(lr)
 	for t in stairs["solid"] as Dictionary:
-		out["bad_floor"].append(t)
+		if (stairs["solid"][t] as String) == "open":
+			if carried.body_h > (stairs["under"] as Dictionary)[t]:
+				out["low_ceiling"].append(t)   # too tall to go under the open flight here
+		else:
+			out["bad_floor"].append(t)
 	var b := get_room_bounds()
 	var check_floor := not carried.is_nested_box and (carried.floor_category != "any" or has_floor_kind("balcony"))
 	var height_m := carried.body_h * 0.1
@@ -3187,6 +3223,8 @@ func _compute_reachable_floor() -> Dictionary:
 			solid[y * w + x] = 1 if (not is_floor_tile(t) or walls.has(t)) else 0
 	var stairs := stair_layout()
 	for t in stairs["solid"] as Dictionary:   # nobody walks across a flight or a stairwell
+		if (stairs["under"] as Dictionary).get(t, 0.0) >= HEAD_HEIGHT:
+			continue   # high enough under an open flight to walk beneath it
 		var lx := (t as Vector2i).x - x0
 		var ly := (t as Vector2i).y - y0
 		if lx >= 0 and ly >= 0 and lx < w and ly < h:

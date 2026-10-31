@@ -1913,7 +1913,8 @@ func _storeys_below(level_id: String, floor_id: String) -> Array:
 		var openings: Array = []
 		for sd in fd.get("stairs", []) as Array:
 			if ((sd as Dictionary).get("target", "loft") as String) == "floor":
-				stairs.append({"rect": Rect2i(int(sd["x"]), int(sd["y"]), int(sd["w"]), int(sd["h"])), "direction": sd.get("direction", "north")})
+				stairs.append({"rect": Rect2i(int(sd["x"]), int(sd["y"]), int(sd["w"]), int(sd["h"])), "direction": sd.get("direction", "north"),
+					"kind": sd.get("kind", "solid")})
 		if i > 0:
 			for sd in (storeys[i - 1] as Dictionary).get("stairs", []) as Array:
 				if ((sd as Dictionary).get("target", "loft") as String) == "floor":

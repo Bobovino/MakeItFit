@@ -1030,6 +1030,9 @@ func _add_storey(st: Dictionary, to_view: Callable, s: float, floor_y: float) ->
 	# Its staircase, up to the floor above.
 	for sd in st.get("stairs", []) as Array:
 		var stair := sd as Dictionary
+		if (stair.get("kind", "solid") as String) == "open":
+			_add_open_stair(stair, to_view, s, floor_y, WALL_H_M * s)
+			continue
 		var r := stair["rect"] as Rect2i
 		var path := _find_furniture_data(_catalog, "stair_%s" % (stair.get("direction", "north") as String).substr(0, 1)).get("model", "") as String
 		if path.is_empty() or not ResourceLoader.exists(path):
@@ -1043,6 +1046,48 @@ func _add_storey(st: Dictionary, to_view: Callable, s: float, floor_y: float) ->
 		_apply_item_model(mi, path, size, [])
 		_style_if_bare(mi)
 		_no_shadows(mi)
+
+
+# An open staircase (kind "open"): its treads, each 4 cm thick at its own
+# height, on two sloping stringers, nothing boxed in under them, so what
+# stands beneath shows. `height` is how far it climbs; to_view and s place
+# it as in _add_storeys_below.
+func _add_open_stair(ed: Dictionary, to_view: Callable, s: float, floor_y: float, height: float) -> void:
+	var r := ed["rect"] as Rect2i
+	var dir := ed.get("direction", "north") as String
+	var ns := dir in ["north", "south"]
+	var up: Vector2 = {"north": Vector2(0, -1), "south": Vector2(0, 1), "east": Vector2(1, 0), "west": Vector2(-1, 0)}[dir]
+	var across_v := Vector2(1, 0) if ns else Vector2(0, 1)
+	var run := float(r.size.y if ns else r.size.x)
+	var width := float(r.size.x if ns else r.size.y)
+	var steps := maxi(int(run) / 2, 1)
+	var center := Vector2(r.position) + Vector2(r.size) * 0.5
+	var foot := center - up * run * 0.5
+	var thick := 0.04 * s
+	var tread_m := run / steps * TILE_M * s
+	var width_m := width * TILE_M * s
+	for i in steps:
+		var c2: Vector2 = foot + up * run * (float(i) + 0.5) / steps
+		var c: Vector3 = to_view.call(c2.x, c2.y)
+		var top := floor_y + height * float(i + 1) / steps
+		var size := Vector3(width_m, thick, tread_m * 0.92) if ns else Vector3(tread_m * 0.92, thick, width_m)
+		var tread := _box(size, Vector3(c.x, top - thick * 0.5, c.z), STAIR_FLOOR_COL, StyleController.ROLE_FLOOR)   # wood, like the floor
+		_no_shadows(tread)
+	# The stringers, one along each side, from the floor to the top step.
+	var run_m := run * TILE_M * s
+	var slope := atan2(height, run_m)
+	var length := sqrt(run_m * run_m + height * height)
+	for side in [-1.0, 1.0]:
+		var c2: Vector2 = center + across_v * (width * 0.5 - 0.3) * side
+		var c: Vector3 = to_view.call(c2.x, c2.y)
+		var beam := _box(Vector3(0.03 * s, 0.12 * s, length) if ns else Vector3(length, 0.12 * s, 0.03 * s),
+			Vector3(c.x, floor_y + height * 0.5, c.z), STAIR_FLOOR_COL.darkened(0.25), StyleController.ROLE_FLOOR)
+		match dir:
+			"north": beam.rotation.x = slope
+			"south": beam.rotation.x = -slope
+			"east":  beam.rotation.z = slope
+			_:       beam.rotation.z = -slope
+		_no_shadows(beam)
 
 
 # What _add_storeys_below needs to know about one of this flat's own floors.
@@ -4964,6 +5009,11 @@ func _add_stairs(bounds: Rect2i) -> void:
 			var stair_model := _find_furniture_data(_catalog, (stair_f as Furniture).furniture_id).get("model", "") as String
 			if not stair_model.is_empty() and ResourceLoader.exists(stair_model):
 				continue
+		if ((entry as Dictionary).get("kind", "solid") as String) == "open":
+			var origin := Vector2(bounds.position)
+			_add_open_stair(entry as Dictionary, func(tx: float, ty: float) -> Vector3:
+				return Vector3((tx - origin.x) * TILE_M, 0.0, (ty - origin.y) * TILE_M), 1.0, 0.0, full_h)
+			continue
 		# The level's own stairs use the catalogue's staircase model for their
 		# direction, fitted to their footprint; the block flight only if it
 		# is missing.

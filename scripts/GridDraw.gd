@@ -394,7 +394,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		var _snos  := STAIR_NOSING if _tgt == "loft" else FSTAIR_NOSING
 		var _sbdr  := STAIR_BORDER if _tgt == "loft" else FSTAIR_BORDER
 		var _sarr  := STAIR_ARROW  if _tgt == "loft" else FSTAIR_ARROW
-		_draw_flight(_r, _dir, _sfill, _snos, _sbdr, _sarr, false)
+		_draw_flight(_r, _dir, _sfill, _snos, _sbdr, _sarr, false, (_ed.get("kind", "solid") as String) == "open")
 		if _tgt == "floor":
 			_draw_stair_word(_r, _dir, false, tr("Up"), _sarr)
 
@@ -426,7 +426,7 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 		var _opd   := _op as Dictionary
 		var _opr   := _opd["rect"] as Rect2i
 		var _opdir := _opd.get("direction", "north") as String
-		_draw_flight(_opr, _opdir, SO_FILL, SO_NOSING, SO_BORDER, SO_ARROW, true)
+		_draw_flight(_opr, _opdir, SO_FILL, SO_NOSING, SO_BORDER, SO_ARROW, true, (_opd.get("kind", "solid") as String) == "open")
 		if (_opd.get("target", "loft") as String) == "floor":
 			_draw_stair_word(_opr, _opdir, true, tr("Down"), SO_ARROW)
 
@@ -1567,7 +1567,7 @@ func _draw_light_layer() -> void:
 # towards you, darker down a stairwell — and one arrow on the walking line,
 # from where it is stepped onto on this floor (a small circle) to where it
 # leads: up a flight going up, down one seen from the floor it arrives at.
-func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Color, ink: Color, from_below: bool) -> void:
+func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Color, ink: Color, from_below: bool, open := false) -> void:
 	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
 	var run := r.size.y if dir in ["north", "south"] else r.size.x
 	var steps := maxi(run / 2, 1)   # 20 cm treads
@@ -1584,10 +1584,20 @@ func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Co
 		var tread := Rect2(at.call(0.0, v0), Vector2.ZERO).expand(at.call(1.0, v1))
 		var k := (float(i) + 0.5) / steps   # 0 at the foot, 1 at the top
 		var shade := fill.lerp(Color.WHITE, 0.35 * k) if not from_below else fill.darkened(0.45 * (1.0 - k))
+		if open:
+			# Treads only: a slat each, the floor seen between them.
+			var gap := 0.22 / steps
+			draw_rect(Rect2(at.call(0.0, v0 + gap), Vector2.ZERO).expand(at.call(1.0, v1)), shade)
+			continue
 		draw_rect(tread, shade)
 		if i > 0:
 			draw_line(at.call(0.0, v0), at.call(1.0, v0), nosing, 1.0)
-	draw_rect(px, border, false, 2.0)
+	if open:
+		# The two stringers the treads rest on, and no outline round the rest.
+		draw_line(at.call(0.0, 0.0), at.call(0.0, 1.0), border, 2.0)
+		draw_line(at.call(1.0, 0.0), at.call(1.0, 1.0), border, 2.0)
+	else:
+		draw_rect(px, border, false, 2.0)
 	var start: Vector2 = at.call(0.5, 1.0 - 0.5 / steps) if from_below else at.call(0.5, 0.5 / steps)
 	var end: Vector2 = at.call(0.5, 0.35 / steps) if from_below else at.call(0.5, 1.0 - 0.35 / steps)
 	draw_circle(start, 2.4, ink)

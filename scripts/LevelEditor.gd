@@ -65,6 +65,7 @@ var _mezz_erase:       bool = false
 var _stair_painting:   bool   = false  # unused — kept to avoid ref errors
 var _stair_dir:        String = "north"  # current stamp direction
 var _stair_target:     String = "loft"   # "loft" → mezzanine; "floor" → floor above
+var _stair_kind:       String = "solid"  # "solid" boxed in underneath; "open" treads only, room under them (Floor.stair_layout)
 var _window_painting:  bool = false
 var _window_erase:     bool = false
 
@@ -2186,6 +2187,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_ov.queue_redraw()
 			_set_status("Stair target: " + _stair_target)
 			get_viewport().set_input_as_handled()
+	# O (no modifier) → toggle solid / open stairs when STAIRS tool is active
+	if ke.keycode == KEY_O and not ke.ctrl_pressed and not ke.shift_pressed and not ke.alt_pressed:
+		if _tool == Tool.STAIRS:
+			_stair_kind = "open" if _stair_kind == "solid" else "solid"
+			_set_status("Stair kind: " + _stair_kind + ("  (treads only: furniture can go under)" if _stair_kind == "open" else ""))
+			get_viewport().set_input_as_handled()
 
 
 func _input(event: InputEvent) -> void:
@@ -2896,9 +2903,11 @@ func _place_stair(tile: Vector2i) -> void:
 	var r := _stair_rect_at(tile)
 	var entry := {"x": r.position.x, "y": r.position.y,
 		"w": r.size.x, "h": r.size.y, "direction": _stair_dir, "target": _stair_target}
+	if _stair_kind == "open":
+		entry["kind"] = "open"
 	_stairs.append(entry)
 	_rebuild_stair_mask()
-	_set_status("Staircase placed (%s → %s)" % [_stair_dir, _stair_target])
+	_set_status("Staircase placed (%s → %s, %s)" % [_stair_dir, _stair_target, _stair_kind])
 
 func _remove_stair_at(tile: Vector2i) -> void:
 	var before := _stairs.size()
@@ -2926,7 +2935,7 @@ func _rebuild_stair_mask() -> void:
 			var r   := Rect2i(ed["x"] as int, ed["y"] as int, ed["w"] as int, ed["h"] as int)
 			var dir := ed["direction"] as String
 			var tgt := ed.get("target", "loft") as String
-			_floor.stairs_data.append({"rect": r, "direction": dir, "target": tgt})
+			_floor.stairs_data.append({"rect": r, "direction": dir, "target": tgt, "kind": ed.get("kind", "solid")})
 		_floor.grid_draw.queue_redraw()
 
 func _paint_stair_tile(tile: Vector2i, erase: bool) -> void:

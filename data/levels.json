@@ -1762,7 +1762,8 @@
 								"target": "floor",
 								"w": 7,
 								"x": 14,
-								"y": 11
+								"y": 11,
+								"kind": "open"
 							}
 						],
 						"type": "floor"

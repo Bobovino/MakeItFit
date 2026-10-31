@@ -1029,19 +1029,40 @@ func _t_tower_stairs() -> void:
 	var layout := fl.stair_layout()
 	var solid := layout["solid"] as Dictionary
 	_current = "tower stairs: the first floor has its own flight and the stairwell of the one below, apart"
-	_ok(solid.values().has("flight") and solid.values().has("well") and (layout["landings"] as Array).size() == 2)
+	_ok((solid.values().has("flight") or solid.values().has("open")) and solid.values().has("well") and (layout["landings"] as Array).size() == 2)
 	var stool: Furniture = main._spawn_furniture("stool", fl, 0, 0)
 	fl.remove_furniture(stool)
 	var where := {}
 	for t in solid:
 		where[solid[t]] = t
 	where["landing"] = fl.stair_landing_tiles().keys()[0]
-	for kind in ["flight", "well", "landing"]:
+	for kind in where.keys().filter(func(k): return k != "open"):   # the open flight: below
 		_current = "tower stairs: no furniture on the %s" % kind
 		_ok(not fl.can_place(stool, Vector2(where[kind] as Vector2i)), fl.get_block_reason())
 	var reached := fl.get_reachable_floor()
 	_current = "tower stairs: the floor is walked from where the stairs arrive, and the way up is reached"
 	_ok(fl.stair_landing_tiles().keys().any(func(t): return reached.has(t)) and fl.unreachable_stairs().is_empty())
+	# The first floor's flight is open (treads only): a low piece goes under
+	# its high end, nothing under its foot, and the flight still takes
+	# nothing standing on it where it is too low.
+	var open_t: Array = (solid.keys().filter(func(t): return solid[t] == "open"))
+	_current = "tower stairs: the first floor's flight is open, with room under it rising up the run"
+	var under := layout["under"] as Dictionary
+	_ok(not open_t.is_empty() and (under.values().min() as float) < 6.0 and (under.values().max() as float) > 18.0)
+	var loo: Furniture = main._spawn_furniture("toilet", fl, 0, 0)
+	fl.remove_furniture(loo)
+	var high_spot := Vector2i(-1, -1)
+	var low_spot := Vector2i(-1, -1)
+	for t in open_t:
+		var tv := t as Vector2i
+		if fl.can_place(loo, Vector2(tv)) and high_spot.x < 0:
+			high_spot = tv
+		if under[tv] < loo.body_h and low_spot.x < 0:
+			low_spot = tv
+	_current = "tower stairs: a toilet fits under the open flight's high end, not under its foot"
+	_ok(high_spot.x >= 0 and low_spot.x >= 0 and not fl.can_place(loo, Vector2(low_spot)) 		and fl.get_block_reason() == "Too tall to go under the stairs here", "%s %s %s" % [high_spot, low_spot, fl.get_block_reason()])
+	loo.queue_free()
+
 	# On the ground floor, pieces put down until the door no longer leads to
 	# the foot of the stairs: the bar says so, and renting out waits.
 	fl = main._floors["fl_0"]
