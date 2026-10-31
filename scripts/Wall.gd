@@ -3035,7 +3035,7 @@ func _update_stack_order() -> void:
 			depth += 1
 		fur.stack_z = depth
 		if not fur._dragging:
-			fur.z_index = depth
+			fur.z_index = fur.rest_z()
 
 
 # Open floor tiles for a given moment — total walkable tiles minus whatever

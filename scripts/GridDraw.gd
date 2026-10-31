@@ -106,6 +106,13 @@ func _ready() -> void:
 	_light_layer = Node2D.new()
 	_light_layer.draw.connect(_draw_light_layer)
 	add_child(_light_layer)
+	# What stands above the plan's cut (PLAN_CUT_TILES), over the furniture:
+	# dashed, without fill, so what is under it reads through.
+	_over_layer = Node2D.new()
+	_over_layer.z_index = 17
+	_over_layer.draw.connect(_draw_over_layer)
+	if parent:
+		parent.add_child.call_deferred(_over_layer)
 	# Each room's name and its residents' faces, over the furniture.
 	_room_tags = Node2D.new()
 	_room_tags.z_index = 19
@@ -152,6 +159,8 @@ func _draw() -> void:
 		_room_layer.queue_redraw()
 	if is_instance_valid(_room_tags):
 		_room_tags.queue_redraw()
+	if is_instance_valid(_over_layer):
+		_over_layer.queue_redraw()
 	var w  := parent.grid_w
 	var h  := parent.grid_h
 	var rw := w * TILE_SIZE
@@ -1046,12 +1055,29 @@ func _draw_wall_items(parent: Floor, _rw: int, _rh: int) -> void:
 			var o := origin as Vector2i   # local to the wall — 0 at the wall's start
 			if edge == ghost_edge and o == ghost_origin:
 				continue   # being dragged right now — drawn as a ghost below instead
+			if _wall_item_above_cut(o, items[origin] as String):
+				continue   # drawn dashed over the furniture (_draw_over_layer)
 			_draw_one_wall_item(bounds, edge, o, items[origin] as String, 0.85)
 	if not ghost.is_empty():
 		_draw_one_wall_item(bounds, ghost_edge, ghost_origin, ghost.get("fid", "") as String, 0.5)
 
 
-func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float) -> void:
+# Whether a piece hung on a wall starts above the plan's cut. origin.y is
+# how far its top hangs below the top of the wall (Room3DView's wall item).
+func _wall_item_above_cut(o: Vector2i, fid: String) -> bool:
+	if _gm == null:
+		return false
+	var fdata := _gm.get_furniture_by_id(fid)
+	if fdata.is_empty():
+		return false
+	var bottom := WALL_ITEM_TOP_TILES - o.y - (fdata.get("wall_h", 4) as int)
+	return bottom >= Furniture.PLAN_CUT_TILES
+
+
+const WALL_ITEM_TOP_TILES := 24   # the wall's height, which hung pieces measure down from
+
+
+func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float, dashed := false) -> void:
 	var fdata := _gm.get_furniture_by_id(fid)
 	if fdata.is_empty():
 		return
@@ -1077,8 +1103,65 @@ func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String,
 				(bounds.position.y + o.x) * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE)
 		_:
 			return
+	if dashed:
+		var ci := _over_layer
+		var c := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y), rect.position]
+		for i in 4:
+			ci.draw_dashed_line(c[i], c[i + 1], Color(PLAN_INK, 0.85), 1.2, 4.0)
+		ci.draw_dashed_line(rect.position, rect.end, Color(PLAN_INK, 0.35), 1.0, 4.0)
+		return
 	draw_rect(rect, col)
 	draw_rect(rect, Color(0, 0, 0, 0.40), false, 1.0)
+
+
+# ── Above the cut ────────────────────────────────────────────────────────────
+# A plan is a cut through the room at about a metre (Furniture.PLAN_CUT_TILES):
+# what is below it is drawn whole, what is above it — the high treads of an
+# open staircase, a cabinet hung over a worktop — as a dashed outline with no
+# fill, over the furniture, so the piece under it still reads.
+var _over_layer: Node2D = null
+
+func _tread_above_cut(i: int, steps: int) -> bool:
+	return float(i + 1) * Floor.STAIR_RISE_TILES / steps - Floor.STAIR_TREAD_TILES >= Furniture.PLAN_CUT_TILES
+
+
+func _draw_over_layer() -> void:
+	var parent := get_parent() as Floor
+	if parent == null or not parent.visible:
+		return
+	var ci := _over_layer
+	var ink := Color(PLAN_INK, 0.85)
+	for e in parent.stairs_data:
+		var ed := e as Dictionary
+		if ed.has("furniture") or (ed.get("kind", "solid") as String) != "open":
+			continue
+		var r := ed["rect"] as Rect2i
+		var dir := ed.get("direction", "north") as String
+		var run := r.size.y if dir in ["north", "south"] else r.size.x
+		var steps := maxi(run / 2, 1)
+		var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
+		for i in steps:
+			if not _tread_above_cut(i, steps):
+				continue
+			var v0 := float(i) / steps + 0.22 / steps
+			var v1 := float(i + 1) / steps
+			var a: Vector2
+			var b: Vector2
+			match dir:
+				"north": a = Vector2(px.position.x, px.end.y - v1 * px.size.y); b = Vector2(px.end.x, px.end.y - v0 * px.size.y)
+				"south": a = Vector2(px.position.x, px.position.y + v0 * px.size.y); b = Vector2(px.end.x, px.position.y + v1 * px.size.y)
+				"east":  a = Vector2(px.position.x + v0 * px.size.x, px.position.y); b = Vector2(px.position.x + v1 * px.size.x, px.end.y)
+				_:       a = Vector2(px.end.x - v1 * px.size.x, px.position.y); b = Vector2(px.end.x - v0 * px.size.x, px.end.y)
+			var c := [a, Vector2(b.x, a.y), b, Vector2(a.x, b.y), a]
+			for k in 4:
+				ci.draw_dashed_line(c[k], c[k + 1], ink, 1.0, 3.0)
+	if _gm != null:
+		var bounds := parent.get_room_bounds()
+		for edge in parent.wall_items:
+			var items: Dictionary = parent.wall_items[edge] as Dictionary
+			for origin in items:
+				if _wall_item_above_cut(origin as Vector2i, items[origin] as String):
+					_draw_one_wall_item(bounds, edge, origin as Vector2i, items[origin] as String, 1.0, true)
 
 
 func _draw_wall_feature(wall_def: Dictionary, w: int, h: int) -> void:
@@ -1585,7 +1668,11 @@ func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Co
 		var k := (float(i) + 0.5) / steps   # 0 at the foot, 1 at the top
 		var shade := fill.lerp(Color.WHITE, 0.35 * k) if not from_below else fill.darkened(0.45 * (1.0 - k))
 		if open:
-			# Treads only: a slat each, the floor seen between them.
+			# Treads only: a slat each, the floor seen between them. Those
+			# above the plan's cut are drawn over the furniture instead
+			# (_draw_over_layer), dashed.
+			if not from_below and _tread_above_cut(i, steps):
+				continue
 			var gap := 0.22 / steps
 			draw_rect(Rect2(at.call(0.0, v0 + gap), Vector2.ZERO).expand(at.call(1.0, v1)), shade)
 			continue

@@ -99,6 +99,21 @@ var body_h: float = 8.0
 # How many surfaces this piece stands on top of (0 = the floor); the plan
 # draws it that far up so it shows over its table. Floor keeps it current.
 var stack_z: int = 0
+# The plan is a cut through the room at a metre: a piece standing above it
+# (a high bed, raised over the floor) is drawn as a dashed outline over what
+# is under it, filled only while the cursor is on it (it is what a click
+# there picks up).
+const PLAN_CUT_TILES := 10
+var _cut_hover := false
+
+func above_cut() -> bool:
+	return not overhead and z_bottom >= PLAN_CUT_TILES
+
+
+# Its place in the plan's stacking: on what it stands on, and over the
+# pieces below the cut when it is above it.
+func rest_z() -> int:
+	return stack_z + (8 if above_cut() else 0)
 # How loaded this surface is (Floor.strain_of(), a share of
 # max_support_weight; over 1 = what is being carried over it would break it).
 var _strain: float = 0.0
@@ -680,6 +695,9 @@ func _draw() -> void:
 	if overhead:
 		_draw_overhead(float(w), float(h), ink)
 		return
+	if above_cut() and not _cut_hover and not _dragging:
+		_draw_above_cut(float(w), float(h), ink)
+		return
 
 	var cw := float(w if rot_steps % 2 == 0 else h)
 	var ch := float(h if rot_steps % 2 == 0 else w)
@@ -1085,6 +1103,18 @@ func _draw_overlays(w: int, h: int, ink: Color, parts: Array) -> void:
 # A piece up at the ceiling is drawn the way a plan shows what is overhead:
 # a dashed outline with its diagonals, so the furniture under it stays
 # readable, and a pale wash of the daylight it lets in.
+func _draw_above_cut(w: float, h: float, ink: Color) -> void:
+	var c := Color(ink.r, ink.g, ink.b, 0.85)
+	var pts := [Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h), Vector2(0, 0)]
+	for i in range(pts.size() - 1):
+		draw_dashed_line(pts[i], pts[i + 1], c, 1.2, 5.0)
+	# Its name in the bottom corner, clear of the label of what is under it.
+	draw_string_outline(ThemeDB.fallback_font, Vector2(3, h - 3), furniture_name,
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1, 1, 1, 0.90))
+	draw_string(ThemeDB.fallback_font, Vector2(3, h - 3), furniture_name,
+		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, GameTheme.NAVY)
+
+
 func _draw_overhead(w: float, h: float, ink: Color) -> void:
 	draw_rect(Rect2(0, 0, w, h), Color(1.0, 0.96, 0.70, 0.18))
 	var c := Color(ink.r, ink.g, ink.b, 0.85)
@@ -1774,6 +1804,11 @@ func get_occupied_tiles_for_moment(moment_id: String) -> Array:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and above_cut() and is_visible_in_tree():
+		var over := Rect2(Vector2.ZERO, Vector2(grid_w, grid_h) * TILE_SIZE).has_point(get_local_mouse_position())
+		if over != _cut_hover:
+			_cut_hover = over
+			queue_redraw()
 	# Double-click a nested box to step inside. Checked before the read-only
 	# gate because entering isn't an edit (the mini-plan cards allow it in the
 	# post-win view too), and before the drag code so the second press doesn't
@@ -1836,7 +1871,7 @@ func _input(event: InputEvent) -> void:
 				var was_click: bool = release_pos.distance_to(_press_pos) < CLICK_MOVE_THRESHOLD
 				if was_click and foldable:
 					_dragging = false
-					z_index = stack_z
+					z_index = rest_z()
 					if _wall_ref:
 						_wall_ref.grid_draw.show_grid = false
 						_wall_ref.grid_draw.queue_redraw()
@@ -2195,7 +2230,7 @@ func _rotate(quiet: bool = false) -> void:
 
 func _end_drag(_mouse_pos: Vector2) -> void:
 	_dragging = false
-	z_index = stack_z
+	z_index = rest_z()
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
@@ -2306,7 +2341,7 @@ func cancel_drag() -> void:
 	if not _dragging or _placement_mode:
 		return
 	_dragging = false
-	z_index = stack_z
+	z_index = rest_z()
 	if _wall_ref:
 		_wall_ref.grid_draw.show_grid = false
 		_wall_ref.grid_draw.queue_redraw()
