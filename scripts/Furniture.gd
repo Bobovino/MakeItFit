@@ -100,10 +100,11 @@ var body_h: float = 8.0
 # draws it that far up so it shows over its table. Floor keeps it current.
 var stack_z: int = 0
 # The plan is a cut through the room at a metre: a piece standing above it
-# (a high bed, raised over the floor) is drawn as a dashed outline over what
-# is under it, filled only while the cursor is on it (it is what a click
+# (a high bed, raised over the floor) is drawn as usual but see-through, over
+# what is under it, and solid while the cursor is on it (it is what a click
 # there picks up).
 const PLAN_CUT_TILES := 10
+const ABOVE_CUT_ALPHA := 0.45
 var _cut_hover := false
 
 func above_cut() -> bool:
@@ -695,9 +696,10 @@ func _draw() -> void:
 	if overhead:
 		_draw_overhead(float(w), float(h), ink)
 		return
-	if above_cut() and not _cut_hover and not _dragging:
-		_draw_above_cut(float(w), float(h), ink)
-		return
+	var see_through := above_cut() and not _cut_hover and not _dragging
+	var want := Color(1, 1, 1, ABOVE_CUT_ALPHA) if see_through else Color.WHITE
+	if self_modulate != want:
+		self_modulate = want
 
 	var cw := float(w if rot_steps % 2 == 0 else h)
 	var ch := float(h if rot_steps % 2 == 0 else w)
@@ -1103,18 +1105,6 @@ func _draw_overlays(w: int, h: int, ink: Color, parts: Array) -> void:
 # A piece up at the ceiling is drawn the way a plan shows what is overhead:
 # a dashed outline with its diagonals, so the furniture under it stays
 # readable, and a pale wash of the daylight it lets in.
-func _draw_above_cut(w: float, h: float, ink: Color) -> void:
-	var c := Color(ink.r, ink.g, ink.b, 0.85)
-	var pts := [Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h), Vector2(0, 0)]
-	for i in range(pts.size() - 1):
-		draw_dashed_line(pts[i], pts[i + 1], c, 1.2, 5.0)
-	# Its name in the bottom corner, clear of the label of what is under it.
-	draw_string_outline(ThemeDB.fallback_font, Vector2(3, h - 3), furniture_name,
-		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, 3, Color(1, 1, 1, 0.90))
-	draw_string(ThemeDB.fallback_font, Vector2(3, h - 3), furniture_name,
-		HORIZONTAL_ALIGNMENT_LEFT, w - 6, 7, GameTheme.NAVY)
-
-
 func _draw_overhead(w: float, h: float, ink: Color) -> void:
 	draw_rect(Rect2(0, 0, w, h), Color(1.0, 0.96, 0.70, 0.18))
 	var c := Color(ink.r, ink.g, ink.b, 0.85)

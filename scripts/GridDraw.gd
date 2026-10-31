@@ -1056,7 +1056,7 @@ func _draw_wall_items(parent: Floor, _rw: int, _rh: int) -> void:
 			if edge == ghost_edge and o == ghost_origin:
 				continue   # being dragged right now — drawn as a ghost below instead
 			if _wall_item_above_cut(o, items[origin] as String):
-				continue   # drawn dashed over the furniture (_draw_over_layer)
+				continue   # drawn see-through over the furniture (_draw_over_layer)
 			_draw_one_wall_item(bounds, edge, o, items[origin] as String, 0.85)
 	if not ghost.is_empty():
 		_draw_one_wall_item(bounds, ghost_edge, ghost_origin, ghost.get("fid", "") as String, 0.5)
@@ -1077,7 +1077,7 @@ func _wall_item_above_cut(o: Vector2i, fid: String) -> bool:
 const WALL_ITEM_TOP_TILES := 24   # the wall's height, which hung pieces measure down from
 
 
-func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float, dashed := false) -> void:
+func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String, alpha: float, above := false) -> void:
 	var fdata := _gm.get_furniture_by_id(fid)
 	if fdata.is_empty():
 		return
@@ -1103,12 +1103,9 @@ func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String,
 				(bounds.position.y + o.x) * TILE_SIZE, depth * TILE_SIZE, iw * TILE_SIZE)
 		_:
 			return
-	if dashed:
-		var ci := _over_layer
-		var c := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y), rect.position]
-		for i in 4:
-			ci.draw_dashed_line(c[i], c[i + 1], Color(PLAN_INK, 0.85), 1.2, 4.0)
-		ci.draw_dashed_line(rect.position, rect.end, Color(PLAN_INK, 0.35), 1.0, 4.0)
+	if above:   # over the furniture, see-through
+		_over_layer.draw_rect(rect, Color(col, Furniture.ABOVE_CUT_ALPHA))
+		_over_layer.draw_rect(rect, Color(0, 0, 0, 0.40 * Furniture.ABOVE_CUT_ALPHA), false, 1.0)
 		return
 	draw_rect(rect, col)
 	draw_rect(rect, Color(0, 0, 0, 0.40), false, 1.0)
@@ -1117,8 +1114,8 @@ func _draw_one_wall_item(bounds: Rect2i, edge: String, o: Vector2i, fid: String,
 # ── Above the cut ────────────────────────────────────────────────────────────
 # A plan is a cut through the room at about a metre (Furniture.PLAN_CUT_TILES):
 # what is below it is drawn whole, what is above it — the high treads of an
-# open staircase, a cabinet hung over a worktop — as a dashed outline with no
-# fill, over the furniture, so the piece under it still reads.
+# open staircase, a cabinet hung over a worktop — as usual but see-through,
+# over the furniture, so the piece under it still reads.
 var _over_layer: Node2D = null
 
 func _tread_above_cut(i: int, steps: int) -> bool:
@@ -1130,7 +1127,7 @@ func _draw_over_layer() -> void:
 	if parent == null or not parent.visible:
 		return
 	var ci := _over_layer
-	var ink := Color(PLAN_INK, 0.85)
+	const FILL := Color(0.78, 0.58, 0.22, 0.80)   # GridDraw's floor-stair amber
 	for e in parent.stairs_data:
 		var ed := e as Dictionary
 		if ed.has("furniture") or (ed.get("kind", "solid") as String) != "open":
@@ -1152,9 +1149,8 @@ func _draw_over_layer() -> void:
 				"south": a = Vector2(px.position.x, px.position.y + v0 * px.size.y); b = Vector2(px.end.x, px.position.y + v1 * px.size.y)
 				"east":  a = Vector2(px.position.x + v0 * px.size.x, px.position.y); b = Vector2(px.position.x + v1 * px.size.x, px.end.y)
 				_:       a = Vector2(px.end.x - v1 * px.size.x, px.position.y); b = Vector2(px.end.x - v0 * px.size.x, px.end.y)
-			var c := [a, Vector2(b.x, a.y), b, Vector2(a.x, b.y), a]
-			for k in 4:
-				ci.draw_dashed_line(c[k], c[k + 1], ink, 1.0, 3.0)
+			var shade := FILL.lerp(Color.WHITE, 0.35 * (float(i) + 0.5) / steps)
+			ci.draw_rect(Rect2(a, b - a), Color(shade, Furniture.ABOVE_CUT_ALPHA))
 	if _gm != null:
 		var bounds := parent.get_room_bounds()
 		for edge in parent.wall_items:
@@ -1670,7 +1666,7 @@ func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Co
 		if open:
 			# Treads only: a slat each, the floor seen between them. Those
 			# above the plan's cut are drawn over the furniture instead
-			# (_draw_over_layer), dashed.
+			# (_draw_over_layer), see-through.
 			if not from_below and _tread_above_cut(i, steps):
 				continue
 			var gap := 0.22 / steps
