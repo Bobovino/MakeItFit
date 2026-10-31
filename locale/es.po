@@ -81,8 +81,8 @@ msgid "Back to the title screen"
 msgstr "Volver a la pantalla de título"
 
 #: scripts/CityMap.gd:674
-#: scripts/Main.gd:5141
-#: scripts/Main.gd:5177
+#: scripts/Main.gd:5182
+#: scripts/Main.gd:5218
 #: scripts/ResultScreen.gd:52
 msgid "Phase %d of %d"
 msgstr "Fase %d de %d"
@@ -171,7 +171,7 @@ msgid "Studio Funds: %d€"
 msgstr "Fondos del estudio: %d€"
 
 #: scripts/CityMap.gd:2010
-#: scripts/Main.gd:5101
+#: scripts/Main.gd:5142
 msgid "Back to phase %d"
 msgstr "Volver a la fase %d"
 
@@ -297,7 +297,7 @@ msgid "%s and %s must be in different zones"
 msgstr "%s y %s deben estar en zonas distintas"
 
 #: scripts/GameManager.gd:570
-#: scripts/Main.gd:3077
+#: scripts/Main.gd:3097
 msgid "%s apart from %s"
 msgstr "%s separado de %s"
 
@@ -602,7 +602,7 @@ msgid "Buy: %d€"
 msgstr "Comprar: %d€"
 
 #: scripts/Inventory.gd:1008
-#: scripts/Main.gd:480
+#: scripts/Main.gd:482
 msgid "Floor Plan"
 msgstr "Plano"
 
@@ -734,282 +734,290 @@ msgstr "normal"
 msgid "%s and %s"
 msgstr "%s y %s"
 
-#: scripts/Main.gd:458
+#: scripts/Main.gd:460
 msgid "Test Layout"
 msgstr "Probar distribución"
 
-#: scripts/Main.gd:480
+#: scripts/Main.gd:482
 msgid "Blueprint view — place and move furniture from above"
 msgstr "Vista de plano: coloca y mueve muebles desde arriba"
 
-#: scripts/Main.gd:481
+#: scripts/Main.gd:483
 msgid "Walk around and place items in 3D — drag onto a wall to hang them"
 msgstr "Recorre y coloca objetos en 3D: arrástralos a una pared para colgarlos"
 
-#: scripts/Main.gd:523
+#: scripts/Main.gd:525
 msgid "Menu — settings, back to projects, quit"
 msgstr "Menú: ajustes, volver a los proyectos, salir"
 
-#: scripts/Main.gd:546
+#: scripts/Main.gd:548
 msgid "← Back to Editor"
 msgstr "← Volver al editor"
 
-#: scripts/Main.gd:547
+#: scripts/Main.gd:549
 msgid "Return to the Level Editor, resuming the level you were testing"
 msgstr "Vuelve al editor de niveles y retoma el nivel que estabas probando"
 
-#: scripts/Main.gd:564
-#: scripts/Main.gd:3775
+#: scripts/Main.gd:566
+#: scripts/Main.gd:3795
 #: scenes/Furniture.tscn:18
 msgid "Furniture"
 msgstr "Muebles"
 
-#: scripts/Main.gd:565
+#: scripts/Main.gd:567
 msgid "Open or close the furniture catalogue (F)"
 msgstr "Abrir o cerrar el catálogo de muebles (F)"
 
-#: scripts/Main.gd:593
+#: scripts/Main.gd:595
 msgid "Undo last action (Ctrl+%s)"
 msgstr "Deshacer la última acción (Ctrl+%s)"
 
-#: scripts/Main.gd:602
+#: scripts/Main.gd:604
 msgid "Redo (Ctrl+Shift+%s)"
 msgstr "Rehacer (Ctrl+Mayús+%s)"
 
-#: scripts/Main.gd:744
+#: scripts/Main.gd:746
 msgid "The %s is somewhere else in another moment: the tenant has to move it by hand every time. Comfort −%d%%."
 msgstr "%s está en otro sitio en otro momento: el inquilino tiene que moverlo a mano cada vez. Comodidad −%d%%."
 
-#: scripts/Main.gd:746
+#: scripts/Main.gd:748
 msgid "The %s stays put in every moment now: comfort restored."
 msgstr "%s ya está en el mismo sitio en todos los momentos: comodidad recuperada."
 
-#: scripts/Main.gd:760
+#: scripts/Main.gd:762
 msgid "Moved by hand: comfort −%d%%"
 msgstr "Movido a mano: comodidad −%d%%"
 
-#: scripts/Main.gd:1096
+#: scripts/Main.gd:1100
 msgid "Budget"
 msgstr "Presupuesto"
 
-#: scripts/Main.gd:1525
+#: scripts/Main.gd:1545
 msgid "NEW MECHANIC"
 msgstr "NUEVA MECÁNICA"
 
-#: scripts/Main.gd:1553
+#: scripts/Main.gd:1573
 msgid "Got it — let's go!"
 msgstr "Entendido, ¡vamos!"
 
-#: scripts/Main.gd:1635
+#: scripts/Main.gd:1655
 msgid "Too cramped to step into: %.0f m² inside, a home needs at least %.0f m²"
 msgstr "Demasiado estrecha para entrar: %.0f m² dentro, una casa necesita al menos %.0f m²"
 
-#: scripts/Main.gd:1719
+#: scripts/Main.gd:1739
 msgid "Little daylight gets in here: the %s outside stands in front of the box."
 msgstr "Aquí entra poca luz: fuera, %s está delante de la caja."
 
-#: scripts/Main.gd:1721
+#: scripts/Main.gd:1741
 msgid "Noisy in here: the %s right outside the box keeps anyone from sleeping."
 msgstr "Aquí hay ruido: %s, justo fuera de la caja, no deja dormir a nadie."
 
-#: scripts/Main.gd:1723
+#: scripts/Main.gd:1743
 msgid "This box stands by the %s: %s."
 msgstr "Esta caja está junto a %s: %s."
 
-#: scripts/Main.gd:2457
+#: scripts/Main.gd:2477
 msgid "This box"
 msgstr "Esta caja"
 
-#: scripts/Main.gd:2468
+#: scripts/Main.gd:2488
 msgid "%s is lighter again: easier to move."
 msgstr "%s vuelve a pesar menos: más fácil de mover."
 
-#: scripts/Main.gd:2470
+#: scripts/Main.gd:2490
 msgid "%s is getting heavy: moving it away from where it started now costs comfort."
 msgstr "%s empieza a pesar: moverla de su sitio inicial ahora resta comodidad."
 
-#: scripts/Main.gd:2472
+#: scripts/Main.gd:2492
 msgid "%s is packed full: it now stays in one place for every moment of the day."
 msgstr "%s está llena a reventar: ahora se queda en el mismo sitio en todos los momentos del día."
 
-#: scripts/Main.gd:2481
+#: scripts/Main.gd:2501
 msgid "No %s"
 msgstr "Sin %s"
 
-#: scripts/Main.gd:2484
+#: scripts/Main.gd:2504
 msgid "%s at least %.1f m from the wall"
 msgstr "%s a %.1f m de la pared como mínimo"
 
-#: scripts/Main.gd:2495
+#: scripts/Main.gd:2515
 msgid "North side"
 msgstr "Lado norte"
 
-#: scripts/Main.gd:2496
+#: scripts/Main.gd:2516
 msgid "East side"
 msgstr "Lado este"
 
-#: scripts/Main.gd:2497
+#: scripts/Main.gd:2517
 msgid "South side"
 msgstr "Lado sur"
 
-#: scripts/Main.gd:2498
+#: scripts/Main.gd:2518
 msgid "West side"
 msgstr "Lado oeste"
 
-#: scripts/Main.gd:2520
+#: scripts/Main.gd:2540
 msgid "boxes here: %s"
 msgstr "cajas aquí: %s"
 
-#: scripts/Main.gd:2520
+#: scripts/Main.gd:2540
 msgid "nothing extra for boxes here"
 msgstr "nada especial para las cajas aquí"
 
-#: scripts/Main.gd:2766
+#: scripts/Main.gd:2786
 msgid "%s can't be slept in: the %s is too noisy."
 msgstr "No se puede dormir en %s: %s hace demasiado ruido."
 
-#: scripts/Main.gd:2864
+#: scripts/Main.gd:2884
 msgid "%s (Loft)"
 msgstr "%s (altillo)"
 
-#: scripts/Main.gd:3020
+#: scripts/Main.gd:3040
 msgid "Drag each portrait onto the room that will be theirs."
 msgstr "Arrastra cada retrato a la habitación que será suya."
 
-#: scripts/Main.gd:3076
+#: scripts/Main.gd:3096
 msgid "%s and %s in different rooms"
 msgstr "%s y %s en habitaciones distintas"
 
-#: scripts/Main.gd:3087
+#: scripts/Main.gd:3107
 msgid "%s in the same room as %s, or next door"
 msgstr "%s en la misma habitación que %s, o al lado"
 
-#: scripts/Main.gd:3088
+#: scripts/Main.gd:3108
 msgid "%s by %s"
 msgstr "%s junto a %s"
 
-#: scripts/Main.gd:3097
+#: scripts/Main.gd:3117
 msgid "Everyone reaches %s from their room without crossing someone else's"
 msgstr "Cada uno llega a %s desde su habitación sin cruzar la de otro"
 
-#: scripts/Main.gd:3098
+#: scripts/Main.gd:3118
 msgid "Own way to %s"
 msgstr "Camino propio a %s"
 
-#: scripts/Main.gd:3188
+#: scripts/Main.gd:3208
 msgid "Drag furniture to move it · hold a piece to rotate, fold or sell it · pinch to zoom"
 msgstr "Arrastra muebles para moverlos · mantén pulsada una pieza para girarla, plegarla o venderla · pellizca para hacer zoom"
 
-#: scripts/Main.gd:3189
+#: scripts/Main.gd:3209
 msgid "Drag furniture to move it · R rotates a piece · Switch to 3D to hang things on walls"
 msgstr "Arrastra muebles para moverlos · R gira una pieza · Cambia a 3D para colgar cosas en las paredes"
 
-#: scripts/Main.gd:3194
+#: scripts/Main.gd:3214
 msgid "Drag items onto the floor or a wall · hold a piece for its options · pinch to zoom, twist to turn"
 msgstr "Arrastra objetos al suelo o a una pared · mantén pulsada una pieza para ver sus opciones · pellizca para hacer zoom y gira para rotar"
 
-#: scripts/Main.gd:3195
+#: scripts/Main.gd:3215
 msgid "Drag items onto the floor or a wall · R rotates a piece · Q/E turn the view · WASD move it"
 msgstr "Arrastra objetos al suelo o a una pared · R gira una pieza · Q/E giran la vista · WASD la mueven"
 
-#: scripts/Main.gd:3958
+#: scripts/Main.gd:3978
 msgid "Map"
 msgstr "Mapa"
 
-#: scripts/Main.gd:3960
+#: scripts/Main.gd:3980
 msgid "See every apartment in this project and jump to any of them"
 msgstr "Ver todos los pisos de este proyecto e ir a cualquiera"
 
-#: scripts/Main.gd:3964
+#: scripts/Main.gd:3984
 #: scripts/ui/menu_kit.gd:134
 msgid "Back"
 msgstr "Volver"
 
-#: scripts/Main.gd:3966
+#: scripts/Main.gd:3986
 msgid "Step back out to the apartment this box sits in"
 msgstr "Salir al piso en el que está esta caja"
 
-#: scripts/Main.gd:3999
+#: scripts/Main.gd:4019
 msgid "Double-click a box to enter · drop a piece on a box to put it inside · R rotates a piece"
 msgstr "Doble clic en una caja para entrar · suelta una pieza sobre una caja para meterla · R gira una pieza"
 
-#: scripts/Main.gd:4003
+#: scripts/Main.gd:4023
 msgid "Drop a piece on “Back” to send it out · R rotates a piece"
 msgstr "Suelta una pieza sobre «Volver» para sacarla · R gira una pieza"
 
-#: scripts/Main.gd:4223
+#: scripts/Main.gd:4243
 msgid "No wall inspected on this floor yet"
 msgstr "Aún no has inspeccionado ninguna pared en esta planta"
 
-#: scripts/Main.gd:4319
+#: scripts/Main.gd:4339
 msgid "%s needs daylight: stand it where the window's light reaches."
 msgstr "%s necesita luz natural: ponlo donde llegue la luz de la ventana."
 
-#: scripts/Main.gd:4352
+#: scripts/Main.gd:4372
 msgid "Bought %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr "Has comprado %s  →  %s.   Te espera allí en el catálogo, en «Tuyos»."
 
-#: scripts/Main.gd:4353
+#: scripts/Main.gd:4373
 msgid "Sent %s  →  %s.   It is waiting under “Owned” in the catalogue there."
 msgstr "Has enviado %s  →  %s.   Te espera allí en el catálogo, en «Tuyos»."
 
-#: scripts/Main.gd:4413
+#: scripts/Main.gd:4433
 msgid "%s came with you. Click to put it down  ·  Esc leaves it under “Owned”."
 msgstr "%s ha venido contigo. Haz clic para colocarlo  ·  Esc lo deja en «Tuyos»."
 
-#: scripts/Main.gd:4484
+#: scripts/Main.gd:4504
 msgid " %s is a keepsake: it stays in this flat"
 msgstr " %s es un recuerdo: se queda en este piso"
 
-#: scripts/Main.gd:4486
+#: scripts/Main.gd:4506
 msgid "A box can't go inside another apartment"
 msgstr "Una caja no puede ir dentro de otro piso"
 
-#: scripts/Main.gd:4488
+#: scripts/Main.gd:4508
 msgid "Stairs can't move to another apartment"
 msgstr "Las escaleras no pueden pasar a otro piso"
 
-#: scripts/Main.gd:4533
+#: scripts/Main.gd:4553
 msgid "%s  Buy it for %s  ·  %d€ from this budget"
 msgstr "%s  Comprarlo para %s  ·  %d€ de este presupuesto"
 
-#: scripts/Main.gd:4535
+#: scripts/Main.gd:4555
 msgid "←  Take out to %s"
 msgstr "←  Sacar a %s"
 
-#: scripts/Main.gd:4535
+#: scripts/Main.gd:4555
 msgid "→  Take into %s"
 msgstr "→  Meter en %s"
 
-#: scripts/Main.gd:4536
+#: scripts/Main.gd:4556
 msgid "Shift: send it without going"
 msgstr "Mayús: enviarlo sin ir"
 
-#: scripts/Main.gd:4564
+#: scripts/Main.gd:4584
 msgid "←  Click here to buy it for %s"
 msgstr "←  Haz clic aquí para comprarlo para %s"
 
-#: scripts/Main.gd:4564
+#: scripts/Main.gd:4584
 msgid "←  Drop here to send to %s"
 msgstr "←  Suéltalo aquí para enviarlo a %s"
 
-#: scripts/Main.gd:4728
+#: scripts/Main.gd:4748
 msgid "%s is already renting here — pick a different box."
 msgstr "%s ya está alquilado aquí: elige otra caja."
 
-#: scripts/Main.gd:4814
+#: scripts/Main.gd:4834
 msgid " %s is a keepsake: it can be moved, not sold."
 msgstr " %s es un recuerdo: se puede mover, pero no vender."
 
-#: scripts/Main.gd:4819
+#: scripts/Main.gd:4839
 msgid "Removing %s means repaying its %d€ rent — you only have %d€."
 msgstr "Quitar %s significa devolver sus %d€ de alquiler, y solo tienes %d€."
 
-#: scripts/Main.gd:4960
+#: scripts/Main.gd:4980
 msgid "This apartment is ready. Still to furnish: %s"
 msgstr "Este piso está listo. Falta amueblar: %s"
 
-#: scripts/Main.gd:4991
+#: scripts/Main.gd:5015
+msgid "The tenant can't walk to: %s"
+msgstr "El inquilino no puede llegar a: %s"
+
+#: scripts/Main.gd:5016
+msgid "No way to: %s"
+msgstr "No se llega a: %s"
+
+#: scripts/Main.gd:5031
 msgid ""
 "The tenant isn't comfortable with this arrangement.\n"
 "Too many heavy pieces have to be moved by hand when the moment changes: leave some in the same place in every moment."
@@ -1017,15 +1025,15 @@ msgstr ""
 "El inquilino no está cómodo con esta distribución.\n"
 "Hay que mover a mano demasiados muebles pesados al cambiar de momento: deja algunos en el mismo sitio en todos los momentos."
 
-#: scripts/Main.gd:4998
+#: scripts/Main.gd:5038
 msgid "Not every need on the bar is ticked yet."
 msgstr "Aún no están marcadas todas las necesidades de la barra."
 
-#: scripts/Main.gd:5000
+#: scripts/Main.gd:5040
 msgid "Still missing:"
 msgstr "Aún falta:"
 
-#: scripts/Main.gd:5009
+#: scripts/Main.gd:5049
 msgid ""
 "The tenant can't walk to: %s.\n"
 "Leave a path at least 40 cm wide from the door to the side each piece is used from."
@@ -1033,49 +1041,49 @@ msgstr ""
 "El inquilino no puede llegar a: %s.\n"
 "Deja un paso de al menos 40 cm desde la puerta hasta el lado desde el que se usa cada pieza."
 
-#: scripts/Main.gd:5063
+#: scripts/Main.gd:5104
 msgid "Phase %d of %d done"
 msgstr "Fase %d de %d completada"
 
-#: scripts/Main.gd:5101
+#: scripts/Main.gd:5142
 msgid "Restart phase %d"
 msgstr "Reiniciar la fase %d"
 
-#: scripts/Main.gd:5185
+#: scripts/Main.gd:5226
 #: scripts/ui/ApplicationFax.gd:293
 #: scripts/ui/dialogue_scene.gd:132
 msgid "You"
 msgstr "Tú"
 
-#: scripts/Main.gd:5427
+#: scripts/Main.gd:5468
 msgid "Click a piece to change its colours."
 msgstr "Haz clic en un mueble para cambiar sus colores."
 
-#: scripts/Main.gd:5471
+#: scripts/Main.gd:5521
 msgid " Back to Results"
 msgstr " Volver a los resultados"
 
-#: scripts/Main.gd:5602
+#: scripts/Main.gd:5652
 msgid "CUSTOM BUILD"
 msgstr "A MEDIDA"
 
-#: scripts/Main.gd:5614
+#: scripts/Main.gd:5664
 msgid "LMB paint · RMB erase"
 msgstr "Clic izq. pintar · Clic der. borrar"
 
-#: scripts/Main.gd:5626
+#: scripts/Main.gd:5676
 msgid "Move"
 msgstr "Mover"
 
-#: scripts/Main.gd:5650
+#: scripts/Main.gd:5700
 msgid "%s  %d€/tile"
 msgstr "%s  %d€/casilla"
 
-#: scripts/Main.gd:6297
+#: scripts/Main.gd:6347
 msgid "Paint tiles on the floor"
 msgstr "Pinta casillas en el suelo"
 
-#: scripts/Main.gd:4673
+#: scripts/Main.gd:4693
 msgid "%d piece is waiting for you here: open Furniture, it is first under “Owned”."
 msgid_plural "%d pieces are waiting for you here: open Furniture, they are first under “Owned”."
 msgstr[0] "%d pieza te espera aquí: abre Muebles, está la primera en «Tuyos»."
@@ -1516,8 +1524,8 @@ msgid "Press any key…"
 msgstr "Pulsa cualquier tecla…"
 
 #: scripts/TenantCard.gd:219
-#: scripts/TenantCard.gd:698
-#: scripts/TenantCard.gd:768
+#: scripts/TenantCard.gd:706
+#: scripts/TenantCard.gd:776
 msgid "%s NEEDS"
 msgstr "NECESIDADES DE %s"
 
@@ -1533,51 +1541,56 @@ msgstr "Amuebla el piso para que se marquen todas las necesidades de aquí"
 msgid "%s — click to see the furniture that provides it"
 msgstr "%s — haz clic para ver los muebles que lo ofrecen"
 
-#: scripts/TenantCard.gd:590
+#: scripts/TenantCard.gd:593
 msgid "The numbered line on the plan shows it."
 msgstr "La línea numerada del plano la muestra."
 
-#: scripts/TenantCard.gd:591
+#: scripts/TenantCard.gd:594
 msgid "Put them all down in the flat."
 msgstr "Colócalos todos en el piso."
 
-#: scripts/TenantCard.gd:592
+#: scripts/TenantCard.gd:595
 msgid "The footsteps on the plan show the way, red where it wakes them."
 msgstr "Los pasos del plano muestran el camino; en rojo, donde los despierta."
 
-#: scripts/TenantCard.gd:593
+#: scripts/TenantCard.gd:596
 msgid "The rooms outlined in red on the plan break it."
 msgstr "Las habitaciones con borde rojo en el plano no lo cumplen."
 
-#: scripts/TenantCard.gd:594
+#: scripts/TenantCard.gd:597
+#: scripts/TenantCard.gd:618
+msgid "Leave a path at least 40 cm wide from the door to the side each piece is used from."
+msgstr "Deja un paso de al menos 40 cm desde la puerta hasta el lado desde el que se usa cada mueble."
+
+#: scripts/TenantCard.gd:598
 msgid "Tall storage splits a room into zones."
 msgstr "El almacenaje alto divide una habitación en zonas."
 
-#: scripts/TenantCard.gd:598
+#: scripts/TenantCard.gd:602
 msgid "Click to see the pieces that count"
 msgstr "Haz clic para ver las piezas que cuentan"
 
-#: scripts/TenantCard.gd:697
+#: scripts/TenantCard.gd:705
 msgid "Read the tenant's rental application again"
 msgstr "Volver a leer la solicitud de alquiler"
 
-#: scripts/TenantCard.gd:768
+#: scripts/TenantCard.gd:776
 msgid "Click to show only theirs"
 msgstr "Clic para ver solo las suyas"
 
-#: scripts/TenantCard.gd:821
+#: scripts/TenantCard.gd:829
 msgid "Drag onto a room to give it to them"
 msgstr "Arrástralo a una habitación para dársela"
 
-#: scripts/TenantCard.gd:957
+#: scripts/TenantCard.gd:965
 msgid "Apartments %d/%d"
 msgstr "Pisos %d/%d"
 
-#: scripts/TenantCard.gd:958
+#: scripts/TenantCard.gd:966
 msgid "Still to furnish: %s"
 msgstr "Falta amueblar: %s"
 
-#: scripts/TenantCard.gd:959
+#: scripts/TenantCard.gd:967
 msgid "Every apartment is ready"
 msgstr "Todos los pisos están listos"
 

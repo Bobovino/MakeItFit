@@ -26,6 +26,7 @@ func _ready() -> void:
 	await _t_tenants_are_cosmetic()
 	await _t_progress_round_trip()
 	await _t_won_flat_reopens_on_results()
+	await _t_unreachable_piece_in_bar()
 	await _t_project_needs_every_apartment()
 	await _t_box_on_a_surface()
 	await _t_outside_walls()
@@ -949,6 +950,42 @@ func _t_won_flat_reopens_on_results() -> void:
 	GameState.reduce_motion = real["motion"]
 
 
+# A piece nobody can walk to holds the rent back, so the needs bar says so
+# (the bar could otherwise show every need ticked and nothing happen): a bed
+# put down in front of Day and Night's sink, then taken away again.
+func _t_unreachable_piece_in_bar() -> void:
+	GameState.pending_level_id = "day_and_night"
+	GameState.pending_resume = false
+	var main: Node = (load("res://scenes/Main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	for i in 10:
+		await get_tree().process_frame
+	var fl: Floor = main._floors[main._current_floor_id]
+	# Put down where it leaves some piece with no way in.
+	var bed: Furniture = main._spawn_furniture("normal_bed", fl, 0, 0)
+	var b := fl.get_room_bounds()
+	var blocking := false
+	for y in range(b.position.y, b.end.y):
+		for x in range(b.position.x, b.end.x):
+			if not blocking and fl.can_place(bed, Vector2(x, y)):
+				fl.place_furniture(bed, Vector2(x, y))
+				blocking = not fl.get_inaccessible_furniture().is_empty()
+	main._update_accessibility()
+	main._refresh_functions()
+	var chips: Array = main.tenant_card._chips_by_req.get("reach", [])
+	_current = "unreachable: a chip in the bar names the piece nobody can walk to"
+	_ok(chips.size() == 1 and (chips[0].get_child(0).get_child(1) as Label).text.contains(
+		(fl.get_inaccessible_furniture()[0] as Furniture).furniture_name) if chips.size() == 1 and not fl.get_inaccessible_furniture().is_empty() else false,
+		"chips %d, blocked %s" % [chips.size(), fl.get_inaccessible_furniture().map(func(f): return f.furniture_id)])
+	fl.remove_furniture(bed)
+	main._update_accessibility()
+	main._refresh_functions()
+	_current = "unreachable: the chip goes once there's a way again"
+	_ok(fl.get_inaccessible_furniture().is_empty() and (main.tenant_card._chips_by_req.get("reach", []) as Array).is_empty())
+	main.queue_free()
+	await get_tree().process_frame
+
+
 # Everything about a level the save has to keep, and what the checker makes
 # of it, as one comparable string.
 func _level_state_string(main: Node) -> String:
@@ -1579,8 +1616,10 @@ func _t_start_at_phase() -> void:
 	var real_path := GameState.save_path
 	GameState.save_path = "user://test_phase_path_save.json"
 	var real_saves := GameState.phase_saves.duplicate(true)
+	var real_completed := GameState.completed.duplicate(true)
 	GameState.phase_saves.erase("beach_house")
 	GameState.progress.erase("beach_house")
+	GameState.completed.erase("beach_house")   # the player's own save may have it rented out
 	_current = "phase path: nothing finished yet, only the first phase can be started"
 	_eq(GameState.phase_reached("beach_house", 2), 0)
 	GameState.pending_level_id = "beach_house"
@@ -1607,6 +1646,7 @@ func _t_start_at_phase() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 	GameState.phase_saves = real_saves
+	GameState.completed = real_completed
 	GameState.progress.erase("beach_house")
 	for suffix in ["", ".bak", ".tmp"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameState.save_path + suffix))

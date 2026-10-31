@@ -226,6 +226,7 @@ var _active_moment_id:  String = ""
 var _rent_auto_armed:   bool = false   # false while a level is still spawning its starting furniture — see _update_rent_btn()
 var _level_load_id:     int  = 0       # bumped on every _load_level() call — lets an in-flight completion reveal detect a Restart Level mid-animation and bail instead of showing stale results
 var _level_completed:   bool = false   # true once this level's Results screen has been shown this session — see _on_settings_btn_pressed
+var _unreachable_names: Array = []    # pieces nobody can walk to, by name (_update_accessibility)
 var _rented_out:        bool = false   # this visit's flat is rented out (or reopened won): no more autosaves, it reopens on its results
 
 
@@ -891,6 +892,7 @@ func _load_level(level_id: String) -> void:
 	_rent_auto_armed = false
 	_level_completed = false
 	_rented_out      = false
+	_unreachable_names = []
 	Furniture.read_only     = false
 	if is_instance_valid(_mode3d_view):
 		_mode3d_view.read_only = false
@@ -4921,7 +4923,7 @@ func _refresh_functions() -> void:
 		apt_floor.grid_draw.quiet_routes = gm.quiet_status
 		apt_floor.grid_draw.queue_redraw()
 		apt_floor.set_zone_status(gm.zone_status())
-		tenant_card.update_rules(gm.rule_status())
+		tenant_card.update_rules(_bar_rules())
 		if is_instance_valid(_mode3d_view):
 			_mode3d_view.set_rule_overlays(gm.sightline_status, apt_floor.zones, apt_floor.zone_status)
 			_mode3d_view.refresh_rooms()
@@ -4993,6 +4995,26 @@ func _update_accessibility() -> void:
 	for fid in _floors:
 		for f in (_floors[fid] as Floor).get_all_furniture():
 			(f as Furniture).set_accessible(f not in blocked)
+	var names: Array = []
+	for f in blocked:
+		if not (f as Furniture).furniture_name in names:
+			names.append((f as Furniture).furniture_name)
+	if names != _unreachable_names:
+		_unreachable_names = names
+		if _level_has_goal():
+			tenant_card.update_rules(_bar_rules())
+
+
+# The rules chips in the needs bar: the level's own, and while some piece
+# can't be walked to, one more saying which (renting out waits on it too, and
+# without it the bar could show every need ticked and nothing happen).
+func _bar_rules() -> Array:
+	var rules := gm.rule_status()
+	if not _unreachable_names.is_empty():
+		var which := Loc.join_list(_unreachable_names)
+		rules.append({"kind": "reach", "label": tr("The tenant can't walk to: %s") % which,
+			"short": tr("No way to: %s") % which, "ok": false})
+	return rules
 
 
 func _all_furniture_accessible() -> bool:

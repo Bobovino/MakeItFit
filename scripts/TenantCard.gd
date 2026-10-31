@@ -557,6 +557,8 @@ func update_rules(rules: Array) -> void:
 		return
 	if _rule_chips.size() != rules.size():
 		for c in _rule_chips:
+			for list in _chips_by_req.values():
+				(list as Array).erase(c)
 			if is_instance_valid(c):
 				c.queue_free()
 		_rule_chips.clear()
@@ -573,11 +575,12 @@ func update_rules(rules: Array) -> void:
 			var is_items := (rule["kind"] as String) == "items"
 			var is_quiet := (rule["kind"] as String) == "quiet"
 			var is_rooms := (rule["kind"] as String) == "rooms"
-			if not is_sight and not is_items and not is_quiet and not is_rooms:
+			var is_reach := (rule["kind"] as String) == "reach"
+			if not is_sight and not is_items and not is_quiet and not is_rooms and not is_reach:
 				zone_number += 1
 			var req_id := ("sight:%d" % rule["number"]) if is_sight else (("items:%d" % rule["number"]) if is_items \
 				else (("quiet:%d" % rule["number"]) if is_quiet else (("rooms:%d" % rule["number"]) if is_rooms \
-				else ("zones:%d" % zone_number))))
+				else ("reach" if is_reach else ("zones:%d" % zone_number)))))
 			var chip := _make_need_chip("rule", false, req_id)
 			chip.set_meta("rule", true)
 			var text := rule.get("short", "") as String
@@ -591,7 +594,8 @@ func update_rules(rules: Array) -> void:
 				else ("\n" + tr("Put them all down in the flat.") if is_items
 				else ("\n" + tr("The footsteps on the plan show the way, red where it wakes them.") if is_quiet
 				else ("\n" + tr("The rooms outlined in red on the plan break it.") if is_rooms
-				else "\n" + tr("Tall storage splits a room into zones.")))))
+				else ("\n" + tr("Leave a path at least 40 cm wide from the door to the side each piece is used from.") if is_reach
+				else "\n" + tr("Tall storage splits a room into zones."))))))
 			if is_items:
 				var n: int = rule["number"]
 				chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -608,6 +612,10 @@ func update_rules(rules: Array) -> void:
 	for i in rules.size():
 		var rule_i := rules[i] as Dictionary
 		_set_need_chip(_rule_chips[i] as PanelContainer, rule_i["ok"] as bool)
+		if (rule_i["kind"] as String) == "reach":
+			# Which pieces changes as they're moved: "No way to the sink".
+			(_rule_chips[i].get_child(0).get_child(1) as Label).text = rule_i["short"] as String
+			_rule_chips[i].tooltip_text = (rule_i["label"] as String) + "\n" + tr("Leave a path at least 40 cm wide from the door to the side each piece is used from.")
 		if (rule_i["kind"] as String) == "items":
 			# The count changes as pieces go down: "3 freezers 1/3".
 			(_rule_chips[i].get_child(0).get_child(1) as Label).text = rule_i["short"] as String
