@@ -416,12 +416,12 @@ func _draw_new_format(parent: Floor, w: int, h: int, _rw: int, _rh: int) -> void
 			draw_line(Vector2(_trx + _ts, _tpy), Vector2(_trx + _ts, _tpy + _ts), STAIR_BORDER, 1.5)
 
 	# ── 2d. Stair openings: the stairwell a flight from the floor below comes up through
-	# A hole in this floor, the flight below seen down it: drawn in ink on a
-	# grey wash, as the same staircase seen from above.
-	const SO_FILL   := Color(0.30, 0.34, 0.46, 0.24)
-	const SO_BORDER := Color(0.12, 0.14, 0.24, 1.00)
-	const SO_NOSING := Color(0.12, 0.14, 0.24, 0.70)
-	const SO_ARROW  := Color(0.12, 0.14, 0.24, 1.00)
+	# A hole in this floor, the flight below seen down it: the same wooden
+	# staircase, deeper (darker) the further down.
+	const SO_FILL   := Color(0.70, 0.52, 0.20, 0.90)
+	const SO_BORDER := Color(0.22, 0.16, 0.08, 1.00)
+	const SO_NOSING := Color(0.30, 0.20, 0.06, 0.80)
+	const SO_ARROW  := Color(0.16, 0.10, 0.04, 1.00)
 	for _op in parent.stair_openings:
 		var _opd   := _op as Dictionary
 		var _opr   := _opd["rect"] as Rect2i
@@ -1563,15 +1563,10 @@ func _draw_light_layer() -> void:
 		_light_layer.draw_rect(Rect2(v.x * ts, v.y * ts, ts, ts), Color(col, k))
 
 
-# A flight as an architect's plan draws it. The plan is a cut through the
-# storey at about a metre, so a flight going up from this floor is cut at
-# STAIR_CUT of its run: its treads solid up to a break line, dashed beyond
-# (above the cut). Seen from the floor above, down its stairwell, it is the
-# other way round: the part beyond the break solid, the rest dashed. The
-# walking line down the middle always points up the flight — a small circle
-# at the first step, an arrowhead at the last — on both floors.
-const STAIR_CUT := 0.6
-
+# A flight on the plan: its treads shaded by height — lighter as they climb
+# towards you, darker down a stairwell — and one arrow on the walking line,
+# from where it is stepped onto on this floor (a small circle) to where it
+# leads: up a flight going up, down one seen from the floor it arrives at.
 func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Color, ink: Color, from_below: bool) -> void:
 	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
 	var run := r.size.y if dir in ["north", "south"] else r.size.x
@@ -1583,36 +1578,23 @@ func _draw_flight(r: Rect2i, dir: String, fill: Color, nosing: Color, border: Co
 			"south": return Vector2(px.position.x + u * px.size.x, px.position.y + v * px.size.y)
 			"east":  return Vector2(px.position.x + v * px.size.x, px.position.y + u * px.size.y)
 		return Vector2(px.end.x - v * px.size.x, px.position.y + u * px.size.y)
-	draw_rect(px, fill)
-	var shown := func(v: float) -> bool:   # solid on this floor's plan
-		return (v >= STAIR_CUT) if from_below else (v <= STAIR_CUT)
-	for i in range(1, steps):
-		var v := float(i) / steps
-		if shown.call(v):
-			draw_line(at.call(0.0, v), at.call(1.0, v), nosing, 1.5)
-		else:
-			draw_dashed_line(at.call(0.0, v), at.call(1.0, v), Color(nosing, nosing.a * 0.7), 1.0, 3.0)
+	for i in steps:
+		var v0 := float(i) / steps
+		var v1 := float(i + 1) / steps
+		var tread := Rect2(at.call(0.0, v0), Vector2.ZERO).expand(at.call(1.0, v1))
+		var k := (float(i) + 0.5) / steps   # 0 at the foot, 1 at the top
+		var shade := fill.lerp(Color.WHITE, 0.35 * k) if not from_below else fill.darkened(0.45 * (1.0 - k))
+		draw_rect(tread, shade)
+		if i > 0:
+			draw_line(at.call(0.0, v0), at.call(1.0, v0), nosing, 1.0)
 	draw_rect(px, border, false, 2.0)
-	# The break line: a slanted cut with a small zigzag in the middle.
-	var d := 0.07
-	var pts := [at.call(-0.05, STAIR_CUT - d), at.call(0.42, STAIR_CUT - d * 0.1), at.call(0.48, STAIR_CUT + d * 0.6),
-		at.call(0.54, STAIR_CUT - d * 0.6), at.call(0.60, STAIR_CUT + d * 0.1), at.call(1.05, STAIR_CUT + d)]
-	for i in pts.size() - 1:
-		draw_line(pts[i], pts[i + 1], ink, 1.5, true)
-	# The walking line.
-	var foot: Vector2 = at.call(0.5, 0.5 / steps)
-	var top: Vector2 = at.call(0.5, 1.0 - 0.25 / steps)
-	var cut: Vector2 = at.call(0.5, STAIR_CUT)
-	if from_below:
-		draw_dashed_line(foot, cut, Color(ink, 0.6), 1.0, 3.0)
-		draw_line(cut, top, ink, 1.5, true)
-	else:
-		draw_circle(foot, 2.6, ink)
-		draw_line(foot, cut, ink, 1.5, true)
-		draw_dashed_line(cut, top, Color(ink, 0.6), 1.0, 3.0)
-	var back := (cut - top).normalized() * 6.0
-	var side := Vector2(-back.y, back.x) * 0.55
-	draw_colored_polygon(PackedVector2Array([top, top + back + side, top + back - side]), ink)
+	var start: Vector2 = at.call(0.5, 1.0 - 0.5 / steps) if from_below else at.call(0.5, 0.5 / steps)
+	var end: Vector2 = at.call(0.5, 0.35 / steps) if from_below else at.call(0.5, 1.0 - 0.35 / steps)
+	draw_circle(start, 2.4, ink)
+	draw_line(start, end, ink, 1.5, true)
+	var back := (start - end).normalized() * 6.0
+	var side := Vector2(-back.y, back.x) * 0.6
+	draw_colored_polygon(PackedVector2Array([end, end + back + side, end + back - side]), ink)
 
 
 # "Up" at the foot of a flight, "Down" at the top of the stairwell one comes
@@ -1622,9 +1604,8 @@ func _draw_stair_word(r: Rect2i, dir: String, top: bool, word: String, col: Colo
 	var fs := maxi(8, int(TILE_SIZE * 1.3))
 	var sz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 	var px := Rect2(Vector2(r.position * TILE_SIZE), Vector2(r.size * TILE_SIZE))
-	# On the walking line, clear of its circle and its arrowhead: a quarter
-	# of the way up for "Up", most of the way for "Down".
-	var v := 0.8 if top else 0.3
+	# On the arrow, near where it starts (clear of its circle).
+	var v := 0.7 if top else 0.3
 	var c := px.get_center()
 	match dir:
 		"north": c.y = px.end.y - v * px.size.y

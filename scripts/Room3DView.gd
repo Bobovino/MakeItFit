@@ -3840,6 +3840,16 @@ func build_from_floor(apt_floor: Floor, catalog: Array, below_floor: Floor = nul
 				_add_desk_scenery(w, d)
 			else:
 				_add_plinth(w, d)
+	elif _style != null and apt_floor.floor_type == "floor":
+		# An upper storey: the same drawing board, as far down as the ground
+		# floor stands, seen from up here past the blueprint of the floor
+		# below.
+		var storeys := 0
+		var under := below_floor
+		while under != null and storeys < 20:
+			storeys += 1
+			under = under.below_floor
+		_add_desk_around(Vector3(0.0, DESK_MAT_Y - storeys * _storey_m("floor"), 0.0), w, d, false)
 
 	# Subfloor/ceiling/roof layers only exist to carry the 2D-only pipe/duct
 	# overlays (GridDraw's _draw_subfloor_layer, etc.) — they have no walls or
